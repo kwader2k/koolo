@@ -1,0 +1,84 @@
+name: Koolo Leveling Build CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    name: "Build Koolo binary"
+    runs-on: windows-2022
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+
+      - name: "Setup Go"
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          check-latest: true
+
+      - name: "Cache Go modules"
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\AppData\Local\go-build
+            ~\go\pkg\mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: "Install Garble"
+        run: |
+          go install mvdan.cc/garble@latest
+          Add-Content $env:GITHUB_PATH "$env:USERPROFILE\go\bin"
+
+      - name: "Building Obfuscated artifacts"
+        shell: pwsh
+        run: |
+          # Build obfuscated binary
+          $buildID = [guid]::NewGuid().ToString()
+          $buildTime = Get-Date -Format "o"
+
+          garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=$buildID' -X 'main.buildTime=$buildTime' -X 'github.com/hectorgimenez/koolo/internal/config.Version=${{ github.ref_name }}'" -o ".\build\$buildID.exe" ./cmd/koolo
+
+          # Verify build
+          if (Test-Path ".\build\$buildID.exe") {
+              echo "Obfuscated build successful"
+          } else {
+              throw "Obfuscated build failed"
+          }
+
+          if (Test-Path "README.md") { Copy-Item "README.md" ".\build\" }
+          if (Test-Path "tools") { Copy-Item -Recurse "tools" ".\build\tools" }
+          New-Item -ItemType Directory -Path ".\build\config" -Force
+          if (Test-Path "config\koolo.yaml.dist") { Copy-Item "config\koolo.yaml.dist" ".\build\config\koolo.yaml" }
+          if (Test-Path "config\Settings.json") { Copy-Item "config\Settings.json" ".\build\config\Settings.json" }
+          if (Test-Path "config\template") { Copy-Item -Recurse "config\template" ".\build\config\template" }
+
+      - name: "Upload Artifact"
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: koolo-leveling-build
+          path: build/
+
+      - name: "Create Release Archive"
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $version = "${{ github.ref_name }}"
+          $zipName = "koolo-leveling-$version.zip"
+          Write-Host "Creating release archive: $zipName"
+          Compress-Archive -Path ".\build\*" -DestinationPath ".\$zipName" -Force
+
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: "koolo-leveling-${{ github.ref_name }}.zip"
