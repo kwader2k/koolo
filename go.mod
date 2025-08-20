@@ -17,11 +17,11 @@ require (
 )
 
 require (
-	git.wow.st/gmp/jni v0.0.0-20210610011705-34026c7e22d0
-	github.com/expr-lang/expr v1.16.9
-	github.com/inkeliz/w32 v1.0.2
-	github.com/pkg/errors v0.9.1
-	golang.org/x/crypto v0.31.0
+	git.wow.st/gmp/jni v0.0.0-20210610011705-34026c7e22d0 // indirect
+	github.com/expr-lang/expr v1.16.9 // indirect
+	github.com/inkeliz/w32 v1.0.2 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
 )
 
-replace github.com/hectorgimenez/d2go => C:/Users/qdc/Desktop/Repo-Merge/betterd2go
+replace github.com/hectorgimenez/d2go => github.com/kwader2k/d2go v0.0.0-20250820202518-08a12b19678d
