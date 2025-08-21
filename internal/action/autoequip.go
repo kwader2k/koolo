@@ -25,6 +25,9 @@ const (
 )
 
 var (
+	ErrFailedToEquip  = errors.New("failed to equip item, quitting game")
+	ErrNotEnoughSpace = errors.New("not enough inventory space")
+
 	classItems = map[data.Class][]string{
 		data.Amazon:      {"ajav", "abow", "aspe"},
 		data.Sorceress:   {"orb"},
@@ -50,8 +53,6 @@ var (
 		"AmuletOfTheViper",
 		"KhalimsFlail",
 	}
-
-	ErrFailedToEquip = errors.New("failed to equip item, quitting game")
 )
 
 // EvaluateAllItems evaluates and equips items for both player and mercenary
@@ -392,16 +393,38 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, target item.Lo
 			}
 
 			if equipErr != nil {
-				ctx.Logger.Error(fmt.Sprintf("Failed to equip %s after %d attempts. Considering it junk and attempting to sell all junk.", itm.Name, MaxRetries))
+				// NEW: Handle specific error for not enough space
+				if errors.Is(equipErr, ErrNotEnoughSpace) {
+					ctx.Logger.Info("Not enough inventory space to equip. Trying to sell junk.")
 
-				err := VendorRefill(false, true)
-				if err != nil {
-					return fmt.Errorf("failed to equip item and failed to sell junk: %w", err)
+					// Create a temporary lock config that protects the item we want to equip
+					tempLock := make([][]int, len(ctx.CharacterCfg.Inventory.InventoryLock))
+					for i := range ctx.CharacterCfg.Inventory.InventoryLock {
+						tempLock[i] = make([]int, len(ctx.CharacterCfg.Inventory.InventoryLock[i]))
+						copy(tempLock[i], ctx.CharacterCfg.Inventory.InventoryLock[i])
+					}
+
+					// Lock the new item
+					if itm.Location.LocationType == item.LocationInventory {
+						w, h := itm.Desc().InventoryWidth, itm.Desc().InventoryHeight
+						for j := 0; j < h; j++ {
+							for i := 0; i < w; i++ {
+								if itm.Position.Y+j < 4 && itm.Position.X+i < 10 {
+									tempLock[itm.Position.Y+j][itm.Position.X+i] = 0 // Lock this slot
+								}
+							}
+						}
+					}
+
+					if sellErr := VendorRefill(false, true, tempLock); sellErr != nil {
+						return fmt.Errorf("failed to sell junk to make space: %w", sellErr)
+					}
+					// Don't mark as equipped, let the main loop re-evaluate
+					continue
 				}
 
-				ctx.Logger.Info(fmt.Sprintf("Successfully triggered junk sale. Hope item %s is gone.", itm.Name))
-
-				// We can now safely continue to the next item in the list
+				// Original fallback for other errors
+				ctx.Logger.Error(fmt.Sprintf("Failed to equip %s after %d attempts: %v. Considering it junk.", itm.Name, MaxRetries, equipErr))
 				continue
 			}
 
@@ -423,51 +446,38 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, target item.Lo
 
 // passing in bodyloc as a parameter cos rings have 2 locations
 func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) error {
-
 	ctx := context.Get()
 	ctx.SetLastAction("Equip")
 
 	// Ensure all menus are closed when the function exits
 	defer step.CloseAllMenus()
 
-	itemCoords := ui.GetScreenCoordsForItem(itm)
-
 	if itm.Location.LocationType == item.LocationStash || itm.Location.LocationType == item.LocationSharedStash {
 		OpenStash()
 		utils.Sleep(EquipDelayMS)
-		switch itm.Location.LocationType {
-		case item.LocationStash:
-			SwitchStashTab(1)
-		case item.LocationSharedStash:
-			SwitchStashTab(itm.Location.Page + 1)
+		tab := 1
+		if itm.Location.LocationType == item.LocationSharedStash {
+			tab = itm.Location.Page + 1
 		}
+		SwitchStashTab(tab)
 
-		if target == item.LocationMercenary {
+		ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
+		utils.Sleep(EquipDelayMS)
 
-			if itemFitsInventory(itm) {
-				ctx.HID.ClickWithModifier(game.LeftButton, itemCoords.X, itemCoords.Y, game.CtrlKey)
-
-				utils.Sleep(EquipDelayMS)
-				*ctx.Data = ctx.GameReader.GetData()
-
-				inInventory := false
-				for _, updatedItem := range ctx.Data.Inventory.AllItems {
-					if itm.UnitID == updatedItem.UnitID {
-						itemCoords = ui.GetScreenCoordsForItem(updatedItem)
-						inInventory = true
-						break
-					}
-				}
-				if !inInventory || !itemFitsInventory(itm) {
-					return fmt.Errorf("item not found in inventory after moving from stash")
-				}
-				utils.Sleep(EquipDelayMS)
-
-				// Close all menus after moving the item to the inventory to prevent getting stuck
-				step.CloseAllMenus()
-				utils.Sleep(EquipDelayMS)
+		// We need to refresh data and find the item in inventory now
+		*ctx.Data = ctx.GameReader.GetData()
+		var found bool
+		for _, updatedItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+			if updatedItem.UnitID == itm.UnitID {
+				itm = updatedItem
+				found = true
+				break
 			}
 		}
+		if !found {
+			return fmt.Errorf("item %s not found in inventory after moving from stash", itm.Name)
+		}
+		step.CloseAllMenus()
 	}
 
 	for !ctx.Data.OpenMenus.Inventory {
@@ -483,40 +493,42 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	if itemToEquip.UnitID == 0 {
 		return fmt.Errorf("item disappeared from inventory before equipping")
 	}
-	itemCoords = ui.GetScreenCoordsForItem(itemToEquip)
+	itemCoords := ui.GetScreenCoordsForItem(itemToEquip)
 
 	if target == item.LocationMercenary {
 		ctx.HID.ClickWithModifier(game.LeftButton, itemCoords.X, itemCoords.Y, game.CtrlKey)
 	} else {
-		switch bodyloc {
-		case item.LocRightRing:
-			if !itemFitsInventory(itm) {
-				return fmt.Errorf("not enough inventory space to unequip %s", itm.Name)
+		// NEW: Check for inventory space before unequipping anything
+		currentlyEquipped := GetEquippedItem(ctx.Data.Inventory, bodyloc)
+		if currentlyEquipped.UnitID != 0 {
+			if _, found := findInventorySpace(currentlyEquipped); !found {
+				return ErrNotEnoughSpace
 			}
-			equippedRing := data.Position{X: ui.EquipRRinX, Y: ui.EquipRRinY}
+
+			// Unequip logic for specific slots (can be improved, but kept from original)
+			var slotCoords data.Position
 			if ctx.Data.LegacyGraphics {
-				equippedRing = data.Position{X: ui.EquipRRinClassicX, Y: ui.EquipRRinClassicY}
-			}
-			ctx.HID.ClickWithModifier(game.LeftButton, equippedRing.X, equippedRing.Y, game.ShiftKey)
-			utils.Sleep(EquipDelayMS)
-
-		case item.LocRightArm:
-			for _, equippedItem := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
-				if equippedItem.Location.BodyLocation == item.LocRightArm {
-					if !itemFitsInventory(itm) {
-						return fmt.Errorf("not enough inventory space to unequip %s", itm.Name)
-					}
-
-					equippedRightArm := data.Position{X: ui.EquipRArmX, Y: ui.EquipRArmY}
-					if ctx.Data.LegacyGraphics {
-						equippedRightArm = data.Position{X: ui.EquipRArmClassicX, Y: ui.EquipRArmClassicY}
-					}
-					ctx.HID.ClickWithModifier(game.LeftButton, equippedRightArm.X, equippedRightArm.Y, game.ShiftKey)
-					utils.Sleep(EquipDelayMS)
-					break
+				switch bodyloc {
+				case item.LocRightRing:
+					slotCoords = data.Position{X: ui.EquipRRinClassicX, Y: ui.EquipRRinClassicY}
+				case item.LocRightArm:
+					slotCoords = data.Position{X: ui.EquipRArmClassicX, Y: ui.EquipRArmClassicY}
+				}
+			} else {
+				switch bodyloc {
+				case item.LocRightRing:
+					slotCoords = data.Position{X: ui.EquipRRinX, Y: ui.EquipRRinY}
+				case item.LocRightArm:
+					slotCoords = data.Position{X: ui.EquipRArmX, Y: ui.EquipRArmY}
 				}
 			}
+
+			if slotCoords.X > 0 {
+				ctx.HID.ClickWithModifier(game.LeftButton, slotCoords.X, slotCoords.Y, game.ShiftKey)
+				utils.Sleep(EquipDelayMS)
+			}
 		}
+
 		ctx.Logger.Debug(fmt.Sprintf("Equipping %s at %v to %s using hotkeys", itm.Name, itemCoords, bodyloc))
 		ctx.HID.ClickWithModifier(game.LeftButton, itemCoords.X, itemCoords.Y, game.ShiftKey)
 	}
@@ -534,10 +546,9 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 
 	if itemEquipped {
 		return nil
-	} else {
-		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s using hotkeys", itm.Name, target))
-		return fmt.Errorf("failed to equip %s to %s", itm.Name, target)
 	}
+
+	return fmt.Errorf("failed to equip %s to %s", itm.Name, target)
 }
 
 func FindItemByUnitID(inventory data.Inventory, unitID data.UnitID) data.Item {
@@ -547,6 +558,66 @@ func FindItemByUnitID(inventory data.Inventory, unitID data.UnitID) data.Item {
 		}
 	}
 	return data.Item{} // Return an empty item if not found
+}
+
+// findInventorySpace finds the top-left grid coordinates for a free spot in the inventory.
+func findInventorySpace(itm data.Item) (data.Position, bool) {
+	ctx := context.Get()
+	inventory := ctx.Data.Inventory.ByLocation(item.LocationInventory)
+	lockConfig := ctx.CharacterCfg.Inventory.InventoryLock
+
+	// Create a grid representing the inventory, considering items and locked slots
+	occupied := [4][10]bool{}
+
+	// Mark all slots occupied by items
+	for _, i := range inventory {
+		for y := 0; y < i.Desc().InventoryHeight; y++ {
+			for x := 0; x < i.Desc().InventoryWidth; x++ {
+				if i.Position.Y+y < 4 && i.Position.X+x < 10 {
+					occupied[i.Position.Y+y][i.Position.X+x] = true
+				}
+			}
+		}
+	}
+
+	// Mark all slots that are locked in the configuration (0 = locked)
+	for y, row := range lockConfig {
+		if y < 4 {
+			for x, cell := range row {
+				if x < 10 && cell == 0 {
+					occupied[y][x] = true
+				}
+			}
+		}
+	}
+
+	// Get the item's dimensions
+	w := itm.Desc().InventoryWidth
+	h := itm.Desc().InventoryHeight
+
+	// Find a free spot and return its coordinates
+	for y := 0; y <= 4-h; y++ {
+		for x := 0; x <= 10-w; x++ {
+			fits := true
+			for j := 0; j < h; j++ {
+				for i := 0; i < w; i++ {
+					if occupied[y+j][x+i] {
+						fits = false
+						break
+					}
+				}
+				if !fits {
+					break
+				}
+			}
+			if fits {
+				// Return the top-left inventory grid position
+				return data.Position{X: x, Y: y}, true
+			}
+		}
+	}
+
+	return data.Position{}, false
 }
 
 // GetEquippedItem is a new helper function to search for the currently equipped item in a specific location
