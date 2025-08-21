@@ -147,7 +147,7 @@ func ShouldBuyKeys() (int, bool) {
 	return totalKeys, totalKeys < 12
 }
 
-func SellJunk() {
+func SellJunk(lockConfig ...[][]int) {
 	ctx := context.Get()
 	ctx.Logger.Debug("--- SellJunk() function entered ---")
 	ctx.Logger.Debug("Selling junk items and excess keys...")
@@ -199,7 +199,7 @@ func SellJunk() {
 
 			// If selling this entire stack still leaves us with at least 12 keys
 			// Or if this stack exactly equals the remaining excess to sell
-			if (totalKeys - qtyInStack.Value >= 12) || (qtyInStack.Value == excessCount-keysSold) {
+			if (totalKeys-qtyInStack.Value >= 12) || (qtyInStack.Value == excessCount-keysSold) {
 				ctx.Logger.Debug(fmt.Sprintf("Selling full stack of %d keys from %v", qtyInStack.Value, keyStack.Position))
 				SellItemFullStack(keyStack)
 				keysSold += qtyInStack.Value
@@ -254,10 +254,8 @@ func SellJunk() {
 	}
 	// --- END OPTIMIZED LOGIC ---
 
-	// Existing logic to sell other junk items
-	itemsToSell := ItemsToBeSold()
-
-	for _, i := range itemsToSell {
+	// Existing logic to sell other junk items, now with lockConfig support
+	for _, i := range ItemsToBeSold(lockConfig...) {
 		SellItem(i)
 	}
 }
@@ -332,10 +330,24 @@ func buyFullStack(i data.Item, currentKeysInInventory int) {
 	ctx.Logger.Debug(fmt.Sprintf("Finished full stack purchase attempt for %s", i.Desc().Name))
 }
 
-func ItemsToBeSold() (items []data.Item) {
+func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	ctx := context.Get()
 
+	var currentLockConfig [][]int
+	if len(lockConfig) > 0 {
+		currentLockConfig = lockConfig[0]
+	} else {
+		currentLockConfig = ctx.CharacterCfg.Inventory.InventoryLock
+	}
+
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		// Check if the item is in a locked slot, and if so, skip it.
+		if len(currentLockConfig) > itm.Position.Y && len(currentLockConfig[itm.Position.Y]) > itm.Position.X {
+			if currentLockConfig[itm.Position.Y][itm.Position.X] == 0 {
+				continue
+			}
+		}
+
 		isQuestItem := slices.Contains(questItems, itm.Name)
 		if itm.IsFromQuest() || isQuestItem {
 			continue
@@ -349,12 +361,11 @@ func ItemsToBeSold() (items []data.Item) {
 			continue
 		}
 
-		if ctx.Data.CharacterCfg.Inventory.InventoryLock[itm.Position.Y][itm.Position.X] == 1 {
-			if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAll(itm); result == nip.RuleResultFullMatch && !itm.IsPotion() {
-				continue
-			}
-			items = append(items, itm)
+		if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAll(itm); result == nip.RuleResultFullMatch && !itm.IsPotion() {
+			continue
 		}
+
+		items = append(items, itm)
 	}
 
 	return
