@@ -1,5 +1,7 @@
 package ui
 
+import "github.com/hectorgimenez/d2go/pkg/data"
+
 const (
 	itemBoxSize        = 33
 	itemBoxSizeClassic = 35
@@ -220,3 +222,23 @@ const (
 	EquipMercTorsX = 275
 	EquipMercTorsY = 255
 )
+
+func GetScreenCoordsForInventorySlot(gridX, gridY int, isLegacy bool) data.Position {
+	topLeftX := inventoryTopLeftX
+	topLeftY := inventoryTopLeftY
+	slotSize := itemBoxSize
+
+	if isLegacy {
+		topLeftX = inventoryTopLeftXClassic
+		topLeftY = inventoryTopLeftYClassic
+		slotSize = itemBoxSizeClassic
+	}
+
+	// Calculate the center of the slot to ensure a good click
+	halfSlot := slotSize / 2
+
+	x := topLeftX + (gridX * slotSize) + halfSlot
+	y := topLeftY + (gridY * slotSize) + halfSlot
+
+	return data.Position{X: x, Y: y}
+}
