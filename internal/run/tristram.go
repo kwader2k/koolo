@@ -86,7 +86,8 @@ func (t Tristram) Run() error {
 	action.MoveToCoords(cairnStone.Position)
 
 	// Clear area around the portal
-	if t.ctx.CharacterCfg.Game.Tristram.ClearPortal {
+	_, isLevelingChar := t.ctx.Char.(context.LevelingCharacter)
+	if t.ctx.CharacterCfg.Game.Tristram.ClearPortal || isLevelingChar && t.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
 		action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
 	}
 
