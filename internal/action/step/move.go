@@ -223,7 +223,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 				if err := InteractObject(*obj, interactionCheck); err != nil {
 					ctx.Logger.Debug("Failed to interact with immediate obstacle", slog.String("error", err.Error()))
 				}
-				time.Sleep(time.Millisecond * 250)
+				time.Sleep(time.Millisecond * 50)
 				continue
 			}
 
