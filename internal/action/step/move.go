@@ -295,9 +295,6 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 			} else if time.Since(stuckCheckStartTime) > stuckThreshold {
 				ctx.Logger.Debug("Bot stuck (short term), attempting micro-shuffle.")
 				ctx.PathFinder.RandomMovement()
-				if !ctx.Data.AreaData.Area.IsTown() {
-				utils.Sleep(3000)	
-				}
 				stuckCheckStartTime = time.Time{}
 				idleStartTime = time.Time{}
 			} else if idleStartTime.IsZero() {
