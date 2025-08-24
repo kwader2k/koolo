@@ -50,9 +50,19 @@ func (a Leveling) act1() error {
 			return a.stonyField()
 		}
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
+
+			if a.ctx.Data.PlayerUnit.TotalPlayerGold() < 5000 {
+
+				a.ctx.CharacterCfg.Character.ClearPathDist = 20
+
+					if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
+				a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
+			}} 	
+
 			return NewMausoleum().Run()
+			}
 		}
-	}
+
 
 	if !a.ctx.Data.Quests[quest.Act1DenOfEvil].Completed() && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
 		a.ctx.Logger.Debug("Completing Den of Evil")
