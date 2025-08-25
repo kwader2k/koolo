@@ -152,6 +152,7 @@
         <label><input type="checkbox" name="gameLevelingEnsurePointsAllocation" {{ if .Config.Game.Leveling.EnsurePointsAllocation }}checked{{ end }}> Automatically allocate stats/skills</label>
         <label><input type="checkbox" name="gameLevelingEnsureKeyBinding" {{ if .Config.Game.Leveling.EnsureKeyBinding }}checked{{ end }}> Automatically bind skills</label>
         <label><input type="checkbox" name="gameLevelingAutoEquip" {{ if .Config.Game.Leveling.AutoEquip }}checked{{ end }}> Automatically equip better items</label>
+        <label><input type="checkbox" name="gameLevelingAutoEquipFromSharedStash" {{ if .Config.Game.Leveling.AutoEquipFromSharedStash }}checked{{ end }}> AutoEquip items from Shared Stash</label>
 		        <h6>Create Runewords</h6>
             <div style="margin-left: 20px;">
                 <input type="text" id="search-runewords" placeholder="Search runewords..." style="margin-bottom: 10px; width: 100%; max-width: 300px;">
