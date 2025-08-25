@@ -3,22 +3,21 @@ package action
 import (
 	"log/slog"
 
+	"github.com/hectorgimenez/d2go/pkg/data/item"
+	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
-	botCtx "github.com/hectorgimenez/koolo/internal/context" 
+	botCtx "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/lxn/win"
-
-
-	"github.com/hectorgimenez/d2go/pkg/data/item"
-	"github.com/hectorgimenez/d2go/pkg/data/stat"
-	"github.com/hectorgimenez/d2go/pkg/data/npc"
 )
 
-func VendorRefill(forceRefill, sellJunk bool) error {
+func VendorRefill(forceRefill bool, sellJunk bool, tempLock ...[][]int) (err error) {
 	ctx := botCtx.Get()
 	ctx.SetLastAction("VendorRefill")
 
-	if !forceRefill && !shouldVisitVendor() {
+	// This is a special case, we want to sell junk, but we don't have enough space to unequip items
+	if !forceRefill && !shouldVisitVendor() && len(tempLock) == 0 {
 		return nil
 	}
 
@@ -31,7 +30,7 @@ func VendorRefill(forceRefill, sellJunk bool) error {
 			vendorNPC = npc.Lysander
 		}
 	}
-	err := InteractNPC(vendorNPC)
+	err = InteractNPC(vendorNPC)
 	if err != nil {
 		return err
 	}
@@ -44,7 +43,13 @@ func VendorRefill(forceRefill, sellJunk bool) error {
 	}
 
 	if sellJunk {
-		town.SellJunk()
+		var lockConfig [][]int
+		if len(tempLock) > 0 {
+			lockConfig = tempLock[0]
+			town.SellJunk(lockConfig)
+		} else {
+			town.SellJunk()
+		}
 	}
 	SwitchStashTab(4)
 	ctx.RefreshGameData()
@@ -85,7 +90,7 @@ func BuyAtVendor(vendor npc.ID, items ...VendorItemRequest) error {
 type VendorItemRequest struct {
 	Item     item.Name
 	Quantity int
-	Tab      int 
+	Tab      int
 }
 
 func shouldVisitVendor() bool {
@@ -108,7 +113,7 @@ func shouldVisitVendor() bool {
 
 	if ctx.BeltManager.ShouldBuyPotions() || town.ShouldBuyTPs() || town.ShouldBuyIDs() {
 		// Pass the embedded Context field: ctx.Context
-		if !hasTownPortalsInInventory(ctx.Context) { 
+		if !hasTownPortalsInInventory(ctx.Context) {
 			ctx.Logger.Debug("Skipping vendor visit (buy consumables): No Town Portals available to get to town.")
 			return false
 		}
@@ -117,7 +122,6 @@ func shouldVisitVendor() bool {
 
 	return false
 }
-
 
 func hasTownPortalsInInventory(ctx *botCtx.Context) bool { // <--- Renamed function definition
 	portalTome, found := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
