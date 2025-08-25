@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 )
@@ -45,25 +46,30 @@ func (bm BeltManager) DrinkPotion(potionType data.PotionType, merc bool) bool {
 	return false
 }
 
-// ShouldBuyPotions will return true if more than 25% of belt is empty (ignoring rejuv)
+// ShouldBuyPotions will return true if more than 25% of belt is empty (ignoring rejuv) and there are no potions in inventory.
 func (bm BeltManager) ShouldBuyPotions() bool {
 	targetHealingAmount := bm.data.CharacterCfg.Inventory.BeltColumns.Total(data.HealingPotion) * bm.data.Inventory.Belt.Rows()
 	targetManaAmount := bm.data.CharacterCfg.Inventory.BeltColumns.Total(data.ManaPotion) * bm.data.Inventory.Belt.Rows()
 	targetRejuvAmount := bm.data.CharacterCfg.Inventory.BeltColumns.Total(data.RejuvenationPotion) * bm.data.Inventory.Belt.Rows()
 
-	currentHealing, currentMana, currentRejuv := bm.getCurrentPotions()
+	currentHealing, currentMana, currentRejuv := bm.getCurrentPotionsInBelt()
+	inventoryHealing, inventoryMana, _ := bm.getInventoryPotionsCount() // We don't care about rejuvs in inventory for this check
+
+	totalHealing := currentHealing + inventoryHealing
+	totalMana := currentMana + inventoryMana
 
 	bm.logger.Debug(fmt.Sprintf(
-		"Belt Stats Health: %d/%d healing, %d/%d mana, %d/%d rejuv.",
-		currentHealing,
+		"Belt+Inv Stats: Health: %d/%d, Mana: %d/%d, Rejuv (belt only): %d/%d.",
+		totalHealing,
 		targetHealingAmount,
-		currentMana,
+		totalMana,
 		targetManaAmount,
 		currentRejuv,
 		targetRejuvAmount,
 	))
 
-	if currentHealing < int(float32(targetHealingAmount)*0.75) || currentMana < int(float32(targetManaAmount)*0.75) {
+	
+	if totalHealing < int(float32(targetHealingAmount)*0.75) || totalMana < int(float32(targetManaAmount)*0.75) {
 		bm.logger.Debug("Need more pots, let's buy them.")
 		return true
 	}
@@ -71,7 +77,8 @@ func (bm BeltManager) ShouldBuyPotions() bool {
 	return false
 }
 
-func (bm BeltManager) getCurrentPotions() (int, int, int) {
+// Counts potions currently in the belt
+func (bm BeltManager) getCurrentPotionsInBelt() (int, int, int) {
 	currentHealing := 0
 	currentMana := 0
 	currentRejuv := 0
@@ -92,8 +99,23 @@ func (bm BeltManager) getCurrentPotions() (int, int, int) {
 	return currentHealing, currentMana, currentRejuv
 }
 
+// New function to count potions in inventory
+func (bm BeltManager) getInventoryPotionsCount() (healing int, mana int, rejuv int) {
+	for _, itm := range bm.data.Inventory.ByLocation(item.LocationInventory) {
+		itemName := strings.ToLower(string(itm.Name))
+		if strings.Contains(itemName, "healing") {
+			healing++
+		} else if strings.Contains(itemName, "mana") {
+			mana++
+		} else if strings.Contains(itemName, "rejuvenation") {
+			rejuv++
+		}
+	}
+	return
+}
+
 func (bm BeltManager) GetMissingCount(potionType data.PotionType) int {
-	currentHealing, currentMana, currentRejuv := bm.getCurrentPotions()
+	currentHealing, currentMana, currentRejuv := bm.getCurrentPotionsInBelt()
 
 	switch potionType {
 	case data.HealingPotion:
