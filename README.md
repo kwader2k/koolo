@@ -2,7 +2,7 @@ The sorceress leveling feature has been completed.
 
 As written more detailed below you need to install:
 
-- Go
+- Go (1.24, not 1.25!)
 - Garble
 
 Use better_build.bat to build the application.
