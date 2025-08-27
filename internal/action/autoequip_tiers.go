@@ -1,11 +1,11 @@
 package action
 
 import (
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
-	"github.com/hectorgimenez/d2go/pkg/data/skill"
-
+	"fmt"
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
+	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/context"
 )
@@ -92,7 +92,7 @@ var (
 			stat.MaxLife:           1.0,
 			stat.MaxMana:           1.0,
 			stat.FasterHitRecovery: 2.0,
-			stat.Energy:            1.5,
+			stat.Energy:            0.5,
 		},
 		data.Necromancer: {
 			stat.FasterCastRate: 4.0,
@@ -102,9 +102,16 @@ var (
 		},
 		data.Paladin: {
 			stat.FasterCastRate:       3.0,
-			stat.IncreasedAttackSpeed: 2.0,
+			stat.IncreasedAttackSpeed: 0.2,
 			stat.ChanceToBlock:        3.0,
 			stat.Defense:              0.2,
+			stat.CannotBeFrozen:	   15.0,
+			stat.FireResist:           1.0,
+			stat.ColdResist:           1.0,
+			stat.LightningResist:      1.0,
+			stat.PoisonResist:         0.5,
+			stat.MaxLife:              1.0,
+			stat.FasterHitRecovery:	   2.0,
 		},
 		data.Barbarian: {
 			stat.CannotBeFrozen:       75.0,
@@ -219,7 +226,7 @@ var resPenalty = map[difficulty.Difficulty]int{
 
 // PlayerScore calculates overall item tier score
 func PlayerScore(itm data.Item) map[item.LocationType]float64 {
-	//ctx := context.Get()
+	ctx := context.Get()
 
 	bodyLocs := itm.Desc().GetType().BodyLocs
 	if len(bodyLocs) == 0 {
@@ -242,11 +249,11 @@ func PlayerScore(itm data.Item) map[item.LocationType]float64 {
 
 		scores[loc] = totalScore
 	}
-	//ctx.Logger.Debug(fmt.Sprintf("Item %s score: %v", itm.Name, scores))
+	ctx.Logger.Debug(fmt.Sprintf("Item %s score: %v", itm.IdentifiedName, scores))
 	return scores
 }
 func calculateGeneralScore(itm data.Item) float64 {
-	//ctx := context.Get()
+	ctx := context.Get()
 
 	score := BaseScore
 	// Handle Cannot Be Frozen
@@ -258,15 +265,15 @@ func calculateGeneralScore(itm data.Item) float64 {
 
 	if itm.Desc().Type == "belt" {
 		beltScore := calculateBeltScore(itm)
-		//ctx.Logger.Debug(fmt.Sprintf("Belt score for %s: %.1f", itm.Name, beltScore))
+		ctx.Logger.Debug(fmt.Sprintf("Belt score for %s: %.1f", itm.IdentifiedName, beltScore))
 		score += beltScore
 	}
 
 	// Handle sockets - this might be a bad idea becauase we won't properly use the sockets
 	if !itm.IsRuneword && !itm.HasSocketedItems() {
 		if sockets, found := itm.FindStat(stat.NumSockets, 0); found {
-			socketScore := float64(sockets.Value * 10)
-			//ctx.Logger.Debug(fmt.Sprintf("Socket score for %s (%d sockets): %.1f", itm.Name, sockets.Value, socketScore))
+			socketScore := float64(sockets.Value * 1)
+			ctx.Logger.Debug(fmt.Sprintf("Socket score for %s (%d sockets): %.1f", itm.IdentifiedName, sockets.Value, socketScore))
 			score += socketScore
 		}
 	}
@@ -276,7 +283,7 @@ func calculateGeneralScore(itm data.Item) float64 {
 
 	score += perLevelScore + baseStatsScore
 	if score > 0 {
-		//ctx.Logger.Debug(fmt.Sprintf("Final general score for %s: %.1f (per-level: %.1f, base stats: %.1f)", itm.Name, score, perLevelScore, baseStatsScore))
+		ctx.Logger.Debug(fmt.Sprintf("Final general score for %s: %.1f (per-level: %.1f, base stats: %.1f)", itm.IdentifiedName, score, perLevelScore, baseStatsScore))
 	}
 	return score
 }
@@ -341,7 +348,7 @@ func calculatePerLevelStats(itm data.Item) float64 {
 
 	totalScore := lifeScore + manaScore
 	if totalScore > 0 {
-		//ctx.Logger.Debug(fmt.Sprintf("Per-level stats score for %s: %.1f (life: %.1f, mana: %.1f)", itm.Name, totalScore, lifeScore, manaScore))
+		ctx.Logger.Debug(fmt.Sprintf("Per-level stats score for %s: %.1f (life: %.1f, mana: %.1f)", itm.IdentifiedName, totalScore, lifeScore, manaScore))
 	}
 	return totalScore
 }
@@ -363,13 +370,13 @@ func calculateBaseStats(itm data.Item) float64 {
 			}
 
 			statScore := float64(statData.Value) * weight
-			//ctx.Logger.Debug(fmt.Sprintf("Stat %s: value %d, base weight %.1f, class-adjusted weight %.1f, score %.1f",
-			//	statID, statData.Value, baseWeight, weight, statScore))
+			ctx.Logger.Debug(fmt.Sprintf("Item: %s, Stat: %s, Value: %d, Score: %.1f",
+				itm.IdentifiedName, statID, statData.Value, statScore))
 			score += statScore
 		}
 	}
 
-	//ctx.Logger.Debug(fmt.Sprintf("Total base stats score for %s: %.1f", itm.Name, score))
+	ctx.Logger.Debug(fmt.Sprintf("Total base stats score for %s: %.1f", itm.IdentifiedName, score))
 	return score
 }
 
@@ -377,33 +384,33 @@ func calculateBaseStats(itm data.Item) float64 {
 
 // calculateResistScore evaluates item resistance values and returns a weighted score
 func calculateResistScore(itm data.Item, bodyloc item.LocationType) float64 {
-	//ctx := context.Get()
+	ctx := context.Get()
 	newResists := getItemMainResists(itm)
 	mainScore := 0.0
 	if newResists.Fire == 0 && newResists.Cold == 0 && newResists.Lightning == 0 && newResists.Poison == 0 {
 		return 0.0
 	}
 
-	//ctx.Logger.Debug(fmt.Sprintf("(%v) New item resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.Name, newResists.Fire, newResists.Cold, newResists.Lightning, newResists.Poison))
+	ctx.Logger.Debug(fmt.Sprintf("(%s) New item resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.IdentifiedName, newResists.Fire, newResists.Cold, newResists.Lightning, newResists.Poison))
 
 	// get item resists stats from olditem currently equipped on body location
 	oldResists := getEquippedResists(bodyloc)
-	//ctx.Logger.Debug(fmt.Sprintf("(%v) Old equipped item  resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.Name, oldResists.Fire, oldResists.Cold, oldResists.Lightning, oldResists.Poison))
+	ctx.Logger.Debug(fmt.Sprintf("(%s) Old equipped item resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.IdentifiedName, oldResists.Fire, oldResists.Cold, oldResists.Lightning, oldResists.Poison))
 
 	// Base resists returns what our resists would be without the equipped item (including difficulty penalty)
 	baseResists := getBaseResists(oldResists)
-	//ctx.Logger.Debug(fmt.Sprintf("(%v) Base resists after removing equipped item  - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.Name, baseResists.Fire, baseResists.Cold, baseResists.Lightning, baseResists.Poison))
+	ctx.Logger.Debug(fmt.Sprintf("(%s) Base resists after removing equipped item - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.IdentifiedName, baseResists.Fire, baseResists.Cold, baseResists.Lightning, baseResists.Poison))
 
 	// subtract olditem resists from current total resists
 	effectiveResists := calculateEffectiveResists(newResists, baseResists)
-	//ctx.Logger.Debug(fmt.Sprintf("Effective resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", effectiveResists.Fire, effectiveResists.Cold, effectiveResists.Lightning, effectiveResists.Poison))
+	ctx.Logger.Debug(fmt.Sprintf("(%s) Effective resists - Fire: %d, Cold: %d, Lightning: %d, Poison: %d", itm.IdentifiedName, effectiveResists.Fire, effectiveResists.Cold, effectiveResists.Lightning, effectiveResists.Poison))
 
 	mainScore = calculateMainResistScore(effectiveResists)
 
 	otherScore := calculateOtherResistScore(itm)
 
 	totalScore := mainScore + otherScore
-	//ctx.Logger.Debug(fmt.Sprintf("%v - %s Total resist score for %s: %.1f (main: %.1f, other: %.1f)", bodyloc, itm.Name, totalScore, mainScore, otherScore))
+	ctx.Logger.Debug(fmt.Sprintf("%v - %s Total resist score: %.1f (main: %.1f, other: %.1f)", bodyloc, itm.IdentifiedName, totalScore, mainScore, otherScore))
 
 	return totalScore
 }
@@ -490,24 +497,24 @@ func calculateMainResistScore(resists ResistStats) float64 {
 
 	totalScore := fireScore + coldScore + lightScore + poisonScore
 
-	//context.Get().Logger.Debug(fmt.Sprintf("Main resist score components - Fire: %.1f, Cold: %.1f, Lightning: %.1f, Poison: %.1f, Total: %.1f", fireScore, coldScore, lightScore, poisonScore, totalScore))
+	context.Get().Logger.Debug(fmt.Sprintf("Main resist score components - Fire: %.1f, Cold: %.1f, Lightning: %.1f, Poison: %.1f, Total: %.1f", fireScore, coldScore, lightScore, poisonScore, totalScore))
 
 	return totalScore
 }
 
 func calculateOtherResistScore(itm data.Item) float64 {
-	//ctx := context.Get()
+	ctx := context.Get()
 	var score float64
 
 	for statID, weight := range resistWeightsOther {
 		if statData, found := itm.FindStat(statID, 0); found {
 			statScore := float64(statData.Value) * weight
-			//ctx.Logger.Debug(fmt.Sprintf("Other resist %s: value %d, weight %.1f, score %.1f", statID, statData.Value, weight, statScore))
+			ctx.Logger.Debug(fmt.Sprintf("Item: %s, Other resist %s: value %d, weight %.1f, score %.1f", itm.IdentifiedName, statID, statData.Value, weight, statScore))
 			score += statScore
 		}
 	}
 	if score > 0 {
-		//ctx.Logger.Debug(fmt.Sprintf("Total other resist score for %s: %.1f", itm.Name, score))
+		ctx.Logger.Debug(fmt.Sprintf("Total other resist score for %s: %.1f", itm.IdentifiedName, score))
 	}
 	return score
 }
@@ -520,20 +527,20 @@ func calculateSkillScore(itm data.Item) float64 {
 
 	if statData, found := itm.FindStat(stat.AllSkills, 0); found {
 		allSkillScore := float64(statData.Value) * skillWeights[statData.ID]
-		//ctx.Logger.Debug(fmt.Sprintf("  +All skills: %d, weight: %.1f, score: %.1f", statData.Value, skillWeights[statData.ID], allSkillScore))
+		ctx.Logger.Debug(fmt.Sprintf("Item: %s, +All skills: %d, weight: %.1f, score: %.1f", itm.IdentifiedName, statData.Value, skillWeights[statData.ID], allSkillScore))
 		score += allSkillScore
 	}
 
 	if classSkillsStat, found := itm.FindStat(stat.AddClassSkills, int(ctx.Data.PlayerUnit.Class)); found {
 		classSkillScore := float64(classSkillsStat.Value) * skillWeights[classSkillsStat.ID]
-		//ctx.Logger.Debug(fmt.Sprintf("  +Class skills: %d, weight: %.1f, score: %.1f", classSkillsStat.Value, skillWeights[classSkillsStat.ID], classSkillScore))
+		ctx.Logger.Debug(fmt.Sprintf("Item: %s, +Class skills: %d, weight: %.1f, score: %.1f", itm.IdentifiedName, classSkillsStat.Value, skillWeights[classSkillsStat.ID], classSkillScore))
 		score += classSkillScore
 	}
 
 	tabskill := int(ctx.Data.PlayerUnit.Class)*8 + (getMaxSkillTabPage() - 1)
 	if tabSkillsStat, found := itm.FindStat(stat.AddSkillTab, tabskill); found {
 		tabSkillScore := float64(tabSkillsStat.Value) * skillWeights[tabSkillsStat.ID]
-		//ctx.Logger.Debug(fmt.Sprintf("  +Tab skills (tab %d): %d, weight: %.1f, score: %.1f", getMaxSkillTabPage(), tabSkillsStat.Value, skillWeights[tabSkillsStat.ID], tabSkillScore))
+		ctx.Logger.Debug(fmt.Sprintf("Item: %s, +Tab skills (tab %d): %d, weight: %.1f, score: %.1f", itm.IdentifiedName, getMaxSkillTabPage(), tabSkillsStat.Value, skillWeights[tabSkillsStat.ID], tabSkillScore))
 		score += tabSkillScore
 	}
 
@@ -551,7 +558,7 @@ func calculateSkillScore(itm data.Item) float64 {
 	for _, usedSkill := range usedSkills {
 		if usedSkillsStat, found := itm.FindStat(stat.SingleSkill, int(usedSkill)); found {
 			usedSkillScore := float64(usedSkillsStat.Value) * skillWeights[usedSkillsStat.ID]
-			//ctx.Logger.Debug(fmt.Sprintf("  +%d to %s, weight: %.1f, score: %.1f", usedSkillsStat.Value, usedSkill.Desc().Name, skillWeights[usedSkillsStat.ID], skillScore))
+			ctx.Logger.Debug(fmt.Sprintf("Item: %s, +%d to %s, weight: %.1f, score: %.1f", itm.IdentifiedName, usedSkillsStat.Value, usedSkill.Desc().Name, skillWeights[usedSkillsStat.ID], usedSkillScore))
 			score += usedSkillScore
 		}
 	}
@@ -563,26 +570,26 @@ func calculateSkillScore(itm data.Item) float64 {
 				if sk == fireSkill {
 					const fireSkillWeight = 40.0
 					fireSkillScore := float64(fireSkillsStat.Value) * fireSkillWeight
-					//ctx.Logger.Debug(fmt.Sprintf("  +%d to Fire Skills, weight: %.1f, score: %.1f", fireSkillsStat.Value, fireSkillWeight, fireSkillScore))
+					ctx.Logger.Debug(fmt.Sprintf("Item: %s, +%d to Fire Skills, weight: %.1f, score: %.1f", itm.IdentifiedName, fireSkillsStat.Value, fireSkillWeight, fireSkillScore))
 					score += fireSkillScore
 				}
 			}
 		}
 		if ctx.Data.PlayerUnit.Class == data.Sorceress && getMaxSkillTabPage() == 1 { // Sorc using Fire tree
 			fireSkillScore := float64(fireSkillsStat.Value) * skillWeights[stat.AddSkillTab] // Consider it the same as '+x to Fire Skills (Sorceress only)'
-			//ctx.Logger.Debug(fmt.Sprintf("  +%d to Fire Skills, weight: %.1f, score: %.1f", fireSkillsStat.Value, skillWeights[stat.AddSkillTab], fireSkillScore))
+			ctx.Logger.Debug(fmt.Sprintf("Item: %s, +%d to Fire Skills, weight: %.1f, score: %.1f", itm.IdentifiedName, fireSkillsStat.Value, skillWeights[stat.AddSkillTab], fireSkillScore))
 			score += fireSkillScore
 		}
 	}
 	if score > 0 {
-		//ctx.Logger.Debug(fmt.Sprintf("Total skill score for %s: %.1f", itm.Name, score))
+		ctx.Logger.Debug(fmt.Sprintf("Total skill score for %s: %.1f", itm.IdentifiedName, score))
 	}
 	return score
 }
 
 // MercScore calculates mercenary-specific item score
 func MercScore(itm data.Item) map[item.LocationType]float64 {
-	//ctx := context.Get()
+	ctx := context.Get()
 	// Get all possible body locations for this item
 	bodyLocs := itm.Desc().GetType().BodyLocs
 	if len(bodyLocs) == 0 {
@@ -613,7 +620,7 @@ func MercScore(itm data.Item) map[item.LocationType]float64 {
 
 		scores[loc] = totalScore
 	}
-	//ctx.Logger.Debug(fmt.Sprintf("Item %s MERC score: %v", itm.Name, scores))
+	ctx.Logger.Debug(fmt.Sprintf("Item %s MERC score: %v", itm.IdentifiedName, scores))
 	return scores
 }
 

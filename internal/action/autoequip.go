@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -25,14 +24,17 @@ const (
 )
 
 var (
+	ErrFailedToEquip  = errors.New("failed to equip item")
+	ErrNotEnoughSpace = errors.New("not enough inventory space")
+
 	classItems = map[data.Class][]string{
-		data.Amazon:      {"ajav", "abow", "aspe"},
-		data.Sorceress:   {"orb"},
+		data.Amazon:     {"ajav", "abow", "aspe"},
+		data.Sorceress:  {"orb"},
 		data.Necromancer: {"head"},
-		data.Paladin:     {"ashd"},
-		data.Barbarian:   {"phlm"},
-		data.Druid:       {"pelt"},
-		data.Assassin:    {"h2h"},
+		data.Paladin:    {"ashd"},
+		data.Barbarian:  {"phlm"},
+		data.Druid:      {"pelt"},
+		data.Assassin:   {"h2h"},
 	}
 
 	// shieldTypes defines items that should be equipped in right arm (technically they can be left or right arm but we don't want to try and equip two shields)
@@ -50,138 +52,177 @@ var (
 		"AmuletOfTheViper",
 		"KhalimsFlail",
 	}
-
-	ErrFailedToEquip = errors.New("failed to equip item, quitting game")
 )
 
-// EvaluateAllItems evaluates and equips items for both player and mercenary
+// AutoEquip evaluates and equips items for both player and mercenary
 func AutoEquip() error {
 	ctx := context.Get()
-
-	for i := 0; i < MaxRetries; i++ {
-		allItems := ctx.Data.Inventory.ByLocation(
+	for { // Use an infinite loop that we can break from
+		ctx.Logger.Debug("Evaluating items for equip...")
+		locations := []item.LocationType{
 			item.LocationStash,
 			item.LocationInventory,
 			item.LocationEquipped,
 			item.LocationMercenary,
-		)
-
-		playerItems := evaluateItems(allItems, item.LocationEquipped, PlayerScore)
-		if err := equipBestItems(playerItems, item.LocationEquipped); err != nil {
-			ctx.Logger.Error(fmt.Sprintf("Failed to equip player items: %v", err))
-			continue
 		}
 
-		*ctx.Data = ctx.GameReader.GetData()
+		if ctx.CharacterCfg.Game.Leveling.AutoEquipFromSharedStash {
+			locations = append(locations, item.LocationSharedStash)
+		}
 
-		allItems = ctx.Data.Inventory.ByLocation(
-			item.LocationStash,
-			item.LocationInventory,
-			item.LocationEquipped,
-			item.LocationMercenary,
-		)
+		allItems := ctx.Data.Inventory.ByLocation(locations...)
 
-		mercItems := evaluateItems(allItems, item.LocationMercenary, MercScore)
+		// Player
+		// Create a new list of items for the player, EXCLUDING mercenary's equipped items.
+		playerEvalItems := make([]data.Item, 0)
+		for _, itm := range allItems {
+			if itm.Location.LocationType != item.LocationMercenary {
+				playerEvalItems = append(playerEvalItems, itm)
+			}
+		}
+		playerItems := evaluateItems(playerEvalItems, item.LocationEquipped, PlayerScore)
+		playerChanged, err := equipBestItems(playerItems, item.LocationEquipped)
+		if err != nil {
+			ctx.Logger.Error(fmt.Sprintf("Player equip error: %v. Continuing...", err))
+		}
+
+		// Mercenary
+		// We need to refresh data after player equip, as it might have changed inventory
+		if playerChanged {
+			*ctx.Data = ctx.GameReader.GetData()
+			allItems = ctx.Data.Inventory.ByLocation(locations...)
+		}
+
+		mercChanged := false
 		if ctx.Data.MercHPPercent() > 0 {
-			if err := equipBestItems(mercItems, item.LocationMercenary); err != nil {
-				ctx.Logger.Error(fmt.Sprintf("Failed to equip mercenary items: %v", err))
-				continue
+			// Create a new list of items for the merc, EXCLUDING player's equipped items.
+			mercEvalItems := make([]data.Item, 0)
+			for _, itm := range allItems {
+				if itm.Location.LocationType != item.LocationEquipped {
+					mercEvalItems = append(mercEvalItems, itm)
+				}
+			}
+
+			// Use this new filtered list for the mercenary evaluation.
+			mercItems := evaluateItems(mercEvalItems, item.LocationMercenary, MercScore)
+			mercChanged, err = equipBestItems(mercItems, item.LocationMercenary)
+			if err != nil {
+				ctx.Logger.Error(fmt.Sprintf("Mercenary equip error: %v. Continuing...", err))
 			}
 		}
 
-		*ctx.Data = ctx.GameReader.GetData()
-		if isEquipmentStable(playerItems, mercItems) {
-			ctx.Logger.Debug("All items equipped as planned, no more changes needed.")
+		if !playerChanged && !mercChanged {
+			ctx.Logger.Debug("Equipment is stable, no changes made.")
 			return nil
 		}
-	}
 
-	return fmt.Errorf("failed to equip all best items after multiple retries")
+		// If something changed, let's refresh data and loop again to ensure stability
+		*ctx.Data = ctx.GameReader.GetData()
+		ctx.Logger.Debug("Equipment changed, re-evaluating for stability...")
+	}
 }
 
-// isEquipmentStable checks if the currently equipped items match the top-ranked items from the last evaluation.
-func isEquipmentStable(playerItems, mercItems map[item.LocationType][]data.Item) bool {
-	ctx := context.Get()
-	isStable := true
-
-	// Check player equipment
-	for loc, items := range playerItems {
-		if len(items) > 0 {
-			bestItem := items[0]
-			equippedItem := GetEquippedItem(ctx.Data.Inventory, loc)
-			if equippedItem.UnitID == 0 || equippedItem.UnitID != bestItem.UnitID {
-				ctx.Logger.Debug(fmt.Sprintf("Player equipment unstable at %s. Best item is %s, but equipped is %s", loc, bestItem.Name, equippedItem.Name))
-				isStable = false
-			}
-		}
-	}
-
-	// Check mercenary equipment
-	for loc, items := range mercItems {
-		if len(items) > 0 {
-			bestItem := items[0]
-			equippedItem := GetMercEquippedItem(ctx.Data.Inventory, loc)
-			if equippedItem.UnitID == 0 || equippedItem.UnitID != bestItem.UnitID {
-				ctx.Logger.Debug(fmt.Sprintf("Mercenary equipment unstable at %s. Best item is %s, but equipped is %s", loc, bestItem.Name, equippedItem.Name))
-				isStable = false
-			}
-		}
-	}
-
-	return isStable
-}
-
-// isEquippable checks if an item meets the requirements for the given unit (player or NPC)
-func isEquippable(i data.Item, target item.LocationType) bool {
+// isEquippable checks if an item can be equipped, considering the stats of the item that would be unequipped.
+// It requires the specific body location to perform an accurate stat check.
+func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.LocationType) bool {
 	ctx := context.Get()
 
-	bodyLoc := i.Desc().GetType().BodyLocs
-	if len(bodyLoc) == 0 {
+	// General item property checks
+	if len(newItem.Desc().GetType().BodyLocs) == 0 {
+		return false
+	}
+	if !newItem.Identified {
+		return false
+	}
+	isQuestItem := slices.Contains(questItems, newItem.Name)
+	if isQuestItem {
 		return false
 	}
 
-	var str, dex, lvl int
-	if target == item.LocationEquipped {
-		str = ctx.Data.PlayerUnit.Stats[stat.Strength].Value
-		dex = ctx.Data.PlayerUnit.Stats[stat.Dexterity].Value
-		lvl = ctx.Data.PlayerUnit.Stats[stat.Level].Value
-	} else if target == item.LocationMercenary {
-		for _, m := range ctx.Data.Monsters {
-			if m.IsMerc() {
-				str = m.Stats[stat.Strength]
-				dex = m.Stats[stat.Dexterity]
-				lvl = m.Stats[stat.Level]
-			}
+	if _, isTwoHanded := newItem.FindStat(stat.TwoHandedMinDamage, 0); isTwoHanded {
+		// We need to fetch the level stat safely.
+		playerLevel := 0
+		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
+			playerLevel = lvl.Value
+		}
+
+		if target == item.LocationEquipped && playerLevel > 5 {
+			return false
 		}
 	}
 
-	isQuestItem := slices.Contains(questItems, i.Name)
-
+	// Class specific item type checks
 	for class, items := range classItems {
-		if ctx.Data.PlayerUnit.Class != class && slices.Contains(items, i.Desc().Type) {
+		if ctx.Data.PlayerUnit.Class != class && slices.Contains(items, newItem.Desc().Type) {
 			return false
 		}
 	}
-
-	isBowOrXbow := i.Desc().Type == "bow" || i.Desc().Type == "xbow" || i.Desc().Type == "bowq" || i.Desc().Type == "xbowq"
+	isBowOrXbow := newItem.Desc().Type == "bow" || newItem.Desc().Type == "xbow" || newItem.Desc().Type == "bowq" || newItem.Desc().Type == "xbowq"
 	isAmazon := ctx.Data.PlayerUnit.Class == data.Amazon
-
-	// New rule: disallow 2-handed weapons for player level > 11
-	if _, isTwoHanded := i.FindStat(stat.TwoHandedMinDamage, 0); isTwoHanded {
-		if target == item.LocationEquipped && ctx.Data.PlayerUnit.Stats[stat.Level].Value > 11 {
-			return false
-		}
-	}
-
 	if target == item.LocationEquipped && isBowOrXbow && !isAmazon {
 		return false
 	}
 
-	return i.Identified &&
-		str >= i.Desc().RequiredStrength &&
-		dex >= i.Desc().RequiredDexterity &&
-		lvl >= i.LevelReq &&
-		!isQuestItem
+	// Main Requirement Check (Level, Strength, Dexterity)
+	if target == item.LocationEquipped {
+		var playerLevel int
+		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
+			playerLevel = lvl.Value
+		}
+
+		itemLevelReq := 0
+		if lvlReqStat, found := newItem.FindStat(stat.LevelRequire, 0); found {
+			itemLevelReq = lvlReqStat.Value
+		}
+
+		// Explicitly log the level comparison
+		if playerLevel < itemLevelReq {
+			return false
+		}
+
+		// Now check stats, considering the item that will be unequipped
+		baseStr := ctx.Data.PlayerUnit.Stats[stat.Strength].Value
+		baseDex := ctx.Data.PlayerUnit.Stats[stat.Dexterity].Value
+
+		currentlyEquipped := GetEquippedItem(ctx.Data.Inventory, bodyloc)
+		if currentlyEquipped.UnitID != 0 {
+			if strBonus, found := currentlyEquipped.FindStat(stat.Strength, 0); found {
+				baseStr -= strBonus.Value
+			}
+			if dexBonus, found := currentlyEquipped.FindStat(stat.Dexterity, 0); found {
+				baseDex -= dexBonus.Value
+			}
+		}
+
+		if baseStr < newItem.Desc().RequiredStrength || baseDex < newItem.Desc().RequiredDexterity {
+			return false
+		}
+	}
+
+	if target == item.LocationMercenary {
+		var mercStr, mercDex, mercLvl int
+		for _, m := range ctx.Data.Monsters {
+			if m.IsMerc() {
+				mercStr = m.Stats[stat.Strength]
+				mercDex = m.Stats[stat.Dexterity]
+				mercLvl = m.Stats[stat.Level]
+			}
+		}
+
+		itemLevelReq := 0
+		if lvlReqStat, found := newItem.FindStat(stat.LevelRequire, 0); found {
+			itemLevelReq = lvlReqStat.Value
+		}
+		if mercLvl < itemLevelReq {
+			return false
+		}
+
+		if mercStr < newItem.Desc().RequiredStrength || mercDex < newItem.Desc().RequiredDexterity {
+			return false
+		}
+	}
+
+	return true
 }
 
 func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.LocationType) bool {
@@ -244,7 +285,6 @@ func isAct2MercenaryPresent(mercName npc.ID) bool {
 	ctx := context.Get()
 	for _, monster := range ctx.Data.Monsters {
 		if monster.IsMerc() && monster.Name == mercName {
-			ctx.Logger.Debug(fmt.Sprintf("Mercenary of type %v is already present.", mercName))
 			return true
 		}
 	}
@@ -258,8 +298,8 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 	itemScores := make(map[data.UnitID]map[item.LocationType]float64)
 
 	for _, itm := range items {
-
-		if !isEquippable(itm, target) {
+		// Exclude Keys from being equipped
+		if itm.Name == item.Key {
 			continue
 		}
 
@@ -275,12 +315,16 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 			}
 
 			for bodyLoc, score := range bodyLocScores {
-				isValid := isValidLocation(itm, bodyLoc, target)
-
-				if isValid {
-					itemScores[itm.UnitID][bodyLoc] = score
-					itemsByLoc[bodyLoc] = append(itemsByLoc[bodyLoc], itm)
+				if !isEquippable(itm, bodyLoc, target) {
+					continue
 				}
+
+				if !isValidLocation(itm, bodyLoc, target) {
+					continue
+				}
+
+				itemScores[itm.UnitID][bodyLoc] = score
+				itemsByLoc[bodyLoc] = append(itemsByLoc[bodyLoc], itm)
 			}
 		}
 	}
@@ -300,17 +344,17 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 		ctx.Logger.Debug("**********************************")
 	}
 
+	// "Best Combo" logic for Two-Handed Weapons
 	if target == item.LocationEquipped {
 		class := ctx.Data.PlayerUnit.Class
 
 		if items, ok := itemsByLoc[item.LocLeftArm]; ok && len(items) > 0 {
 			if _, found := items[0].FindStat(stat.TwoHandedMinDamage, 0); found {
-				if class == data.Barbarian && items[0].Desc().Type == "swor" {
-				} else {
+				if class != data.Barbarian || items[0].Desc().Type != "swor" {
 					var bestComboScore float64
 					for _, itm := range items {
 						if _, isTwoHanded := itm.FindStat(stat.TwoHandedMinDamage, 0); !isTwoHanded {
-							if score, exists := itemScores[itm.UnitID]["left_arm"]; exists {
+							if score, exists := itemScores[itm.UnitID][item.LocLeftArm]; exists {
 								ctx.Logger.Debug(fmt.Sprintf("Best one-handed weapon score: %.1f", score))
 								bestComboScore = score
 								break
@@ -327,7 +371,7 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 					}
 
 					if twoHandedScore, exists := itemScores[items[0].UnitID][item.LocLeftArm]; exists && bestComboScore >= twoHandedScore {
-						ctx.Logger.Debug(fmt.Sprintf("Removing two-handed weapon: %s", items[0].Name))
+						ctx.Logger.Debug(fmt.Sprintf("Removing two-handed weapon: %s", items[0].IdentifiedName))
 						itemsByLoc[item.LocLeftArm] = itemsByLoc[item.LocLeftArm][1:]
 					}
 				}
@@ -338,215 +382,236 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 	return itemsByLoc
 }
 
-// equipBestItems equips the highest scoring items for each location, with retries
-func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, target item.LocationType) error {
+// equipBestItems tries to equip the best items, returns true if any item was changed
+func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, target item.LocationType) (bool, error) {
 	ctx := context.Get()
-
-	equippedItems := make(map[data.UnitID]bool)
+	equippedSomething := false
 
 	for loc, items := range itemsByLoc {
 		if len(items) == 0 {
 			continue
 		}
 
-		isBestItemEquipped := false
-		currentlyEquipped := GetEquippedItem(ctx.Data.Inventory, loc)
-		if currentlyEquipped.UnitID != 0 && items[0].UnitID == currentlyEquipped.UnitID {
-			isBestItemEquipped = true
-		}
+		bestItem := items[0]
 
-		if isBestItemEquipped {
-			ctx.Logger.Debug(fmt.Sprintf("Best item %s for %s is already equipped. Skipping.", items[0].Name, loc))
+		// NEW CHECK: If the best item is already equipped, but in a DIFFERENT slot, skip it.
+		// This prevents swap attempts, which the current logic doesn't support.
+		if bestItem.Location.LocationType == item.LocationEquipped && bestItem.Location.BodyLocation != loc {
 			continue
 		}
 
-		// Flag to track if at least one item was successfully equipped for this location
-		itemEquippedForLoc := false
-
-		for _, itm := range items {
-
-			if itm.Location.LocationType == target {
-				break
-			}
-
-			if equippedItems[itm.UnitID] {
-				ctx.Logger.Debug(fmt.Sprintf("Skipping %s for %s as it was already equipped elsewhere", itm.Name, loc))
-				continue
-			}
-
-			if (itm.Location.LocationType == item.LocationMercenary && target == item.LocationEquipped) || (itm.Location.LocationType == item.LocationEquipped && target == item.LocationMercenary) {
-				continue
-			}
-
-			var equipErr error
-			for i := 0; i < MaxRetries; i++ {
-				ctx.Logger.Debug(fmt.Sprintf("Attempting to equip %s to %s (Attempt %d/%d)", itm.Name, loc, i+1, MaxRetries))
-				equipErr = equip(itm, loc, target)
-				if equipErr == nil {
-					ctx.Logger.Debug(fmt.Sprintf("Successfully equipped %s to %s", itm.Name, loc))
-					itemEquippedForLoc = true
-					break
-				}
-				ctx.Logger.Warn(fmt.Sprintf("Failed to equip %s, retrying...", itm.Name))
-				time.Sleep(1 * time.Second)
-			}
-
-			if equipErr != nil {
-				ctx.Logger.Error(fmt.Sprintf("Failed to equip %s after %d attempts. Considering it junk and attempting to sell all junk.", itm.Name, MaxRetries))
-
-				err := VendorRefill(false, true)
-				if err != nil {
-					return fmt.Errorf("failed to equip item and failed to sell junk: %w", err)
-				}
-
-				ctx.Logger.Info(fmt.Sprintf("Successfully triggered junk sale. Hope item %s is gone.", itm.Name))
-
-				// We can now safely continue to the next item in the list
-				continue
-			}
-
-			// If we successfully equipped an item, we can break out of the inner loop and move to the next location
-			if itemEquippedForLoc {
-				equippedItems[itm.UnitID] = true
-				break
-			}
+		// Check if the best item is already equipped in the CURRENT slot
+		var currentlyEquipped data.Item
+		if target == item.LocationEquipped {
+			currentlyEquipped = GetEquippedItem(ctx.Data.Inventory, loc)
+		} else {
+			currentlyEquipped = GetMercEquippedItem(ctx.Data.Inventory, loc)
 		}
 
-		// If after checking all items for a location, none could be equipped, return an error
-		if !itemEquippedForLoc {
-			return fmt.Errorf("failed to equip any item for location %s", loc)
+		if currentlyEquipped.UnitID != 0 && bestItem.UnitID == currentlyEquipped.UnitID {
+			continue // Already equipped the best item
 		}
+
+		// Attempting to equip the best item
+		ctx.Logger.Info(fmt.Sprintf("Attempting to equip %s to %s", bestItem.IdentifiedName, loc))
+		err := equip(bestItem, loc, target)
+		if err == nil {
+			ctx.Logger.Info(fmt.Sprintf("Successfully equipped %s to %s", bestItem.IdentifiedName, loc))
+			equippedSomething = true
+			*ctx.Data = ctx.GameReader.GetData() // Refresh data after a successful equip
+			continue                             // Move to the next location
+		}
+
+		// Handle specific errors
+		if errors.Is(err, ErrNotEnoughSpace) {
+			ctx.Logger.Info("Not enough inventory space to equip. Trying to sell junk.")
+
+			// Create a temporary lock config that protects the item we want to equip
+			tempLock := make([][]int, len(ctx.CharacterCfg.Inventory.InventoryLock))
+			for i := range ctx.CharacterCfg.Inventory.InventoryLock {
+				tempLock[i] = make([]int, len(ctx.CharacterCfg.Inventory.InventoryLock[i]))
+				copy(tempLock[i], ctx.CharacterCfg.Inventory.InventoryLock[i])
+			}
+
+			// Lock the new item
+			if bestItem.Location.LocationType == item.LocationInventory {
+				w, h := bestItem.Desc().InventoryWidth, bestItem.Desc().InventoryHeight
+				for j := 0; j < h; j++ {
+					for i := 0; i < w; i++ {
+						if bestItem.Position.Y+j < 4 && bestItem.Position.X+i < 10 {
+							tempLock[bestItem.Position.Y+j][bestItem.Position.X+i] = 0 // Lock this slot
+						}
+					}
+				}
+			}
+
+			if sellErr := VendorRefill(false, true, tempLock); sellErr != nil {
+				return false, fmt.Errorf("failed to sell junk to make space: %w", sellErr)
+			}
+			equippedSomething = true // We made a change (selling junk), so we should re-evaluate
+			*ctx.Data = ctx.GameReader.GetData()
+			continue
+		}
+
+		// For other errors, log it and continue to the next item slot
+		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s: %v", bestItem.IdentifiedName, loc, err))
 	}
 
-	return nil
+	return equippedSomething, nil
 }
 
-// passing in bodyloc as a parameter cos rings have 2 locations
+// equip handles the physical process of equipping an item. Returns ErrNotEnoughSpace if it fails.
 func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) error {
-
 	ctx := context.Get()
 	ctx.SetLastAction("Equip")
-
-	// Ensure all menus are closed when the function exits
 	defer step.CloseAllMenus()
 
-	itemCoords := ui.GetScreenCoordsForItem(itm)
-
+	// Move item from stash to inventory if needed (do this only once)
 	if itm.Location.LocationType == item.LocationStash || itm.Location.LocationType == item.LocationSharedStash {
 		OpenStash()
 		utils.Sleep(EquipDelayMS)
-		switch itm.Location.LocationType {
-		case item.LocationStash:
-			SwitchStashTab(1)
-		case item.LocationSharedStash:
-			SwitchStashTab(itm.Location.Page + 1)
+		tab := 1
+		if itm.Location.LocationType == item.LocationSharedStash {
+			tab = itm.Location.Page + 1
 		}
+		SwitchStashTab(tab)
 
-		if target == item.LocationMercenary {
-
-			if itemFitsInventory(itm) {
-				ctx.HID.ClickWithModifier(game.LeftButton, itemCoords.X, itemCoords.Y, game.CtrlKey)
-
-				utils.Sleep(EquipDelayMS)
-				*ctx.Data = ctx.GameReader.GetData()
-
-				inInventory := false
-				for _, updatedItem := range ctx.Data.Inventory.AllItems {
-					if itm.UnitID == updatedItem.UnitID {
-						itemCoords = ui.GetScreenCoordsForItem(updatedItem)
-						inInventory = true
-						break
-					}
-				}
-				if !inInventory || !itemFitsInventory(itm) {
-					return fmt.Errorf("item not found in inventory after moving from stash")
-				}
-				utils.Sleep(EquipDelayMS)
-
-				// Close all menus after moving the item to the inventory to prevent getting stuck
-				step.CloseAllMenus()
-				utils.Sleep(EquipDelayMS)
+		ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
+		utils.Sleep(EquipDelayMS)
+		
+		// We need to refresh data and find the item in inventory now
+		*ctx.Data = ctx.GameReader.GetData()
+		var found bool
+		for _, updatedItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+			if updatedItem.UnitID == itm.UnitID {
+				itm = updatedItem
+				found = true
+				break
 			}
 		}
+		if !found {
+			return fmt.Errorf("item %s not found in inventory after moving from stash", itm.IdentifiedName)
+		}
+		step.CloseAllMenus()
 	}
 
-	for !ctx.Data.OpenMenus.Inventory {
-		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(EquipDelayMS)
-	}
-	if target == item.LocationMercenary {
-		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
-		utils.Sleep(EquipDelayMS)
-	}
-
-	itemToEquip := FindItemByUnitID(ctx.Data.Inventory, itm.UnitID)
-	if itemToEquip.UnitID == 0 {
-		return fmt.Errorf("item disappeared from inventory before equipping")
-	}
-	itemCoords = ui.GetScreenCoordsForItem(itemToEquip)
-
-	if target == item.LocationMercenary {
-		ctx.HID.ClickWithModifier(game.LeftButton, itemCoords.X, itemCoords.Y, game.CtrlKey)
-	} else {
-		switch bodyloc {
-		case item.LocRightRing:
-			if !itemFitsInventory(itm) {
-				return fmt.Errorf("not enough inventory space to unequip %s", itm.Name)
-			}
-			equippedRing := data.Position{X: ui.EquipRRinX, Y: ui.EquipRRinY}
-			if ctx.Data.LegacyGraphics {
-				equippedRing = data.Position{X: ui.EquipRRinClassicX, Y: ui.EquipRRinClassicY}
-			}
-			ctx.HID.ClickWithModifier(game.LeftButton, equippedRing.X, equippedRing.Y, game.ShiftKey)
+	// Main retry loop to make the entire process more robust
+	for attempt := 0; attempt < 3; attempt++ {
+		// Ensure inventory is open at the start of each attempt
+		for !ctx.Data.OpenMenus.Inventory {
+			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
 			utils.Sleep(EquipDelayMS)
+		}
 
-		case item.LocRightArm:
-			for _, equippedItem := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
-				if equippedItem.Location.BodyLocation == item.LocRightArm {
-					if !itemFitsInventory(itm) {
-						return fmt.Errorf("not enough inventory space to unequip %s", itm.Name)
-					}
+		// Handle mercenary equipment
+		if target == item.LocationMercenary {
+			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
+			utils.Sleep(EquipDelayMS)
+			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
+		} else { // Handle player equipment
+			currentlyEquipped := GetEquippedItem(ctx.Data.Inventory, bodyloc)
+			if currentlyEquipped.UnitID != 0 {
+				_, found := findInventorySpace(currentlyEquipped)
+				if !found {
+					return ErrNotEnoughSpace
+				}
+			}
 
-					equippedRightArm := data.Position{X: ui.EquipRArmX, Y: ui.EquipRArmY}
-					if ctx.Data.LegacyGraphics {
-						equippedRightArm = data.Position{X: ui.EquipRArmClassicX, Y: ui.EquipRArmClassicY}
-					}
-					ctx.HID.ClickWithModifier(game.LeftButton, equippedRightArm.X, equippedRightArm.Y, game.ShiftKey)
-					utils.Sleep(EquipDelayMS)
+			// Use Shift + Left Click to swap the item. The game engine will handle the swap.
+			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.ShiftKey)
+		}
+
+		// Refresh data before verification starts
+		*ctx.Data = ctx.GameReader.GetData()
+		
+		// Final verification
+		var itemEquipped bool
+		for i := 0; i < 3; i++ {
+			utils.Sleep(800)
+			// Re-fetch data inside the loop to ensure we have the latest info for each check
+			*ctx.Data = ctx.GameReader.GetData()
+			for _, inPlace := range ctx.Data.Inventory.ByLocation(target) {
+				if inPlace.UnitID == itm.UnitID && inPlace.Location.BodyLocation == bodyloc {
+					itemEquipped = true
 					break
 				}
 			}
+			if itemEquipped {
+				break
+			}
 		}
-		ctx.Logger.Debug(fmt.Sprintf("Equipping %s at %v to %s using hotkeys", itm.Name, itemCoords, bodyloc))
-		ctx.HID.ClickWithModifier(game.LeftButton, itemCoords.X, itemCoords.Y, game.ShiftKey)
-	}
 
-	utils.Sleep(500)
-	*ctx.Data = ctx.GameReader.GetData()
-
-	itemEquipped := false
-	for _, inPlace := range ctx.Data.Inventory.ByLocation(target) {
-		if itm.UnitID == inPlace.UnitID && inPlace.Location.BodyLocation == bodyloc {
-			itemEquipped = true
-			break
+		if itemEquipped {
+			return nil // Success! Exit the function.
 		}
+
+		// If we are here, the attempt failed. The main loop will try again.
+		ctx.Logger.Debug(fmt.Sprintf("Equip attempt %d failed, retrying...", attempt+1))
+		utils.Sleep(500) // Small delay before the next attempt
 	}
 
-	if itemEquipped {
-		return nil
-	} else {
-		ctx.Logger.Error(fmt.Sprintf("Failed to equip %s to %s using hotkeys", itm.Name, target))
-		return fmt.Errorf("failed to equip %s to %s", itm.Name, target)
-	}
+	// If all attempts failed, return the final error.
+	return fmt.Errorf("verification failed after all attempts to equip %s", itm.IdentifiedName)
 }
 
-func FindItemByUnitID(inventory data.Inventory, unitID data.UnitID) data.Item {
-	for _, itm := range inventory.AllItems {
-		if itm.UnitID == unitID {
-			return itm
+// findInventorySpace finds the top-left grid coordinates for a free spot in the inventory.
+func findInventorySpace(itm data.Item) (data.Position, bool) {
+	ctx := context.Get()
+	inventory := ctx.Data.Inventory.ByLocation(item.LocationInventory)
+	lockConfig := ctx.CharacterCfg.Inventory.InventoryLock
+
+	// Create a grid representing the inventory, considering items and locked slots
+	occupied := [4][10]bool{}
+
+	// Mark all slots occupied by items
+	for _, i := range inventory {
+		for y := 0; y < i.Desc().InventoryHeight; y++ {
+			for x := 0; x < i.Desc().InventoryWidth; x++ {
+				if i.Position.Y+y < 4 && i.Position.X+x < 10 {
+					occupied[i.Position.Y+y][i.Position.X+x] = true
+				}
+			}
 		}
 	}
-	return data.Item{} // Return an empty item if not found
+
+	// Mark all slots that are locked in the configuration (0 = locked)
+	for y, row := range lockConfig {
+		if y < 4 {
+			for x, cell := range row {
+				if x < 10 && cell == 0 {
+					occupied[y][x] = true
+				}
+			}
+		}
+	}
+
+	// Get the item's dimensions
+	w := itm.Desc().InventoryWidth
+	h := itm.Desc().InventoryHeight
+
+	// Find a free spot and return its coordinates
+	for y := 0; y <= 4-h; y++ {
+		for x := 0; x <= 10-w; x++ {
+			fits := true
+			for j := 0; j < h; j++ {
+				for i := 0; i < w; i++ {
+					if occupied[y+j][x+i] {
+						fits = false
+						break
+					}
+				}
+				if !fits {
+					break
+				}
+			}
+			if fits {
+				// Return the top-left inventory grid position
+				return data.Position{X: x, Y: y}, true
+			}
+		}
+	}
+
+	return data.Position{}, false
 }
 
 // GetEquippedItem is a new helper function to search for the currently equipped item in a specific location
