@@ -97,12 +97,30 @@ func updateNeighbors(grid *game.Grid, node *Node, neighbors *[]data.Position) {
 	x, y := node.X, node.Y
 	gridWidth, gridHeight := grid.Width, grid.Height
 
+	isBlocked := func(px, py int) bool {
+		if px < 0 || px >= gridWidth || py < 0 || py >= gridHeight {
+			return true
+		}
+		return grid.CollisionGrid[py][px] == game.CollisionTypeNonWalkable
+	}
+
 	for _, d := range directions {
 		newX, newY := x+d.X, y+d.Y
-		// Check if the new neighbor is within grid bounds
-		if newX >= 0 && newX < gridWidth && newY >= 0 && newY < gridHeight {
-			*neighbors = append(*neighbors, data.Position{X: newX, Y: newY})
+
+		if isBlocked(newX, newY) {
+			continue
 		}
+
+		if d.X != 0 && d.Y != 0 {
+			adj1X, adj1Y := x+d.X, y
+			adj2X, adj2Y := x, y+d.Y
+
+			if isBlocked(adj1X, adj1Y) || isBlocked(adj2X, adj2Y) {
+				continue
+			}
+		}
+
+		*neighbors = append(*neighbors, data.Position{X: newX, Y: newY})
 	}
 }
 
