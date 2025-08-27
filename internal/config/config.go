@@ -229,6 +229,7 @@ type CharacterCfg struct {
 			EnsurePointsAllocation bool `yaml:"ensurePointsAllocation"`
 			EnsureKeyBinding       bool `yaml:"ensureKeyBinding"`
 			AutoEquip              bool `yaml:"autoEquip"`
+			AutoEquipFromSharedStash bool `yaml:"autoEquipFromSharedStash"`
 			EnableRunewordMaker    bool     `yaml:"enableRunewordMaker"`
 			EnabledRunewordRecipes []string `yaml:"enabledRunewordRecipes"`
 		} `yaml:"leveling"`
