@@ -40,6 +40,23 @@ window.onload = function () {
     });
 
     updateEnabledRunsHiddenField();
+
+    const buildSelectElement = document.querySelector('select[name="characterClass"]');
+    buildSelectElement.addEventListener('change', function() {
+        const selectedBuild = buildSelectElement.value;
+        const levelingBuilds = ['paladin', 'sorceress_leveling'];
+
+        const enabledRunListElement = document.getElementById('enabled_runs');
+        if (!enabledRunListElement) return;
+
+        const enabledRuns = Array.from(enabledRunListElement.querySelectorAll('li')).map(li => li.getAttribute('value'));
+        const isLevelingRunEnabled = enabledRuns.includes('leveling');
+        const hasOtherRunsEnabled = enabledRuns.length > 1;                  
+
+        if (levelingBuilds.includes(selectedBuild) && (!isLevelingRunEnabled || hasOtherRunsEnabled)) {
+            alert("This profile requires enabling the leveling run. Please add only the 'leveling' run to the enabled run list and remove the others.");
+        }
+    });
 }
 
 function updateEnabledRunsHiddenField() {

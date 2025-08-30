@@ -60,9 +60,6 @@
                         <option value="paladin" {{ if eq .Config.Character.Class
                         "paladin" }}selected{{ end }}>Paladin (Leveling)
                         </option>
-                        <option value="sorceress_leveling_lightning" {{ if eq .Config.Character.Class
-                        "sorceress_leveling_lightning" }}selected{{ end }}>Sorc (Leveling as Lightning)
-                        </option>
                         <option value="sorceress_leveling" {{ if eq .Config.Character.Class
                         "sorceress_leveling" }}selected{{ end }}>Sorc (Leveling as Fire)
                         </option>
@@ -158,7 +155,7 @@
             <fieldset class="grid">
                 <label>
                     <input type="checkbox" name="useCentralizedPickit" {{ if .Config.UseCentralizedPickit }}checked{{ end }}/>
-                    Use centralized pickit 
+                    Use centralized pickit
                 </label>
                 <label>
                     <input type="checkbox" name="useCainIdentify" {{ if .Config.Game.UseCainIdentify }}checked{{ end }}/>
