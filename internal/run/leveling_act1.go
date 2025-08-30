@@ -101,7 +101,7 @@ func (a Leveling) act1() error {
 
 	// Cain quest: talking to Akara
 	if !a.isCainInTown() && !a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 7
+		a.ctx.CharacterCfg.Character.ClearPathDist = 10
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 		}
@@ -136,7 +136,7 @@ func (a Leveling) act1() error {
 
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
 
-		a.ctx.CharacterCfg.Character.ClearPathDist = 7
+		a.ctx.CharacterCfg.Character.ClearPathDist = 10
 		a.ctx.CharacterCfg.Inventory.BeltColumns = [4]string{"healing", "healing", "mana", "mana"}
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
@@ -163,7 +163,7 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Health.RejuvPotionAtLife = 0
 	a.ctx.CharacterCfg.Health.ChickenAt = 7
 	a.ctx.CharacterCfg.Gambling.Enabled = true
-	a.ctx.CharacterCfg.Character.ClearPathDist = 7
+	a.ctx.CharacterCfg.Character.ClearPathDist = 10
 	a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 40
 	a.ctx.CharacterCfg.Health.MercChickenAt = 0
 	a.ctx.CharacterCfg.Health.MercHealingPotionAt = 25
@@ -202,7 +202,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if lvl.Value >= 4 && lvl.Value < 12 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85
-		a.ctx.CharacterCfg.Character.ClearPathDist = 7
+		a.ctx.CharacterCfg.Character.ClearPathDist = 10
 	}
 	if lvl.Value >= 24 {
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
@@ -211,7 +211,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 0
 			a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 			a.ctx.CharacterCfg.Health.ChickenAt = 30
-			a.ctx.CharacterCfg.Character.ClearPathDist = 0
+			a.ctx.CharacterCfg.Character.ClearPathDist = 10
 
 		} else if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
 			a.ctx.CharacterCfg.Inventory.BeltColumns = [4]string{"healing", "healing", "mana", "mana"}
@@ -219,7 +219,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 0
 			a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 			a.ctx.CharacterCfg.Health.ChickenAt = 30
-			a.ctx.CharacterCfg.Character.ClearPathDist = 0
+			a.ctx.CharacterCfg.Character.ClearPathDist = 10
 
 		} else if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
 			a.ctx.CharacterCfg.Inventory.BeltColumns = [4]string{"healing", "healing", "mana", "rejuvenation"}
@@ -227,7 +227,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 40
 			a.ctx.CharacterCfg.Health.HealingPotionAt = 90
 			a.ctx.CharacterCfg.Health.ChickenAt = 40
-			a.ctx.CharacterCfg.Character.ClearPathDist = 0
+			a.ctx.CharacterCfg.Character.ClearPathDist = 10
 
 		}
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {

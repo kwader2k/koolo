@@ -131,7 +131,7 @@ func (a Leveling) act2() error {
 
 	if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value < 18 {
 		a.ctx.Logger.Info("Not yet level 18 yet. Leveling in Sewers.")
-		a.ctx.CharacterCfg.Character.ClearPathDist = 20
+		a.ctx.CharacterCfg.Character.ClearPathDist = 10
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 		}
@@ -141,7 +141,7 @@ func (a Leveling) act2() error {
 	}
 
 	if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value == 18 {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 7
+		a.ctx.CharacterCfg.Character.ClearPathDist = 10
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 		}

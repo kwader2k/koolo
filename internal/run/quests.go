@@ -612,7 +612,7 @@ func (a Quests) retrieveBookQuest() error {
 func (a Quests) killIzualQuest() error {
 	a.ctx.Logger.Info("Starting Kill Izual Quest...")
 
-   err := action.MoveToArea(area.OuterSteppes)
+	err := action.MoveToArea(area.OuterSteppes)
 	if err != nil {
 		return err
 	}
@@ -622,9 +622,32 @@ func (a Quests) killIzualQuest() error {
 	if err != nil {
 		return err
 	}
-
 	action.Buff()
 
+	// Start a timer to ensure we find Izual within 5 minutes
+	startTime := time.Now()
+	timeout := time.Minute * 10
+	a.ctx.Logger.Info("Searching for Izual...")
+
+	for {
+		// Check if the timeout has been exceeded on each loop
+		if time.Since(startTime) > timeout {
+			return fmt.Errorf("timeout: failed to find Izual within %v", timeout)
+		}
+
+		// Try to find Izual in the current game data
+		_, found := a.ctx.Data.NPCs.FindOne(npc.Izual)
+		if found {
+			a.ctx.Logger.Info("Izual is nearby, proceeding to engage.")
+			break // Exit the search loop
+		}
+
+		// Wait for a couple of seconds before checking again.
+		// This allows the bot time to move and explore the area.
+		time.Sleep(time.Second * 2)
+	}
+
+	// Once Izual is found, move to him
 	err = action.MoveTo(func() (data.Position, bool) {
 		izual, found := a.ctx.Data.NPCs.FindOne(npc.Izual)
 		if !found {
@@ -637,6 +660,7 @@ func (a Quests) killIzualQuest() error {
 		return err
 	}
 
+	// Engage and kill Izual
 	err = a.ctx.Char.KillIzual()
 	if err != nil {
 		return err
@@ -651,11 +675,11 @@ func (a Quests) killIzualQuest() error {
 	if err != nil {
 		return err
 	}
-	
+
 	time.Sleep(500)
 	action.UpdateQuestLog()
 	time.Sleep(500)
-	
+
 	return nil
 }
 
@@ -851,7 +875,19 @@ func (a Quests) killAncientsQuest() error {
 	a.ctx.CharacterCfg.BackToTown.EquipmentBroken = false
 	a.ctx.CharacterCfg.BackToTown.MercDied = false
 
-	action.ClearAreaAroundPlayer(50, data.MonsterEliteFilter())
+for {
+		ancients := a.ctx.Data.Monsters.Enemies(data.MonsterEliteFilter())
+		if len(ancients) == 0 {
+			break
+		}
+
+		err = a.ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+			for _, m := range d.Monsters.Enemies(data.MonsterEliteFilter()) {
+				return m.UnitID, true
+			}
+			return 0, false
+		}, nil)
+	}
 	
 	// The defer statement above will handle the restoration
 	// a.ctx.CharacterCfg.BackToTown = originalBackToTownCfg // This line is now removed
@@ -863,7 +899,6 @@ func (a Quests) killAncientsQuest() error {
 	action.UpdateQuestLog()
 	utils.Sleep(500)
 	step.CloseAllMenus()
-
 	action.ReturnTown()
 	
 	return nil

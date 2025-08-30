@@ -1,7 +1,66 @@
 // IGNORED by default, this directory is ONLY evaluated DURING the character leveling process.
 // Rules here are included ADDITIONALLY to the main pickit rules
 
-[type] == gold # [gold] >= 2000
+[type] == gold # [gold] >= 200
+
+[name] == elrune 
+[name] == eldrune 
+[name] == tirrune 
+[name] == nefrune 
+[name] == ethrune 
+[name] == ithrune 
+[name] == talrune 
+[name] == ralrune 
+[name] == ortrune 
+[name] == thulrune 
+[name] == amnrune 
+[name] == solrune 
+[name] == shaelrune
+[name] == dolrune
+[name] == helrune
+[name] == iorune
+[name] == lumrune
+[name] == korune
+[name] == falrune
+[name] == lemrune
+[name] == pulrune
+
+//gems
+[name] == chippedamethyst # # [maxquantity] == 10
+[name] == chippeddiamond # # [maxquantity] == 10
+[name] == chippedemerald # # [maxquantity] == 10
+[name] == chippedruby # # [maxquantity] == 10
+[name] == chippedsapphire # # [maxquantity] == 10
+[name] == chippedskull # # [maxquantity] == 10
+[name] == chippedtopaz # # [maxquantity] == 10
+[name] == flawedamethyst # # [maxquantity] == 10
+[name] == flaweddiamond # # [maxquantity] == 10
+[name] == flawedemerald # # [maxquantity] == 10
+[name] == flawedruby # # [maxquantity] == 10
+[name] == flawedsapphire # # [maxquantity] == 10
+[name] == flawedskull # # [maxquantity] == 10
+[name] == flawedtopaz # # [maxquantity] == 10
+[name] == amethyst # # [maxquantity] == 10
+[name] == diamond # # [maxquantity] == 10
+[name] == emerald # # [maxquantity] == 10
+[name] == ruby # # [maxquantity] == 10
+[name] == skull # # [maxquantity] == 10
+[name] == sapphire # # [maxquantity] == 10
+[name] == topaz # # [maxquantity] == 10
+[name] == flawlessamethyst # # [maxquantity] == 10
+[name] == flawlessdiamond # # [maxquantity] == 10
+[name] == flawlessemerald # # [maxquantity] == 10
+[name] == flawlessruby # # [maxquantity] == 10
+[name] == flawlesssapphire # # [maxquantity] == 10
+[name] == flawlessskull # # [maxquantity] == 10
+[name] == flawlesstopaz # # [maxquantity] == 10
+[name] == perfectamethyst # # [maxquantity] == 5
+[name] == perfectdiamond # # [maxquantity] == 5
+[name] == perfectemerald # # [maxquantity] == 5
+[name] == perfectruby # # [maxquantity] == 5
+[name] == perfectsapphire # # [maxquantity] == 5
+[name] == perfectskull # # [maxquantity] == 5
+[name] == perfecttopaz # # [maxquantity] == 5
 
 // potions
 [name] == minorhealingpotion
@@ -17,41 +76,36 @@
 [name] == rejuvenationpotion
 [name] == fullrejuvenationpotion
 
+// Bases
+[name] == crystalsword && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1 // Spirit 
+[name] == crystalsword && [flag] != ethereal # # [maxquantity] == 1 // Spirit
+[type] == shield # [sockets] == 4 # # [maxquantity] == 1 // Spirit
+[type] == shield # [sockets] == 3  # # [maxquantity] == 1 // Ancient's Pledge
+[type] == polearm # [sockets] == 4  # # [maxquantity] == 1 // Insight
+[type] == armor # [sockets] == 3 # # [maxquantity] == 1 // Treachery
+[type] == armor # [sockets] == 2 # # [maxquantity] == 1 // Stealth
+[type] == helm # [sockets] == 2 # # [maxquantity] == 1 // Lore
+[type] == sword # [sockets] == 2 # # [maxquantity] == 1 // steel
+[type] == axe # [sockets] == 2 # # [maxquantity] == 1 // steel
+[type] == scimitar # [sockets] == 2 # # [maxquantity] == 1 // steel
+
+// Paladin Shields
+[name] == rondache && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1
+[name] == rondache && [flag] != ethereal # [sockets] == 3 # # [maxquantity] == 1
+[name] == akarantarge && [flag] != ethereal # [sockets] == 4
+[name] == akarantarge && [flag] != ethereal # [sockets] == 3
+[name] == aerinshield && [flag] != ethereal # [sockets] == 4
+[name] == aerinshield && [flag] != ethereal # [sockets] == 3
+[name] == akaranrondache && [flag] != ethereal # [sockets] == 4
+[name] == akaranrondache && [flag] != ethereal # [sockets] == 3
+[name] == heraldicshield && [flag] != ethereal # [sockets] == 4
+[name] == heraldicshield && [flag] != ethereal # [sockets] == 3
 
 
-([Name] == CrystalSword || [Name] == BroadSword) && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 4 # [MaxQuantity] == 1 // spirit
-[type] == polearm && [quality] <= superior # [sockets] == 4 # [MaxQuantity] == 1 // any insight polearm
-[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] >= elite # [sockets] == 4 # [MaxQuantity] == 1
-[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] >= exceptional # [sockets] == 4 # [MaxQuantity] == 1
-[Type] == Armor && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1 
-[Type] == Armor && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 3 # [MaxQuantity] == 1 
-[type] == helm && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1 
-[name] == monarch && [quality] <= superior # [sockets] == 4 # [maxquantity] == 1
-[Type] == Shield && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1
-
-[name] == deathmask && [quality] == set # ([fireresist] == 15 # [maxquantity] == 1
-
-[name] == tirrune # # [maxquantity] == 1
-[name] == talrune # # [maxquantity] == 2
-[Name] == RalRune # # [MaxQuantity] == 1
-[name] == ortrune # # [maxquantity] == 2
-[name] == thulrune # # [maxquantity] == 1
-[name] == amnrune # # [maxquantity] == 1
-[name] == solrune # # [maxquantity] == 2
-[name] == lumrune # # [maxquantity] == 1
-[name] == nefrune # # [maxquantity] == 1
-[name] == shaelrune # # [maxquantity] == 1
-[name] == lemrune # # [maxquantity] == 1
-
-
-[Name] == FlawlessAmethyst # # [MaxQuantity] == 3
-
-[Type] == Jewel && [Quality] == Magic # ([Strength] >= 9 || [Dexterity] >= 9 || [ColdResist] >= 30 || [FireResist] >= 30 || [LightResist] >= 30 || [PoisonResist] >= 30 || [FHR] >= 7 || [ItemReqPercent] == -15) && ([IAS] >= 15 || [PlusDefense] >= 64 || [MaxDamage] >= 15 || [EnhancedDamage] >= 40 || [ToHit] >= 100 || [ColdResist]+[FireResist]+[LightResist]+[PoisonResist] >= 60 || [MaxMana] >= 20 || [MaxHP] >= 20)
-[Name] == jewel && [quality] == magic # ([enhanceddamage] >= 40 || [tohit] == 100 || [maxdamage] >= 15) && ([maxhp] == 20 || [ias] >= 15 || [itemreqpercent] <= -15 || [strength] >= 9 || [dexterity] >= 9)
-[Name] == jewel && [quality] == magic # ([fireresist] == 30 || [coldresist] == 30 || [lightresist] == 30 || [fireresist] >= 15 && [lightresist] >= 15 || [maxmana] == 20) && ([maxhp] == 20 || [fhr] == 7 || [ias] == 15 || [itemreqpercent] <= -15 || [strength] >= 9 || [dexterity] >= 9)
-[Name] == jewel && [quality] == magic # [maxdamage] >= 30
-[Name] == jewel && [Quality] == rare # [strength] >= 9 && [dexterity] >= 9
-[Name] == jewel && [Quality] == rare # [fhr] == 7 && ([strength] >= 8 || [dexterity] >= 8 || [itemreqpercent] == -15) && ([maxmana] == 15 || [fireresist] >= 10 && [coldresist] >= 10 || [fireresist] >= 30 || [coldresist] >= 30 || [lightresist] >= 30)
-[Name] == jewel && [Quality] == rare # [fhr] == 7 && [energy] == 9 && [maxmana] == 15
-[Name] == jewel && [Quality] == rare # [enhanceddamage] >= 25 && ([strength] >= 8 || [dexterity] >= 8) && ([tohit] >= 40 || [itemreqpercent] == -15 || [defense] >= 30)
-[Name] == jewel && [quality] == unique # [passivecoldpierce]+[passivecoldmastery] >= 10 || [passivepoispierce]+[passivepoismastery] >= 10 || [passiveltngpierce]+[passiveltngmastery] >= 10 || [passivefirepierce]+[passivefiremastery] >= 10
+//[type] == gloves && [quality] >= rare
+//[type] == boots && [quality] >= rare
+//[type] == amulet && [quality] >= rare
+//[type] == ring && [quality] >= rare
+//[type] == orb && [quality] >= rare
+//[type] == helm && [quality] >= rare
+//[type] == polearm && [quality] >= rare

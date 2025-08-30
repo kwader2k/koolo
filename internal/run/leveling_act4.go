@@ -98,6 +98,7 @@ func (a Leveling) act4() error {
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {
 		err := NewQuests().killIzualQuest() // No immediate 'return' here
+		a.ctx.CharacterCfg.Character.ClearPathDist = 50
 		a.ctx.Logger.Debug("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
 		if err != nil {
 			return err
@@ -105,7 +106,7 @@ func (a Leveling) act4() error {
 	}
 
 	if (a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() && !a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed()) || (a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && (lvl.Value < 60 || effectiveFireRes < 75 || effectiveLightRes < 50)) {
-
+		a.ctx.CharacterCfg.Character.ClearPathDist = 10
 		diabloRun := NewDiablo()
 		err := diabloRun.Run()
 		if err != nil {
