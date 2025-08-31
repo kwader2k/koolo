@@ -170,7 +170,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		defer runCancel()
 
 		// In-Game Activity Monitor
-		go func() {
+				go func() {
 			ticker := time.NewTicker(activityCheckInterval)
 			defer ticker.Stop()
 			var lastPosition data.Position
@@ -186,6 +186,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 				case <-runCtx.Done(): // Exit when the run is over (either completed, errored, or timed out)
 					return
 				case <-ticker.C:
+					if s.bot.ctx.ExecutionPriority == ct.PriorityPause {
+						continue
+					}
+					
 					if !s.bot.ctx.GameReader.InGame() || s.bot.ctx.Data.PlayerUnit.ID == 0 {
 						continue
 					}
