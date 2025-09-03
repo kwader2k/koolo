@@ -101,7 +101,7 @@ Setting the development environment is pretty straightforward, but the following
 
 First, we open the terminal and install [Garble](https://github.com/burrowers/garble) using the following command:
 ```shell
-go install mvdan.cc/garble@latest
+go install mvdan.cc/garble@v0.14.2
 ```
 
 Next, run the following commands in project root directory:
