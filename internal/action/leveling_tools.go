@@ -257,7 +257,9 @@ func spendSkillPoint(skillID skill.ID) bool {
 		utils.Sleep(100)
 	}
 
-	skillDesc, found := skill.Desc[skillID]
+	skill, found := skill.Skills[skillID]
+	skillDesc := skill.Desc()
+
 	if !found {
 		ctx.Logger.Error(fmt.Sprintf("skill not found for character: %v", skillID))
 		return false
