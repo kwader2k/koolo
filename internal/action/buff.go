@@ -132,6 +132,12 @@ func IsRebuffRequired() bool {
 			if buff == skill.CycloneArmor && !ctx.Data.PlayerUnit.States.HasState(state.Cyclonearmor) {
 				return true
 			}
+			if buff == skill.BurstOfSpeed && !ctx.Data.PlayerUnit.States.HasState(state.Quickness) {
+				return true
+			}
+			if buff == skill.Fade && !ctx.Data.PlayerUnit.States.HasState(state.Fade) {
+			return true
+			}
 		}
 	}
 
