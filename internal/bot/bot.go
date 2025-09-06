@@ -24,10 +24,10 @@ import (
 
 type Bot struct {
 	ctx                   *botCtx.Context
-	lastActivityTimeMux   sync.Mutex 
-	lastActivityTime      time.Time 
-	lastKnownPosition     data.Position 
-	lastPositionCheckTime time.Time 
+	lastActivityTimeMux   sync.Mutex
+	lastActivityTime      time.Time
+	lastKnownPosition     data.Position
+	lastPositionCheckTime time.Time
 }
 
 // calculateDistance returns the Euclidean distance between two positions.
@@ -36,7 +36,6 @@ func calculateDistance(p1, p2 data.Position) float64 {
 	dy := float64(p1.Y - p2.Y)
 	return math.Sqrt(dx*dx + dy*dy)
 }
-
 
 func (b *Bot) NeedsTPsToContinue() bool {
 	portalTome, found := b.ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
@@ -52,12 +51,11 @@ func (b *Bot) NeedsTPsToContinue() bool {
 func NewBot(ctx *botCtx.Context) *Bot {
 	return &Bot{
 		ctx:                   ctx,
-		lastActivityTime:      time.Now(), // Initialize
+		lastActivityTime:      time.Now(),      // Initialize
 		lastKnownPosition:     data.Position{}, // Will be updated on first game data refresh
-		lastPositionCheckTime: time.Now(),    // Initialize
+		lastPositionCheckTime: time.Now(),      // Initialize
 	}
 }
-
 
 func (b *Bot) updateActivityAndPosition() {
 	b.lastActivityTimeMux.Lock()
@@ -130,7 +128,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 		ticker := time.NewTicker(100 * time.Millisecond)
 
 		const globalLongTermIdleThreshold = 2 * time.Minute // From move.go example
-		const minMovementThreshold = 30                    // From move.go example
+		const minMovementThreshold = 30                     // From move.go example
 
 		for {
 			select {
@@ -247,11 +245,50 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 				action.BuffIfRequired()
 
-				_, healingPotsFound := b.ctx.Data.Inventory.Belt.GetFirstPotion(data.HealingPotion)
-				_, manaPotsFound := b.ctx.Data.Inventory.Belt.GetFirstPotion(data.ManaPotion)
+				isInTown := b.ctx.Data.PlayerUnit.Area.IsTown()
+
+				// Check potions in belt
+				_, healingPotionsFoundInBelt := b.ctx.Data.Inventory.Belt.GetFirstPotion(data.HealingPotion)
+				_, manaPotionsFoundInBelt := b.ctx.Data.Inventory.Belt.GetFirstPotion(data.ManaPotion)
+				_, rejuvPotionsFoundInBelt := b.ctx.Data.Inventory.Belt.GetFirstPotion(data.RejuvenationPotion)
+
+				// Check potions in inventory
+				hasHealingPotionsInInventory := b.ctx.Data.HasPotionInInventory(data.HealingPotion)
+				hasManaPotionsInInventory := b.ctx.Data.HasPotionInInventory(data.ManaPotion)
+				hasRejuvPotionsInInventory := b.ctx.Data.HasPotionInInventory(data.RejuvenationPotion)
+
+				// Check if we actually need each type of potion
+				needHealingPotionsRefill := !healingPotionsFoundInBelt && b.ctx.CharacterCfg.Inventory.BeltColumns.Total(data.HealingPotion) > 0
+				needManaPotionsRefill := !manaPotionsFoundInBelt && b.ctx.CharacterCfg.Inventory.BeltColumns.Total(data.ManaPotion) > 0
+				needRejuvPotionsRefill := !rejuvPotionsFoundInBelt && b.ctx.CharacterCfg.Inventory.BeltColumns.Total(data.RejuvenationPotion) > 0
+
+				// Determine if we should refill for each type based on availability in inventory
+				shouldRefillHealingPotions := needHealingPotionsRefill && hasHealingPotionsInInventory
+				shouldRefillManaPotions := needManaPotionsRefill && hasManaPotionsInInventory
+				shouldRefillRejuvPotions := needRejuvPotionsRefill && hasRejuvPotionsInInventory
+
+				// Refill belt if:
+				// 1. Each potion type (healing/mana) is either already in belt or needed and available in inventory
+				// 2. And at least one potion type actually needs refilling
+				// Note: If one type (healing/mana) can be refilled but the other cannot, we skip refill and go to town instead
+				// 3. BUT will refill in any case if rejuvenation potions are needed and available in inventory
+				shouldRefillBelt := ((shouldRefillHealingPotions || healingPotionsFoundInBelt) &&
+					(shouldRefillManaPotions || manaPotionsFoundInBelt) &&
+					(needHealingPotionsRefill || needManaPotionsRefill)) || shouldRefillRejuvPotions
+
+				if shouldRefillBelt && !isInTown {
+					action.ConsumeMisplacedPotionsInBelt()
+					action.RefillBeltFromInventory()
+					b.ctx.RefreshGameData()
+
+					// Recheck potions in belt after refill
+					_, healingPotionsFoundInBelt = b.ctx.Data.Inventory.Belt.GetFirstPotion(data.HealingPotion)
+					_, manaPotionsFoundInBelt = b.ctx.Data.Inventory.Belt.GetFirstPotion(data.ManaPotion)
+					needHealingPotionsRefill = !healingPotionsFoundInBelt && b.ctx.CharacterCfg.Inventory.BeltColumns.Total(data.HealingPotion) > 0
+					needManaPotionsRefill = !manaPotionsFoundInBelt && b.ctx.CharacterCfg.Inventory.BeltColumns.Total(data.ManaPotion) > 0
+				}
 
 				// Check if we need to go back to town (level, gold, and TP quantity are met, AND then other conditions)
-
 				if _, found := b.ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); found {
 
 					lvl, _ := b.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
@@ -263,19 +300,19 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 							(b.ctx.Data.PlayerUnit.TotalPlayerGold() > 1000 && lvl.Value < 20) ||
 							(b.ctx.Data.PlayerUnit.TotalPlayerGold() > 5000 && lvl.Value >= 20) {
 
-							if (b.ctx.CharacterCfg.BackToTown.NoHpPotions && !healingPotsFound ||
+							if (b.ctx.CharacterCfg.BackToTown.NoHpPotions && needHealingPotionsRefill ||
 								b.ctx.CharacterCfg.BackToTown.EquipmentBroken && action.IsEquipmentBroken() ||
-								b.ctx.CharacterCfg.BackToTown.NoMpPotions && !manaPotsFound ||
+								b.ctx.CharacterCfg.BackToTown.NoMpPotions && needManaPotionsRefill ||
 								b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc) &&
 								!b.ctx.Data.PlayerUnit.Area.IsTown() {
 
 								// Log the exact reason for going back to town
 								var reason string
-								if b.ctx.CharacterCfg.BackToTown.NoHpPotions && !healingPotsFound {
+								if b.ctx.CharacterCfg.BackToTown.NoHpPotions && needHealingPotionsRefill {
 									reason = "No healing potions found"
 								} else if b.ctx.CharacterCfg.BackToTown.EquipmentBroken && action.RepairRequired() {
 									reason = "Equipment broken"
-								} else if b.ctx.CharacterCfg.BackToTown.NoMpPotions && !manaPotsFound {
+								} else if b.ctx.CharacterCfg.BackToTown.NoMpPotions && needManaPotionsRefill {
 									reason = "No mana potions found"
 								} else if b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc {
 									reason = "Mercenary is dead"
@@ -342,9 +379,9 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					case errors.Is(err, errors.New("bot globally idle for too long (no movement), quitting game")): // Match the specific error for movement-based idle
 						runFinishReason = event.FinishedError
 					case errors.Is(err, errors.New("player stuck in an unrecoverable movement loop, quitting")): // Match the specific error for movement-based idle
-						runFinishReason = event.FinishedError	
+						runFinishReason = event.FinishedError
 					case errors.Is(err, action.ErrFailedToEquip): // This is the new line
-					runFinishReason = event.FinishedError	
+						runFinishReason = event.FinishedError
 					default:
 						runFinishReason = event.FinishedError
 					}

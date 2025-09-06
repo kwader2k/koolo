@@ -9,8 +9,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/context"
 )
 
-func ManageBelt() error {
-
+func ConsumeMisplacedPotionsInBelt() error {
 	ctx := context.Get()
 	ctx.SetLastAction("ManageBelt")
 
@@ -24,7 +23,7 @@ func ManageBelt() error {
 		for _, potion := range misplacedPotions {
 			slog.Info("Consuming misplaced potion", "potion", potion.Name, "position", potion.Position)
 			ctx.HID.PressKey(ctx.Data.KeyBindings.UseBelt[potion.Position.X].Key1[0])
-			time.Sleep(500 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		}
 
 		misplacedPotions = checkMisplacedPotions()

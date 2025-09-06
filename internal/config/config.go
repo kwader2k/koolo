@@ -104,8 +104,11 @@ type CharacterCfg struct {
 		MercChickenAt       int `yaml:"mercChickenAt"`
 	} `yaml:"health"`
 	Inventory struct {
-		InventoryLock [][]int     `yaml:"inventoryLock"`
-		BeltColumns   BeltColumns `yaml:"beltColumns"`
+		InventoryLock      [][]int     `yaml:"inventoryLock"`
+		BeltColumns        BeltColumns `yaml:"beltColumns"`
+		HealingPotionCount int         `yaml:"healingPotionCount"`
+		ManaPotionCount    int         `yaml:"manaPotionCount"`
+		RejuvPotionCount   int         `yaml:"rejuvPotionCount"`
 	} `yaml:"inventory"`
 	Character struct {
 		Class         string `yaml:"class"`

@@ -57,31 +57,12 @@ func Stash(forceStash bool) error {
 	// Clear messages like TZ change or public game spam. Prevent bot from clicking on messages
 	ClearMessages()
 	stashGold()
-	orderInventoryPotions()
 	stashInventory(forceStash)
 	// Add call to dropExcessItems after stashing
 	dropExcessItems()
 	step.CloseAllMenus()
 
 	return nil
-}
-
-func orderInventoryPotions() {
-	ctx := context.Get()
-	ctx.SetLastStep("orderInventoryPotions")
-
-	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if i.IsPotion() {
-			if ctx.CharacterCfg.Inventory.InventoryLock[i.Position.Y][i.Position.X] == 0 {
-				continue
-			}
-
-			screenPos := ui.GetScreenCoordsForItem(i)
-			utils.Sleep(100)
-			ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-			utils.Sleep(200)
-		}
-	}
 }
 
 func isStashingRequired(firstRun bool) bool {
@@ -92,6 +73,10 @@ func isStashingRequired(firstRun bool) bool {
 	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 
 	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if i.IsPotion() {
+			continue
+		}
+
 		stashIt, dropIt, _, _ := shouldStashIt(i, firstRun)
 		if stashIt || dropIt { // Check for dropIt as well
 			return true
@@ -177,6 +162,10 @@ func stashInventory(firstRun bool) {
 	// For example, if an item is stashed and the underlying data structure is updated
 	itemsToProcess := make([]data.Item, 0)
 	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if i.IsPotion() {
+			continue
+		}
+
 		itemsToProcess = append(itemsToProcess, i)
 	}
 
@@ -401,6 +390,10 @@ func dropExcessItems() {
 
 	itemsToDrop := make([]data.Item, 0)
 	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if i.IsPotion() {
+			continue
+		}
+
 		_, dropIt, _, _ := shouldStashIt(i, false) // Re-evaluate if it should be dropped (not firstRun)
 		if dropIt {
 			itemsToDrop = append(itemsToDrop, i)

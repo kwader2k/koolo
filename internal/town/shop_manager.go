@@ -26,23 +26,39 @@ var questItems = []item.Name{
 func BuyConsumables(forceRefill bool) {
 	ctx := context.Get()
 
-	missingHealingPots := ctx.BeltManager.GetMissingCount(data.HealingPotion)
-	missingManaPots := ctx.BeltManager.GetMissingCount(data.ManaPotion)
-
-	ctx.Logger.Debug(fmt.Sprintf("Buying: %d Healing potions and %d Mana potions", missingHealingPots, missingManaPots))
+	missingHealingPotionInBelt := ctx.BeltManager.GetMissingCount(data.HealingPotion)
+	missingManaPotiontInBelt := ctx.BeltManager.GetMissingCount(data.ManaPotion)
+	missingHealingPotionInInventory := ctx.Data.MissingPotionCountInInventory(data.HealingPotion)
+	missingManaPotionInInventory := ctx.Data.MissingPotionCountInInventory(data.ManaPotion)
 
 	// We traverse the items in reverse order because vendor has the best potions at the end
-	pot, found := findFirstMatch("superhealingpotion", "greaterhealingpotion", "healingpotion", "lighthealingpotion", "minorhealingpotion")
-	if found && missingHealingPots > 0 {
-		BuyItem(pot, missingHealingPots)
-		missingHealingPots = 0
+	healingPot, healingPotfound := findFirstMatch("superhealingpotion", "greaterhealingpotion", "healingpotion", "lighthealingpotion", "minorhealingpotion")
+	manaPot, manaPotfound := findFirstMatch("supermanapotion", "greatermanapotion", "manapotion", "lightmanapotion", "minormanapotion")
+
+	ctx.Logger.Debug(fmt.Sprintf("Buying: %d Healing potions and %d Mana potions for belt", missingHealingPotionInBelt, missingManaPotiontInBelt))
+
+	// buy for belt first
+	if healingPotfound && missingHealingPotionInBelt > 0 {
+		BuyItem(healingPot, missingHealingPotionInBelt)
+		missingHealingPotionInBelt = 0
 	}
 
-	pot, found = findFirstMatch("supermanapotion", "greatermanapotion", "manapotion", "lightmanapotion", "minormanapotion")
-	// In Normal greater potions are expensive as we are low level, let's keep with cheap ones
-	if found && missingManaPots > 0 {
-		BuyItem(pot, missingManaPots)
-		missingManaPots = 0
+	if manaPotfound && missingManaPotiontInBelt > 0 {
+		BuyItem(manaPot, missingManaPotiontInBelt)
+		missingManaPotiontInBelt = 0
+	}
+
+	ctx.Logger.Debug(fmt.Sprintf("Buying: %d Healing potions and %d Mana potions for inventory", missingHealingPotionInInventory, missingManaPotionInInventory))
+
+	// then buy for inventory
+	if healingPotfound && missingHealingPotionInInventory > 0 {
+		BuyItem(healingPot, missingHealingPotionInInventory)
+		missingHealingPotionInInventory = 0
+	}
+
+	if manaPotfound && missingManaPotionInInventory > 0 {
+		BuyItem(manaPot, missingManaPotionInInventory)
+		missingManaPotionInInventory = 0
 	}
 
 	if ShouldBuyTPs() || forceRefill {
@@ -203,8 +219,8 @@ func SellJunk(lockConfig ...[][]int) {
 				ctx.Logger.Debug(fmt.Sprintf("Selling full stack of %d keys from %v", qtyInStack.Value, keyStack.Position))
 				SellItemFullStack(keyStack)
 				keysSold += qtyInStack.Value
-				totalKeys -= qtyInStack.Value // Update total keys count
-				ctx.RefreshGameData()         // Refresh after selling a full stack
+				totalKeys -= qtyInStack.Value      // Update total keys count
+				ctx.RefreshGameData()              // Refresh after selling a full stack
 				time.Sleep(200 * time.Millisecond) // Short delay for UI update
 			}
 		}
@@ -332,6 +348,9 @@ func buyFullStack(i data.Item, currentKeysInInventory int) {
 
 func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	ctx := context.Get()
+	healingPotionCountToKeep := ctx.Data.ConfiguredInventoryPotionCount(data.HealingPotion)
+	manaPotionCountToKeep := ctx.Data.ConfiguredInventoryPotionCount(data.ManaPotion)
+	rejuvPotionCountToKeep := ctx.Data.ConfiguredInventoryPotionCount(data.RejuvenationPotion)
 
 	var currentLockConfig [][]int
 	if len(lockConfig) > 0 {
@@ -363,6 +382,27 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 
 		if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAll(itm); result == nip.RuleResultFullMatch && !itm.IsPotion() {
 			continue
+		}
+
+		if itm.IsHealingPotion() {
+			if healingPotionCountToKeep > 0 {
+				healingPotionCountToKeep--
+				continue
+			}
+		}
+
+		if itm.IsManaPotion() {
+			if manaPotionCountToKeep > 0 {
+				manaPotionCountToKeep--
+				continue
+			}
+		}
+
+		if itm.IsRejuvPotion() {
+			if rejuvPotionCountToKeep > 0 {
+				rejuvPotionCountToKeep--
+				continue
+			}
 		}
 
 		items = append(items, itm)

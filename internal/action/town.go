@@ -15,9 +15,10 @@ func PreRun(firstRun bool) error {
 	DropMouseItem()
 	step.SetSkill(skill.Vigor)
 	RecoverCorpse()
-	ManageBelt()
+	ConsumeMisplacedPotionsInBelt()
 	// Just to make sure messages like TZ change or public game spam arent on the way
 	ClearMessages()
+	RefillBeltFromInventory()
 
 	if firstRun {
 		Stash(false)
@@ -85,12 +86,13 @@ func InRunReturnTownRoutine() error {
 		return fmt.Errorf("failed to verify town location after portal")
 	}
 
-
 	step.SetSkill(skill.Vigor)
 	RecoverCorpse()
 	ctx.PauseIfNotPriority() // Check after RecoverCorpse
-	ManageBelt()
+	ConsumeMisplacedPotionsInBelt()
 	ctx.PauseIfNotPriority() // Check after ManageBelt
+	RefillBeltFromInventory()
+	ctx.PauseIfNotPriority() // Check after RefillBeltFromInventory
 
 	// Let's stash items that need to be left unidentified
 	if ctx.CharacterCfg.Game.UseCainIdentify && HaveItemsToStashUnidentified() {
@@ -99,7 +101,6 @@ func InRunReturnTownRoutine() error {
 	}
 
 	IdentifyAll(false)
-	
 
 	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 	if ctx.CharacterCfg.Game.Leveling.AutoEquip && isLevelingChar {
@@ -139,12 +140,12 @@ func InRunReturnTownRoutine() error {
 	ctx.PauseIfNotPriority() // Check after HireMerc
 	Repair()
 	ctx.PauseIfNotPriority() // Check after Repair
-	
-	if (ctx.CharacterCfg.Companion.Leader) {
+
+	if ctx.CharacterCfg.Companion.Leader {
 		UsePortalInTown()
 		utils.Sleep(500)
 		return OpenTPIfLeader()
 	}
-	
+
 	return UsePortalInTown()
 }

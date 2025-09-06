@@ -348,6 +348,24 @@
                     </label>
                 {{ end }}
             </fieldset>
+            <h4>Potions in inventory</h4><br>
+            <fieldset class="grid">
+                <label>
+                    Healing potions
+                    <input type="number" name="healingPotionCount" min="0" max="99" placeholder="{{ .Config.Inventory.HealingPotionCount }}"
+                           value="{{ .Config.Inventory.HealingPotionCount }}"/>
+                </label>
+                <label>
+                    Mana Potions
+                    <input type="number" name="manaPotionCount" min="0" max="99" placeholder="{{ .Config.Inventory.ManaPotionCount }}"
+                           value="{{ .Config.Inventory.ManaPotionCount }}"/>
+                </label>
+                <label>
+                    Rejuv Potions
+                    <input type="number" name="rejuvPotionCount" min="0" max="99" placeholder="{{ .Config.Inventory.RejuvPotionCount }}"
+                           value="{{ .Config.Inventory.RejuvPotionCount }}"/>
+                </label>
+            </fieldset>
             <h3>Merc Settings</h3><br>
             <label>
                 <input id="use_merc" type="checkbox" name="useMerc" {{ if .Config.Character.UseMerc }}checked{{ end }}/>

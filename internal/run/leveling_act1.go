@@ -194,6 +194,9 @@ func (a Leveling) setupLevelOneConfig() {
 		{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	}
 	a.ctx.CharacterCfg.Game.InteractWithShrines = true
+	a.ctx.CharacterCfg.Inventory.HealingPotionCount = 4
+	a.ctx.CharacterCfg.Inventory.ManaPotionCount = 8
+	a.ctx.CharacterCfg.Inventory.RejuvPotionCount = 0
 	if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 		a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 	}
