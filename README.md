@@ -7,7 +7,7 @@ As written more detailed below you need to install:
 
 Use better_build.bat to build the application.
 
-- Use "Sorc (Leveling as Fire)" as class. It's currently the only working leveling script.
+- Use "Sorc (Leveling as Fire)" or "Paladin Leveling" those are the only two classes that work for now.
 - Choose "leveling" as enabled run under "Run Settings"
 - Start your char with lvl 1 as the autoconfig currently works at lvl 1 only. Alternatively you can check act1.go for detailed manual config. This handling will be enhanced later.
 
