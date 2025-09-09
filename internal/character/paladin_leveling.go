@@ -11,6 +11,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -197,6 +198,11 @@ func (s PaladinLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		mainSkill = skill.Zeal
 	}
 
+	_, found := s.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
+	if found {
+		skillBindings = append(skillBindings, skill.TomeOfTownPortal)
+	}
+	
 	if s.Data.PlayerUnit.Skills[skill.Concentration].Level > 0 && lvl.Value >= 18 {
 		skillBindings = append(skillBindings, skill.Concentration)
 	} else {
@@ -627,4 +633,5 @@ func (s PaladinLeveling) KillBaal() error {
 			step.PrimaryAttack(baal.UnitID, numOfAttacks, false, step.Distance(1, 3), step.EnsureAura(skill.HolyFire))
 		}
 	}
+
 }
