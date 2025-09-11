@@ -28,13 +28,13 @@ var (
 	ErrNotEnoughSpace = errors.New("not enough inventory space")
 
 	classItems = map[data.Class][]string{
-		data.Amazon:     {"ajav", "abow", "aspe"},
-		data.Sorceress:  {"orb"},
+		data.Amazon:      {"ajav", "abow", "aspe"},
+		data.Sorceress:   {"orb"},
 		data.Necromancer: {"head"},
-		data.Paladin:    {"ashd"},
-		data.Barbarian:  {"phlm"},
-		data.Druid:      {"pelt"},
-		data.Assassin:   {"h2h"},
+		data.Paladin:     {"ashd"},
+		data.Barbarian:   {"phlm"},
+		data.Druid:       {"pelt"},
+		data.Assassin:    {"h2h"},
 	}
 
 	// shieldTypes defines items that should be equipped in right arm (technically they can be left or right arm but we don't want to try and equip two shields)
@@ -478,7 +478,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 
 		ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
 		utils.Sleep(EquipDelayMS)
-		
+
 		// We need to refresh data and find the item in inventory now
 		*ctx.Data = ctx.GameReader.GetData()
 		var found bool
@@ -523,7 +523,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 
 		// Refresh data before verification starts
 		*ctx.Data = ctx.GameReader.GetData()
-		
+
 		// Final verification
 		var itemEquipped bool
 		for i := 0; i < 3; i++ {
@@ -632,4 +632,84 @@ func GetMercEquippedItem(inventory data.Inventory, loc item.LocationType) data.I
 		}
 	}
 	return data.Item{}
+}
+
+// UnEquipMercenary stashes all items from the player's inventory, and then unequips the mercenary's head, torso, and arm items and moves them to the player's now-empty inventory.
+func UnEquipMercenary() error {
+	ctx := context.Get()
+	ctx.SetLastAction("UnEquip Mercenary")
+	defer step.CloseAllMenus()
+
+	// Step 1: Stash all items from the player's inventory to make space.
+	ctx.Logger.Info("Stashing all items from inventory...")
+	if err := OpenStash(); err != nil {
+		return fmt.Errorf("could not open stash: %w", err)
+	}
+	if !ctx.Data.OpenMenus.Inventory {
+		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
+		utils.Sleep(EquipDelayMS)
+	}
+
+	// Loop multiple times to ensure all items are stashed.
+	for i := 0; i < 3; i++ {
+		*ctx.Data = ctx.GameReader.GetData()
+		inventoryItems := ctx.Data.Inventory.ByLocation(item.LocationInventory)
+		if len(inventoryItems) == 0 {
+			break
+		}
+
+		ctx.Logger.Info(fmt.Sprintf("Stashing items from inventory, attempt %d/3...", i+1))
+		for _, invItem := range inventoryItems {
+			// Exclude tomes from being stashed.
+			if invItem.Name == "TomeOfTownPortal" || invItem.Name == "TomeOfIdentify" {
+				ctx.Logger.Debug(fmt.Sprintf("EXCLUDING: Skipping drop for %s (ID: %d) as per rule.", invItem.Name, invItem.ID))
+				continue
+			}
+
+			// Find the item's coordinates and perform a ctrl+click to stash it.
+			coords := ui.GetScreenCoordsForItem(invItem)
+			ctx.HID.ClickWithModifier(game.LeftButton, coords.X, coords.Y, game.CtrlKey)
+			utils.Sleep(EquipDelayMS)
+		}
+	}
+
+	CloseStash()
+
+	// Step 2: UnEquip the mercenary's gear.
+	ctx.Logger.Info("Stashing complete. Now unequipping mercenary gear.")
+
+	// Open both the merc screen and player inventory for the transfer to work
+	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
+	utils.Sleep(EquipDelayMS)
+	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
+	utils.Sleep(EquipDelayMS)
+
+	// Refresh data to ensure the new menu state is recognized
+	*ctx.Data = ctx.GameReader.GetData()
+
+	// Use predefined screen coordinates for the mercenary's gear slots
+	var mercGearCoords []data.Position
+	if ctx.Data.LegacyGraphics {
+		// D2 Classic
+		mercGearCoords = []data.Position{
+			{X: ui.EquipMercHeadClassicX, Y: ui.EquipMercHeadClassicY},
+			{X: ui.EquipMercTorsClassicX, Y: ui.EquipMercTorsClassicY},
+			{X: ui.EquipMercLArmClassicX, Y: ui.EquipMercLArmClassicY},
+		}
+	} else {
+		// D2R
+		mercGearCoords = []data.Position{
+			{X: ui.EquipMercHeadX, Y: ui.EquipMercHeadY},
+			{X: ui.EquipMercTorsX, Y: ui.EquipMercTorsY},
+			{X: ui.EquipMercLArmX, Y: ui.EquipMercLArmY},
+		}
+	}
+
+	// Perform the ctrl+click action on each item location
+	for _, coords := range mercGearCoords {
+		ctx.HID.ClickWithModifier(game.LeftButton, coords.X, coords.Y, game.CtrlKey)
+		utils.Sleep(EquipDelayMS)
+	}
+
+	return nil
 }
