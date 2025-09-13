@@ -73,9 +73,7 @@ func DropInventoryItem(i data.Item) error {
 	if i.Location.LocationType == item.LocationInventory {
 
 		// Check if the inventory is open, if not open it
-		if !ctx.Data.OpenMenus.Inventory {
-			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		}
+		step.OpenInventory()
 
 		// Wait a second
 		utils.Sleep(1000)

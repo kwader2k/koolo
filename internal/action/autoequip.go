@@ -28,13 +28,13 @@ var (
 	ErrNotEnoughSpace = errors.New("not enough inventory space")
 
 	classItems = map[data.Class][]string{
-		data.Amazon:     {"ajav", "abow", "aspe"},
-		data.Sorceress:  {"orb"},
+		data.Amazon:      {"ajav", "abow", "aspe"},
+		data.Sorceress:   {"orb"},
 		data.Necromancer: {"head"},
-		data.Paladin:    {"ashd"},
-		data.Barbarian:  {"phlm"},
-		data.Druid:      {"pelt"},
-		data.Assassin:   {"h2h"},
+		data.Paladin:     {"ashd"},
+		data.Barbarian:   {"phlm"},
+		data.Druid:       {"pelt"},
+		data.Assassin:    {"h2h"},
 	}
 
 	// shieldTypes defines items that should be equipped in right arm (technically they can be left or right arm but we don't want to try and equip two shields)
@@ -465,7 +465,6 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, target item.Lo
 	return equippedSomething, nil
 }
 
-
 func getBodyLocationScreenCoords(bodyloc item.LocationType) (data.Position, error) {
 	ctx := context.Get()
 	if ctx.Data.LegacyGraphics {
@@ -520,7 +519,6 @@ func getBodyLocationScreenCoords(bodyloc item.LocationType) (data.Position, erro
 	}
 }
 
-
 func equipBestRings(itemsByLoc map[item.LocationType][]data.Item) (bool, error) {
 	ctx := context.Get()
 
@@ -545,7 +543,7 @@ func equipBestRings(itemsByLoc map[item.LocationType][]data.Item) (bool, error) 
 	})
 
 	if len(allRings) == 0 {
-		return false, nil 
+		return false, nil
 	}
 
 	bestRing := allRings[0]
@@ -569,7 +567,7 @@ func equipBestRings(itemsByLoc map[item.LocationType][]data.Item) (bool, error) 
 	for _, equipped := range equippedRings {
 		if equipped.UnitID != 0 && !idealIDs[equipped.UnitID] {
 			ringToReplace = equipped
-			break 
+			break
 		}
 	}
 
@@ -611,8 +609,6 @@ func equipBestRings(itemsByLoc map[item.LocationType][]data.Item) (bool, error) 
 	return false, nil
 }
 
-
-
 // equip handles the physical process of equipping an item. Returns ErrNotEnoughSpace if it fails.
 func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) error {
 	ctx := context.Get()
@@ -647,16 +643,13 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 
 	// Main retry loop
 	for attempt := 0; attempt < 3; attempt++ {
-		for !ctx.Data.OpenMenus.Inventory {
-			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-			utils.Sleep(EquipDelayMS)
-		}
+		step.OpenInventory()
 
 		if target == item.LocationMercenary {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
 			utils.Sleep(EquipDelayMS)
 			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
-		} else { 
+		} else {
 			currentlyEquipped := GetEquippedItem(ctx.Data.Inventory, bodyloc)
 			isRingSwap := itm.Desc().Type == "ring" && currentlyEquipped.UnitID != 0
 
@@ -669,9 +662,9 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 
 				oldRingCoords, err := getBodyLocationScreenCoords(bodyloc)
 				if err != nil {
-					return err 
+					return err
 				}
-				
+
 				ctx.HID.ClickWithModifier(game.LeftButton, oldRingCoords.X, oldRingCoords.Y, game.ShiftKey)
 				utils.Sleep(1000)
 				*ctx.Data = ctx.GameReader.GetData()
@@ -681,7 +674,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 					ctx.Logger.Warn("Failed to unequip old ring, it is still equipped. Aborting swap.")
 					return fmt.Errorf("failed to unequip old ring from %s", bodyloc)
 				}
-				
+
 				var newItemInInv data.Item
 				var foundInInv bool
 				for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
@@ -733,7 +726,6 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	}
 	return fmt.Errorf("verification failed after all attempts to equip %s", itm.IdentifiedName)
 }
-
 
 // findInventorySpace finds the top-left grid coordinates for a free spot in the inventory.
 func findInventorySpace(itm data.Item) (data.Position, bool) {
@@ -826,10 +818,7 @@ func UnEquipMercenary() error {
 	if err := OpenStash(); err != nil {
 		return fmt.Errorf("could not open stash: %w", err)
 	}
-	if !ctx.Data.OpenMenus.Inventory {
-		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(EquipDelayMS)
-	}
+	step.OpenInventory()
 
 	// Loop multiple times to ensure all items are stashed.
 	for i := 0; i < 3; i++ {
@@ -893,5 +882,4 @@ func UnEquipMercenary() error {
 	}
 
 	return nil
-
 }
