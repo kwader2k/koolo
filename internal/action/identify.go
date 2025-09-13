@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/nip"
@@ -12,80 +13,76 @@ import (
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/town"
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"	
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/lxn/win"
 )
 
 func IdentifyAll(skipIdentify bool) error {
-    ctx := context.Get()
-    ctx.SetLastAction("IdentifyAll")
+	ctx := context.Get()
+	ctx.SetLastAction("IdentifyAll")
 
-    items := itemsToIdentify()
+	items := itemsToIdentify()
 
-    ctx.Logger.Debug("Checking for items to identify...")
-    if len(items) == 0 || skipIdentify {
-        ctx.Logger.Debug("No items to identify...")
-        return nil
-    }
+	ctx.Logger.Debug("Checking for items to identify...")
+	if len(items) == 0 || skipIdentify {
+		ctx.Logger.Debug("No items to identify...")
+		return nil
+	}
 
-    shouldUseCain := ctx.CharacterCfg.Game.UseCainIdentify
+	shouldUseCain := ctx.CharacterCfg.Game.UseCainIdentify
 
-    // Check conditions to force "skip Cain" even if UseCainIdentify is true
-    _, isLevelingChar := ctx.Char.(context.LevelingCharacter)
-    currentAct := ctx.Data.PlayerUnit.Area.Act()
-    currentDifficulty := ctx.CharacterCfg.Game.Difficulty
+	// Check conditions to force "skip Cain" even if UseCainIdentify is true
+	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+	currentAct := ctx.Data.PlayerUnit.Area.Act()
+	currentDifficulty := ctx.CharacterCfg.Game.Difficulty
 
-    if isLevelingChar && currentAct == 4 && currentDifficulty == difficulty.Nightmare {
-        if shouldUseCain { // Only log this if Cain *would* have been used
-            ctx.Logger.Debug("Forcing skip of Cain Identify: Leveling character in Act 4 Nightmare.")
-        }
-        shouldUseCain = false // Force Cain to be skipped
-    }
+	if isLevelingChar && currentAct == 4 && currentDifficulty == difficulty.Nightmare {
+		if shouldUseCain { // Only log this if Cain *would* have been used
+			ctx.Logger.Debug("Forcing skip of Cain Identify: Leveling character in Act 4 Nightmare.")
+		}
+		shouldUseCain = false // Force Cain to be skipped
+	}
 
-    if shouldUseCain {
-        ctx.Logger.Debug("Identifying all item with Cain...")
-        // Close any open menus first
-        step.CloseAllMenus()
-        utils.Sleep(500)
+	if shouldUseCain {
+		ctx.Logger.Debug("Identifying all item with Cain...")
+		// Close any open menus first
+		step.CloseAllMenus()
+		utils.Sleep(500)
 
-        err := CainIdentify()
-        // if identifying with cain fails then we should continue to identify using tome
-        if err == nil {
-            return nil // Successfully identified with Cain, no need for tome
-        }
-        ctx.Logger.Debug("Identifying with Cain failed, continuing with identifying with tome", "err", err)
-        // Execution will continue here to the tome identification section
-    }
+		err := CainIdentify()
+		// if identifying with cain fails then we should continue to identify using tome
+		if err == nil {
+			return nil // Successfully identified with Cain, no need for tome
+		}
+		ctx.Logger.Debug("Identifying with Cain failed, continuing with identifying with tome", "err", err)
+		// Execution will continue here to the tome identification section
+	}
 
-    // --- Tome Identification Starts Here ---
-    idTome, found := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationInventory)
-    if !found {
-        ctx.Logger.Warn("ID Tome not found, not identifying items")
-        return nil
-    }
+	// --- Tome Identification Starts Here ---
+	idTome, found := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationInventory)
+	if !found {
+		ctx.Logger.Warn("ID Tome not found, not identifying items")
+		return nil
+	}
 
-    if st, statFound := idTome.FindStat(stat.Quantity, 0); !statFound || st.Value < len(items) {
-        ctx.Logger.Info("Not enough ID scrolls, refilling...")
-        VendorRefill(true, false)
-    }
+	if st, statFound := idTome.FindStat(stat.Quantity, 0); !statFound || st.Value < len(items) {
+		ctx.Logger.Info("Not enough ID scrolls, refilling...")
+		VendorRefill(true, false)
+	}
 
-    ctx.Logger.Info(fmt.Sprintf("Identifying %d items...", len(items)))
+	ctx.Logger.Info(fmt.Sprintf("Identifying %d items...", len(items)))
 
-    // Close all menus to prevent issues
-    step.CloseAllMenus()
-    for !ctx.Data.OpenMenus.Inventory {
-        ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-        utils.Sleep(1000) // Add small delay to allow the game to open the inventory
-    }
+	// Close all menus to prevent issues
+	step.CloseAllMenus()
+	step.OpenInventory()
 
-    for _, i := range items {
-        identifyItem(idTome, i)
-    }
-    step.CloseAllMenus()
+	for _, i := range items {
+		identifyItem(idTome, i)
+	}
+	step.CloseAllMenus()
 
-    return nil
+	return nil
 }
 
 func CainIdentify() error {

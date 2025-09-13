@@ -668,10 +668,7 @@ func ResetStats() error {
 			step.CloseAllMenus()
 			return fmt.Errorf("could not open stash: %w", err)
 		}
-		if !ctx.Data.OpenMenus.Inventory {
-			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-			utils.Sleep(500)
-		}
+		step.OpenInventory()
 		ctx.GameReader.GetData() // Refresh data to confirm menus are open
 
 		// 2. Loop the stashing process three times for robustness
@@ -722,11 +719,7 @@ func ResetStats() error {
 
 		// 4. Now, drop any remaining items directly in the inventory
 		ctx.Logger.Info("Dropping all remaining inventory items.")
-		if !ctx.Data.OpenMenus.Inventory {
-			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-			utils.Sleep(500)
-			ctx.GameReader.GetData()
-		}
+		step.OpenInventory()
 
 		inventoryItems := ctx.Data.Inventory.ByLocation(item.LocationInventory)
 		for _, invItem := range inventoryItems {

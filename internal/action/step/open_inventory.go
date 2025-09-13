@@ -10,6 +10,7 @@ import (
 func OpenInventory() error {
 	ctx := context.Get()
 	ctx.SetLastStep("OpenInventory")
+	utils.Sleep(200)
 
 	attempts := 0
 	for !ctx.Data.OpenMenus.Inventory {
