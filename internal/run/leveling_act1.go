@@ -11,12 +11,8 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
-	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
-	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
-	"github.com/hectorgimenez/koolo/internal/town"
-	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/lxn/win"
 	"math"
@@ -395,4 +391,5 @@ func (a Leveling) shouldFarmCountessForRunes() bool {
 
 	a.ctx.Logger.Info("All required runes are present. Skipping Countess farm.")
 	return false
+
 }
