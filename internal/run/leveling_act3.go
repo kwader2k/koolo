@@ -3,21 +3,20 @@ package run
 import (
 	"time"
 
+	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
-	"github.com/hectorgimenez/d2go/pkg/data"
-	"github.com/hectorgimenez/d2go/pkg/data/area"
-	"github.com/hectorgimenez/d2go/pkg/data/item"
-	"github.com/hectorgimenez/d2go/pkg/data/object"
-	"github.com/lxn/win" 
+	"github.com/lxn/win"
 )
-
 
 func (a Leveling) act3() error {
 	running := false
@@ -25,7 +24,6 @@ func (a Leveling) act3() error {
 	if running || a.ctx.Data.PlayerUnit.Area != area.KurastDocks {
 		return nil
 	}
-		
 
 	// Try to find Hratli at pier, if he's there, talk to him, so he will move to the normal position later
 	hratli, found := a.ctx.Data.Monsters.FindOne(npc.Hratli, data.MonsterTypeNone)
@@ -34,8 +32,8 @@ func (a Leveling) act3() error {
 	}
 
 	running = true
-	
-	action.VendorRefill(true, true);
+
+	action.VendorRefill(true, true)
 
 	_, potionFound := a.ctx.Data.Inventory.Find("PotionOfLife", item.LocationInventory)
 	q := a.ctx.Data.Quests[quest.Act3TheGoldenBird]
@@ -43,36 +41,33 @@ func (a Leveling) act3() error {
 		(!q.HasStatus(quest.StatusQuestNotStarted) && !q.Completed()) {
 		a.jadefigurine()
 	}
-	
-// Gold Farming Logic for Lower Kurast (and immediate return if farming is needed)
-    if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 30000) ||
-        (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-        (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
 
-        a.ctx.Logger.Info("Low on gold. Initiating Lower Kurast Chests gold farm.") 
-        if err := NewLowerKurastChest().Run(); err != nil {
-            a.ctx.Logger.Error("Error during Lower Kurast Chests gold farm: %v", err) 
-            return err 
-        }
-        a.ctx.Logger.Info("Lower Kurast Chests gold farming completed. Quitting current run to re-evaluate in next game.") 
-        return nil 
-    }
-	
-	
+	// Gold Farming Logic for Lower Kurast (and immediate return if farming is needed)
+	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 30000) ||
+		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
+		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
 
-if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
-
-	// Use waypoint to DuranceOfHateLevel2
-	err := action.WayPoint(area.DuranceOfHateLevel2)
-	if err != nil {
-		return err
+		a.ctx.Logger.Info("Low on gold. Initiating Lower Kurast Chests gold farm.")
+		if err := NewLowerKurastChest().Run(); err != nil {
+			a.ctx.Logger.Error("Error during Lower Kurast Chests gold farm: %v", err)
+			return err
+		}
+		a.ctx.Logger.Info("Lower Kurast Chests gold farming completed. Quitting current run to re-evaluate in next game.")
+		return nil
 	}
 
+	if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 
-	// Move to DuranceOfHateLevel3
-	if err = action.MoveToArea(area.DuranceOfHateLevel3); err != nil {
-		return err
-	}
+		// Use waypoint to DuranceOfHateLevel2
+		err := action.WayPoint(area.DuranceOfHateLevel2)
+		if err != nil {
+			return err
+		}
+
+		// Move to DuranceOfHateLevel3
+		if err = action.MoveToArea(area.DuranceOfHateLevel3); err != nil {
+			return err
+		}
 
 		a.ctx.Logger.Debug("Moving to bridge")
 		action.MoveToCoords(data.Position{X: 17588, Y: 8068})
@@ -86,24 +81,17 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 		action.InteractObject(portal, func() bool {
 			return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 		})
-		
-	        utils.Sleep(500)
-        a.HoldKey(win.VK_SPACE, 3000)
-        utils.Sleep(500) 
 
+		utils.Sleep(500)
+		a.HoldKey(win.VK_SPACE, 3000)
+		utils.Sleep(500)
 
-	return nil
-	
-}
-	
+		return nil
 
-	
-	
-	
+	}
 
 	_, willFound := a.ctx.Data.Inventory.Find("KhalimsWill", item.LocationInventory, item.LocationStash, item.LocationEquipped)
 
-	
 	if a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
 		a.ctx.Logger.Info("Khalims will completed. Starting Mephisto.")
 		a.ctx.CharacterCfg.Game.Mephisto.OpenChests = false
@@ -120,7 +108,7 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			hellgate, found := a.ctx.Data.Objects.FindOne(object.HellGate)
 			if !found {
 				a.ctx.Logger.Info("Gate to Pandemonium Fortress not found after killing Mephisto. Ending script.")
-				return nil 
+				return nil
 			}
 			err = action.InteractObject(hellgate, func() bool {
 				utils.Sleep(500)
@@ -128,21 +116,20 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			})
 			if err != nil {
 				a.ctx.Logger.Error("Failed to interact with Hell Gate, ending Act 3 script.", err)
-				return err // 
+				return err //
 			}
-			       a.ctx.Logger.Info("Successfully interacted with Hell Gate. Attempting to skip cinematic.")
-        utils.Sleep(500) 
-        a.HoldKey(win.VK_SPACE, 3000) 
-        utils.Sleep(500) 
+			a.ctx.Logger.Info("Successfully interacted with Hell Gate. Attempting to skip cinematic.")
+			utils.Sleep(500)
+			a.HoldKey(win.VK_SPACE, 3000)
+			utils.Sleep(500)
 			// If we successfully interacted with the Hell Gate, we assume the attempt to go to A4 is complete.
 			a.ctx.Logger.Info("Successfully attempted to enter Act 4. Ending Act 3 script.")
-			return nil 
+			return nil
 		} else {
 			a.ctx.Logger.Info("Mephisto run completed, but 'The Guardian' quest is not marked as complete. Ending Act 3 script.")
-			return nil 
+			return nil
 		}
 	}
-
 
 	// This block only runs if the character is NOT ready for Mephisto (based on the previous `if` condition)
 	// and checks if Khalim's Will is already found (skipping artifact collection).
@@ -163,20 +150,20 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			}
 			err = action.InteractObject(hellgate, func() bool {
 				utils.Sleep(500)
-									utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+				utils.Sleep(1000)
+				a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+				utils.Sleep(1000)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
-									utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+				utils.Sleep(1000)
+				a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+				utils.Sleep(1000)
 				return err // Exit on error interacting with portal
 			}
-					utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+			utils.Sleep(1000)
+			a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+			utils.Sleep(1000)
 			return nil // Exit if successfully interacted with portal
 		}
 
@@ -230,20 +217,20 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			}
 			err := action.InteractObject(hellgate, func() bool {
 				utils.Sleep(500)
-									utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+				utils.Sleep(1000)
+				a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+				utils.Sleep(1000)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
-									utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+				utils.Sleep(1000)
+				a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+				utils.Sleep(1000)
 				return err // Exit on error interacting with portal
 			}
-					utils.Sleep(1000)
-		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+			utils.Sleep(1000)
+			a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+			utils.Sleep(1000)
 			return nil // Exit if successfully interacted with portal
 		}
 		a.ctx.Logger.Info("Khalim's Flail found and Mephisto stairs opened, but Mephisto not yet dead. Ending Act 3 script for this run.")
@@ -255,7 +242,6 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 
 	return nil
 }
-
 
 func (a Leveling) findKhalimsEye() error {
 	err := action.WayPoint(area.SpiderForest)
@@ -461,7 +447,7 @@ func (a Leveling) openMephistoStairs() error {
 				}
 			}
 			if khalimsWill.Location.LocationType == item.LocationInventory && !a.ctx.Data.OpenMenus.Inventory {
-				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
+				step.OpenInventory()
 			}
 			screenPos := ui.GetScreenCoordsForItem(khalimsWill)
 			a.ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.ShiftKey)
@@ -470,7 +456,7 @@ func (a Leveling) openMephistoStairs() error {
 				utils.Sleep(500)
 				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.SwapWeapons)
 				utils.Sleep(500)
-				
+
 			}
 			step.CloseAllMenus()
 		}
@@ -493,7 +479,7 @@ func (a Leveling) openMephistoStairs() error {
 		utils.Sleep(500)
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.SwapWeapons)
 		utils.Sleep(500)
-		
+
 	}
 
 	err = action.InteractObject(compellingorb, func() bool {
@@ -537,8 +523,6 @@ func (a Leveling) openMephistoStairs() error {
 	return nil
 }
 
-
-
 func (a Leveling) jadefigurine() error {
 	_, jadefigureFound := a.ctx.Data.Inventory.Find("AJadeFigurine", item.LocationInventory)
 	if jadefigureFound {
@@ -555,7 +539,7 @@ func (a Leveling) jadefigurine() error {
 	utils.Sleep(500)
 	lifepotion, lifepotfound := a.ctx.Data.Inventory.Find("PotionOfLife", item.LocationInventory)
 	if lifepotfound {
-		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
+		step.OpenInventory()
 		screenPos := ui.GetScreenCoordsForItem(lifepotion)
 		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 		step.CloseAllMenus()
