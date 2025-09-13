@@ -7,12 +7,17 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
+	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/town"
+	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 
 	"github.com/lxn/win"
@@ -86,6 +91,13 @@ func (a Leveling) act1() error {
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 
+		}
+	}
+
+	// Buy a 9 slot belt if we are level 9 and don't have one yet
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() > 3000 && lvl.Value >= 9 && lvl.Value < 12 {
+		if err := gambleAct1Belt(a.ctx); err != nil {
+			return err
 		}
 	}
 
@@ -328,6 +340,79 @@ func (a Leveling) killRavenGetMerc() error {
 	}
 
 	return nil
+}
+
+func gambleAct1Belt(ctx *context.Status) error {
+
+	// Check if level 9. Some wiggle room for over leveling, but then stops for level 11+
+	lvl, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+	if lvl.Value < 9 || lvl.Value >= 11 {
+		ctx.Logger.Info("Not level 9 to 11, skipping belt gamble.")
+		return nil
+	}
+
+	// Check equipped and inventory for a suitable belt first
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
+		if itm.Name == "Belt" || itm.Name == "HeavyBelt" || itm.Name == "PlatedBelt" {
+			ctx.Logger.Info("Already have a 9 slot belt equipped, skipping.")
+			return nil
+		}
+	}
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if itm.Name == "Belt" || itm.Name == "HeavyBelt" || itm.Name == "PlatedBelt" {
+			ctx.Logger.Info("Already have a 9 slot belt in inventory, skipping.")
+			return nil
+		}
+	}
+
+	// Check for gold before visiting the vendor
+	if ctx.Data.PlayerUnit.TotalPlayerGold() < 3000 {
+		ctx.Logger.Info("Not enough gold to buy a belt, skipping.")
+		return nil
+	}
+
+	// Go to Gheed and get the gambling menu
+	ctx.Logger.Info("No 12 slot belt found, trying to buy one from Gheed.")
+	if err := action.InteractNPC(npc.Gheed); err != nil {
+		return err
+	}
+	defer step.CloseAllMenus()
+
+	ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
+	utils.Sleep(1000)
+
+	// Check if the shop menu is open
+	if !ctx.Data.OpenMenus.NPCShop {
+		ctx.Logger.Debug("failed opening gambling window")
+	}
+
+	// Define the item to gamble for
+	itemsToGamble := []string{"Belt"}
+
+	// Loop until the desired item is found and purchased
+	for {
+		// Check for any of the desired items in the vendor's inventory
+		for _, itmName := range itemsToGamble {
+			itm, found := ctx.Data.Inventory.Find(item.Name(itmName), item.LocationVendor)
+			if found {
+				town.BuyItem(itm, 1)
+				ctx.Logger.Info("Belt purchased, running AutoEquip.")
+				if err := action.AutoEquip(); err != nil {
+					ctx.Logger.Error("AutoEquip failed after buying belt", "error", err)
+				}
+				return nil
+			}
+		}
+
+		// If no desired item was found, refresh the gambling window
+		ctx.Logger.Info("Desired items not found in gambling window, refreshing...")
+		if ctx.Data.LegacyGraphics {
+			ctx.HID.Click(game.LeftButton, ui.GambleRefreshButtonXClassic, ui.GambleRefreshButtonYClassic)
+		} else {
+			ctx.HID.Click(game.LeftButton, ui.GambleRefreshButtonX, ui.GambleRefreshButtonY)
+		}
+		utils.Sleep(500)
+	}
 }
 
 // atDistance is a helper function to calculate a position a certain distance away from a target.
