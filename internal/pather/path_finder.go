@@ -6,6 +6,7 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather/astar"
@@ -104,6 +105,21 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 		}
 		relativePos := grid.RelativePosition(m.Position)
 		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeMonster
+	}
+
+	// set barricade tower as non walkable in act 5
+	if a.Area == area.FrigidHighlands || a.Area == area.FrozenTundra || a.Area == area.ArreatPlateau {
+		for _, n := range pf.data.NPCs {
+			if n.ID != npc.BarricadeTower {
+				continue
+			}
+			if len(n.Positions) == 0 {
+				continue
+			}
+			npcPos := n.Positions[0]
+			relativePos := grid.RelativePosition(npcPos)
+			grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeNonWalkable
+		}
 	}
 
 	path, distance, found := astar.CalculatePath(grid, from, to)
