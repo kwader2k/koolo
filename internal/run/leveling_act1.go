@@ -7,6 +7,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
@@ -14,7 +15,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
-
 	"github.com/lxn/win"
 )
 
@@ -43,6 +43,17 @@ func (a Leveling) act1() error {
 	}
 
 	// --- Quest and Farming Logic ---
+
+	// Countess farming for runes
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && lvl.Value >= 8 && lvl.Value <= 12 {
+		a.ctx.Logger.Info("Farming Countess for runes.")
+		return NewCountess().Run()
+	}
+
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && lvl.Value < 48 && a.ctx.Data.Quests[quest.Act1DenOfEvil].Completed() && a.shouldFarmCountessForRunes() {
+		a.ctx.Logger.Info("Farming Countess for required runes.")
+		return NewCountess().Run()
+	}
 
 	// Farming for low gold
 	if a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000 {
@@ -101,7 +112,7 @@ func (a Leveling) act1() error {
 
 	// Cain quest: talking to Akara
 	if !a.isCainInTown() && !a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 10
+		a.ctx.CharacterCfg.Character.ClearPathDist = 15
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 		}
@@ -109,14 +120,14 @@ func (a Leveling) act1() error {
 	}
 
 	// Tristram only until lvl 6, then Trist + Act1 Progression (good exp, less town chores)
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 12 {
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 8 {
 
 		a.ctx.CharacterCfg.Character.ClearPathDist = 20
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 			a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 		}
 
-		if lvl.Value < 12 {
+		if lvl.Value < 8 {
 			// Run Tristram and end the function
 			return NewTristram().Run()
 		} else {
@@ -136,7 +147,7 @@ func (a Leveling) act1() error {
 
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
 
-			a.ctx.CharacterCfg.Character.ClearPathDist = 10
+			a.ctx.CharacterCfg.Character.ClearPathDist = 15
 			a.ctx.CharacterCfg.Inventory.BeltColumns = [4]string{"healing", "healing", "mana", "mana"}
 			if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
 				a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
@@ -164,7 +175,7 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Health.RejuvPotionAtLife = 0
 	a.ctx.CharacterCfg.Health.ChickenAt = 7
 	a.ctx.CharacterCfg.Gambling.Enabled = true
-	a.ctx.CharacterCfg.Character.ClearPathDist = 10
+	a.ctx.CharacterCfg.Character.ClearPathDist = 15
 	a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 40
 	a.ctx.CharacterCfg.Health.MercChickenAt = 0
 	a.ctx.CharacterCfg.Health.MercHealingPotionAt = 25
@@ -208,7 +219,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if lvl.Value >= 4 && lvl.Value < 12 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85
-		a.ctx.CharacterCfg.Character.ClearPathDist = 10
+		a.ctx.CharacterCfg.Character.ClearPathDist = 15
 	}
 	if lvl.Value >= 24 {
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
@@ -217,7 +228,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 0
 			a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 			a.ctx.CharacterCfg.Health.ChickenAt = 30
-			a.ctx.CharacterCfg.Character.ClearPathDist = 10
+			a.ctx.CharacterCfg.Character.ClearPathDist = 15
 
 		} else if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
 			a.ctx.CharacterCfg.Inventory.BeltColumns = [4]string{"healing", "healing", "mana", "mana"}
@@ -225,7 +236,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 0
 			a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 			a.ctx.CharacterCfg.Health.ChickenAt = 30
-			a.ctx.CharacterCfg.Character.ClearPathDist = 10
+			a.ctx.CharacterCfg.Character.ClearPathDist = 15
 
 		} else if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
 			a.ctx.CharacterCfg.Inventory.BeltColumns = [4]string{"healing", "healing", "mana", "rejuvenation"}
@@ -233,7 +244,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 40
 			a.ctx.CharacterCfg.Health.HealingPotionAt = 90
 			a.ctx.CharacterCfg.Health.ChickenAt = 40
-			a.ctx.CharacterCfg.Character.ClearPathDist = 10
+			a.ctx.CharacterCfg.Character.ClearPathDist = 15
 
 		}
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
@@ -345,4 +356,40 @@ func atDistance(start, end data.Position, distance int) data.Position {
 	newY := float64(start.Y) + dy*ratio
 
 	return data.Position{X: int(newX), Y: int(newY)}
+}
+
+// shouldFarmCountessForRunes checks if the character should farm Countess for runes in Nightmare difficulty.
+func (a Leveling) shouldFarmCountessForRunes() bool {
+	requiredRunes := map[string]int{
+		"TalRune":  3,
+		"ThulRune": 2,
+		"OrtRune":  2,
+		"AmnRune":  2,
+		"TirRune":  1,
+		"SolRune":  1,
+		"RalRune":  1,
+	}
+
+	ownedRunes := make(map[string]int)
+	itemsInStash := a.ctx.Data.Inventory.ByLocation(item.LocationInventory, item.LocationStash, item.LocationSharedStash)
+
+	a.ctx.Logger.Debug("--- Checking for required runes ---")
+	for _, itm := range itemsInStash {
+		itemName := string(itm.Name)
+		if _, isRequired := requiredRunes[itemName]; isRequired {
+			a.ctx.Logger.Debug(fmt.Sprintf("Found a required rune: %s. Incrementing count.", itemName))
+			ownedRunes[itemName]++
+		}
+	}
+	a.ctx.Logger.Debug(fmt.Sprintf("Final owned rune counts: %v", ownedRunes))
+
+	for runeName, requiredCount := range requiredRunes {
+		if ownedRunes[runeName] < requiredCount {
+			a.ctx.Logger.Info(fmt.Sprintf("Missing runes, farming Countess. Need %d of %s, but have %d.", requiredCount, runeName, ownedRunes[runeName]))
+			return true
+		}
+	}
+
+	a.ctx.Logger.Info("All required runes are present. Skipping Countess farm.")
+	return false
 }
