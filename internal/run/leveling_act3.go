@@ -88,7 +88,7 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 		})
 		
 	        utils.Sleep(500)
-        a.HoldKey(win.VK_ESCAPE, 3000)
+        a.HoldKey(win.VK_SPACE, 3000)
         utils.Sleep(500) 
 
 
@@ -132,7 +132,7 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			}
 			       a.ctx.Logger.Info("Successfully interacted with Hell Gate. Attempting to skip cinematic.")
         utils.Sleep(500) 
-        a.HoldKey(win.VK_ESCAPE, 3000) 
+        a.HoldKey(win.VK_SPACE, 3000) 
         utils.Sleep(500) 
 			// If we successfully interacted with the Hell Gate, we assume the attempt to go to A4 is complete.
 			a.ctx.Logger.Info("Successfully attempted to enter Act 4. Ending Act 3 script.")
@@ -164,18 +164,18 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			err = action.InteractObject(hellgate, func() bool {
 				utils.Sleep(500)
 									utils.Sleep(1000)
-		a.HoldKey(win.VK_ESCAPE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
 		utils.Sleep(1000)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
 									utils.Sleep(1000)
-		a.HoldKey(win.VK_ESCAPE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
 		utils.Sleep(1000)
 				return err // Exit on error interacting with portal
 			}
 					utils.Sleep(1000)
-		a.HoldKey(win.VK_ESCAPE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
 		utils.Sleep(1000)
 			return nil // Exit if successfully interacted with portal
 		}
@@ -231,18 +231,18 @@ if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
 			err := action.InteractObject(hellgate, func() bool {
 				utils.Sleep(500)
 									utils.Sleep(1000)
-		a.HoldKey(win.VK_ESCAPE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
 		utils.Sleep(1000)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
 									utils.Sleep(1000)
-		a.HoldKey(win.VK_ESCAPE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
 		utils.Sleep(1000)
 				return err // Exit on error interacting with portal
 			}
 					utils.Sleep(1000)
-		a.HoldKey(win.VK_ESCAPE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
+		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
 		utils.Sleep(1000)
 			return nil // Exit if successfully interacted with portal
 		}
