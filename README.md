@@ -4,7 +4,7 @@ Currently working classes: Sorceress, Paladin, Assassin
 
 As written more detailed below you need to install:
 
-- Go (1.24, not 1.25!)
+- Go (1.24, not 1.25)
 - Garble
 
 Make sure the game is set to English to prevent any language-related bugs.
