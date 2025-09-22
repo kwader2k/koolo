@@ -108,7 +108,7 @@ func (a Leveling) act1() error {
 	// Tristram only until lvl 6, then Trist + Countess
 	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 12 {
 
-		if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+		if a.ctx.CharacterCfg.Character.Class == "sorceress" {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 4
 		} else {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 20
@@ -132,7 +132,7 @@ func (a Leveling) act1() error {
 	// Countess farming for runes
 	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && lvl.Value >= 6 && lvl.Value < 12 {
 		a.ctx.Logger.Info("Farming Countess for runes.")
-		if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+		if a.ctx.CharacterCfg.Character.Class == "sorceress" {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 15
 		}
 		return NewCountess().Run()
@@ -152,7 +152,7 @@ func (a Leveling) act1() error {
 
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
 
-			if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+			if a.ctx.CharacterCfg.Character.Class == "sorceress" {
 				a.ctx.CharacterCfg.Character.ClearPathDist = 7
 			} else {
 				a.ctx.CharacterCfg.Character.ClearPathDist = 15
@@ -192,7 +192,7 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Health.ChickenAt = 7
 	a.ctx.CharacterCfg.Gambling.Enabled = true
 
-	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+	if a.ctx.CharacterCfg.Character.Class == "sorceress" {
 		a.ctx.CharacterCfg.Character.ClearPathDist = 7
 	} else {
 		a.ctx.CharacterCfg.Character.ClearPathDist = 15
@@ -242,7 +242,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 	if lvl.Value >= 4 && lvl.Value < 12 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 
-		if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+		if a.ctx.CharacterCfg.Character.Class == "sorceress" {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 7
 		} else {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 15
