@@ -139,15 +139,21 @@ func itemsToIdentify() (items []data.Item) {
 			continue
 		}
 
-		// Skip identifying items that fully match a rule when unid and we're not leveling
-		_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+			// Force ID of Set and Uniques when leveling
+			_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+			if isLevelingChar {
 
-		if !isLevelingChar {
+			if i.Quality == item.QualityUnique || i.Quality == item.QualitySet {
+            items = append(items, i)
+            continue
+       		}
 
+								}
+
+			// Skip identifying items that fully match a rule when unid and we're not leveling
 			if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(i); result == nip.RuleResultFullMatch {
 				continue
 			}
-		}
 
 		items = append(items, i)
 	}
