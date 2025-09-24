@@ -188,10 +188,12 @@ func equipCTAIfFound(allItems []data.Item) (bool, error) {
 		}
 	}
 
+	EnsureSkillBindings()
+
 	// Switch back to primary
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
 	utils.Sleep(EquipDelayMS)
-	*ctx.Data = ctx.GameReader.GetData()
+	ctx.RefreshGameData()
 
 	return changed, nil
 }
