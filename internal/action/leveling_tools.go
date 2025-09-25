@@ -336,13 +336,7 @@ func EnsureSkillBindings() error {
 		return nil
 	}
 
-	level, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	mainSkill, skillsToBind := char.SkillsToBind()
-
-	if level.Value < 15 {
-		ctx.Logger.Debug("Player under level 15, forcing 'Attack' as main (left-click) skill.")
-		mainSkill = skill.AttackSkill
-	}
 
 	notBoundSkills := make([]skill.ID, 0)
 	for _, sk := range skillsToBind {
