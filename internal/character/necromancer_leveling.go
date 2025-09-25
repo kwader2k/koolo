@@ -61,7 +61,7 @@ func (n NecromancerLeveling) KillMonsterSequence(
 
 	// Level 1: Basic attack only
 	if lvl.Value < 2 {
-		step.PrimaryAttack(monster.UnitID, 1, true)
+		step.PrimaryAttack(monster.UnitID, 1, false, step.Distance(1, 3))
 		return nil
 	}
 
@@ -91,7 +91,7 @@ func (n NecromancerLeveling) KillMonsterSequence(
 	boneSpearRange := step.Distance(0, 15)
 	if lvl.Value >= 18 {
 		step.PrimaryAttack(monster.UnitID, 3, true, boneSpearRange)
-	} else { 
+	} else {
 		step.PrimaryAttack(monster.UnitID, 5, true, boneSpearRange)
 	}
 
