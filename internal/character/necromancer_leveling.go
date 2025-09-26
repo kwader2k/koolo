@@ -25,21 +25,22 @@ const (
 
 type NecromancerLeveling struct {
 	BaseCharacter
+	lastAmplifyDamageCast time.Time
 }
 
-func (n NecromancerLeveling) CheckKeyBindings() []skill.ID {
+func (n *NecromancerLeveling) CheckKeyBindings() []skill.ID {
 	return []skill.ID{}
 }
 
-func (n NecromancerLeveling) BuffSkills() []skill.ID {
+func (n *NecromancerLeveling) BuffSkills() []skill.ID {
 	return []skill.ID{skill.BoneArmor}
 }
 
-func (n NecromancerLeveling) PreCTABuffSkills() []skill.ID {
+func (n *NecromancerLeveling) PreCTABuffSkills() []skill.ID {
 	return []skill.ID{}
 }
 
-func (n NecromancerLeveling) KillMonsterSequence(
+func (n *NecromancerLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
 ) error {
@@ -65,8 +66,9 @@ func (n NecromancerLeveling) KillMonsterSequence(
 		return nil
 	}
 
-	if lvl.Value >= 11 && !monster.States.HasState(state.Amplifydamage) {
+	if lvl.Value >= 11 && !monster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
 		step.SecondaryAttack(skill.AmplifyDamage, monster.UnitID, 1, step.Distance(AmplifyDamageMinDistance, AmplifyDamageMaxDistance))
+		n.lastAmplifyDamageCast = time.Now()
 		return nil
 	}
 
@@ -98,12 +100,12 @@ func (n NecromancerLeveling) KillMonsterSequence(
 	return nil
 }
 
-func (n NecromancerLeveling) ShouldResetSkills() bool {
+func (n *NecromancerLeveling) ShouldResetSkills() bool {
 	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
 	return lvl.Value == 48
 }
 
-func (n NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
+func (n *NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
 
 	mainSkill := skill.AttackSkill
@@ -111,7 +113,6 @@ func (n NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 	if lvl.Value >= 2 {
 		mainSkill = skill.Teeth
-		skillBindings = append(skillBindings, skill.Teeth)
 	}
 	if lvl.Value >= 6 {
 		skillBindings = append(skillBindings, skill.ClayGolem)
@@ -123,14 +124,13 @@ func (n NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		skillBindings = append(skillBindings, skill.IronMaiden)
 	}
 	if lvl.Value >= 14 {
-		skillBindings = append(skillBindings, skill.BoneArmor, skill.BoneWall)
+		skillBindings = append(skillBindings, skill.BoneArmor)
 	}
 	if lvl.Value >= 17 {
 		skillBindings = append(skillBindings, skill.CorpseExplosion)
 	}
 	if lvl.Value >= 18 {
 		mainSkill = skill.BoneSpear
-		skillBindings = append(skillBindings, skill.BoneSpear)
 	}
 	if lvl.Value >= 26 {
 		skillBindings = append(skillBindings, skill.BonePrison)
@@ -156,7 +156,7 @@ func (n NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	return mainSkill, skillBindings
 }
 
-func (n NecromancerLeveling) StatPoints() []context.StatAllocation {
+func (n *NecromancerLeveling) StatPoints() []context.StatAllocation {
 	return []context.StatAllocation{
 		{Stat: stat.Energy, Points: 35},
 		{Stat: stat.Vitality, Points: 55},
@@ -171,7 +171,7 @@ func (n NecromancerLeveling) StatPoints() []context.StatAllocation {
 	}
 }
 
-func (n NecromancerLeveling) SkillPoints() []skill.ID {
+func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
 	var skillSequence []skill.ID
 
@@ -277,7 +277,7 @@ func (n NecromancerLeveling) SkillPoints() []skill.ID {
 	return skillsToAllocate
 }
 
-func (n NecromancerLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
+func (n *NecromancerLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 	startTime := time.Now()
 	var lastPrisonCast, lastGolemCast time.Time
 
@@ -316,7 +316,7 @@ func (n NecromancerLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) err
 	return fmt.Errorf("%s timeout", bossNPC)
 }
 
-func (n NecromancerLeveling) killMonsterByName(id npc.ID, monsterType data.MonsterType, skipOnImmunities []stat.Resist) error {
+func (n *NecromancerLeveling) killMonsterByName(id npc.ID, monsterType data.MonsterType, skipOnImmunities []stat.Resist) error {
 	for {
 		monster, found := n.Data.Monsters.FindOne(id, monsterType)
 		if !found || monster.Stats[stat.Life] <= 0 {
@@ -333,23 +333,23 @@ func (n NecromancerLeveling) killMonsterByName(id npc.ID, monsterType data.Monst
 	}
 }
 
-func (n NecromancerLeveling) KillCountess() error {
+func (n *NecromancerLeveling) KillCountess() error {
 	return n.killMonsterByName(npc.DarkStalker, data.MonsterTypeSuperUnique, nil)
 }
 
-func (n NecromancerLeveling) KillAndariel() error {
+func (n *NecromancerLeveling) KillAndariel() error {
 	return n.killBoss(npc.Andariel, time.Second*180)
 }
 
-func (n NecromancerLeveling) KillSummoner() error {
+func (n *NecromancerLeveling) KillSummoner() error {
 	return n.killMonsterByName(npc.Summoner, data.MonsterTypeUnique, nil)
 }
 
-func (n NecromancerLeveling) KillDuriel() error {
+func (n *NecromancerLeveling) KillDuriel() error {
 	return n.killBoss(npc.Duriel, time.Second*180)
 }
 
-func (n NecromancerLeveling) KillCouncil() error {
+func (n *NecromancerLeveling) KillCouncil() error {
 	return n.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 		var councilMembers []data.Monster
 		for _, m := range d.Monsters {
@@ -373,23 +373,23 @@ func (n NecromancerLeveling) KillCouncil() error {
 	}, nil)
 }
 
-func (n NecromancerLeveling) KillMephisto() error {
+func (n *NecromancerLeveling) KillMephisto() error {
 	return n.killBoss(npc.Mephisto, time.Second*180)
 }
 
-func (n NecromancerLeveling) KillIzual() error {
+func (n *NecromancerLeveling) KillIzual() error {
 	return n.killMonsterByName(npc.Izual, data.MonsterTypeUnique, nil)
 }
 
-func (n NecromancerLeveling) KillDiablo() error {
+func (n *NecromancerLeveling) KillDiablo() error {
 	return n.killBoss(npc.Diablo, time.Second*220)
 }
 
-func (n NecromancerLeveling) KillPindle() error {
+func (n *NecromancerLeveling) KillPindle() error {
 	return n.killMonsterByName(npc.DefiledWarrior, data.MonsterTypeSuperUnique, nil)
 }
 
-func (n NecromancerLeveling) KillAncients() error {
+func (n *NecromancerLeveling) KillAncients() error {
 	originalBackToTownCfg := n.CharacterCfg.BackToTown
 	n.CharacterCfg.BackToTown.NoHpPotions = false
 	n.CharacterCfg.BackToTown.NoMpPotions = false
@@ -409,10 +409,10 @@ func (n NecromancerLeveling) KillAncients() error {
 	return nil
 }
 
-func (n NecromancerLeveling) KillNihlathak() error {
+func (n *NecromancerLeveling) KillNihlathak() error {
 	return n.killMonsterByName(npc.Nihlathak, data.MonsterTypeSuperUnique, nil)
 }
 
-func (n NecromancerLeveling) KillBaal() error {
+func (n *NecromancerLeveling) KillBaal() error {
 	return n.killBoss(npc.BaalCrab, time.Second*240)
 }
