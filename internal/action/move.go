@@ -8,7 +8,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/utils"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -323,42 +322,6 @@ func MoveTo(toFunc func() (data.Position, bool)) error {
 			return nil // Teleport move successful
 		}
 
-		// *** CORE LOGIC FOR 100% ENGAGEMENT / SAFE ZONE FOR NON-TELEPORTING CHARACTERS ***
-		// Always check for enemies within clearPathDist before ANY movement attempt for non-teleporters.
-		monstersInRange := false
-		for _, m := range ctx.Data.Monsters.Enemies(data.MonsterAnyFilter()) {
-			if m.Stats[stat.Life] > 0 && ctx.PathFinder.DistanceFromMe(m.Position) <= clearPathDist && ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, m.Position) {
-				monstersInRange = true
-				break
-			}
-		}
-
-		if monstersInRange {
-			ctx.Logger.Debug("Monsters detected within safe zone for non-teleporter. Engaging enemies before attempting movement.")
-			// Only engage if cooldown allows to prevent spamming
-			if time.Since(actionLastMonsterHandlingTime) > monsterHandleCooldown {
-				actionLastMonsterHandlingTime = time.Now()
-				// Call ClearAreaAroundPosition to engage and clear monsters
-				clearErr := ClearAreaAroundPosition(ctx.Data.PlayerUnit.Position, clearPathDist, data.MonsterAnyFilter())
-				if clearErr != nil {
-					ctx.Logger.Warn("Failed to clear all monsters during safe zone check. Will retry movement.",
-						slog.String("error", fmt.Sprintf("%v", clearErr)))
-				}
-				// After engaging, try to pick up items
-				lootErr := ItemPickup(lootAfterCombatRadius)
-				if lootErr != nil {
-					ctx.Logger.Warn("Error picking up items after combat", slog.String("error", lootErr.Error()))
-				}
-				// After attempting to clear AND loot, continue the main movement loop to re-evaluate.
-				continue
-			} else {
-				// If monsters are in range but cooldown is active, we just wait a bit and re-check
-				utils.Sleep(50) // Small pause to prevent tight loops without action
-				continue
-			}
-		}
-
-		// If we reach here, it means no immediate monsters are in the clearPathDist, so we can try to move.
 		if lastMovement {
 			return nil
 		}
