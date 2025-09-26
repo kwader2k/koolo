@@ -20,7 +20,7 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 		case "sorceress_leveling":
 			return SorceressLeveling{BaseCharacter: bc}, nil
 		case "necromancer":
-			return NecromancerLeveling{BaseCharacter: bc}, nil	
+			return &NecromancerLeveling{BaseCharacter: bc}, nil
 		case "paladin":
 			return PaladinLeveling{BaseCharacter: bc}, nil
 		case "assassin":
