@@ -314,7 +314,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 								b.ctx.CharacterCfg.BackToTown.EquipmentBroken && action.IsEquipmentBroken() ||
 								b.ctx.CharacterCfg.BackToTown.NoMpPotions && needManaPotionsRefill ||
 								b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc) &&
-								!b.ctx.Data.PlayerUnit.Area.IsTown() {
+								!b.ctx.Data.PlayerUnit.Area.IsTown() && b.ctx.Data.PlayerUnit.TotalPlayerGold() > 100000 {
 
 								// Log the exact reason for going back to town
 								var reason string
