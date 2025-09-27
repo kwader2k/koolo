@@ -120,7 +120,6 @@ func (a Leveling) act4() error {
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {
 		err := NewQuests().killIzualQuest() // No immediate 'return' here
-		a.ctx.CharacterCfg.Character.ClearPathDist = 50
 		a.ctx.Logger.Debug("After Izual attempt, Izual quest completed status: %v", a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed())
 		if err != nil {
 			return err
