@@ -186,8 +186,8 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 			skill.Teeth,                      // 13
 			skill.BoneArmor,                  // 14
 			skill.BoneWall,                   // Radament
-			skill.BoneWall, skill.BoneWall, // 15-16
-			skill.CorpseExplosion,            // 17
+			skill.CorpseExplosion,            // 15
+			skill.BoneWall, skill.BoneWall, // 16-17
 			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, // 18-20
 			skill.CorpseExplosion,            // Izual
 			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, // 21-25
