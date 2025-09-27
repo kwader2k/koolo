@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
@@ -53,6 +56,72 @@ func NewSinglePlayerSupervisor(name string, bot *Bot, statsHandler *StatsHandler
 }
 
 var ErrUnrecoverableClientState = errors.New("unrecoverable client state, forcing restart")
+
+func (s *SinglePlayerSupervisor) orderRuns(runs []string) []string {
+
+	if s.bot.ctx.CharacterCfg.Game.Difficulty == "Nightmare" {
+
+		s.bot.ctx.Logger.Info("Changing difficulty to Nightmare")
+
+		s.changeDifficulty(difficulty.Nightmare)
+
+	}
+
+	if s.bot.ctx.CharacterCfg.Game.Difficulty == "Hell" {
+
+		s.bot.ctx.Logger.Info("Changing difficulty to Hell")
+
+		s.changeDifficulty(difficulty.Hell)
+
+	}
+
+	lvl, _ := s.bot.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+
+	if s.bot.ctx.CharacterCfg.Game.StopLevelingAt > 0 && lvl.Value >= s.bot.ctx.CharacterCfg.Game.StopLevelingAt {
+
+		s.bot.ctx.Logger.Info("Character level is already high enough, stopping.")
+
+		s.Stop()
+
+		return nil
+
+	}
+
+	return runs
+
+}
+
+func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
+
+	s.bot.ctx.GameReader.GetSelectedCharacterName()
+
+	s.bot.ctx.HID.Click(game.LeftButton, 6, 6)
+
+	utils.Sleep(1000)
+
+	switch d {
+
+	case difficulty.Normal:
+
+		s.bot.ctx.HID.Click(game.LeftButton, 400, 350)
+
+	case difficulty.Nightmare:
+
+		s.bot.ctx.HID.Click(game.LeftButton, 400, 400)
+
+	case difficulty.Hell:
+
+		s.bot.ctx.HID.Click(game.LeftButton, 400, 450)
+
+	}
+
+	utils.Sleep(1000)
+
+	s.bot.ctx.HID.Click(game.LeftButton, 6, 6)
+
+	utils.Sleep(1000)
+
+}
 
 // Start will return error if it can be started, otherwise will always return nil
 func (s *SinglePlayerSupervisor) Start() error {
@@ -129,7 +198,17 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		// In-game logic
 		timeSpentNotInGameStart = time.Now()
-		runs := run.BuildRuns(s.bot.ctx.CharacterCfg)
+
+		stringRuns := make([]string, len(s.bot.ctx.CharacterCfg.Game.Runs))
+		for i, r := range s.bot.ctx.CharacterCfg.Game.Runs {
+			stringRuns[i] = string(r)
+		}
+		orderedRuns := s.orderRuns(stringRuns)
+		if orderedRuns == nil {
+			return nil
+		}
+
+		runs := run.BuildRuns(s.bot.ctx.CharacterCfg, orderedRuns)
 		gameStart := time.Now()
 		if config.Characters[s.name].Game.RandomizeRuns {
 			rand.Shuffle(len(runs), func(i, j int) { runs[i], runs[j] = runs[j], runs[i] })
@@ -170,7 +249,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		defer runCancel()
 
 		// In-Game Activity Monitor
-				go func() {
+		go func() {
 			ticker := time.NewTicker(activityCheckInterval)
 			defer ticker.Stop()
 			var lastPosition data.Position
@@ -189,7 +268,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 					if s.bot.ctx.ExecutionPriority == ct.PriorityPause {
 						continue
 					}
-					
+
 					if !s.bot.ctx.GameReader.InGame() || s.bot.ctx.Data.PlayerUnit.ID == 0 {
 						continue
 					}
@@ -222,6 +301,21 @@ func (s *SinglePlayerSupervisor) Start() error {
 				// We don't log the generic "Bot run finished with error" message if it was a planned timeout
 			} else {
 				s.bot.ctx.Logger.Info(fmt.Sprintf("Bot run finished with error: %s. Initiating game exit and cooldown.", err.Error()))
+			}
+			if errors.Is(err, action.ErrMulingNeeded) {
+				muleCharacter := s.bot.ctx.CharacterCfg.Muling.SwitchToMule
+				s.bot.ctx.Logger.Info(fmt.Sprintf("Muling required, switching to character %s.", muleCharacter))
+
+				// Set up the character switch before stopping
+				s.bot.ctx.CurrentGame.SwitchToCharacter = muleCharacter
+				s.bot.ctx.RestartWithCharacter = muleCharacter
+				s.bot.ctx.CleanStopRequested = true
+
+				s.bot.ctx.Logger.Info("Stopping supervisor for muling",
+					slog.String("from", s.name),
+					slog.String("to", muleCharacter))
+				s.bot.ctx.StopSupervisor()
+				return nil
 			}
 
 			if exitErr := s.bot.ctx.Manager.ExitGame(); exitErr != nil {

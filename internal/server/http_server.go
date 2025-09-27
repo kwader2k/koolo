@@ -1029,6 +1029,11 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.BackToTown.MercDied = r.Form.Has("mercDied")
 		cfg.BackToTown.EquipmentBroken = r.Form.Has("equipmentBroken")
 
+		// Muling
+		cfg.Muling.Enabled = r.FormValue("mulingEnabled") == "on"
+		cfg.Muling.SwitchToMule = r.FormValue("mulingSwitchToMule")
+		cfg.Muling.ReturnTo = r.FormValue("mulingReturnTo")
+
 		config.SaveSupervisorConfig(supervisorName, cfg)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return

@@ -38,27 +38,28 @@ type Status struct {
 }
 
 type Context struct {
-	Name               string
-	ExecutionPriority  Priority
-	CharacterCfg       *config.CharacterCfg
-	Data               *game.Data
-	EventListener      *event.Listener
-	HID                *game.HID
-	Logger             *slog.Logger
-	Manager            *game.Manager
-	GameReader         *game.MemoryReader
-	MemoryInjector     *game.MemoryInjector
-	PathFinder         *pather.PathFinder
-	BeltManager        *health.BeltManager
-	HealthManager      *health.Manager
-	Char               Character
-	LastBuffAt         time.Time
-	ContextDebug       map[Priority]*Debug
-	CurrentGame        *CurrentGameHelper
-	SkillPointIndex    int // NEW FIELD: Tracks the next skill to consider from the character's SkillPoints() list
-	ForceAttack        bool
-	StopSupervisorFn   StopFunc
-	CleanStopRequested bool
+	Name                 string
+	ExecutionPriority    Priority
+	CharacterCfg         *config.CharacterCfg
+	Data                 *game.Data
+	EventListener        *event.Listener
+	HID                  *game.HID
+	Logger               *slog.Logger
+	Manager              *game.Manager
+	GameReader           *game.MemoryReader
+	MemoryInjector       *game.MemoryInjector
+	PathFinder           *pather.PathFinder
+	BeltManager          *health.BeltManager
+	HealthManager        *health.Manager
+	Char                 Character
+	LastBuffAt           time.Time
+	ContextDebug         map[Priority]*Debug
+	CurrentGame          *CurrentGameHelper
+	SkillPointIndex      int // NEW FIELD: Tracks the next skill to consider from the character's SkillPoints() list
+	ForceAttack          bool
+	StopSupervisorFn     StopFunc
+	CleanStopRequested   bool
+	RestartWithCharacter string // Used to indicate which character to start after a clean stop
 }
 
 type Debug struct {
@@ -76,6 +77,12 @@ type CurrentGameHelper struct {
 	PickupItems                bool
 	FailedToCreateGameAttempts int
 	FailedMenuAttempts         int
+	// When this is set, the supervisor will stop and the manager will start a new supervisor for the specified character.
+	SwitchToCharacter string
+	// Used to store the original character name when muling, so we can switch back.
+	OriginalCharacter string
+	ShouldCheckStash  bool
+	StashFull         bool
 }
 
 func (ctx *Context) StopSupervisor() {

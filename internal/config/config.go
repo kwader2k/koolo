@@ -264,6 +264,11 @@ type CharacterCfg struct {
 		Enabled bool        `yaml:"enabled"`
 		Items   []item.Name `yaml:"items"`
 	} `yaml:"gambling"`
+	Muling struct {
+		Enabled      bool   `yaml:"enabled"`
+		SwitchToMule string `yaml:"switchToMule"`
+		ReturnTo     string `yaml:"returnTo"`
+	} `yaml:"muling"`
 	CubeRecipes struct {
 		Enabled              bool     `yaml:"enabled"`
 		EnabledRecipes       []string `yaml:"enabledRecipes"`

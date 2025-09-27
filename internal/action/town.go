@@ -2,15 +2,46 @@ package action
 
 import (
 	"fmt"
+	"time"
 
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
+func StashFull() bool {
+	ctx := context.Get()
+	totalUsedSpace := 0
+
+	// Stash tabs are 1-indexed, so we check tabs 2, 3, and 4.
+	// These correspond to the first three shared stash tabs.
+	tabsToCheck := []int{2, 3, 4}
+
+	for _, tabIndex := range tabsToCheck {
+		SwitchStashTab(tabIndex)
+		time.Sleep(time.Millisecond * 500)
+		ctx.RefreshGameData()
+
+		sharedItems := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
+		for _, it := range sharedItems {
+			totalUsedSpace += it.Desc().InventoryWidth * it.Desc().InventoryHeight
+		}
+	}
+
+	// 3 tabs, 100 spaces each = 300 total spaces. 80% of 300 is 240.
+	return totalUsedSpace > 240
+}
+
 func PreRun(firstRun bool) error {
 	ctx := context.Get()
+
+	if ctx.CharacterCfg.Muling.Enabled && ctx.CharacterCfg.Muling.ReturnTo == "" {
+		if StashFull() {
+			return ErrMulingNeeded
+		}
+	}
 
 	DropMouseItem()
 	step.SetSkill(skill.Vigor)
@@ -36,8 +67,6 @@ func PreRun(firstRun bool) error {
 
 	// Identify - either via Cain or Tome
 	IdentifyAll(false)
-
-
 
 	if ctx.CharacterCfg.Game.Leveling.AutoEquip && isLevelingChar {
 		AutoEquip()

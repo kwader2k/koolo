@@ -507,6 +507,24 @@
                 <input type="checkbox" name="gamblingEnabled" {{ if .Config.Gambling.Enabled }}checked{{ end }}/>
                 Enabled
             </label>
+            <h3>Muling</h3>
+            <label>
+                <input type="checkbox" name="mulingEnabled" {{ if .Config.Muling.Enabled }}checked{{ end }}/>
+                Enabled
+            </label>
+            
+            <div class="grid">
+                <label>
+                    Switch to Mule Profile
+                    <input type="text" name="mulingSwitchToMule" value="{{ .Config.Muling.SwitchToMule }}" placeholder="Mule profile name">
+                    <small>SET THE NAME OF THE MULE PROFILE.</small>
+                </label>
+                <label>
+                    Return to Profile
+                    <input type="text" name="mulingReturnTo" value="{{ .Config.Muling.ReturnTo }}" placeholder="Farm profile name">
+                    <small>SET THE NAME OF THE PROFILE YOU WANT TO LAUNCH AFTER MULE.</small>
+                </label>
+            </div>
             <h3>Cube Recipes</h3>
             <label>
                 <input type="checkbox" style="padding-right: 30px" name="enableCubeRecipes" {{ if .Config.CubeRecipes.Enabled }}checked{{ end }}/>

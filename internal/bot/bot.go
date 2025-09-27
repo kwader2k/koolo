@@ -28,6 +28,7 @@ type Bot struct {
 	lastActivityTime      time.Time
 	lastKnownPosition     data.Position
 	lastPositionCheckTime time.Time
+	MuleManager
 }
 
 // calculateDistance returns the Euclidean distance between two positions.
@@ -48,12 +49,13 @@ func (b *Bot) NeedsTPsToContinue() bool {
 	return qty.Value == 0 || !found
 }
 
-func NewBot(ctx *botCtx.Context) *Bot {
+func NewBot(ctx *botCtx.Context, mm MuleManager) *Bot {
 	return &Bot{
 		ctx:                   ctx,
 		lastActivityTime:      time.Now(),      // Initialize
 		lastKnownPosition:     data.Position{}, // Will be updated on first game data refresh
 		lastPositionCheckTime: time.Now(),      // Initialize
+		MuleManager:           mm,
 	}
 }
 
@@ -420,4 +422,12 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 func (b *Bot) Stop() {
 	b.ctx.SwitchPriority(botCtx.PriorityStop)
 	b.ctx.Detach()
+}
+
+type MuleManager interface {
+	ShouldMule(stashFull bool, characterName string) (bool, string)
+}
+
+type StatsReporter interface {
+	ReportStats()
 }

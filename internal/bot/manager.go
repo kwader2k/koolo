@@ -15,6 +15,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
+	"github.com/hectorgimenez/koolo/internal/mule"
 	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
@@ -148,20 +149,62 @@ func (mng *SupervisorManager) StopAll() {
 }
 
 func (mng *SupervisorManager) Stop(supervisor string) {
-
 	s, found := mng.supervisors[supervisor]
 	if found {
+		// Capture switch info before anything else
+		var nextCharacter string
+		var originalCharacter string
+		if ctx := s.GetContext(); ctx != nil {
+			if ctx.CurrentGame != nil && ctx.CurrentGame.SwitchToCharacter != "" {
+				nextCharacter = ctx.CurrentGame.SwitchToCharacter
+				mng.logger.Info("Character switch requested",
+					slog.String("from", supervisor),
+					slog.String("to", nextCharacter))
+			}
+		}
+
+		// Log the stop sequence
+		mng.logger.Info("Starting supervisor stop sequence",
+			slog.String("supervisor", supervisor),
+			slog.String("nextCharacter", nextCharacter))
 
 		// Stop the Supervisor
 		s.Stop()
 
-		// Delete him from the list of Supervisors
+		// Delete from the list of Supervisors
 		delete(mng.supervisors, supervisor)
 
 		if cd, ok := mng.crashDetectors[supervisor]; ok {
 			cd.Stop()
 			delete(mng.crashDetectors, supervisor)
 		}
+
+		// If we need to restart with a different character
+		if nextCharacter != "" {
+			mng.logger.Info("Waiting before starting next character",
+				slog.String("character", nextCharacter))
+
+			time.Sleep(5 * time.Second) // Wait before starting new character
+
+			// Start in the same goroutine to ensure proper sequencing
+			if err := mng.Start(nextCharacter, false); err != nil {
+				mng.logger.Error("Failed to start next character",
+					slog.String("character", nextCharacter),
+					slog.String("error", err.Error()))
+			} else {
+				mng.logger.Info("Successfully started next character",
+					slog.String("character", nextCharacter))
+
+				if newSup, exists := mng.supervisors[nextCharacter]; exists {
+					if ctx := newSup.GetContext(); ctx != nil && ctx.CurrentGame != nil {
+						ctx.CurrentGame.SwitchToCharacter = ""
+						ctx.CurrentGame.OriginalCharacter = originalCharacter
+						ctx.RestartWithCharacter = ""
+					}
+				}
+			}
+		}
+
 	}
 }
 
@@ -260,19 +303,11 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	}
 	ctx.Char = char
 
-	bot := NewBot(ctx.Context)
+	muleManager := mule.NewManager(logger)
+	bot := NewBot(ctx.Context, muleManager)
 
 	statsHandler := NewStatsHandler(supervisorName, logger)
-	companionHandler := NewCompanionEventHandler(supervisorName, logger, cfg)
-
-	// Register event handler for stats
-	mng.eventListener.Register(statsHandler.Handle)
-	mng.eventListener.Register(companionHandler.Handle)
-
-	// Create the supervisor
-	var supervisor Supervisor
-
-	supervisor, err = NewSinglePlayerSupervisor(supervisorName, bot, statsHandler)
+	supervisor, err := NewSinglePlayerSupervisor(supervisorName, bot, statsHandler)
 
 	if err != nil {
 		return nil, nil, err
@@ -285,6 +320,20 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 
 		ctx := supervisor.GetContext()
 		if ctx.CleanStopRequested {
+			if ctx.RestartWithCharacter != "" {
+				mng.logger.Info("Supervisor requested restart with different character",
+					slog.String("from", supervisorName),
+					slog.String("to", ctx.RestartWithCharacter))
+				nextCharacter := ctx.RestartWithCharacter
+				mng.Stop(supervisorName)
+				time.Sleep(5 * time.Second) // Wait before starting new character
+				if err := mng.Start(nextCharacter, false); err != nil {
+					mng.logger.Error("Failed to start next character",
+						slog.String("character", nextCharacter),
+						slog.String("error", err.Error()))
+				}
+				return
+			}
 			mng.logger.Info("Supervisor stopped cleanly by game logic. Preventing restart.", slog.String("supervisor", supervisorName))
 			mng.Stop(supervisorName)
 			return
