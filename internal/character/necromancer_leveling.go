@@ -2,10 +2,12 @@ package character
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
@@ -15,12 +17,37 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 const (
-	AmplifyDamageMinDistance   = 18
-	AmplifyDamageMaxDistance   = 25
-	CorpseExplosionMaxDistance = 12
+	AmplifyDamageMinDistance           = 4
+	AmplifyDamageMaxDistance           = 25
+	BoneSpearMaxDistance               = 25
+	CorpseExplosionRadiusAroundMonster = 5
+	CorpseExplosionMaxDistance         = BoneSpearMaxDistance + CorpseExplosionRadiusAroundMonster
+	NecroLevelingMaxAttacksLoop        = 50
+	BonePrisonMinDistance              = 8
+	BonePrisonMaxDistance              = 25
+)
+
+var (
+	boneSpearRange         = step.Distance(0, BoneSpearMaxDistance)
+	amplifyDamageRange     = step.Distance(AmplifyDamageMinDistance, AmplifyDamageMaxDistance)
+	corpseExplosionRange   = step.Distance(0, CorpseExplosionMaxDistance)
+	bonePrisonRange        = step.Distance(BonePrisonMinDistance, BonePrisonMaxDistance)
+	bonePrisonAllowedAreas = []area.ID{
+		area.CatacombsLevel4, area.Tristram, area.MooMooFarm,
+		area.RockyWaste, area.DryHills, area.FarOasis,
+		area.LostCity, area.ValleyOfSnakes, area.DurielsLair,
+		area.SpiderForest, area.GreatMarsh, area.FlayerJungle,
+		area.LowerKurast, area.KurastBazaar, area.UpperKurast,
+		area.KurastCauseway, area.DuranceOfHateLevel3, area.OuterSteppes,
+		area.PlainsOfDespair, area.CityOfTheDamned, area.ChaosSanctuary,
+		area.BloodyFoothills, area.FrigidHighlands, area.ArreatSummit,
+		area.NihlathaksTemple, area.TheWorldStoneKeepLevel1, area.TheWorldStoneKeepLevel2,
+		area.TheWorldStoneKeepLevel3, area.ThroneOfDestruction,
+	}
 )
 
 type NecromancerLeveling struct {
@@ -44,60 +71,90 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
 ) error {
-	id, found := monsterSelector(*n.Data)
-	if !found {
-		return nil
-	}
+	completedAttackLoops := 0
+	previousUnitID := 0
+	bonePrisonnedMonsters := make(map[data.UnitID]time.Time)
 
-	if !n.preBattleChecks(id, skipOnImmunities) {
-		return nil
-	}
+	for {
+		id, found := monsterSelector(*n.Data)
+		if !found {
+			return nil
+		}
+		if previousUnitID != int(id) {
+			completedAttackLoops = 0
+		}
 
-	monster, found := n.Data.Monsters.FindByID(id)
-	if !found {
-		return nil
-	}
+		if !n.preBattleChecks(id, skipOnImmunities) {
+			return nil
+		}
 
-	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
+		if completedAttackLoops >= NecroLevelingMaxAttacksLoop {
+			n.Logger.Debug("Max attack loops reached")
+			return nil
+		}
 
-	// Level 1: Basic attack only
-	if lvl.Value < 2 {
-		step.PrimaryAttack(monster.UnitID, 1, false, step.Distance(1, 3))
-		return nil
-	}
+		targetMonster, found := n.Data.Monsters.FindByID(id)
+		if !found {
+			return nil
+		}
 
-	if lvl.Value >= 11 && !monster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
-		step.SecondaryAttack(skill.AmplifyDamage, monster.UnitID, 1, step.Distance(AmplifyDamageMinDistance, AmplifyDamageMaxDistance))
-		n.lastAmplifyDamageCast = time.Now()
-		return nil
-	}
+		lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
 
-	if lvl.Value >= 17 {
-		isCorpseNearby := false
-		radiusSquared := float64(5 * 5)
-		for _, c := range n.Data.Corpses {
-			dx := float64(monster.Position.X - c.Position.X)
-			dy := float64(monster.Position.Y - c.Position.Y)
-			if (dx*dx + dy*dy) < radiusSquared {
-				isCorpseNearby = true
-				break
+		if n.Data.PlayerUnit.Skills[skill.BonePrison].Level > 0 && targetMonster.IsElite() && slices.Contains(bonePrisonAllowedAreas, n.Data.PlayerUnit.Area) {
+			if lastPrisonCast, found := bonePrisonnedMonsters[targetMonster.UnitID]; !found || time.Since(lastPrisonCast) > time.Second*3 {
+				step.SecondaryAttack(skill.BonePrison, targetMonster.UnitID, 1, bonePrisonRange)
+				bonePrisonnedMonsters[targetMonster.UnitID] = time.Now()
+				n.Logger.Debug("Casting Bone Prison")
+				utils.Sleep(100)
 			}
 		}
 
-		if isCorpseNearby {
-			step.SecondaryAttack(skill.CorpseExplosion, monster.UnitID, 1, step.Distance(0, CorpseExplosionMaxDistance))
-			return nil
+		// Level 1: Basic attack only
+		if lvl.Value < 2 {
+			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 3))
+			n.Logger.Debug("Using Basic attack")
+			utils.Sleep(50)
 		}
-	}
 
-	boneSpearRange := step.Distance(0, 15)
-	if lvl.Value >= 18 {
-		step.PrimaryAttack(monster.UnitID, 3, true, boneSpearRange)
-	} else {
-		step.PrimaryAttack(monster.UnitID, 5, true, boneSpearRange)
-	}
+		if lvl.Value >= 11 && !targetMonster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
+			step.SecondaryAttack(skill.AmplifyDamage, targetMonster.UnitID, 1, amplifyDamageRange)
+			n.Logger.Debug("Casting Amplify Damage")
+			utils.Sleep(100)
+			n.lastAmplifyDamageCast = time.Now()
+		}
 
-	return nil
+		if lvl.Value >= 17 {
+			isCorpseNearby := false
+			radiusSquared := float64(CorpseExplosionRadiusAroundMonster * CorpseExplosionRadiusAroundMonster)
+			for _, c := range n.Data.Corpses {
+				dx := float64(targetMonster.Position.X - c.Position.X)
+				dy := float64(targetMonster.Position.Y - c.Position.Y)
+				if (dx*dx+dy*dy) < radiusSquared && n.PathFinder.DistanceFromMe(c.Position) < CorpseExplosionMaxDistance {
+					isCorpseNearby = true
+					break
+				}
+			}
+
+			if isCorpseNearby {
+				step.SecondaryAttack(skill.CorpseExplosion, targetMonster.UnitID, 1, corpseExplosionRange)
+				n.Logger.Debug("Casting Corpse Explosion")
+				utils.Sleep(100)
+			}
+		}
+
+		if lvl.Value >= 18 {
+			step.PrimaryAttack(targetMonster.UnitID, 3, true, boneSpearRange)
+			n.Logger.Debug("Casting Bone Spear")
+			utils.Sleep(100)
+		} else {
+			step.PrimaryAttack(targetMonster.UnitID, 5, true, boneSpearRange)
+			n.Logger.Debug("Casting Teeth")
+			utils.Sleep(100)
+		}
+
+		completedAttackLoops++
+		previousUnitID = int(id)
+	}
 }
 
 func (n *NecromancerLeveling) ShouldResetSkills() bool {
@@ -178,20 +235,20 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 	if lvl.Value < 48 {
 		skillSequence = []skill.ID{
 			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, // 2-5
-			skill.Teeth, // Den of Evil
-			skill.ClayGolem,                  // 6
+			skill.Teeth,                                        // Den of Evil
+			skill.ClayGolem,                                    // 6
 			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, // 7-10
-			skill.AmplifyDamage, // 11
-			skill.IronMaiden,                 // 12
-			skill.Teeth,                      // 13
-			skill.BoneArmor,                  // 14
-			skill.BoneWall,                   // Radament
-			skill.CorpseExplosion,            // 15
+			skill.AmplifyDamage,            // 11
+			skill.IronMaiden,               // 12
+			skill.Teeth,                    // 13
+			skill.BoneArmor,                // 14
+			skill.BoneWall,                 // Radament
+			skill.CorpseExplosion,          // 15
 			skill.BoneWall, skill.BoneWall, // 16-17
 			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, // 18-20
-			skill.CorpseExplosion,            // Izual
+			skill.CorpseExplosion,                                                                                             // Izual
 			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, // 21-25
-			skill.BonePrison, // 26
+			skill.BonePrison,                                  // 26
 			skill.ClayGolem, skill.ClayGolem, skill.ClayGolem, // 27-29
 			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, // 30-35
 			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, // 36-40
