@@ -404,10 +404,20 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 	}
 
 	for loc := range itemsByLoc {
+		// PROPOSED FIX for stability:
 		sort.Slice(itemsByLoc[loc], func(i, j int) bool {
 			scoreI := itemScores[itemsByLoc[loc][i].UnitID][loc]
 			scoreJ := itemScores[itemsByLoc[loc][j].UnitID][loc]
-			return scoreI > scoreJ
+
+			// 1. Primary Criterion: Higher score is better
+			if scoreI != scoreJ {
+				return scoreI > scoreJ
+			}
+
+			// 2. Secondary Criterion (Tie-breaker): If scores are equal,
+			//    use the item's unique UnitID. Choosing the smaller ID is arbitrary
+			//    but guarantees a consistent order.
+			return itemsByLoc[loc][i].UnitID < itemsByLoc[loc][j].UnitID
 		})
 
 		ctx.Logger.Debug(fmt.Sprintf("*** Sorted items for %s ***", loc))
