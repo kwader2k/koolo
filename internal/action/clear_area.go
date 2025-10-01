@@ -28,7 +28,8 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filter data.MonsterF
 	return ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 		for _, m := range d.Monsters.Enemies(filter) {
 			distanceToTarget := pather.DistanceFromPoint(pos, m.Position)
-			if ctx.Data.AreaData.IsWalkable(m.Position) && distanceToTarget <= radius && (ctx.Data.CanTeleport() || !ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position)) {
+			hasDoorBetween, _ := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position)
+			if ctx.Data.AreaData.IsWalkable(m.Position) && distanceToTarget <= radius && (ctx.Data.CanTeleport() || !hasDoorBetween) {
 				return m.UnitID, true
 			}
 		}
