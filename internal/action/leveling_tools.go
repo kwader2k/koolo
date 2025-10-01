@@ -55,6 +55,22 @@ var uiSkillPagePositionLegacy = [3]data.Position{
 var uiSkillRowPositionLegacy = [6]int{110, 195, 275, 355, 440, 520}
 var uiSkillColumnPositionLegacy = [3]int{690, 770, 855}
 
+var uiQuestLogActButtonsD2R = map[int]data.Position{
+	1: {X: 137, Y: 125},
+	2: {X: 205, Y: 125},
+	3: {X: 272, Y: 125},
+	4: {X: 340, Y: 125},
+	5: {X: 408, Y: 125},
+}
+
+var uiQuestLogActButtonsLegacy = map[int]data.Position{
+	1: {X: 300, Y: 87},
+	2: {X: 373, Y: 87},
+	3: {X: 450, Y: 87},
+	4: {X: 520, Y: 87},
+	5: {X: 598, Y: 87},
+}
+
 // New helper function to get equipped item coordinates based on body location and graphics mode
 func getEquippedSlotCoords(bodyLoc item.LocationType, legacyGraphics bool) (data.Position, bool) {
 	if legacyGraphics {
@@ -593,6 +609,24 @@ func UpdateQuestLog() error {
 
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.QuestLog)
 	utils.Sleep(1000)
+
+	currentAct := ctx.Data.PlayerUnit.Area.Act()
+
+	var actButtonPositions map[int]data.Position
+	if ctx.Data.LegacyGraphics {
+		actButtonPositions = uiQuestLogActButtonsLegacy
+	} else {
+		actButtonPositions = uiQuestLogActButtonsD2R
+	}
+
+	if pos, found := actButtonPositions[currentAct]; found {
+		ctx.Logger.Debug(fmt.Sprintf("Clicking Quest Log Act %d button at (%d, %d)", currentAct, pos.X, pos.Y))
+
+		ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
+		utils.Sleep(300)
+	} else {
+		ctx.Logger.Warn(fmt.Sprintf("Could not find Quest Log button coordinates for current Act: %d", currentAct))
+	}
 
 	return step.CloseAllMenus()
 }

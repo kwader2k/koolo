@@ -27,6 +27,8 @@ func (a Leveling) act5() error {
 		return nil
 	}
 
+	action.UpdateQuestLog()
+
 	action.VendorRefill(true, true)
 
 	// Gold Farming Logic (and immediate return if farming is needed)
@@ -255,6 +257,3 @@ func (a Leveling) CrystallinePassage() error {
 	return nil
 
 }
-
-
-

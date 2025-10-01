@@ -25,6 +25,8 @@ func (a Leveling) act3() error {
 		return nil
 	}
 
+	action.UpdateQuestLog()
+
 	// Try to find Hratli at pier, if he's there, talk to him, so he will move to the normal position later
 	hratli, found := a.ctx.Data.Monsters.FindOne(npc.Hratli, data.MonsterTypeNone)
 	if found {

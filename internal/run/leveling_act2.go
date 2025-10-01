@@ -33,6 +33,8 @@ func (a Leveling) act2() error {
 
 	running = true
 
+	action.UpdateQuestLog()
+
 	// Buy a 12 slot belt if we don't have one
 	if err := buyAct2Belt(a.ctx); err != nil {
 		return err

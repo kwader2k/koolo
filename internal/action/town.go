@@ -25,8 +25,6 @@ func PreRun(firstRun bool) error {
 		Stash(false)
 	}
 
-	UpdateQuestLog()
-
 	if !isLevelingChar {
 		// Store items that need to be left unidentified
 		if HaveItemsToStashUnidentified() {
@@ -36,8 +34,6 @@ func PreRun(firstRun bool) error {
 
 	// Identify - either via Cain or Tome
 	IdentifyAll(false)
-
-
 
 	if ctx.CharacterCfg.Game.Leveling.AutoEquip && isLevelingChar {
 		AutoEquip()
