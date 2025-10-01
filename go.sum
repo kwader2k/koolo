@@ -19,8 +19,8 @@ github.com/inkeliz/gowebview v1.0.1 h1:4gpLE2qt4kV3DB+xHkHKUeLLiGPN5Xw3or9A3hVqY
 github.com/inkeliz/gowebview v1.0.1/go.mod h1:4SNjXp/fogE11MwvJD67kMBmSObY2BBqinEgH8+8eM8=
 github.com/inkeliz/w32 v1.0.2 h1:Es8Bmw9ApOY0PVRpGs7wsqIKdK5C3xBkP5TOATfVmtU=
 github.com/inkeliz/w32 v1.0.2/go.mod h1:S/jA64It0hxx6uFFOwWBfAjNqvekp0iv1n98qLKd89I=
-github.com/kwader2k/d2go v0.0.0-20250909053904-00cfbed06838 h1:k0/fMPLc5zlCoNnxLiNj9l/KRS5zCAC5s9ZGlJZ/Jg0=
-github.com/kwader2k/d2go v0.0.0-20250909053904-00cfbed06838/go.mod h1:EOVayMaK8D13wsZiZ6n8AK3+Qflm1wHZsCqnzlVIci0=
+github.com/kwader2k/d2go v0.0.0-20251001190546-ead8e9fbe3a4 h1:LselPv17UuWQgDyw3eYMF/MQfEdZ9SYLtydqVMTllrs=
+github.com/kwader2k/d2go v0.0.0-20251001190546-ead8e9fbe3a4/go.mod h1:EOVayMaK8D13wsZiZ6n8AK3+Qflm1wHZsCqnzlVIci0=
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e h1:H+t6A/QJMbhCSEH5rAuRxh+CtW96g0Or0Fxa9IKr4uc=
 github.com/lxn/win v0.0.0-20210218163916-a377121e959e/go.mod h1:KxxjdtRkfNoYDCUP5ryK7XJJNTnpC8atvtmTheChOtk=
 github.com/otiai10/copy v1.14.0 h1:dCI/t1iTdYGtkvCuBG2BgR6KZa83PTclw4U5n2wAllU=
