@@ -224,7 +224,8 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 
 				distanceToMonster := ctx.PathFinder.DistanceFromMe(m.Position)
 				if distanceToMonster <= clearPathDist {
-					if ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, m.Position) && !ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position) {
+					hasDoorBetween, _ := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position)
+					if ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, m.Position) && !hasDoorBetween {
 						ctx.Logger.Debug(fmt.Sprintf("MoveTo: Monster detected in path with clear line of sight. Name: %s, Distance: %d", m.Name, distanceToMonster))
 						monsterFound = true
 						break
