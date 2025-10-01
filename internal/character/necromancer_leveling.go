@@ -8,6 +8,7 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
@@ -25,16 +26,15 @@ const (
 	AmplifyDamageMaxDistance           = 25
 	BoneSpearMaxDistance               = 25
 	CorpseExplosionRadiusAroundMonster = 5
-	CorpseExplosionMaxDistance         = BoneSpearMaxDistance + CorpseExplosionRadiusAroundMonster
-	NecroLevelingMaxAttacksLoop        = 50
+	NecroLevelingMaxAttacksLoop        = 100
 	BonePrisonMinDistance              = 8
 	BonePrisonMaxDistance              = 25
+	LevelToResetSkills                 = 26
 )
 
 var (
 	boneSpearRange         = step.Distance(0, BoneSpearMaxDistance)
 	amplifyDamageRange     = step.Distance(AmplifyDamageMinDistance, AmplifyDamageMaxDistance)
-	corpseExplosionRange   = step.Distance(0, CorpseExplosionMaxDistance)
 	bonePrisonRange        = step.Distance(BonePrisonMinDistance, BonePrisonMaxDistance)
 	bonePrisonAllowedAreas = []area.ID{
 		area.CatacombsLevel4, area.Tristram, area.MooMooFarm,
@@ -67,6 +67,11 @@ func (n *NecromancerLeveling) PreCTABuffSkills() []skill.ID {
 	return []skill.ID{}
 }
 
+func (n *NecromancerLeveling) hasSkill(sk skill.ID) bool {
+	skill, found := n.Data.PlayerUnit.Skills[sk]
+	return found && skill.Level > 0
+}
+
 func (n *NecromancerLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
@@ -80,6 +85,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 		if !found {
 			return nil
 		}
+
 		if previousUnitID != int(id) {
 			completedAttackLoops = 0
 		}
@@ -98,9 +104,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
-
-		if n.Data.PlayerUnit.Skills[skill.BonePrison].Level > 0 && targetMonster.IsElite() && slices.Contains(bonePrisonAllowedAreas, n.Data.PlayerUnit.Area) {
+		if n.hasSkill(skill.BonePrison) && targetMonster.IsElite() && slices.Contains(bonePrisonAllowedAreas, n.Data.PlayerUnit.Area) {
 			if lastPrisonCast, found := bonePrisonnedMonsters[targetMonster.UnitID]; !found || time.Since(lastPrisonCast) > time.Second*3 {
 				step.SecondaryAttack(skill.BonePrison, targetMonster.UnitID, 1, bonePrisonRange)
 				bonePrisonnedMonsters[targetMonster.UnitID] = time.Now()
@@ -109,45 +113,47 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 			}
 		}
 
-		// Level 1: Basic attack only
-		if lvl.Value < 2 {
-			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 3))
-			n.Logger.Debug("Using Basic attack")
-			utils.Sleep(50)
-		}
-
-		if lvl.Value >= 11 && !targetMonster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
+		if n.hasSkill(skill.AmplifyDamage) && !targetMonster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
 			step.SecondaryAttack(skill.AmplifyDamage, targetMonster.UnitID, 1, amplifyDamageRange)
 			n.Logger.Debug("Casting Amplify Damage")
 			utils.Sleep(100)
 			n.lastAmplifyDamageCast = time.Now()
 		}
 
-		if lvl.Value >= 17 {
+		if n.hasSkill(skill.CorpseExplosion) {
+			radius := 2.0 + float64(n.Data.PlayerUnit.Skills[skill.CorpseExplosion].Level-1)*0.25
+			radiusSquared := float64(radius * radius)
+			corpseExplosionMaxDistance := float64(BoneSpearMaxDistance) + radius
+
 			isCorpseNearby := false
-			radiusSquared := float64(CorpseExplosionRadiusAroundMonster * CorpseExplosionRadiusAroundMonster)
 			for _, c := range n.Data.Corpses {
 				dx := float64(targetMonster.Position.X - c.Position.X)
 				dy := float64(targetMonster.Position.Y - c.Position.Y)
-				if (dx*dx+dy*dy) < radiusSquared && n.PathFinder.DistanceFromMe(c.Position) < CorpseExplosionMaxDistance {
+				if (dx*dx+dy*dy) < radiusSquared && float64(n.PathFinder.DistanceFromMe(c.Position)) < corpseExplosionMaxDistance {
 					isCorpseNearby = true
 					break
 				}
 			}
 
 			if isCorpseNearby {
-				step.SecondaryAttack(skill.CorpseExplosion, targetMonster.UnitID, 1, corpseExplosionRange)
+				step.SecondaryAttack(skill.CorpseExplosion, targetMonster.UnitID, 1, step.Distance(1, int(corpseExplosionMaxDistance)))
 				n.Logger.Debug("Casting Corpse Explosion")
 				utils.Sleep(100)
 			}
 		}
 
-		if lvl.Value >= 18 {
-			step.PrimaryAttack(targetMonster.UnitID, 3, true, boneSpearRange)
+		lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
+
+		if n.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
+			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 2))
+			n.Logger.Debug("Using Basic attack")
+			utils.Sleep(50)
+		} else if n.hasSkill(skill.BoneSpear) {
+			step.PrimaryAttack(targetMonster.UnitID, 2, true, boneSpearRange)
 			n.Logger.Debug("Casting Bone Spear")
 			utils.Sleep(100)
-		} else {
-			step.PrimaryAttack(targetMonster.UnitID, 5, true, boneSpearRange)
+		} else if n.hasSkill(skill.Teeth) {
+			step.SecondaryAttack(skill.Teeth, targetMonster.UnitID, 3, boneSpearRange)
 			n.Logger.Debug("Casting Teeth")
 			utils.Sleep(100)
 		}
@@ -159,7 +165,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 
 func (n *NecromancerLeveling) ShouldResetSkills() bool {
 	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
-	return lvl.Value == 48
+	return lvl.Value == LevelToResetSkills
 }
 
 func (n *NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
@@ -168,40 +174,37 @@ func (n *NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
 
-	if lvl.Value >= 2 {
-		mainSkill = skill.Teeth
-	}
-	if lvl.Value >= 6 {
-		skillBindings = append(skillBindings, skill.ClayGolem)
-	}
-	if lvl.Value >= 11 {
-		skillBindings = append(skillBindings, skill.AmplifyDamage)
-	}
-	if lvl.Value >= 12 {
-		skillBindings = append(skillBindings, skill.IronMaiden)
-	}
-	if lvl.Value >= 14 {
-		skillBindings = append(skillBindings, skill.BoneArmor)
-	}
-	if lvl.Value >= 17 {
-		skillBindings = append(skillBindings, skill.CorpseExplosion)
-	}
-	if lvl.Value >= 18 {
+	if lvl.Value >= LevelToResetSkills {
 		mainSkill = skill.BoneSpear
-	}
-	if lvl.Value >= 26 {
-		skillBindings = append(skillBindings, skill.BonePrison)
-	}
 
-	if lvl.Value >= 48 {
-		mainSkill = skill.BoneSpear
 		skillBindings = []skill.ID{
-			skill.BoneSpear,
 			skill.CorpseExplosion,
-			skill.AmplifyDamage,
 			skill.BoneArmor,
-			skill.ClayGolem,
 			skill.BonePrison,
+		}
+
+		if n.hasSkill(skill.AmplifyDamage) {
+			skillBindings = append(skillBindings, skill.AmplifyDamage)
+		}
+
+	} else {
+		if n.hasSkill(skill.Teeth) {
+			skillBindings = append(skillBindings, skill.Teeth)
+		}
+		if n.hasSkill(skill.AmplifyDamage) {
+			skillBindings = append(skillBindings, skill.AmplifyDamage)
+		}
+		if n.hasSkill(skill.BoneArmor) {
+			skillBindings = append(skillBindings, skill.BoneArmor)
+		}
+		if n.hasSkill(skill.CorpseExplosion) {
+			skillBindings = append(skillBindings, skill.CorpseExplosion)
+		}
+		if n.hasSkill(skill.BoneSpear) {
+			mainSkill = skill.BoneSpear
+		}
+		if n.hasSkill(skill.BonePrison) {
+			skillBindings = append(skillBindings, skill.BonePrison)
 		}
 	}
 
@@ -215,14 +218,17 @@ func (n *NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 func (n *NecromancerLeveling) StatPoints() []context.StatAllocation {
 	return []context.StatAllocation{
-		{Stat: stat.Energy, Points: 35},
-		{Stat: stat.Vitality, Points: 55},
-		{Stat: stat.Strength, Points: 35},
-		{Stat: stat.Vitality, Points: 95},
-		{Stat: stat.Strength, Points: 60},
-		{Stat: stat.Vitality, Points: 130},
-		{Stat: stat.Strength, Points: 125},
-		{Stat: stat.Vitality, Points: 140},
+		{Stat: stat.Vitality, Points: 20},
+		{Stat: stat.Strength, Points: 20},
+		{Stat: stat.Vitality, Points: 30},
+		{Stat: stat.Strength, Points: 30},
+		{Stat: stat.Vitality, Points: 40},
+		{Stat: stat.Strength, Points: 40},
+		{Stat: stat.Vitality, Points: 50},
+		{Stat: stat.Strength, Points: 50},
+		{Stat: stat.Vitality, Points: 100},
+		{Stat: stat.Strength, Points: 95},
+		{Stat: stat.Vitality, Points: 250},
 		{Stat: stat.Strength, Points: 156},
 		{Stat: stat.Vitality, Points: 999},
 	}
@@ -232,56 +238,68 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
 	var skillSequence []skill.ID
 
-	if lvl.Value < 48 {
+	if lvl.Value < LevelToResetSkills {
 		skillSequence = []skill.ID{
-			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, // 2-5
-			skill.Teeth,                                        // Den of Evil
-			skill.ClayGolem,                                    // 6
-			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, // 7-10
-			skill.AmplifyDamage,            // 11
-			skill.IronMaiden,               // 12
-			skill.Teeth,                    // 13
-			skill.BoneArmor,                // 14
-			skill.BoneWall,                 // Radament
-			skill.CorpseExplosion,          // 15
-			skill.BoneWall, skill.BoneWall, // 16-17
-			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, // 18-20
-			skill.CorpseExplosion,                                                                                             // Izual
-			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, // 21-25
-			skill.BonePrison,                                  // 26
-			skill.ClayGolem, skill.ClayGolem, skill.ClayGolem, // 27-29
-			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, // 30-35
-			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, // 36-40
-			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, // 41-47
+			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth,
+			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth,
+			skill.AmplifyDamage,
+			skill.AmplifyDamage,
+			skill.BoneArmor,
+			skill.BoneWall, skill.BoneWall, skill.BoneWall,
+			skill.CorpseExplosion,
+			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
+			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
+			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
+			skill.BonePrison,
+			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
+			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
+			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
 		}
 	} else {
-		// Level 48+ Respec
 		skillSequence = []skill.ID{
-			// Prerequisites and main skills
-			skill.ClayGolem, skill.Teeth, skill.CorpseExplosion, skill.BoneSpear, skill.BoneArmor, skill.BoneWall, skill.BonePrison, skill.AmplifyDamage,
-			// Main skill allocation
-			skill.ClayGolem, skill.ClayGolem, skill.ClayGolem, skill.ClayGolem,
-			skill.GolemMastery, skill.GolemMastery, skill.GolemMastery,
-			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
-			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
-			skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison,
-			// Maxing out skills
-			skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, // Max Bone Prison
-			skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, // Max Bone Wall
-			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, // Max Teeth
-			skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, // Max Bone Spirit
+			skill.Teeth,
+			skill.BoneArmor,
+			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
+			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
+			skill.BoneWall,
+			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
+			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
+			skill.BonePrison, skill.BonePrison, skill.BonePrison,
+			skill.BoneSpear, skill.BonePrison, skill.BoneSpear, skill.BonePrison, skill.BoneSpear, skill.BonePrison,
+			skill.BoneSpear, skill.BonePrison, skill.BoneSpear, skill.BonePrison, skill.BoneSpear, skill.BonePrison,
+			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
+			skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison,
+			skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison, skill.BonePrison,
+			skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall,
+			skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall,
+			skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall, skill.BoneWall,
+			skill.AmplifyDamage,
+			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth,
+			skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth, skill.Teeth,
+			skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit,
+			skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit,
+			skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit, skill.BoneSpirit,
 		}
 	}
 
 	questSkillPoints := 0
+
+	if n.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
+		questSkillPoints += 4
+	}
+
+	if n.CharacterCfg.Game.Difficulty == difficulty.Hell {
+		questSkillPoints += 4
+	}
+
 	if n.Data.Quests[quest.Act1DenOfEvil].Completed() {
-		questSkillPoints++
+		questSkillPoints += 1
 	}
 	if n.Data.Quests[quest.Act2RadamentsLair].Completed() {
-		questSkillPoints++
+		questSkillPoints += 2
 	}
 	if n.Data.Quests[quest.Act4TheFallenAngel].Completed() {
-		questSkillPoints += 2
+		questSkillPoints += 4
 	}
 
 	totalPoints := (int(lvl.Value) - 1) + questSkillPoints
@@ -334,9 +352,9 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 	return skillsToAllocate
 }
 
-func (n *NecromancerLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
+func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
 	startTime := time.Now()
-	var lastPrisonCast, lastGolemCast time.Time
+	timeout := time.Second * 20
 
 	for time.Since(startTime) < timeout {
 		boss, found := n.Data.Monsters.FindOne(bossNPC, data.MonsterTypeUnique)
@@ -349,26 +367,13 @@ func (n *NecromancerLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) er
 			return nil
 		}
 
-		primaryAttackRange := step.Distance(1, 20)
-		lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
-
-		if time.Since(lastGolemCast) > time.Second*5 {
-			step.SecondaryAttack(skill.ClayGolem, boss.UnitID, 1)
-			lastGolemCast = time.Now()
-		}
-		if !boss.States.HasState(state.Ironmaiden) {
-			step.SecondaryAttack(skill.IronMaiden, boss.UnitID, 1)
-		}
-
-		if lvl.Value >= 26 {
-			if time.Since(lastPrisonCast) > time.Second*2 {
-				step.SecondaryAttack(skill.BonePrison, boss.UnitID, 1)
-				lastPrisonCast = time.Now()
+		n.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+			m, found := d.Monsters.FindOne(bossNPC, data.MonsterTypeUnique)
+			if !found {
+				return 0, false
 			}
-			step.PrimaryAttack(boss.UnitID, 5, true, primaryAttackRange)
-		} else {
-			step.PrimaryAttack(boss.UnitID, 3, true, primaryAttackRange)
-		}
+			return m.UnitID, true
+		}, nil)
 	}
 	return fmt.Errorf("%s timeout", bossNPC)
 }
@@ -395,7 +400,7 @@ func (n *NecromancerLeveling) KillCountess() error {
 }
 
 func (n *NecromancerLeveling) KillAndariel() error {
-	return n.killBoss(npc.Andariel, time.Second*180)
+	return n.killBoss(npc.Andariel)
 }
 
 func (n *NecromancerLeveling) KillSummoner() error {
@@ -403,7 +408,7 @@ func (n *NecromancerLeveling) KillSummoner() error {
 }
 
 func (n *NecromancerLeveling) KillDuriel() error {
-	return n.killBoss(npc.Duriel, time.Second*180)
+	return n.killBoss(npc.Duriel)
 }
 
 func (n *NecromancerLeveling) KillCouncil() error {
@@ -431,7 +436,7 @@ func (n *NecromancerLeveling) KillCouncil() error {
 }
 
 func (n *NecromancerLeveling) KillMephisto() error {
-	return n.killBoss(npc.Mephisto, time.Second*180)
+	return n.killBoss(npc.Mephisto)
 }
 
 func (n *NecromancerLeveling) KillIzual() error {
@@ -439,7 +444,7 @@ func (n *NecromancerLeveling) KillIzual() error {
 }
 
 func (n *NecromancerLeveling) KillDiablo() error {
-	return n.killBoss(npc.Diablo, time.Second*220)
+	return n.killBoss(npc.Diablo)
 }
 
 func (n *NecromancerLeveling) KillPindle() error {
@@ -471,5 +476,5 @@ func (n *NecromancerLeveling) KillNihlathak() error {
 }
 
 func (n *NecromancerLeveling) KillBaal() error {
-	return n.killBoss(npc.BaalCrab, time.Second*240)
+	return n.killBoss(npc.BaalCrab)
 }
