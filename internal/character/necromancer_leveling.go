@@ -22,20 +22,18 @@ import (
 )
 
 const (
-	AmplifyDamageMinDistance           = 4
 	AmplifyDamageMaxDistance           = 25
 	BoneSpearMaxDistance               = 25
 	CorpseExplosionRadiusAroundMonster = 5
 	NecroLevelingMaxAttacksLoop        = 100
-	BonePrisonMinDistance              = 8
 	BonePrisonMaxDistance              = 25
 	LevelToResetSkills                 = 26
 )
 
 var (
 	boneSpearRange         = step.Distance(0, BoneSpearMaxDistance)
-	amplifyDamageRange     = step.Distance(AmplifyDamageMinDistance, AmplifyDamageMaxDistance)
-	bonePrisonRange        = step.Distance(BonePrisonMinDistance, BonePrisonMaxDistance)
+	amplifyDamageRange     = step.Distance(0, AmplifyDamageMaxDistance)
+	bonePrisonRange        = step.Distance(0, BonePrisonMaxDistance)
 	bonePrisonAllowedAreas = []area.ID{
 		area.CatacombsLevel4, area.Tristram, area.MooMooFarm,
 		area.RockyWaste, area.DryHills, area.FarOasis,
@@ -105,23 +103,23 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 		}
 
 		if n.hasSkill(skill.BonePrison) && targetMonster.IsElite() && slices.Contains(bonePrisonAllowedAreas, n.Data.PlayerUnit.Area) {
-			if lastPrisonCast, found := bonePrisonnedMonsters[targetMonster.UnitID]; !found || time.Since(lastPrisonCast) > time.Second*3 {
+			if lastPrisonCast, found := bonePrisonnedMonsters[targetMonster.UnitID]; !found || time.Since(lastPrisonCast) > time.Second*4 {
 				step.SecondaryAttack(skill.BonePrison, targetMonster.UnitID, 1, bonePrisonRange)
 				bonePrisonnedMonsters[targetMonster.UnitID] = time.Now()
 				n.Logger.Debug("Casting Bone Prison")
-				utils.Sleep(100)
+				utils.Sleep(150)
 			}
 		}
 
 		if n.hasSkill(skill.AmplifyDamage) && !targetMonster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
 			step.SecondaryAttack(skill.AmplifyDamage, targetMonster.UnitID, 1, amplifyDamageRange)
 			n.Logger.Debug("Casting Amplify Damage")
-			utils.Sleep(100)
+			utils.Sleep(150)
 			n.lastAmplifyDamageCast = time.Now()
 		}
 
 		if n.hasSkill(skill.CorpseExplosion) {
-			radius := 2.0 + float64(n.Data.PlayerUnit.Skills[skill.CorpseExplosion].Level-1)*0.25
+			radius := 3.0 + float64(n.Data.PlayerUnit.Skills[skill.CorpseExplosion].Level-1)*0.3
 			radiusSquared := float64(radius * radius)
 			corpseExplosionMaxDistance := float64(BoneSpearMaxDistance) + radius
 
@@ -138,7 +136,10 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 			if isCorpseNearby {
 				step.SecondaryAttack(skill.CorpseExplosion, targetMonster.UnitID, 1, step.Distance(1, int(corpseExplosionMaxDistance)))
 				n.Logger.Debug("Casting Corpse Explosion")
-				utils.Sleep(100)
+				utils.Sleep(150)
+				completedAttackLoops++
+				previousUnitID = int(id)
+				continue
 			}
 		}
 
@@ -147,15 +148,15 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 		if n.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
 			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 2))
 			n.Logger.Debug("Using Basic attack")
-			utils.Sleep(50)
+			utils.Sleep(150)
 		} else if n.hasSkill(skill.BoneSpear) {
-			step.PrimaryAttack(targetMonster.UnitID, 2, true, boneSpearRange)
+			step.PrimaryAttack(targetMonster.UnitID, 3, true, boneSpearRange)
 			n.Logger.Debug("Casting Bone Spear")
-			utils.Sleep(100)
+			utils.Sleep(150)
 		} else if n.hasSkill(skill.Teeth) {
 			step.SecondaryAttack(skill.Teeth, targetMonster.UnitID, 3, boneSpearRange)
 			n.Logger.Debug("Casting Teeth")
-			utils.Sleep(100)
+			utils.Sleep(150)
 		}
 
 		completedAttackLoops++
@@ -165,7 +166,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 
 func (n *NecromancerLeveling) ShouldResetSkills() bool {
 	lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
-	return lvl.Value == LevelToResetSkills
+	return lvl.Value == LevelToResetSkills && n.Data.PlayerUnit.Skills[skill.Teeth].Level > 9
 }
 
 func (n *NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
@@ -249,8 +250,7 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 			skill.CorpseExplosion,
 			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
 			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
-			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
-			skill.BonePrison,
+			skill.BonePrison, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
 			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
 			skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion, skill.CorpseExplosion,
 			skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear, skill.BoneSpear,
@@ -367,7 +367,7 @@ func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
 			return nil
 		}
 
-		n.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+		return n.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 			m, found := d.Monsters.FindOne(bossNPC, data.MonsterTypeUnique)
 			if !found {
 				return 0, false
@@ -375,7 +375,8 @@ func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
 			return m.UnitID, true
 		}, nil)
 	}
-	return fmt.Errorf("%s timeout", bossNPC)
+
+	return fmt.Errorf("boss with ID: %d not found", bossNPC)
 }
 
 func (n *NecromancerLeveling) killMonsterByName(id npc.ID, monsterType data.MonsterType, skipOnImmunities []stat.Resist) error {
