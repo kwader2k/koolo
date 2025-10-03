@@ -9,6 +9,7 @@ const (
 	MausoleumRun        Run = "mausoleum"
 	SummonerRun         Run = "summoner"
 	DurielRun           Run = "duriel"
+	MuleRun             Run = "mule"
 	MephistoRun         Run = "mephisto"
 	TravincalRun        Run = "travincal"
 	EldritchRun         Run = "eldritch"
