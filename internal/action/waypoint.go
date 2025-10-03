@@ -85,6 +85,10 @@ func useWP(dest area.ID) error {
 				dest = currentWP.LinkedFrom[0]
 			}
 
+			if len(currentWP.LinkedFrom) == 0 {
+				return fmt.Errorf("no available waypoint found to reach destination %s", area.Areas[finalDestination].Name)
+			}
+
 			currentWP = area.WPAddresses[currentWP.LinkedFrom[0]]
 
 			if slices.Contains(ctx.Data.PlayerUnit.AvailableWaypoints, dest) {
