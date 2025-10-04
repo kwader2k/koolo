@@ -247,6 +247,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	ctx.CharacterCfg = cfg
 	ctx.EventListener = mng.eventListener
 	ctx.HID = hidM
+	ctx.PacketSender = game.NewPacketSender(gr.Process)
 	ctx.Logger = logger
 	ctx.Manager = game.NewGameManager(gr, hidM, supervisorName)
 	ctx.GameReader = gr
