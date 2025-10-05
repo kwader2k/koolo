@@ -59,9 +59,10 @@ func (gd *MemoryReader) FetchMapData() error {
 	d := gd.GameReader.GetData()
 	gd.mapSeed, _ = gd.getMapSeed(d.PlayerUnit.Address)
 	t := time.Now()
-	gd.logger.Debug("Fetching map data...", slog.Uint64("seed", uint64(gd.mapSeed)), slog.String("difficulty", string(config.Characters[gd.supervisorName].Game.Difficulty)))
+	cfg, _ := config.GetCharacter(gd.supervisorName)
+	gd.logger.Debug("Fetching map data...", slog.Uint64("seed", uint64(gd.mapSeed)), slog.String("difficulty", string(cfg.Game.Difficulty)))
 
-	mapData, err := map_client.GetMapData(strconv.Itoa(int(gd.mapSeed)), config.Characters[gd.supervisorName].Game.Difficulty)
+	mapData, err := map_client.GetMapData(strconv.Itoa(int(gd.mapSeed)), cfg.Game.Difficulty)
 	if err != nil {
 		return fmt.Errorf("error fetching map data: %w", err)
 	}

@@ -392,7 +392,7 @@ func (s *HttpServer) getStatusData() IndexData {
 		stats := s.manager.Status(supervisorName)
 
 		// Check if this is a companion follower
-		cfg, found := config.Characters[supervisorName]
+		cfg, found := config.GetCharacter(supervisorName)
 		if found {
 			// Add companion information to the stats
 			if cfg.Companion.Enabled && !cfg.Companion.Leader {
@@ -521,7 +521,7 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 	Supervisor := r.URL.Query().Get("characterName")
 
 	// Get the current auth method for the supervisor we wanna start
-	supCfg, currFound := config.Characters[Supervisor]
+	supCfg, currFound := config.GetCharacter(Supervisor)
 	if !currFound {
 		// There's no config for the current supervisor. THIS SHOULDN'T HAPPEN
 		return
@@ -543,7 +543,7 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Prevent launching if another client that is using token auth is starting
-			sCfg, found := config.Characters[sup]
+			sCfg, found := config.GetCharacter(sup)
 			if found {
 				if sCfg.AuthMethod == "TokenAuth" {
 					return
@@ -594,7 +594,7 @@ func (s *HttpServer) index(w http.ResponseWriter) {
 
 func (s *HttpServer) drops(w http.ResponseWriter, r *http.Request) {
 	sup := r.URL.Query().Get("supervisor")
-	cfg, found := config.Characters[sup]
+	cfg, found := config.GetCharacter(sup)
 	if !found {
 		http.Error(w, "Can't fetch drop data because the configuration "+sup+" wasn't found", http.StatusNotFound)
 		return
@@ -717,7 +717,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		supervisorName := r.Form.Get("name")
-		cfg, found := config.Characters[supervisorName]
+		cfg, found := config.GetCharacter(supervisorName)
 		if !found {
 			err = config.CreateFromTemplate(supervisorName)
 			if err != nil {
@@ -728,7 +728,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 				return
 			}
-			cfg = config.Characters["template"]
+			cfg, _ = config.GetCharacter("template")
 		}
 
 		cfg.MaxGameLength, _ = strconv.Atoi(r.Form.Get("maxGameLength"))
@@ -1036,9 +1036,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	supervisor := r.URL.Query().Get("supervisor")
-	cfg := config.Characters["template"]
+	cfg, _ := config.GetCharacter("template")
 	if supervisor != "" {
-		cfg = config.Characters[supervisor]
+		cfg, _ = config.GetCharacter(supervisor)
 	}
 
 	enabledRuns := make([]string, 0)
@@ -1102,7 +1102,7 @@ func (s *HttpServer) companionJoin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the supervisor exists and is a companion
-	cfg, found := config.Characters[requestData.Supervisor]
+	cfg, found := config.GetCharacter(requestData.Supervisor)
 	if !found {
 		http.Error(w, "Supervisor not found", http.StatusNotFound)
 		return

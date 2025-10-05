@@ -45,7 +45,7 @@ func (s *Scheduler) checkSchedules() {
 	now := time.Now()
 	currentDay := int(now.Weekday())
 
-	for supervisorName, cfg := range config.Characters {
+	for supervisorName, cfg := range config.GetCharacters() {
 		if !cfg.Scheduler.Enabled {
 			continue
 		}

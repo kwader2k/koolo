@@ -40,7 +40,7 @@ func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *S
 
 func (mng *SupervisorManager) AvailableSupervisors() []string {
 	availableSupervisors := make([]string, 0)
-	for name := range config.Characters {
+	for name := range config.GetCharacters() {
 		if name != "template" {
 			availableSupervisors = append(availableSupervisors, name)
 		}
@@ -120,7 +120,7 @@ func (mng *SupervisorManager) ReloadConfig() error {
 
 	// Apply new configs to running supervisors
 	for name, sup := range mng.supervisors {
-		newCfg, exists := config.Characters[name]
+		newCfg, exists := config.GetCharacter(name)
 		if !exists {
 			continue
 		}
@@ -203,7 +203,7 @@ func (mng *SupervisorManager) GetContext(characterName string) *context.Context 
 }
 
 func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slog.Logger, attach bool, optionalPID uint32, optionalHWND win.HWND) (Supervisor, *game.CrashDetector, error) {
-	cfg, found := config.Characters[supervisorName]
+	cfg, found := config.GetCharacter(supervisorName)
 	if !found {
 		return nil, nil, fmt.Errorf("character %s not found", supervisorName)
 	}
@@ -303,7 +303,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 			tokenAuthStarting := false
 
 			// Get the current supervisor's config
-			supCfg := config.Characters[supervisorName]
+			supCfg, _ := config.GetCharacter(supervisorName)
 
 			for _, sup := range supervisorList {
 
@@ -319,7 +319,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 						break
 					}
 
-					sCfg, found := config.Characters[sup]
+					sCfg, found := config.GetCharacter(sup)
 					if found {
 						if sCfg.AuthMethod == "TokenAuth" {
 							// A client that uses token auth is currently starting, hold off restart

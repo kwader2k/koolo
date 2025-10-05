@@ -287,14 +287,21 @@ type CharacterCfg struct {
 
 type BeltColumns [4]string
 
-func GetCharacters() map[string]*CharacterCfg {
-	// Acquire a Read Lock. This allows concurrent reads but blocks if a write (Load) is occurring.
+func GetCharacter(name string) (*CharacterCfg, bool) {
 	cfgMux.RLock()
-
-	// We defer the RUnlock so the lock is released right before the calling function returns.
 	defer cfgMux.RUnlock()
+	charCfg, exists := Characters[name]
+	return charCfg, exists
+}
 
-	return Characters
+func GetCharacters() map[string]*CharacterCfg {
+	cfgMux.RLock()
+	defer cfgMux.RUnlock()
+	copy := make(map[string]*CharacterCfg, len(Characters))
+	for k, v := range Characters {
+		copy[k] = v
+	}
+	return copy
 }
 
 func (bm BeltColumns) Total(potionType data.PotionType) int {

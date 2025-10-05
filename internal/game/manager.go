@@ -30,10 +30,10 @@ func NewGameManager(gr *MemoryReader, hid *HID, sueprvisorName string) *Manager 
 
 func (gm *Manager) ExitGame() error {
 
-	const maxAttempts = 50 
+	const maxAttempts = 50
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		if !gm.gr.InGame() {
-			return nil 
+			return nil
 		}
 
 		data := gm.gr.GetData()
@@ -92,8 +92,9 @@ func (gm *Manager) NewGame() error {
 		difficulty.Hell:      {X: 640, Y: 403},
 	}
 
-	createX := difficultyPosition[config.Characters[gm.supervisorName].Game.Difficulty].X
-	createY := difficultyPosition[config.Characters[gm.supervisorName].Game.Difficulty].Y
+	cfg, _ := config.GetCharacter(gm.supervisorName)
+	createX := difficultyPosition[cfg.Game.Difficulty].X
+	createY := difficultyPosition[cfg.Game.Difficulty].Y
 	gm.hid.Click(LeftButton, 600, 650)
 	utils.Sleep(250)
 	gm.hid.Click(LeftButton, createX, createY)
@@ -128,14 +129,15 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 		difficulty.Hell:      {X: 1065, Y: 252},
 	}
 
-	difficultyPos := difficultyPosition[config.Characters[gm.supervisorName].Game.Difficulty]
+	cfg, _ := config.GetCharacter(gm.supervisorName)
+	difficultyPos := difficultyPosition[cfg.Game.Difficulty]
 	gm.hid.Click(LeftButton, difficultyPos.X, difficultyPos.Y)
 	utils.Sleep(200)
 
 	// Click the game name textbox, delete text and type new game name
 	gm.hid.Click(LeftButton, 1000, 116)
 	gm.clearGameNameOrPasswordField()
-	gameName := config.Characters[gm.supervisorName].Companion.GameNameTemplate + fmt.Sprintf("%d", gameCounter)
+	gameName := cfg.Companion.GameNameTemplate + fmt.Sprintf("%d", gameCounter)
 	for _, ch := range gameName {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
 	}
@@ -143,7 +145,7 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 	// Same for password
 	gm.hid.Click(LeftButton, 1000, 161)
 	utils.Sleep(200)
-	gamePassword := config.Characters[gm.supervisorName].Companion.GamePassword
+	gamePassword := cfg.Companion.GamePassword
 	if gamePassword != "" {
 		gm.clearGameNameOrPasswordField()
 		for _, ch := range gamePassword {

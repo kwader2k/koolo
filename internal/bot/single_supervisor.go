@@ -131,9 +131,9 @@ func (s *SinglePlayerSupervisor) Start() error {
 		timeSpentNotInGameStart = time.Now()
 		runs := run.BuildRuns(s.bot.ctx.CharacterCfg)
 		gameStart := time.Now()
-		characters := config.GetCharacters() // Calls the thread-safe getter
+		cfg, _ := config.GetCharacter(s.name)
 
-		if characters[s.name].Game.RandomizeRuns {
+		if cfg.Game.RandomizeRuns {
 			rand.Shuffle(len(runs), func(i, j int) { runs[i], runs[j] = runs[j], runs[i] })
 		}
 
