@@ -131,7 +131,9 @@ func (s *SinglePlayerSupervisor) Start() error {
 		timeSpentNotInGameStart = time.Now()
 		runs := run.BuildRuns(s.bot.ctx.CharacterCfg)
 		gameStart := time.Now()
-		if config.Characters[s.name].Game.RandomizeRuns {
+		characters := config.GetCharacters() // Calls the thread-safe getter
+
+		if characters[s.name].Game.RandomizeRuns {
 			rand.Shuffle(len(runs), func(i, j int) { runs[i], runs[j] = runs[j], runs[i] })
 		}
 
@@ -170,7 +172,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		defer runCancel()
 
 		// In-Game Activity Monitor
-				go func() {
+		go func() {
 			ticker := time.NewTicker(activityCheckInterval)
 			defer ticker.Stop()
 			var lastPosition data.Position
@@ -189,7 +191,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 					if s.bot.ctx.ExecutionPriority == ct.PriorityPause {
 						continue
 					}
-					
+
 					if !s.bot.ctx.GameReader.InGame() || s.bot.ctx.Data.PlayerUnit.ID == 0 {
 						continue
 					}

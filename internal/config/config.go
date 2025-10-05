@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -24,6 +25,7 @@ import (
 )
 
 var (
+	cfgMux     sync.RWMutex
 	Koolo      *KooloCfg
 	Characters map[string]*CharacterCfg
 	Version    = "dev"
@@ -285,6 +287,16 @@ type CharacterCfg struct {
 
 type BeltColumns [4]string
 
+func GetCharacters() map[string]*CharacterCfg {
+	// Acquire a Read Lock. This allows concurrent reads but blocks if a write (Load) is occurring.
+	cfgMux.RLock()
+
+	// We defer the RUnlock so the lock is released right before the calling function returns.
+	defer cfgMux.RUnlock()
+
+	return Characters
+}
+
 func (bm BeltColumns) Total(potionType data.PotionType) int {
 	typeString := ""
 	switch potionType {
@@ -307,6 +319,8 @@ func (bm BeltColumns) Total(potionType data.PotionType) int {
 }
 
 func Load() error {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
 	Characters = make(map[string]*CharacterCfg)
 
 	cwd, err := os.Getwd()
