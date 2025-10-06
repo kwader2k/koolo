@@ -102,6 +102,7 @@ type Stats struct {
 	Drops               []data.Drop
 	Games               []GameStats
 	IsCompanionFollower bool
+	MuleEnabled         bool `json:"muleEnabled"`
 }
 
 type GameStats struct {
