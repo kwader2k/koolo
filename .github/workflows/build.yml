@@ -20,7 +20,7 @@ jobs:
       - name: "Setup Go"
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.24"
           check-latest: true
 
       - name: "Cache Go modules"
@@ -39,27 +39,72 @@ jobs:
           Add-Content $env:GITHUB_PATH "$env:USERPROFILE\go\bin"
 
       - name: "Building Obfuscated artifacts"
-        shell: pwsh
+        shell: cmd
         run: |
-          # Build obfuscated binary
-          $buildID = [guid]::NewGuid().ToString()
-          $buildTime = Get-Date -Format "o"
+          @echo off
+          setlocal enabledelayedexpansion
+          set GOGARBLE=!github.com/hectorgimenez/koolo/internal/server*,!github.com/hectorgimenez/koolo/internal/event*,!github.com/inkeliz/gowebview*
 
-          garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=$buildID' -X 'main.buildTime=$buildTime' -X 'github.com/kwader2k/koolo/internal/config.Version=${{ github.ref_name }}'" -o ".\build\$buildID.exe" ./cmd/koolo
+          if not exist build mkdir build
 
-          # Verify build
-          if (Test-Path ".\build\$buildID.exe") {
-              echo "Obfuscated build successful"
-          } else {
-              throw "Obfuscated build failed"
-          }
+          for /f "delims=" %%a in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
+          for /f "delims=" %%b in ('powershell -NoProfile -Command "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"
 
-          if (Test-Path "README.md") { Copy-Item "README.md" ".\build\" }
-          if (Test-Path "tools") { Copy-Item -Recurse "tools" ".\build\tools" }
-          New-Item -ItemType Directory -Path ".\build\config" -Force
-          if (Test-Path "config\koolo.yaml.dist") { Copy-Item "config\koolo.yaml.dist" ".\build\config\koolo.yaml" }
-          if (Test-Path "config\Settings.json") { Copy-Item "config\Settings.json" ".\build\config\Settings.json" }
-          if (Test-Path "config\template") { Copy-Item -Recurse "config\template" ".\build\config\template" }
+          echo Building Koolo with BUILD_ID=%BUILD_ID%
+
+          garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X main.buildID=%BUILD_ID% -X main.buildTime=%BUILD_TIME% -X github.com/hectorgimenez/koolo/internal/config.Version=%GITHUB_REF_NAME%" -o ".\build\%BUILD_ID%.exe" ./cmd/koolo
+          if exist ".\build\%BUILD_ID%.exe" (
+            echo Obfuscated build successful
+          ) else (
+            echo Obfuscated build failed
+            exit /b 1
+          )
+
+          if exist README.md (
+            copy /Y README.md build\ >nul
+            if errorlevel 1 (
+              echo Failed to copy README.md
+              exit /b 1
+            )
+          )
+
+          if exist tools (
+            if exist build\tools rd /s /q build\tools
+            xcopy tools build\tools /E /I /Y >nul
+            if errorlevel 1 (
+              echo Failed to copy tools directory
+              exit /b 1
+            )
+          )
+
+          if not exist build\config mkdir build\config
+
+          if exist config\koolo.yaml.dist (
+            copy /Y config\koolo.yaml.dist build\config\koolo.yaml >nul
+            if errorlevel 1 (
+              echo Failed to copy koolo.yaml.dist
+              exit /b 1
+            )
+          )
+
+          if exist config\Settings.json (
+            copy /Y config\Settings.json build\config\Settings.json >nul
+            if errorlevel 1 (
+              echo Failed to copy Settings.json
+              exit /b 1
+            )
+          )
+
+          if exist config\template (
+            if exist build\config\template rd /s /q build\config\template
+            xcopy config\template build\config\template /E /I /Y >nul
+            if errorlevel 1 (
+              echo Failed to copy template directory
+              exit /b 1
+            )
+          )
+
+          endlocal
 
       - name: "Upload Artifact"
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
