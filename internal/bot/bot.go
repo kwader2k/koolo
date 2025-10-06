@@ -310,10 +310,14 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 							(b.ctx.Data.PlayerUnit.TotalPlayerGold() > 1000 && lvl.Value < 20) ||
 							(b.ctx.Data.PlayerUnit.TotalPlayerGold() > 5000 && lvl.Value >= 20) {
 
-							if b.ctx.CharacterCfg.BackToTown.NoHpPotions && needHealingPotionsRefill ||
+							if (b.ctx.CharacterCfg.BackToTown.NoHpPotions && needHealingPotionsRefill ||
 								b.ctx.CharacterCfg.BackToTown.EquipmentBroken && action.IsEquipmentBroken() ||
 								b.ctx.CharacterCfg.BackToTown.NoMpPotions && needManaPotionsRefill ||
-								b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc && !b.ctx.Data.PlayerUnit.Area.IsTown() && b.ctx.Data.PlayerUnit.TotalPlayerGold() > 100000 {
+								b.ctx.CharacterCfg.BackToTown.MercDied &&
+									b.ctx.Data.MercHPPercent() <= 0 &&
+									b.ctx.CharacterCfg.Character.UseMerc &&
+									b.ctx.Data.PlayerUnit.TotalPlayerGold() > 100000) &&
+								!b.ctx.Data.PlayerUnit.Area.IsTown() {
 
 								// Log the exact reason for going back to town
 								var reason string
