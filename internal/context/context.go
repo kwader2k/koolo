@@ -59,7 +59,6 @@ type Context struct {
 	ForceAttack        bool
 	StopSupervisorFn   StopFunc
 	CleanStopRequested bool
-	PacketSender       *game.PacketSender
 }
 
 type Debug struct {
