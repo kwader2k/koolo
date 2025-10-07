@@ -60,6 +60,7 @@ type Context struct {
 	StopSupervisorFn     StopFunc
 	CleanStopRequested   bool
 	RestartWithCharacter string // Used to indicate which character to start after a clean stop
+	PacketSender       *game.PacketSender
 }
 
 type Debug struct {
