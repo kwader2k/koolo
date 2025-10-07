@@ -42,7 +42,7 @@ func (a Leveling) act2() error {
 
 	a.AdjustDifficultyConfig()
 
-	action.VendorRefill(true, true)
+	action.VendorRefill(false, true)
 
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 

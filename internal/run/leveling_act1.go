@@ -42,7 +42,7 @@ func (a Leveling) act1() error {
 
 	// Refill potions and ensure bindings for players level > 1
 	if lvl.Value > 1 {
-		action.VendorRefill(true, true)
+		action.VendorRefill(false, true)
 		if err := action.EnsureSkillBindings(); err != nil {
 			a.ctx.Logger.Error(fmt.Sprintf("Error ensuring skill bindings after vendor refill: %s", err.Error()))
 		}
@@ -307,10 +307,9 @@ func (a Leveling) AdjustDifficultyConfig() {
 			if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
 				// don't engage when teleing and running oom
 				a.ctx.CharacterCfg.Character.ClearPathDist = 0
-				} else {
+			} else {
 				a.ctx.CharacterCfg.Character.ClearPathDist = 15
-				}
-
+			}
 
 		}
 		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
@@ -536,4 +535,3 @@ func (a Leveling) shouldFarmCountessForRunes() bool {
 	a.ctx.Logger.Info("All required runes are present. Skipping Countess farm.")
 	return false
 }
-

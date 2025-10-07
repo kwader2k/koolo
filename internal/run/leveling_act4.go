@@ -44,7 +44,7 @@ func (a Leveling) act4() error {
 
 	action.UpdateQuestLog()
 
-	action.VendorRefill(true, true)
+	action.VendorRefill(false, true)
 
 	rawFireRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.FireResist, 0)
 	rawLightRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.LightningResist, 0)
@@ -58,7 +58,7 @@ func (a Leveling) act4() error {
 
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	_, found := a.ctx.Data.Objects.FindOne(object.LastLastPortal)
-	if !found && a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && ((lvl.Value >= 60 && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && effectiveFireRes >= 75 && effectiveLightRes >= 50) || (lvl.Value >= 33 && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal)) {
+	if !found && a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && ((lvl.Value >= 60 && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && effectiveFireRes >= 75 && effectiveLightRes >= 50) || (lvl.Value >= 30 && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal)) {
 		err := action.InteractNPC(npc.Tyrael2)
 		if err != nil {
 			return err // It's good practice to handle errors
@@ -136,7 +136,7 @@ func (a Leveling) act4() error {
 		}
 	}
 
-	if (a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() && !a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed()) || (a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && (lvl.Value < 60 || effectiveFireRes < 75 || effectiveLightRes < 50)) || (a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 33) {
+	if (a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() && !a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed()) || (a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && (lvl.Value < 60 || effectiveFireRes < 75 || effectiveLightRes < 50)) || (a.ctx.Data.Quests[quest.Act4TerrorsEnd].Completed() && a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 30) {
 		diabloRun := NewDiablo()
 		err := diabloRun.Run()
 		if err != nil {

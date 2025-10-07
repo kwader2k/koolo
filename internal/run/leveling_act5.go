@@ -29,7 +29,7 @@ func (a Leveling) act5() error {
 
 	action.UpdateQuestLog()
 
-	action.VendorRefill(true, true)
+	action.VendorRefill(false, true)
 
 	// Gold Farming Logic (and immediate return if farming is needed)
 	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 30000) ||
@@ -91,7 +91,7 @@ func (a Leveling) act5() error {
 		}
 	}
 
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && lvl.Value < 60 || a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 33 {
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && lvl.Value < 60 || a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 30 {
 
 		diabloRun := NewDiablo()
 		err := diabloRun.Run()

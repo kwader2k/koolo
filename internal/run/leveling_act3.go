@@ -35,7 +35,7 @@ func (a Leveling) act3() error {
 
 	running = true
 
-	action.VendorRefill(true, true)
+	action.VendorRefill(false, true)
 
 	_, potionFound := a.ctx.Data.Inventory.Find("PotionOfLife", item.LocationInventory)
 	q := a.ctx.Data.Quests[quest.Act3TheGoldenBird]

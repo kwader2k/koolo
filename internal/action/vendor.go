@@ -6,7 +6,6 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
-	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/town"
@@ -34,6 +33,7 @@ func VendorRefill(forceRefill bool, sellJunk bool, tempLock ...[][]int) (err err
 	if vendorNPC == npc.Ormus {
 		_, needsBuy := town.ShouldBuyKeys()
 		if needsBuy && ctx.Data.PlayerUnit.Class != data.Assassin {
+			MoveToCoords(data.Position{X: 5224, Y: 5045})
 			vendorNPC = npc.Hratli
 		}
 	}
@@ -102,16 +102,10 @@ type VendorItemRequest struct {
 }
 
 func shouldVisitVendor() bool {
-	ctx := botCtx.Get() // ctx is of type *botCtx.Status
+	ctx := botCtx.Get()
 	ctx.SetLastStep("shouldVisitVendor")
 
-	// Check if we should sell junk
 	if len(town.ItemsToBeSold()) > 0 {
-		// Pass the embedded Context field: ctx.Context
-		if !hasTownPortalsInInventory(ctx.Context) { // <--- Renamed function call
-			ctx.Logger.Debug("Skipping vendor visit (sell junk): No Town Portals available to get to town.")
-			return false
-		}
 		return true
 	}
 
@@ -120,24 +114,8 @@ func shouldVisitVendor() bool {
 	}
 
 	if ctx.BeltManager.ShouldBuyPotions() || town.ShouldBuyTPs() || town.ShouldBuyIDs() {
-		// Pass the embedded Context field: ctx.Context
-		if !hasTownPortalsInInventory(ctx.Context) {
-			ctx.Logger.Debug("Skipping vendor visit (buy consumables): No Town Portals available to get to town.")
-			return false
-		}
 		return true
 	}
 
 	return false
-}
-
-func hasTownPortalsInInventory(ctx *botCtx.Context) bool { // <--- Renamed function definition
-	portalTome, found := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
-	if !found {
-		return false // No portal tome found, so no TPs, can't go to town.
-	}
-
-	qty, found := portalTome.FindStat(stat.Quantity, 0)
-	// If quantity stat isn't found, or if quantity is exactly 0, then we can't make a TP.
-	return qty.Value > 0 && found
 }
