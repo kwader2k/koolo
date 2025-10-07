@@ -111,7 +111,7 @@ func (s WindDruid) KillMonsterSequence(
 		monster, found := s.Data.Monsters.FindByID(currentTargetID)
 		if !found || monster.Stats[stat.Life] <= 0 { // Check if target is dead or missing
 			currentTargetID = 0
-			continue
+			return nil
 		}
 
 		if !s.preBattleChecks(currentTargetID, skipOnImmunities) { // Perform pre-combat checks
