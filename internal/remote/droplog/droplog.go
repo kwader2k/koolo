@@ -46,7 +46,7 @@ func (w *Writer) Handle(_ context.Context, e event.Event) error {
 	sup := e.Supervisor()
 	charName := ""
 	profile := ""
-	if cfg, found := config.Characters[sup]; found && cfg != nil {
+	if cfg, found := config.GetCharacter(sup); found && cfg != nil { 
 		charName = cfg.CharacterName
 		profile = cfg.ConfigFolderName
 	}
