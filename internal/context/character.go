@@ -39,5 +39,6 @@ type LevelingCharacter interface {
 	SkillPoints() []skill.ID
 	SkillsToBind() (skill.ID, []skill.ID)
 	ShouldResetSkills() bool
+	GetAdditionalRunewords() []string
 	KillAncients() error
 }

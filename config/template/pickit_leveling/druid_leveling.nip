@@ -66,7 +66,7 @@
 
 ([Name] == CrystalSword || [Name] == BroadSword) && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 4 # [MaxQuantity] == 1 // spirit
 [Name] == Flail && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 5 # [MaxQuantity] == 1 // CTA
-[type] == staff && [flag] == runeword # [coldresist] == 33 //leaf weapon
+[type] == staff && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1 //leaf
 [type] == polearm && [quality] <= superior # [sockets] == 4 # [MaxQuantity] == 1 // any insight polearm
 [type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == elite # [sockets] == 4
 [type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == exceptional # [sockets] == 4 # [MaxQuantity] == 1

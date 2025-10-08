@@ -33,7 +33,7 @@ func (a Leveling) act2() error {
 
 	running = true
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	// Buy a 12 slot belt if we don't have one
 	if err := buyAct2Belt(a.ctx); err != nil {
@@ -285,7 +285,7 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Info("Summoner quest chain (journal, portal, WP) completed.")
-		action.UpdateQuestLog()
+		action.UpdateQuestLog(false)
 		return nil // Return to re-evaluate after completing this chain.
 	}
 
@@ -327,7 +327,7 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Info("Summoner quest chain (journal, portal, WP) completed.")
-		action.UpdateQuestLog()
+		action.UpdateQuestLog(false)
 		return nil // Return to re-evaluate after completing this chain.
 	}
 
@@ -412,7 +412,7 @@ func (a Leveling) findStaff() error {
 
 func (a Leveling) findAmulet() error {
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	action.InteractNPC(npc.Drognan)
 
@@ -473,7 +473,7 @@ func (a Leveling) findAmulet() error {
 	// This stops us being blocked from getting into Palace
 	action.InteractNPC(npc.Drognan)
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	return nil
 }
@@ -553,7 +553,7 @@ func (a Leveling) duriel() error {
 
 	action.ReturnTown()
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	return nil
 }

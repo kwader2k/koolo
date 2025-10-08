@@ -74,7 +74,8 @@ var (
 
 	uniqueItemScores = map[item.Name]float64{
 		item.Name(item.ThudergodsVigor):    3000.0,
-		item.Name(item.SkinoftheVipermagi): 1000.0,
+		item.Name(item.SkinoftheVipermagi): 2000.0,
+		item.Name(item.RunewordSmoke):      1000.0,
 		item.Name(item.ArachnidMesh):       3000.0,
 		item.Name(item.NosferatusCoil):     3000.0,
 		item.Name(item.VerdugosHeartyCord): 3000.0,
@@ -131,10 +132,16 @@ var (
 			stat.MaxLife:              2.0,
 		},
 		data.Druid: {
-			stat.FasterCastRate:       3.0,
-			stat.IncreasedAttackSpeed: 2.0,
-			stat.MaxLife:              1.5,
-			stat.Vitality:             1.5,
+			stat.FasterCastRate:    5.0,
+			stat.Defense:           0.1,
+			stat.FireResist:        1.0,
+			stat.ColdResist:        1.0,
+			stat.LightningResist:   1.0,
+			stat.PoisonResist:      0.5,
+			stat.MaxLife:           1.0,
+			stat.MaxMana:           1.0,
+			stat.FasterHitRecovery: 2.0,
+			stat.Energy:            1.5,
 		},
 		data.Assassin: {
 			stat.CannotBeFrozen:       75.0,
@@ -264,8 +271,13 @@ func PlayerScore(itm data.Item) map[item.LocationType]float64 {
 func calculateGeneralScore(itm data.Item) float64 {
 	//ctx := context.Get()
 
+	itemName := itm.Name
+	if itm.IsRuneword {
+		itemName = item.Name(itm.RunewordName)
+	}
+
 	// Unique item override
-	if score, found := uniqueItemScores[itm.Name]; found {
+	if score, found := uniqueItemScores[itemName]; found {
 		return score
 	}
 

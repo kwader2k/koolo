@@ -58,6 +58,9 @@ func PreRun(firstRun bool) error {
 	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation {
 		ResetStats()
 		EnsureStatPoints()
+		if HasSkillPointsToUse() {
+			UpdateQuestLog(true)
+		}
 		EnsureSkillPoints()
 	}
 
@@ -123,6 +126,9 @@ func InRunReturnTownRoutine() error {
 	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation {
 		EnsureStatPoints()
 		ctx.PauseIfNotPriority() // Check after EnsureStatPoints
+		if HasSkillPointsToUse() {
+			UpdateQuestLog(false)
+		}
 		EnsureSkillPoints()
 		ctx.PauseIfNotPriority() // Check after EnsureSkillPoints
 	}

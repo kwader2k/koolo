@@ -1,10 +1,12 @@
 package character
 
 import (
+	"fmt"
 	"log/slog"
 	"sort"
 	"time"
 
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -24,6 +26,8 @@ type DruidLeveling struct {
 	BaseCharacter           // Inherits common character functionality
 	lastCastTime  time.Time // Tracks the last time a skill was cast
 }
+
+var druid_respec_lvl = 54
 
 // Verify that required skills are bound to keys
 func (s DruidLeveling) CheckKeyBindings() []skill.ID {
@@ -86,22 +90,23 @@ func (s DruidLeveling) KillMonsterSequence(
 
 		ctx.PauseIfNotPriority() // Pause if not the priority task
 
-		if completedAttackLoops >= druMaxAttacksLoop {
-			return nil // Exit if max attack loops reached
-		}
-
 		if currentTargetID == 0 { // Select a new target if none exists
 			id, found := monsterSelector(*s.Data)
 			if !found {
 				return nil // Exit if no target found
 			}
 			currentTargetID = id
+			completedAttackLoops = 0
 		}
 
 		monster, found := s.Data.Monsters.FindByID(currentTargetID)
 		if !found || monster.Stats[stat.Life] <= 0 { // Check if target is dead or missing
 			currentTargetID = 0
 			return nil
+		}
+
+		if monster.Type != data.MonsterTypeSuperUnique && monster.Type != data.MonsterTypeUnique && completedAttackLoops >= druMaxAttacksLoop {
+			return nil // Exit if max attack loops reached
 		}
 
 		if !s.preBattleChecks(currentTargetID, skipOnImmunities) { // Perform pre-combat checks
@@ -113,42 +118,53 @@ func (s DruidLeveling) KillMonsterSequence(
 		lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
 
-		mainAttackSkill := skill.Firestorm
-		secondaryAttackSkill := skill.Firestorm
-		if lvl.Value >= 12 {
-			mainAttackSkill = skill.Fissure
-		}
+		if lvl.Value < druid_respec_lvl {
+			mainAttackSkill := skill.Firestorm
+			secondaryAttackSkill := skill.Firestorm
+			if lvl.Value >= 12 {
+				mainAttackSkill = skill.Fissure
+			}
 
-		if mainAttackSkill != secondaryAttackSkill && s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-			if s.Data.PlayerUnit.Skills[skill.Firestorm].Level > 0 {
-				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
-					step.SecondaryAttack(secondaryAttackSkill, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance))
+			if mainAttackSkill != secondaryAttackSkill && s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+				if s.Data.PlayerUnit.Skills[skill.Firestorm].Level > 0 {
+					if s.Data.PlayerUnit.Mode != mode.CastingSkill {
+						step.SecondaryAttack(secondaryAttackSkill, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance))
+					} else {
+						time.Sleep(time.Millisecond * 50)
+					}
+				}
+			} else {
+				if s.Data.PlayerUnit.Skills[mainAttackSkill].Level > 0 && mana.Value > 2 {
+					step.SecondaryAttack(mainAttackSkill, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance))
+					completedAttackLoops++
+					if mainAttackSkill == skill.Fissure {
+						s.PathFinder.RandomMovement()
+						time.Sleep(time.Millisecond * 250)
+					}
 				} else {
-					time.Sleep(time.Millisecond * 50)
+					// Fallback to primary skill (basic attack) at close range when out of mana.
+					step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
 				}
 			}
 		} else {
-			if s.Data.PlayerUnit.Skills[mainAttackSkill].Level > 0 && mana.Value > 2 {
-				step.SecondaryAttack(mainAttackSkill, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance))
-			} else {
-				// Fallback to primary skill (basic attack) at close range when out of mana.
-				step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
-			}
-		}
-		/*
 			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Tornado); found {
 				ctx.HID.PressKeyBinding(kb) // Set Tornado as active skill
-				if err := step.PrimaryAttack(currentTargetID, 1, true, attackOpts...); err == nil {
+				if err := step.SecondaryAttack(skill.Tornado, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance)); err == nil {
 					if !s.waitForCastComplete() { // Wait for cast to complete
 						continue
 					}
 					s.lastCastTime = time.Now() // Update last cast time
 					completedAttackLoops++
+
+					if completedAttackLoops%3 == 0 {
+						s.PathFinder.RandomMovement()
+						time.Sleep(time.Millisecond * 250)
+					}
 				}
 			} else {
 				return fmt.Errorf("tornado skill not bound")
 			}
-		*/
+		}
 	}
 }
 
@@ -167,19 +183,24 @@ func (s DruidLeveling) killMonster(npc npc.ID, t data.MonsterType) error {
 func (s DruidLeveling) RecastBuffs() {
 	ctx := context.Get()
 
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 	skills := []skill.ID{}
 	states := []state.State{}
 
-	if lvl.Value >= 37 {
-		skills = []skill.ID{skill.Hurricane, skill.OakSage, skill.CycloneArmor}
-		states = []state.State{state.Hurricane, state.Oaksage, state.Cyclonearmor}
-	} else if lvl.Value >= 24 {
-		skills = []skill.ID{skill.OakSage, skill.CycloneArmor}
-		states = []state.State{state.Oaksage, state.Cyclonearmor}
-	} else if lvl.Value >= 5 {
-		skills = []skill.ID{skill.OakSage}
-		states = []state.State{state.Oaksage}
+	if s.Data.PlayerUnit.Skills[skill.Hurricane].Level > 0 {
+		skills = append(skills, skill.Hurricane)
+		states = append(states, state.Hurricane)
+	}
+	if s.Data.PlayerUnit.Skills[skill.OakSage].Level > 0 {
+		skills = append(skills, skill.OakSage)
+		states = append(states, state.Oaksage)
+	}
+	if s.Data.PlayerUnit.Skills[skill.CycloneArmor].Level > 0 {
+		skills = append(skills, skill.CycloneArmor)
+		states = append(states, state.Cyclonearmor)
+	}
+	if s.Data.PlayerUnit.Skills[skill.Armageddon].Level > 0 {
+		skills = append(skills, skill.Armageddon)
+		states = append(states, state.Armageddon)
 	}
 
 	for i, druSkill := range skills {
@@ -200,20 +221,23 @@ func (s DruidLeveling) BuffSkills() []skill.ID {
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.CycloneArmor); found {
 		buffs = append(buffs, skill.CycloneArmor)
 	}
-	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Raven); found {
-		buffs = append(buffs, skill.Raven, skill.Raven, skill.Raven, skill.Raven, skill.Raven) // Summon 5 ravens
-	}
+
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Hurricane); found {
 		buffs = append(buffs, skill.Hurricane)
 	}
+
+	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Armageddon); found {
+		buffs = append(buffs, skill.Armageddon)
+	}
+
 	return buffs
 }
 
 // Dynamically determines pre-combat buffs and summons
 func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 	needsBear := true
-	wolves := 5
-	direWolves := 3
+	wolves := min(s.Data.PlayerUnit.Skills[skill.SummonSpiritWolf].Level, 5)
+	direWolves := min(s.Data.PlayerUnit.Skills[skill.SummonDireWolf].Level, 3)
 	needsOak := true
 	needsCreeper := true
 
@@ -240,21 +264,32 @@ func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 	}
 
 	// Add summoning skills based on need and key bindings
+	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.OakSage); found && needsOak {
+		skills = append(skills, skill.OakSage)
+	}
+
+	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonGrizzly); found && needsBear {
+		skills = append(skills, skill.SummonGrizzly)
+	}
+
+	ravenLvl := s.Data.PlayerUnit.Skills[skill.Raven].Level
+
+	if ravenLvl > 0 {
+		if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Raven); found {
+			for range min(ravenLvl, 5) {
+				skills = append(skills, skill.Raven)
+			}
+		}
+	}
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonSpiritWolf); found {
-		for i := 0; i < wolves; i++ {
+		for range wolves {
 			skills = append(skills, skill.SummonSpiritWolf)
 		}
 	}
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonDireWolf); found {
-		for i := 0; i < direWolves; i++ {
+		for range direWolves {
 			skills = append(skills, skill.SummonDireWolf)
 		}
-	}
-	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonGrizzly); found && needsBear {
-		skills = append(skills, skill.SummonGrizzly)
-	}
-	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.OakSage); found && needsOak {
-		skills = append(skills, skill.OakSage)
 	}
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SolarCreeper); found && needsCreeper {
 		skills = append(skills, skill.SolarCreeper)
@@ -269,42 +304,70 @@ func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 	return skills
 }
 
+func (s DruidLeveling) GetAdditionalRunewords() []string {
+	additionalRunwords := []string{}
+	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	if lvl.Value < druid_respec_lvl {
+		additionalRunwords = append(additionalRunwords, "Leaf")
+	}
+	return additionalRunwords
+}
+
 func (s DruidLeveling) ShouldResetSkills() bool {
+	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+	if lvl.Value == druid_respec_lvl && s.Data.PlayerUnit.Skills[skill.Fissure].Level > 15 {
+		return true
+	}
 	return false
 }
 
 func (s DruidLeveling) SkillsToBind() (skill.ID, []skill.ID) {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-
 	// Primary skill will be the basic attack for interacting with objects and as a fallback.
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
 
-	if lvl.Value >= 2 {
+	if s.Data.PlayerUnit.Skills[skill.Firestorm].Level > 0 {
 		skillBindings = append(skillBindings, skill.Firestorm)
 	}
 
-	if lvl.Value >= 5 {
+	if s.Data.PlayerUnit.Skills[skill.OakSage].Level > 0 {
 		skillBindings = append(skillBindings, skill.OakSage)
 	}
 
-	if lvl.Value >= 12 {
-		// Wake of Fire becomes the main secondary attack, replacing Fire Blast as the primary one.
-		newBindings := []skill.ID{skill.Fissure}
-		for _, sk := range skillBindings {
-			if sk != skill.Firestorm {
-				newBindings = append(newBindings, sk)
-			}
-		}
-		skillBindings = newBindings
+	if s.Data.PlayerUnit.Skills[skill.Fissure].Level > 0 {
+		skillBindings = append(skillBindings, skill.Fissure)
 	}
 
-	if lvl.Value >= 24 {
+	if s.Data.PlayerUnit.Skills[skill.Armageddon].Level > 0 {
+		skillBindings = append(skillBindings, skill.Armageddon)
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.CycloneArmor].Level > 0 {
 		skillBindings = append(skillBindings, skill.CycloneArmor)
 	}
 
-	if lvl.Value >= 38 {
+	if s.Data.PlayerUnit.Skills[skill.Hurricane].Level > 0 {
 		skillBindings = append(skillBindings, skill.Hurricane)
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.Tornado].Level > 0 {
+		skillBindings = append(skillBindings, skill.Tornado)
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.Raven].Level > 0 {
+		skillBindings = append(skillBindings, skill.Raven)
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.SummonGrizzly].Level > 0 {
+		skillBindings = append(skillBindings, skill.SummonGrizzly)
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.SummonDireWolf].Level > 0 {
+		skillBindings = append(skillBindings, skill.SummonDireWolf)
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.SummonSpiritWolf].Level > 0 {
+		skillBindings = append(skillBindings, skill.SummonSpiritWolf)
 	}
 
 	if s.Data.PlayerUnit.Skills[skill.BattleCommand].Level > 0 {
@@ -344,39 +407,89 @@ func (s DruidLeveling) StatPoints() []context.StatAllocation {
 func (s DruidLeveling) SkillPoints() []skill.ID {
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
-	//Fire Druid
-	skillSequence := []skill.ID{
-		skill.Firestorm, skill.Firestorm, skill.Firestorm,
-		skill.MoltenBoulder,
-		skill.OakSage,
-		skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm,
-		skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
-		skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
-		skill.ArcticBlast,
-		skill.CycloneArmor,
-		skill.Volcano,
-		skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
-		skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
-		skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
-		skill.Twister,
-		skill.Tornado,
-		skill.Hurricane,
-		skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
-		skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
-		skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
-		skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
-		skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
-		skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
-		skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm,
-		skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm,
-		skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
-		skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
-		skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
-		skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
-		skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
+	var skillSequence []skill.ID
+
+	if lvl.Value < druid_respec_lvl {
+		//Fire Druid
+		skillSequence = []skill.ID{
+			skill.Raven,
+			skill.Firestorm, skill.Firestorm, skill.Firestorm,
+			skill.MoltenBoulder,
+			skill.OakSage,
+			skill.SummonSpiritWolf,
+			skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm,
+			skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
+			skill.Fissure, skill.Fissure, skill.Fissure,
+			skill.SummonDireWolf,
+			skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
+			skill.Fissure, skill.Fissure, skill.Fissure, skill.Fissure,
+			skill.Volcano,
+			skill.Fissure, skill.Fissure,
+			skill.Armageddon,
+			skill.SummonGrizzly,
+			skill.Fissure, skill.Fissure,
+			skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm,
+			skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm, skill.Firestorm,
+			skill.Firestorm, skill.Firestorm, skill.Firestorm,
+			skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
+			skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
+			skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
+			skill.Volcano, skill.Volcano, skill.Volcano, skill.Volcano,
+			skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder,
+			skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder,
+			skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder,
+			skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder, skill.MoltenBoulder,
+			skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon,
+			skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon,
+			skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon,
+			skill.Armageddon, skill.Armageddon, skill.Armageddon, skill.Armageddon,
+			skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
+		}
+	} else {
+		// Wind build (LVL 60+)
+		skillSequence = []skill.ID{
+			skill.Raven,
+			skill.OakSage,
+			skill.SummonSpiritWolf,
+			skill.ArcticBlast,
+			skill.CycloneArmor,
+			skill.Twister,
+			skill.SummonDireWolf,
+			skill.Tornado, skill.Tornado, skill.Tornado, skill.Tornado, skill.Tornado,
+			skill.Tornado, skill.Tornado,
+			skill.SummonGrizzly,
+			skill.Hurricane,
+			skill.Tornado, skill.Tornado, skill.Tornado,
+			skill.Tornado, skill.Tornado, skill.Tornado, skill.Tornado, skill.Tornado,
+			skill.Tornado, skill.Tornado, skill.Tornado, skill.Tornado, skill.Tornado,
+			skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane,
+			skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane,
+			skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane,
+			skill.Hurricane, skill.Hurricane, skill.Hurricane, skill.Hurricane,
+			skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
+			skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
+			skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
+			skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor, skill.CycloneArmor,
+			skill.Twister, skill.Twister, skill.Twister, skill.Twister, skill.Twister,
+			skill.Twister, skill.Twister, skill.Twister, skill.Twister, skill.Twister,
+			skill.Twister, skill.Twister, skill.Twister, skill.Twister, skill.Twister,
+			skill.Twister, skill.Twister, skill.Twister, skill.Twister,
+			skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
+			skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
+			skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
+			skill.OakSage, skill.OakSage, skill.OakSage, skill.OakSage,
+		}
 	}
 
 	questSkillPoints := 0
+
+	switch s.CharacterCfg.Game.Difficulty {
+	case difficulty.Nightmare:
+		questSkillPoints = 4
+	case difficulty.Hell:
+		questSkillPoints = 8
+	}
+
 	if s.Data.Quests[quest.Act1DenOfEvil].Completed() {
 		questSkillPoints++
 	}
@@ -400,44 +513,18 @@ func (s DruidLeveling) SkillPoints() []skill.ID {
 	}
 
 	targetLevels := make(map[skill.ID]int)
+	skillsToAllocate := make([]skill.ID, 0)
 	for _, sk := range skillsToAllocateBasedOnLevel {
 		targetLevels[sk]++
-	}
-
-	skillsToAllocate := make([]skill.ID, 0)
-
-	var uniqueSkills []skill.ID
-	seenSkills := make(map[skill.ID]bool)
-	for _, sk := range skillSequence {
-		if _, seen := seenSkills[sk]; !seen {
-			uniqueSkills = append(uniqueSkills, sk)
-			seenSkills[sk] = true
-		}
-	}
-
-	for _, sk := range uniqueSkills {
-		target := targetLevels[sk]
-		if target == 0 {
-			continue
-		}
-
 		currentLevel := 0
 		if skillData, found := s.Data.PlayerUnit.Skills[sk]; found {
 			currentLevel = int(skillData.Level)
 		}
 
-		pointsToAdd := target - currentLevel
-		if pointsToAdd > 0 {
-			for i := 0; i < pointsToAdd; i++ {
-				skillsToAllocate = append(skillsToAllocate, sk)
-			}
+		if targetLevels[sk] > currentLevel {
+			skillsToAllocate = append(skillsToAllocate, sk)
 		}
 	}
-
-	if len(skillsToAllocate) > 0 {
-		s.Logger.Info("Skill allocation plan", "skills", skillsToAllocate)
-	}
-
 	return skillsToAllocate
 }
 

@@ -28,7 +28,7 @@ func (a Leveling) act1() error {
 		return nil
 	}
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	// Check player level and set configuration for level 1
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
@@ -198,23 +198,12 @@ func (a Leveling) act1() error {
 
 // setupLevelOneConfig centralizes the configuration logic for a new character.
 func (a Leveling) setupLevelOneConfig() {
-	enabledRunewordRecipes := []string{"Stealth", "Ancients' Pledge", "Lore", "Insight", "Spirit", "Smoke", "Treachery", "Heart of the Oak", "Call to Arms"}
-
-	if !a.ctx.CharacterCfg.Game.IsNonLadderChar {
-		enabledRunewordRecipes = append(enabledRunewordRecipes, "Bulwark", "Hustle")
-		a.ctx.Logger.Info("Ladder character detected. Adding Bulwark and Hustle runewords.")
-	}
-
-	if a.ctx.CharacterCfg.Character.Class == "paladin" {
-		enabledRunewordRecipes = append(enabledRunewordRecipes, "Steel")
-	}
-
 	a.ctx.CharacterCfg.Game.Difficulty = difficulty.Normal
 	a.ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation = true
 	a.ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding = true
 	a.ctx.CharacterCfg.Game.Leveling.AutoEquip = true
 	a.ctx.CharacterCfg.Game.Leveling.EnableRunewordMaker = true
-	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = enabledRunewordRecipes
+	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
 	a.ctx.CharacterCfg.Character.UseTeleport = true
 	a.ctx.CharacterCfg.Character.UseMerc = false
 	a.ctx.CharacterCfg.Game.UseCainIdentify = true
@@ -272,6 +261,8 @@ func (a Leveling) setupLevelOneConfig() {
 // adjustDifficultyConfig centralizes difficulty-based configuration changes.
 func (a Leveling) AdjustDifficultyConfig() {
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+
+	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
 	if lvl.Value >= 4 && lvl.Value < 12 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 
@@ -316,6 +307,27 @@ func (a Leveling) AdjustDifficultyConfig() {
 			a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
 		}
 	}
+}
+
+func (a Leveling) GetRunewords() []string {
+	enabledRunewordRecipes := []string{"Stealth", "Ancients' Pledge", "Lore", "Insight", "Spirit", "Smoke", "Treachery", "Heart of the Oak", "Call to Arms"}
+
+	if !a.ctx.CharacterCfg.Game.IsNonLadderChar {
+		enabledRunewordRecipes = append(enabledRunewordRecipes, "Bulwark", "Hustle")
+		a.ctx.Logger.Info("Ladder character detected. Adding Bulwark and Hustle runewords.")
+	}
+
+	if a.ctx.CharacterCfg.Character.Class == "paladin" {
+		enabledRunewordRecipes = append(enabledRunewordRecipes, "Steel")
+	}
+
+	ch, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)
+	if isLevelingChar {
+		additionalRunewords := ch.GetAdditionalRunewords()
+		enabledRunewordRecipes = append(enabledRunewordRecipes, additionalRunewords...)
+	}
+
+	return enabledRunewordRecipes
 }
 
 // goToAct2 handles the transition to Act 2.

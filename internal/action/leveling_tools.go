@@ -204,6 +204,19 @@ func EnsureStatPoints() error {
 
 }
 
+func HasSkillPointsToUse() bool {
+	ctx := context.Get()
+
+	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+	skillPoints, hasUnusedPoints := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
+
+	if !isLevelingChar || !hasUnusedPoints || skillPoints.Value == 0 {
+		return false
+	}
+
+	return true
+}
+
 func EnsureSkillPoints() error {
 	ctx := context.Get()
 
@@ -599,7 +612,7 @@ func calculateSkillPositionInUI(mainSkill bool, skillID skill.ID) (data.Position
 	}
 }
 
-func UpdateQuestLog() error {
+func UpdateQuestLog(fullUpdate bool) error {
 	ctx := context.Get()
 	ctx.SetLastAction("UpdateQuestLog")
 
@@ -611,6 +624,11 @@ func UpdateQuestLog() error {
 	utils.Sleep(1000)
 
 	currentAct := ctx.Data.PlayerUnit.Area.Act()
+	startAct := currentAct
+
+	if fullUpdate {
+		startAct = 1
+	}
 
 	var actButtonPositions map[int]data.Position
 	if ctx.Data.LegacyGraphics {
@@ -619,13 +637,15 @@ func UpdateQuestLog() error {
 		actButtonPositions = uiQuestLogActButtonsD2R
 	}
 
-	if pos, found := actButtonPositions[currentAct]; found {
-		ctx.Logger.Debug(fmt.Sprintf("Clicking Quest Log Act %d button at (%d, %d)", currentAct, pos.X, pos.Y))
+	for i := startAct; i <= currentAct; i++ {
+		if pos, found := actButtonPositions[i]; found {
+			ctx.Logger.Debug(fmt.Sprintf("Clicking Quest Log Act %d button at (%d, %d)", i, pos.X, pos.Y))
 
-		ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-		utils.Sleep(300)
-	} else {
-		ctx.Logger.Warn(fmt.Sprintf("Could not find Quest Log button coordinates for current Act: %d", currentAct))
+			ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
+			utils.Sleep(300)
+		} else {
+			ctx.Logger.Warn(fmt.Sprintf("Could not find Quest Log button coordinates for current Act: %d", i))
+		}
 	}
 
 	return step.CloseAllMenus()
