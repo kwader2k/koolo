@@ -11,6 +11,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
+	"github.com/lxn/win"
 )
 
 func doesExceedQuantity(rule nip.Rule) bool {
@@ -60,8 +61,12 @@ func DropInventoryItem(i data.Item) error {
 	// Check if any other menu is open, except the inventory
 	for ctx.Data.OpenMenus.IsMenuOpen() {
 
-		// Press escape to close it
-		ctx.HID.PressKey(0x1B) // ESC
+		// Press escape to close it, or spacebar in legacy mode to prevent crashes
+		if ctx.Data.LegacyGraphics {
+			ctx.HID.PressKey(win.VK_SPACE)
+		} else {
+			ctx.HID.PressKey(0x1B) // ESC
+		}
 		utils.Sleep(500)
 		closeAttempts++
 
