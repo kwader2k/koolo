@@ -122,9 +122,16 @@ func CainIdentify() error {
 	ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 	utils.Sleep(800)
 
-	// Close menu if still open
+	// Close menu if still open - extra handling for legacy mode
 	if ctx.Data.OpenMenus.NPCInteract {
 		step.CloseAllMenus()
+		utils.Sleep(200)
+
+		// In legacy mode, sometimes we need an extra spacebar press to fully close the menu
+		if ctx.Data.LegacyGraphics && ctx.Data.OpenMenus.NPCInteract {
+			ctx.HID.PressKey(win.VK_SPACE)
+			utils.Sleep(200)
+		}
 	}
 
 	return nil
