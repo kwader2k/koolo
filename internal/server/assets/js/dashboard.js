@@ -135,6 +135,8 @@ function createCharacterCard(key) {
                     <span class="co-dot"> • </span>
                     <span class="co-mf">MF: -</span>
                     <span class="co-dot"> • </span>
+                    <span class="co-gold">Gold: -</span>
+                    <span class="co-dot"> • </span>
                     <span class="co-gf">GF: -</span>
                     <span class="co-dot"> • </span>
                     <span class="co-res">Res: -</span>
@@ -381,6 +383,7 @@ function updateCharacterOverview(card, ui, status) {
     const manaEl = card.querySelector('.co-mana');
     const mfEl = card.querySelector('.co-mf');
     const gfEl = card.querySelector('.co-gf');
+    const goldEl = card.querySelector('.co-gold');
     const resEl = card.querySelector('.co-res');
 
     // If not running, show placeholders
@@ -393,6 +396,7 @@ function updateCharacterOverview(card, ui, status) {
         if (manaEl) manaEl.textContent = 'Mana: —';
         if (mfEl) mfEl.textContent = 'MF: —';
         if (gfEl) gfEl.textContent = 'GF: —';
+        if (goldEl) goldEl.textContent = 'Gold: —';
         if (resEl) resEl.textContent = 'Res: —';
         const xpFill = card.querySelector('.xp-bar-fill');
         const xpPct = card.querySelector('.xp-percent');
@@ -483,6 +487,7 @@ function updateCharacterOverview(card, ui, status) {
     const maxMana = ui.MaxMana ?? 0;
     const mf = ui.MagicFind ?? 0;
     const gf = ui.GoldFind ?? 0;
+    const gold = ui.Gold ?? 0;
     const fr = ui.FireResist ?? 0;
     const cr = ui.ColdResist ?? 0;
     const lr = ui.LightningResist ?? 0;
@@ -503,6 +508,7 @@ function updateCharacterOverview(card, ui, status) {
     if (manaEl) manaEl.textContent = `Mana: ${mana}/${maxMana}`;
     if (mfEl) mfEl.textContent = `MF: ${mf}%`;
     if (gfEl) gfEl.textContent = `GF: ${gf}%`;
+    if (goldEl) goldEl.textContent = `Gold: ${gold}`;
     if (resEl) resEl.innerHTML = `<span class="res-fr">FR: ${fr}</span> / <span class="res-cr">CR: ${cr}</span> / <span class="res-lr">LR: ${lr}</span> / <span class="res-pr">PR: ${pr}</span>`;
 }
 
