@@ -899,3 +899,29 @@ func WaitForAllMembersWhenLeveling() error {
 		}
 	}
 }
+
+func GetSkillTotalLevel(skill skill.ID) uint {
+	ctx := context.Get()
+	skillLevel := ctx.Data.PlayerUnit.Skills[skill].Level
+
+	if skillLevel > 0 {
+		if allSkill, allFound := ctx.Data.PlayerUnit.Stats.FindStat(stat.AllSkills, 0); allFound {
+			skillLevel += uint(allSkill.Value)
+		}
+
+		//Assume it's a player class skill for now
+		if classSkills, classFound := ctx.Data.PlayerUnit.Stats.FindStat(stat.AddClassSkills, int(ctx.Data.PlayerUnit.Class)); classFound {
+			skillLevel += uint(classSkills.Value)
+		}
+
+		//Todo Tabs + skills
+
+		//Todo individual + skills
+		if skillLevel > 60 {
+			skillLevel = ctx.Data.PlayerUnit.Skills[skill].Level
+		}
+
+	}
+
+	return skillLevel
+}

@@ -390,3 +390,11 @@ func MoveTo(toFunc func() (data.Position, bool)) error {
 		}
 	}
 }
+
+func MoveToCoordIgnoreClearPath(position data.Position) {
+	ctx := context.Get()
+	clearPath := ctx.CharacterCfg.Character.ClearPathDist
+	ctx.CharacterCfg.Character.ClearPathDist = 0
+	MoveToCoords(position)
+	ctx.CharacterCfg.Character.ClearPathDist = clearPath
+}

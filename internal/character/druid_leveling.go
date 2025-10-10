@@ -18,6 +18,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
@@ -27,7 +28,13 @@ type DruidLeveling struct {
 	lastCastTime  time.Time // Tracks the last time a skill was cast
 }
 
-var druid_respec_lvl = 54
+const (
+	druid_respec_lvl    = 54
+	DruidDangerDistance = 4
+	DruidSafeDistance   = 6
+	DruidMinAttackRange = 3
+	DruidMaxAttackRange = 8
+)
 
 // Verify that required skills are bound to keys
 func (s DruidLeveling) CheckKeyBindings() []skill.ID {
@@ -66,6 +73,22 @@ func (s DruidLeveling) waitForCastComplete() bool {
 	return false // Returns false if timeout is reached
 }
 
+func (s DruidLeveling) IsMandatoryKill(m data.Monster) bool {
+	switch m.Name {
+	case npc.Andariel:
+	case npc.Duriel:
+	case npc.Mephisto:
+	case npc.Diablo:
+	case npc.BaalCrab:
+	case npc.Summoner:
+	case npc.CouncilMember:
+	case npc.CouncilMember2:
+	case npc.CouncilMember3:
+		return true
+	}
+	return false
+}
+
 // Handle the main combat loop for attacking monsters
 func (s DruidLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool), // Function to select target monster
@@ -74,7 +97,9 @@ func (s DruidLeveling) KillMonsterSequence(
 	ctx := context.Get()
 	lastRefresh := time.Now()
 	completedAttackLoops := 0
+	getCloseAttempt := false
 	var currentTargetID data.UnitID
+	lastReposition := time.Now()
 
 	defer func() { // Ensures Tornado is set as active skill on exit
 		if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Tornado); found {
@@ -97,6 +122,7 @@ func (s DruidLeveling) KillMonsterSequence(
 			}
 			currentTargetID = id
 			completedAttackLoops = 0
+			getCloseAttempt = false
 		}
 
 		monster, found := s.Data.Monsters.FindByID(currentTargetID)
@@ -105,8 +131,20 @@ func (s DruidLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		if monster.Type != data.MonsterTypeSuperUnique && monster.Type != data.MonsterTypeUnique && completedAttackLoops >= druMaxAttacksLoop {
-			return nil // Exit if max attack loops reached
+		if completedAttackLoops >= druMaxAttacksLoop {
+			if !s.IsMandatoryKill(monster) {
+				if monster.Type == data.MonsterTypeSuperUnique || monster.Type == data.MonsterTypeUnique {
+					if !getCloseAttempt {
+						completedAttackLoops = 0
+						getCloseAttempt = true
+						s.PathFinder.MoveCharacter(monster.Position.X, monster.Position.Y)
+					} else {
+						return nil // Exit if max attack loops reached
+					}
+				} else {
+					return nil
+				}
+			}
 		}
 
 		if !s.preBattleChecks(currentTargetID, skipOnImmunities) { // Perform pre-combat checks
@@ -117,7 +155,6 @@ func (s DruidLeveling) KillMonsterSequence(
 
 		lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
-
 		if lvl.Value < druid_respec_lvl {
 			mainAttackSkill := skill.Firestorm
 			secondaryAttackSkill := skill.Firestorm
@@ -137,10 +174,6 @@ func (s DruidLeveling) KillMonsterSequence(
 				if s.Data.PlayerUnit.Skills[mainAttackSkill].Level > 0 && mana.Value > 2 {
 					step.SecondaryAttack(mainAttackSkill, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance))
 					completedAttackLoops++
-					if mainAttackSkill == skill.Fissure {
-						s.PathFinder.RandomMovement()
-						time.Sleep(time.Millisecond * 250)
-					}
 				} else {
 					// Fallback to primary skill (basic attack) at close range when out of mana.
 					step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
@@ -155,16 +188,22 @@ func (s DruidLeveling) KillMonsterSequence(
 					}
 					s.lastCastTime = time.Now() // Update last cast time
 					completedAttackLoops++
-
-					if completedAttackLoops%3 == 0 {
-						s.PathFinder.RandomMovement()
-						time.Sleep(time.Millisecond * 250)
-					}
 				}
 			} else {
 				return fmt.Errorf("tornado skill not bound")
 			}
 		}
+
+		if time.Since(lastReposition) > time.Second*1 {
+			isAnyEnemyNearby, _ := action.IsAnyEnemyAroundPlayer(DruidDangerDistance)
+			if isAnyEnemyNearby {
+				if safePos, found := action.FindSafePosition(monster, DruidDangerDistance, DruidSafeDistance, DruidMinAttackRange, DruidMaxAttackRange); found {
+					action.MoveToCoordIgnoreClearPath(safePos)
+					lastReposition = time.Now()
+				}
+			}
+		}
+
 	}
 }
 
@@ -213,6 +252,24 @@ func (s DruidLeveling) RecastBuffs() {
 			}
 		}
 	}
+
+	if bearKb, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonGrizzly); found {
+		needsBear := true
+		for _, monster := range s.Data.Monsters { // Check existing pets
+			if monster.IsPet() {
+				switch monster.Name {
+				case npc.DruBear:
+					needsBear = false
+				}
+			}
+		}
+		if needsBear {
+			ctx.HID.PressKeyBinding(bearKb)         // Activate skill
+			utils.Sleep(180)                        // Small delay
+			s.HID.Click(game.RightButton, 640, 340) // Cast skill at center screen
+			utils.Sleep(200)                        // Delay to ensure cast completes
+		}
+	}
 }
 
 // Return a list of available buff skills
@@ -236,8 +293,8 @@ func (s DruidLeveling) BuffSkills() []skill.ID {
 // Dynamically determines pre-combat buffs and summons
 func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 	needsBear := true
-	wolves := min(s.Data.PlayerUnit.Skills[skill.SummonSpiritWolf].Level, 5)
-	direWolves := min(s.Data.PlayerUnit.Skills[skill.SummonDireWolf].Level, 3)
+	wolves := min(action.GetSkillTotalLevel(skill.SummonSpiritWolf), 5)
+	direWolves := min(action.GetSkillTotalLevel(skill.SummonDireWolf), 3)
 	needsOak := true
 	needsCreeper := true
 
@@ -247,9 +304,13 @@ func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 			case npc.DruBear:
 				needsBear = false
 			case npc.DruFenris:
-				direWolves--
+				if direWolves > 0 {
+					direWolves--
+				}
 			case npc.DruSpiritWolf:
-				wolves--
+				if wolves > 0 {
+					wolves--
+				}
 			case npc.OakSage:
 				needsOak = false
 			case npc.DruCycleOfLife, npc.VineCreature, npc.DruPlaguePoppy:
@@ -272,8 +333,7 @@ func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 		skills = append(skills, skill.SummonGrizzly)
 	}
 
-	ravenLvl := s.Data.PlayerUnit.Skills[skill.Raven].Level
-
+	ravenLvl := action.GetSkillTotalLevel(skill.Raven)
 	if ravenLvl > 0 {
 		if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Raven); found {
 			for range min(ravenLvl, 5) {
@@ -315,7 +375,16 @@ func (s DruidLeveling) GetAdditionalRunewords() []string {
 
 func (s DruidLeveling) ShouldResetSkills() bool {
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+
 	if lvl.Value == druid_respec_lvl && s.Data.PlayerUnit.Skills[skill.Fissure].Level > 15 {
+
+		//Do not respec if still using leaf
+		for _, item := range s.Data.Inventory.ByLocation(item.LocLeftArm) {
+			if _, twoHanded := item.FindStat(stat.TwoHandedMinDamage, 0); twoHanded {
+				return false
+			}
+		}
+
 		return true
 	}
 	return false
