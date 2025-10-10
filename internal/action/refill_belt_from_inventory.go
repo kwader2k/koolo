@@ -28,6 +28,9 @@ func RefillBeltFromInventory() error {
 		return nil
 	}
 
+	// Add slight delay before opening inventory
+	utils.Sleep(200)
+
 	if err := step.OpenInventory(); err != nil {
 		return err
 	}
@@ -48,7 +51,15 @@ func RefillBeltFromInventory() error {
 	}
 
 	ctx.Logger.Info("Belt refilled from inventory")
-	return step.CloseAllMenus()
+	err := step.CloseAllMenus()
+	if err != nil {
+		return err
+	}
+
+	// Add slight delay after closing inventory
+	utils.Sleep(200)
+	return nil
+
 }
 
 func putPotionInBelt(ctx *context.Status, potion data.Item) {
