@@ -917,10 +917,6 @@ func GetSkillTotalLevel(skill skill.ID) uint {
 		//Todo Tabs + skills
 
 		//Todo individual + skills
-		if skillLevel > 60 {
-			skillLevel = ctx.Data.PlayerUnit.Skills[skill].Level
-		}
-
 	}
 
 	return skillLevel
