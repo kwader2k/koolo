@@ -312,15 +312,11 @@ func (a Leveling) AdjustDifficultyConfig() {
 }
 
 func (a Leveling) GetRunewords() []string {
-	enabledRunewordRecipes := []string{"Stealth", "Ancients' Pledge", "Lore", "Insight", "Spirit", "Smoke", "Treachery", "Heart of the Oak", "Call to Arms"}
+	enabledRunewordRecipes := []string{"Ancients' Pledge", "Lore", "Insight", "Smoke", "Treachery", "Call to Arms"}
 
 	if !a.ctx.CharacterCfg.Game.IsNonLadderChar {
 		enabledRunewordRecipes = append(enabledRunewordRecipes, "Bulwark", "Hustle")
 		a.ctx.Logger.Info("Ladder character detected. Adding Bulwark and Hustle runewords.")
-	}
-
-	if a.ctx.CharacterCfg.Character.Class == "paladin" {
-		enabledRunewordRecipes = append(enabledRunewordRecipes, "Steel")
 	}
 
 	ch, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)

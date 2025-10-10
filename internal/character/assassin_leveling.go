@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -525,5 +526,9 @@ func (s AssassinLeveling) KillNihlathak() error {
 
 func (s AssassinLeveling) KillBaal() error {
 	return s.killBoss(npc.BaalCrab, time.Second*240)
+}
 
+func (s AssassinLeveling) GetAdditionalRunewords() []string {
+	additionalRunewords := action.GetCastersCommonRunewords()
+	return additionalRunewords
 }

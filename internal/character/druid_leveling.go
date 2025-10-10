@@ -194,12 +194,14 @@ func (s DruidLeveling) KillMonsterSequence(
 			}
 		}
 
-		if time.Since(lastReposition) > time.Second*1 {
-			isAnyEnemyNearby, _ := action.IsAnyEnemyAroundPlayer(DruidDangerDistance)
-			if isAnyEnemyNearby {
-				if safePos, found := action.FindSafePosition(monster, DruidDangerDistance, DruidSafeDistance, DruidMinAttackRange, DruidMaxAttackRange); found {
-					action.MoveToCoordIgnoreClearPath(safePos)
-					lastReposition = time.Now()
+		if lvl.Value >= 12 {
+			if time.Since(lastReposition) > time.Second*1 {
+				isAnyEnemyNearby, _ := action.IsAnyEnemyAroundPlayer(DruidDangerDistance)
+				if isAnyEnemyNearby {
+					if safePos, found := action.FindSafePosition(monster, DruidDangerDistance, DruidSafeDistance, DruidMinAttackRange, DruidMaxAttackRange); found {
+						action.MoveToCoordIgnoreClearPath(safePos)
+						lastReposition = time.Now()
+					}
 				}
 			}
 		}
@@ -365,12 +367,12 @@ func (s DruidLeveling) PreCTABuffSkills() []skill.ID {
 }
 
 func (s DruidLeveling) GetAdditionalRunewords() []string {
-	additionalRunwords := []string{}
+	additionalRunewords := action.GetCastersCommonRunewords()
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if lvl.Value < druid_respec_lvl {
-		additionalRunwords = append(additionalRunwords, "Leaf")
+		additionalRunewords = append(additionalRunewords, "Leaf")
 	}
-	return additionalRunwords
+	return additionalRunewords
 }
 
 func (s DruidLeveling) ShouldResetSkills() bool {

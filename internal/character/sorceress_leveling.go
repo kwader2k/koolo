@@ -1218,3 +1218,8 @@ func (s SorceressLeveling) minSorceressLevelingMonsterDistance(pos data.Position
 	}
 	return minDistance
 }
+
+func (s SorceressLeveling) GetAdditionalRunewords() []string {
+	additionalRunewords := action.GetCastersCommonRunewords()
+	return additionalRunewords
+}

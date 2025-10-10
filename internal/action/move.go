@@ -369,7 +369,7 @@ func MoveTo(toFunc func() (data.Position, bool)) error {
 		if moveErr != nil {
 			// This part is now more of a fallback/additional check,
 			// as the proactive check above should catch most cases for non-teleporters.
-			if errors.Is(moveErr, step.ErrMonstersInPath) {
+			if errors.Is(moveErr, step.ErrMonstersInPath) && clearPathDist > 0 {
 				ctx.Logger.Debug("Monsters still detected by pathfinding after safe zone check. Re-engaging for non-teleporter.")
 				if time.Since(actionLastMonsterHandlingTime) > monsterHandleCooldown {
 					actionLastMonsterHandlingTime = time.Now()

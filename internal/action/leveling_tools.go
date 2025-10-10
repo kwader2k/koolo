@@ -925,3 +925,8 @@ func GetSkillTotalLevel(skill skill.ID) uint {
 
 	return skillLevel
 }
+
+func GetCastersCommonRunewords() []string {
+	castersRunewords := []string{"Stealth", "Spirit", "Heart of the Oak"}
+	return castersRunewords
+}
