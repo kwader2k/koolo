@@ -1,17 +1,16 @@
 package action
 
 import (
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	botCtx "github.com/hectorgimenez/koolo/internal/context" // ALIAS THIS IMPORT
 	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/lxn/win"
-	"github.com/hectorgimenez/d2go/pkg/data/item"
-	"github.com/hectorgimenez/d2go/pkg/data/stat"
 )
 
-
 func ReviveMerc() {
-	
+
 	status := botCtx.Get()
 
 	status.SetLastAction("ReviveMerc") // SetLastAction is a method on Status
@@ -25,9 +24,17 @@ func ReviveMerc() {
 		InteractNPC(mercNPC)
 
 		if mercNPC == npc.Tyrael2 {
-			status.HID.KeySequence(win.VK_END, win.VK_UP, win.VK_RETURN, win.VK_ESCAPE)
+			if status.Data.LegacyGraphics {
+				status.HID.KeySequence(win.VK_END, win.VK_UP, win.VK_RETURN, win.VK_SPACE)
+			} else {
+				status.HID.KeySequence(win.VK_END, win.VK_UP, win.VK_RETURN, win.VK_ESCAPE)
+			}
 		} else {
-			status.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN, win.VK_ESCAPE)
+			if status.Data.LegacyGraphics {
+				status.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN, win.VK_SPACE)
+			} else {
+				status.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN, win.VK_ESCAPE)
+			}
 		}
 	}
 }

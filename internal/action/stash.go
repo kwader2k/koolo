@@ -532,8 +532,12 @@ func CloseStash() error {
 	ctx.SetLastAction("CloseStash")
 
 	if ctx.Data.OpenMenus.Stash {
-		ctx.HID.PressKey(win.VK_ESCAPE)
-
+		// Use legacy mode appropriate key to close stash
+		if ctx.Data.LegacyGraphics {
+			ctx.HID.PressKey(win.VK_SPACE)
+		} else {
+			ctx.HID.PressKey(win.VK_ESCAPE)
+		}
 	} else {
 		return errors.New("stash is not open")
 	}

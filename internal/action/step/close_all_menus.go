@@ -21,7 +21,13 @@ func CloseAllMenus() error {
 		if attempts > 10 {
 			return errors.New("failed closing game menu")
 		}
-		ctx.HID.PressKey(win.VK_ESCAPE)
+
+		// Use spacebar in legacy mode to prevent game crashes with tiny mod
+		if ctx.Data.LegacyGraphics {
+			ctx.HID.PressKey(win.VK_SPACE)
+		} else {
+			ctx.HID.PressKey(win.VK_ESCAPE)
+		}
 		utils.Sleep(200)
 		attempts++
 	}
