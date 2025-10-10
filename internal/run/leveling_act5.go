@@ -19,11 +19,11 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config" // Make sure this import is present
-	//	"github.com/lxn/win"
+	"github.com/lxn/win"
 )
 
 func (a Leveling) act5() error {
-	if a.ctx.Data.PlayerUnit.Area != area.Harrogath && a.ctx.Data.PlayerUnit.Area != area.FrozenRiver {
+	if a.ctx.Data.PlayerUnit.Area != area.Harrogath {
 		return nil
 	}
 
@@ -190,8 +190,10 @@ func (a Leveling) act5() error {
 			if malah, found := a.ctx.Data.Monsters.FindOne(npc.Malah, data.MonsterTypeNone); found {
 				action.MoveToCoords(malah.Position)
 			}
+			
 			action.InteractNPC(npc.Malah)
-
+			utils.Sleep(1000)
+			a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
 			// Adding a longer delay to ensure the game state has time to update
 			utils.Sleep(2500)
 
@@ -257,3 +259,5 @@ func (a Leveling) CrystallinePassage() error {
 	return nil
 
 }
+
+

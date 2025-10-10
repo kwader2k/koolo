@@ -19,15 +19,31 @@ type DropData struct {
 	Drops         []data.Drop
 }
 
-type CharacterSettings struct {
+// AllDropsData is used by the centralized drops view.
+type AllDropsData struct {
 	ErrorMessage string
-	Supervisor   string
-	Config       *config.CharacterCfg
-	DayNames     []string
-	EnabledRuns  []string
-	DisabledRuns []string
-	AvailableTZs map[int]string
-	RecipeList   []string
+	Total        int
+	Records      []AllDropRecord
+}
+
+// AllDropRecord flattens droplog.Record for templating.
+type AllDropRecord struct {
+	Time       string
+	Supervisor string
+	Character  string
+	Profile    string
+	Drop       data.Drop
+}
+
+type CharacterSettings struct {
+	ErrorMessage       string
+	Supervisor         string
+	Config             *config.CharacterCfg
+	DayNames           []string
+	EnabledRuns        []string
+	DisabledRuns       []string
+	AvailableTZs       map[int]string
+	RecipeList         []string
 	RunewordRecipeList []string
 }
 

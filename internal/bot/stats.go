@@ -102,6 +102,9 @@ type Stats struct {
 	Drops               []data.Drop
 	Games               []GameStats
 	IsCompanionFollower bool
+	//MuleEnabled         bool `json:"muleEnabled"`
+	// UI contains lightweight live character info for the dashboard
+	UI CharacterOverview
 }
 
 type GameStats struct {
@@ -118,6 +121,28 @@ type RunStats struct {
 	Items       []data.Item
 	FinishedAt  time.Time
 	UsedPotions []event.UsedPotionEvent
+}
+
+// CharacterOverview is a compact summary of useful live stats for the UI
+type CharacterOverview struct {
+	Class           string
+	Level           int
+	Experience      int
+	LastExp         int
+	NextExp         int
+	Difficulty      string
+	Area            string
+	Life            int
+	MaxLife         int
+	Mana            int
+	MaxMana         int
+	MagicFind       int
+	GoldFind        int
+	FireResist      int
+	ColdResist      int
+	LightningResist int
+	PoisonResist    int
+	Gold            int
 }
 
 func (s Stats) TotalGames() int {

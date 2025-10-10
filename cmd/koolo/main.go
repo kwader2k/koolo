@@ -6,6 +6,7 @@ import (
 	"log"
 	"log/slog"
 	_ "net/http/pprof"
+	"path/filepath"
 	"runtime/debug"
 
 	sloggger "github.com/hectorgimenez/koolo/cmd/koolo/log"
@@ -13,6 +14,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/remote/discord"
+	"github.com/hectorgimenez/koolo/internal/remote/droplog"
 	"github.com/hectorgimenez/koolo/internal/remote/telegram"
 	"github.com/hectorgimenez/koolo/internal/server"
 	"github.com/hectorgimenez/koolo/internal/utils"
@@ -76,6 +78,15 @@ func main() {
 	winproc.SetProcessDpiAware.Call() // Set DPI awareness to be able to read the correct scale and show the window correctly
 
 	eventListener := event.NewListener(logger)
+
+	// Centralized droplog writer registration
+	dropBase := config.Koolo.LogSaveDirectory
+	if dropBase == "" {
+		dropBase = "logs"
+	}
+	dropDir := filepath.Join(dropBase, "droplogs")
+	dropWriter := droplog.NewWriter(dropDir, logger)
+	eventListener.Register(dropWriter.Handle)
 	manager := bot.NewSupervisorManager(logger, eventListener)
 	scheduler := bot.NewScheduler(manager, logger)
 	go scheduler.Start()
