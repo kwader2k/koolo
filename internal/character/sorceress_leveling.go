@@ -3,7 +3,6 @@ package character
 import (
 	"fmt"
 	"log/slog"
-	"math"
 	"sort"
 	"time"
 
@@ -298,7 +297,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 
 		isColdImmuneNotLightImmune = monster.IsImmune(stat.ColdImmune) && !monster.IsImmune(stat.LightImmune)
 		if !isColdImmuneNotLightImmune {
-			needsRepos, dangerousMonster := s.SorceressLevelingNeedsRepositioning()
+			needsRepos, dangerousMonster := action.IsAnyEnemyAroundPlayer(SorceressLevelingDangerDistance)
 			if needsRepos && time.Since(lastReposition) > time.Second*1 {
 				lastReposition = time.Now()
 
@@ -321,7 +320,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 				s.Logger.Info(fmt.Sprintf("Dangerous monster detected at distance %d from player, repositioning...",
 					pather.DistanceFromPoint(s.Data.PlayerUnit.Position, dangerousMonster.Position)))
 
-				safePos, found := s.SorceressLevelingFindSafePosition(targetMonster)
+				safePos, found := action.FindSafePosition(targetMonster, SorceressLevelingDangerDistance, SorceressLevelingSafeDistance, SorceressLevelingMinDistance, SorceressLevelingMaxDistance)
 				if found {
 					s.Logger.Info(fmt.Sprintf("Teleporting to safe position: %v", safePos))
 					if s.Data.PlayerUnit.Skills[skill.Teleport].Level > 0 {
@@ -1050,173 +1049,6 @@ func (s SorceressLeveling) KillAncients() error {
 func (s SorceressLeveling) KillBaal() error {
 
 	return s.killMonsterByName(npc.BaalCrab, data.MonsterTypeUnique, nil)
-}
-
-func (s SorceressLeveling) SorceressLevelingNeedsRepositioning() (bool, data.Monster) {
-	for _, monster := range s.Data.Monsters.Enemies() {
-		if monster.Stats[stat.Life] <= 0 {
-			continue
-		}
-
-		distance := pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position)
-		if distance < SorceressLevelingDangerDistance {
-			return true, monster
-		}
-	}
-
-	return false, data.Monster{}
-}
-
-func (s SorceressLeveling) SorceressLevelingFindSafePosition(targetMonster data.Monster) (data.Position, bool) {
-	ctx := context.Get()
-	playerPos := s.Data.PlayerUnit.Position
-
-	// Define a stricter minimum safe distance from monsters
-	const minSafeMonsterDistance = 2
-
-	// Generate candidate positions in a circle around the player
-	candidatePositions := []data.Position{}
-
-	// First try positions in the opposite direction from the dangerous monster
-	vectorX := playerPos.X - targetMonster.Position.X
-	vectorY := playerPos.Y - targetMonster.Position.Y
-
-	// Normalize the vector
-	length := math.Sqrt(float64(vectorX*vectorX + vectorY*vectorY))
-	if length > 0 {
-		normalizedX := int(float64(vectorX) / length * float64(SorceressLevelingSafeDistance))
-		normalizedY := int(float64(vectorY) / length * float64(SorceressLevelingSafeDistance))
-
-		// Add positions in the opposite direction with some variation
-		for offsetX := -3; offsetX <= 3; offsetX++ {
-			for offsetY := -3; offsetY <= 3; offsetY++ {
-				candidatePos := data.Position{
-					X: playerPos.X + normalizedX + offsetX,
-					Y: playerPos.Y + normalizedY + offsetY,
-				}
-
-				if s.Data.AreaData.IsWalkable(candidatePos) {
-					candidatePositions = append(candidatePositions, candidatePos)
-				}
-			}
-		}
-	}
-
-	// Generate positions in a circle with smaller angle increments for more candidates
-	// Try positions in different directions around the player
-	for angle := 0; angle < 360; angle += 5 {
-		radians := float64(angle) * math.Pi / 180
-
-		// Try multiple distances from the player
-		for distance := minSafeMonsterDistance; distance <= SorceressLevelingSafeDistance+5; distance += 2 {
-			dx := int(math.Cos(radians) * float64(distance))
-			dy := int(math.Sin(radians) * float64(distance))
-
-			basePos := data.Position{
-				X: playerPos.X + dx,
-				Y: playerPos.Y + dy,
-			}
-
-			// Check a small area around the base position
-			for offsetX := -1; offsetX <= 1; offsetX++ {
-				for offsetY := -1; offsetY <= 1; offsetY++ {
-					candidatePos := data.Position{
-						X: basePos.X + offsetX,
-						Y: basePos.Y + offsetY,
-					}
-
-					if s.Data.AreaData.IsWalkable(candidatePos) {
-						candidatePositions = append(candidatePositions, candidatePos)
-					}
-				}
-			}
-		}
-	}
-
-	// No walkable positions found
-	if len(candidatePositions) == 0 {
-		return data.Position{}, false
-	}
-
-	// Evaluate all candidate positions
-	type scoredPosition struct {
-		pos   data.Position
-		score float64
-	}
-
-	scoredPositions := []scoredPosition{}
-
-	for _, pos := range candidatePositions {
-		// Check if this position has line of sight to target
-		if !ctx.PathFinder.LineOfSight(pos, targetMonster.Position) {
-			continue
-		}
-
-		// Calculate minimum distance to any monster
-		minMonsterDist := s.minSorceressLevelingMonsterDistance(pos, s.Data.Monsters)
-
-		// Strictly skip positions that are too close to monsters
-		if minMonsterDist < minSafeMonsterDistance {
-			continue
-		}
-
-		// Calculate distance to target monster
-		targetDistance := pather.DistanceFromPoint(pos, targetMonster.Position)
-
-		distanceFromPlayer := pather.DistanceFromPoint(pos, playerPos)
-
-		// Calculate attack range score (highest when in optimal attack range)
-		attackRangeScore := 0.0
-		if targetDistance >= SorceressLevelingMinDistance && targetDistance <= SorceressLevelingMaxDistance {
-			attackRangeScore = 10.0
-		} else {
-			// Penalize positions outside attack range
-			attackRangeScore = -math.Abs(float64(targetDistance) - float64(SorceressLevelingMinDistance+SorceressLevelingMaxDistance)/2.0)
-		}
-
-		// Final score calculation - heavily weight monster distance for safety
-		score := minMonsterDist*3.0 + attackRangeScore*2.0 - float64(distanceFromPlayer)*0.5
-
-		// Extra bonus for positions that are very safe (far from monsters)
-		if minMonsterDist > float64(SorceressLevelingDangerDistance) {
-			score += 5.0
-		}
-
-		scoredPositions = append(scoredPositions, scoredPosition{
-			pos:   pos,
-			score: score,
-		})
-	}
-
-	// Sort positions by score (highest first)
-	sort.Slice(scoredPositions, func(i, j int) bool {
-		return scoredPositions[i].score > scoredPositions[j].score
-	})
-
-	// Return the best position if we found any
-	if len(scoredPositions) > 0 {
-		s.Logger.Info(fmt.Sprintf("Found safe position with score %.2f at distance %.2f from nearest monster",
-			scoredPositions[0].score, s.minSorceressLevelingMonsterDistance(scoredPositions[0].pos, s.Data.Monsters)))
-		return scoredPositions[0].pos, true
-	}
-
-	return data.Position{}, false
-}
-
-// Helper function to calculate minimum monster distance (Renamed for SorceressLeveling)
-func (s SorceressLeveling) minSorceressLevelingMonsterDistance(pos data.Position, monsters data.Monsters) float64 {
-	minDistance := math.MaxFloat64
-	for _, monster := range monsters.Enemies() {
-		if monster.Stats[stat.Life] <= 0 {
-			continue
-		}
-
-		distance := pather.DistanceFromPoint(pos, monster.Position)
-		if float64(distance) < minDistance {
-			minDistance = float64(distance)
-		}
-	}
-	return minDistance
 }
 
 func (s SorceressLeveling) GetAdditionalRunewords() []string {
