@@ -617,6 +617,7 @@ func UpdateQuestLog(fullUpdate bool) error {
 	ctx.SetLastAction("UpdateQuestLog")
 
 	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); !isLevelingChar {
+		ctx.Logger.Debug("Update quest log : early exit not LevelingCharacter")
 		return nil
 	}
 
@@ -626,8 +627,10 @@ func UpdateQuestLog(fullUpdate bool) error {
 	currentAct := ctx.Data.PlayerUnit.Area.Act()
 	startAct := currentAct
 
+	actWaitTimeMS := 300
 	if fullUpdate {
 		startAct = 1
+		actWaitTimeMS = 1000
 	}
 
 	var actButtonPositions map[int]data.Position
@@ -642,7 +645,7 @@ func UpdateQuestLog(fullUpdate bool) error {
 			ctx.Logger.Debug(fmt.Sprintf("Clicking Quest Log Act %d button at (%d, %d)", i, pos.X, pos.Y))
 
 			ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-			utils.Sleep(300)
+			utils.Sleep(actWaitTimeMS)
 		} else {
 			ctx.Logger.Warn(fmt.Sprintf("Could not find Quest Log button coordinates for current Act: %d", i))
 		}
