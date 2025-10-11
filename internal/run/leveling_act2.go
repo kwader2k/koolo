@@ -64,9 +64,13 @@ func (a Leveling) act2() error {
 
 	// Gold Farming Logic (and immediate return if farming is needed)
 	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
+		a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
 
-		return NewMausoleum().Run()
+		NewMausoleum().Run()
+		err := action.WayPoint(area.LutGholein)
+		if err != nil {
+			a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s.", err.Error()))
+		}
 	}
 
 	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 10000 {
@@ -668,4 +672,3 @@ func (a Leveling) DurielFilter() data.MonsterFilter {
 		return filteredMonsters
 	}
 }
-

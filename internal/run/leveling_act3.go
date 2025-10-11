@@ -1,6 +1,7 @@
 package run
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -56,6 +57,15 @@ func (a Leveling) act3() error {
 		}
 		a.ctx.Logger.Info("Lower Kurast Chests gold farming completed. Quitting current run to re-evaluate in next game.")
 		return nil
+	}
+
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
+
+		NewMausoleum().Run()
+		err := action.WayPoint(area.KurastDocks)
+		if err != nil {
+			a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s.", err.Error()))
+		}
 	}
 
 	if a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() {
