@@ -210,19 +210,19 @@ func (pf *PathFinder) LineOfSight(origin data.Position, destination data.Positio
 	return true
 }
 
-func (pf *PathFinder) HasDoorBetween(origin data.Position, destination data.Position) bool {
+func (pf *PathFinder) HasDoorBetween(origin data.Position, destination data.Position) (bool, *data.Object) {
 	path, _, pathFound := pf.GetPathFrom(origin, destination)
 	if !pathFound {
-		return false
+		return false, nil
 	}
 
 	for _, o := range pf.data.Objects {
 		if o.IsDoor() && o.Selectable && path.Intersects(*pf.data, o.Position, 4) {
-			return true
+			return true, &o
 		}
 	}
 
-	return false
+	return false, nil
 }
 
 // BeyondPosition calculates a new position that is a specified distance beyond the target position when viewed from the start position

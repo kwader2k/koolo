@@ -136,7 +136,10 @@ func IsRebuffRequired() bool {
 				return true
 			}
 			if buff == skill.Fade && !ctx.Data.PlayerUnit.States.HasState(state.Fade) {
-			return true
+				return true
+			}
+			if buff == skill.BoneArmor && !ctx.Data.PlayerUnit.States.HasState(state.Bonearmor) {
+				return true
 			}
 		}
 	}
