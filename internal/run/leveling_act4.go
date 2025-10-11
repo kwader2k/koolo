@@ -42,7 +42,7 @@ func (a Leveling) act4() error {
 
 	running = true
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	action.VendorRefill(false, true)
 
