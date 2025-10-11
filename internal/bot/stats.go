@@ -102,6 +102,7 @@ type Stats struct {
 	Drops               []data.Drop
 	Games               []GameStats
 	IsCompanionFollower bool
+	MuleEnabled         bool `json:"muleEnabled"`
 	//MuleEnabled         bool `json:"muleEnabled"`
 	// UI contains lightweight live character info for the dashboard
 	UI CharacterOverview

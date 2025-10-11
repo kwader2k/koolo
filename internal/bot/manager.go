@@ -15,6 +15,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
+	"github.com/hectorgimenez/koolo/internal/mule"
 	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
@@ -148,20 +149,26 @@ func (mng *SupervisorManager) StopAll() {
 }
 
 func (mng *SupervisorManager) Stop(supervisor string) {
-
 	s, found := mng.supervisors[supervisor]
 	if found {
+		// Log the stop sequence
+		mng.logger.Info("Stopping supervisor instance", slog.String("supervisor", supervisor))
 
-		// Stop the Supervisor
+		// Stop the Supervisor's internal loops and kill the client if configured
 		s.Stop()
 
-		// Delete him from the list of Supervisors
+		// Delete from the list of active Supervisors
 		delete(mng.supervisors, supervisor)
 
+		// Stop the crash detector associated with it
 		if cd, ok := mng.crashDetectors[supervisor]; ok {
 			cd.Stop()
 			delete(mng.crashDetectors, supervisor)
 		}
+
+		// The logic to start the next character has been removed from here.
+		// The restartFunc is now the single source of truth for this,
+		// preventing the mule from restarting itself.
 	}
 }
 
@@ -260,19 +267,12 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	}
 	ctx.Char = char
 
-	bot := NewBot(ctx.Context)
+	muleManager := mule.NewManager(logger)
+	bot := NewBot(ctx.Context, muleManager)
 
 	statsHandler := NewStatsHandler(supervisorName, logger)
-	companionHandler := NewCompanionEventHandler(supervisorName, logger, cfg)
-
-	// Register event handler for stats
 	mng.eventListener.Register(statsHandler.Handle)
-	mng.eventListener.Register(companionHandler.Handle)
-
-	// Create the supervisor
-	var supervisor Supervisor
-
-	supervisor, err = NewSinglePlayerSupervisor(supervisorName, bot, statsHandler)
+	supervisor, err := NewSinglePlayerSupervisor(supervisorName, bot, statsHandler)
 
 	if err != nil {
 		return nil, nil, err
@@ -285,6 +285,20 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 
 		ctx := supervisor.GetContext()
 		if ctx.CleanStopRequested {
+			if ctx.RestartWithCharacter != "" {
+				mng.logger.Info("Supervisor requested restart with different character",
+					slog.String("from", supervisorName),
+					slog.String("to", ctx.RestartWithCharacter))
+				nextCharacter := ctx.RestartWithCharacter
+				mng.Stop(supervisorName)
+				time.Sleep(5 * time.Second) // Wait before starting new character
+				if err := mng.Start(nextCharacter, false); err != nil {
+					mng.logger.Error("Failed to start next character",
+						slog.String("character", nextCharacter),
+						slog.String("error", err.Error()))
+				}
+				return
+			}
 			mng.logger.Info("Supervisor stopped cleanly by game logic. Preventing restart.", slog.String("supervisor", supervisorName))
 			mng.Stop(supervisorName)
 			return
