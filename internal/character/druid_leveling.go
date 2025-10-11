@@ -28,6 +28,8 @@ type DruidLeveling struct {
 	lastCastTime  time.Time // Tracks the last time a skill was cast
 }
 
+var _ context.LevelingCharacter = (*DruidLeveling)(nil)
+
 const (
 	druid_respec_lvl    = 54
 	DruidDangerDistance = 4
