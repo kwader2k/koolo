@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>All Drops</title>
+    <style>
+        .low-quality { color: #9CA3AF; }
+        .normal-quality { color: #FFFFFF; }
+        .superior-quality { color: #FFFFFF; }
+        .magic-quality { color: #60A5FA; }
+        .set-quality { color: #10B981; }
+        .rare-quality { color: #FBBF24; }
+        .unique-quality { color: #bfa969; }
+        .crafted-quality { color: #FFA500; }
+        .unknown-quality { color: #000000; }
+        .search-box { width: 100%; padding: 0.6rem 1rem; background-color: rgba(17, 24, 39, 0.75); border: 1px solid rgba(75, 85, 99, 0.4); border-radius: 0.5rem; color: white; outline: none; backdrop-filter: blur(8px); font-size: 0.95rem; }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-6 flex items-center justify-between">
+        <a href="/" class="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2 rounded-lg">← Home</a>
+        <div class="text-center flex-1">
+            <h1 class="text-2xl font-bold">All Drops</h1>
+            <p class="text-gray-400">Total: {{.Total}}</p>
+        </div>
+        <div class="flex gap-2">
+            <button id="exportBtn" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg">Export HTML</button>
+            <button id="openFolderBtn" class="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2 rounded-lg">Open Folder</button>
+            <button id="resetBtn" class="bg-red-700 hover:bg-red-600 text-white px-5 py-2 rounded-lg">Reset Droplog</button>
+        </div>
+    </div>
+
+    {{ if .ErrorMessage }}
+    <div class="bg-red-900/40 border border-red-800 rounded p-3 mb-4">{{.ErrorMessage}}</div>
+    {{ end }}
+
+    <form method="get" class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        <input type="text" name="supervisor" class="search-box" placeholder="Filter by supervisor">
+        <input type="text" name="character" class="search-box" placeholder="Filter by character name">
+        <input type="text" name="q" class="search-box" placeholder="Search by item name or stats">
+        <div class="md:col-span-3 text-right">
+            <button class="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded">Apply</button>
+        </div>
+    </form>
+
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-700">
+            <thead>
+            <tr class="bg-gray-800">
+                <th class="px-3 py-2 text-left text-sm font-semibold">Time</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold">Supervisor</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold">Character</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold">Item</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold">Location</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold">Rule</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">
+            {{ range .Records }}
+            <tr class="hover:bg-gray-800/40">
+                <td class="px-3 py-2 text-sm whitespace-nowrap">{{ .Time }}</td>
+                <td class="px-3 py-2 text-sm whitespace-nowrap">{{ .Supervisor }}</td>
+                <td class="px-3 py-2 text-sm whitespace-nowrap">{{ .Character }}</td>
+                <td class="px-3 py-2 text-sm">
+                    <div class="{{ .Drop.Item.Quality.ToString | qualityClass }} font-medium">
+                        {{ if .Drop.Item.IdentifiedName }}
+                            {{ .Drop.Item.IdentifiedName }}
+                        {{ else }}
+                            {{ .Drop.Item.Name }}
+                        {{ end }}
+                    </div>
+                    {{ if .Drop.Item.Identified }}
+                    <div class="text-gray-300 text-xs">
+                        {{ range .Drop.Item.Stats }}
+                            {{ if .String }}<div>{{ .String }}</div>{{ end }}
+                        {{ end }}
+                    </div>
+                    {{ else }}
+                    <div class="text-gray-400 text-xs italic">Unidentified</div>
+                    {{ end }}
+                </td>
+                <td class="px-3 py-2 text-sm">{{ if .Drop.DropLocation }}{{ .Drop.DropLocation }}{{ end }}</td>
+                <td class="px-3 py-2 text-xs text-gray-400">{{ if .Drop.Rule }}{{ .Drop.Rule }} ({{ .Drop.RuleFile }}){{ end }}</td>
+            </tr>
+            {{ end }}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+document.getElementById('exportBtn').addEventListener('click', async function(ev) {
+    ev.preventDefault();
+    try {
+        const res = await fetch('/export-drops', { method: 'GET' });
+        if (!res.ok) throw new Error('Export failed');
+        const json = await res.json();
+        const p = document.createElement('div');
+        p.className = 'bg-green-900/40 border border-green-800 rounded p-3 mb-4';
+        p.textContent = `Exported to: ${json.file}`;
+        document.querySelector('.container').prepend(p);
+    } catch (e) {
+        alert('Failed to export: ' + (e && e.message ? e.message : e));
+    }
+});
+
+document.getElementById('openFolderBtn').addEventListener('click', async function(ev) {
+    ev.preventDefault();
+    try {
+        const res = await fetch('/open-droplogs', { method: 'POST' });
+        if (!res.ok) throw new Error('Open folder failed');
+    } catch (e) {
+        alert('Failed to open folder: ' + (e && e.message ? e.message : e));
+    }
+});
+
+document.getElementById('resetBtn').addEventListener('click', async function(ev) {
+    ev.preventDefault();
+    if (!confirm('This will delete droplog .jsonl and .html files. Continue?')) return;
+    try {
+        const res = await fetch('/reset-droplogs', { method: 'POST' });
+        if (!res.ok) throw new Error('Reset failed');
+        const json = await res.json();
+        const p = document.createElement('div');
+        p.className = 'bg-yellow-900/40 border border-yellow-800 rounded p-3 mb-4';
+        p.textContent = `Removed ${json.removed} files from: ${json.dir}`;
+        document.querySelector('.container').prepend(p);
+    } catch (e) {
+        alert('Failed to reset: ' + (e && e.message ? e.message : e));
+    }
+});
+</script>
+</body>
+</html>

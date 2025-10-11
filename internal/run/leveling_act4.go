@@ -104,7 +104,7 @@ func (a Leveling) act4() error {
 		return nil
 	}
 
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && lvl.Value < 90 {
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
 
 		//Deactivate shrine interaction for late leveling phase (with low gear in hell searching for shrines leads to more problems than benefits)
 		if a.ctx.CharacterCfg.Game.InteractWithShrines {
@@ -125,7 +125,11 @@ func (a Leveling) act4() error {
 			return err
 		}
 
-		return nil
+		diabloRun := NewDiablo()
+		err = diabloRun.Run()
+		if err != nil {
+			return err
+		}
 	}
 
 	if !a.ctx.Data.Quests[quest.Act4TheFallenAngel].Completed() {

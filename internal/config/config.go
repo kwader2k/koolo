@@ -133,6 +133,14 @@ type CharacterCfg struct {
 			UseBladesOfIce    bool `yaml:"useBladesOfIce"`
 			UseFistsOfFire    bool `yaml:"useFistsOfFire"`
 		} `yaml:"mosaic_sin"`
+		BlizzardSorceress struct {
+			UseMoatTrick        bool `yaml:"useMoatTrick"`
+			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
+		} `yaml:"blizzardSorceress"`
+		SorceressLeveling struct {
+			UseMoatTrick        bool `yaml:"useMoatTrick"`
+			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
+		} `yaml:"sorceressLeveling"`
 	} `yaml:"character"`
 
 	Game struct {

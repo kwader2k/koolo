@@ -74,9 +74,8 @@ Paladin
                         <option value="assassin" {{ if eq .Config.Character.Class
                         "assassin" }}selected{{ end }}>Assassin (Leveling)
                         </option>
-
-          <option value="sorceress_leveling" {{ if eq .Config.Character.Class
-                        "sorceress_leveling" }}selected{{ end }}>Sorc (Leveling as Fire)
+                        <option value="sorceress_leveling" {{ if eq .Config.Character.Class
+                        "sorceress_leveling" }}selected{{ end }}>Sorceress (Leveling)
                         </option>
                         <option value="trapsin" {{ if eq .Config.Character.Class
 
@@ -145,8 +144,33 @@ Paladin
                     </fieldset>
                 </div>
 
+                <div class="blizzard-sorceress-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            Use moat trick
+                            <input type="checkbox" id="useMoatTrick" name="useMoatTrick" {{ if .Config.Character.BlizzardSorceress.UseMoatTrick }}checked{{ end }}/>
+                        </label>
+                        <label>
+                            Use static on Mephisto
+                            <input type="checkbox" id="useStaticOnMephisto" name="useStaticOnMephisto" {{ if .Config.Character.BlizzardSorceress.UseStaticOnMephisto }}checked{{ end }}/>
+                        </label>
+                    </fieldset>
+                </div>
 
-          <div class="mosaic-assassin-options" style="display: none;">
+                <div class="sorceress_leveling-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            Use moat trick
+                            <input type="checkbox" id="useMoatTrick" name="useMoatTrick" {{ if .Config.Character.SorceressLeveling.UseMoatTrick }}checked{{ end }}/>
+                        </label>
+                        <label>
+                            Use static on Mephisto
+                            <input type="checkbox" id="useStaticOnMephisto" name="useStaticOnMephisto" {{ if .Config.Character.SorceressLeveling.UseStaticOnMephisto }}checked{{ end }}/>
+                        </label>                       
+                    </fieldset>
+                </div>
+
+                <div class="mosaic-assassin-options" style="display: none;">
                     <fieldset class="grid">
                         <label>
                             <input type="checkbox" name="mosaicUseTigerStrike" {{ if .Config.Character.MosaicSin.UseTigerStrike }}checked{{ end }}/>

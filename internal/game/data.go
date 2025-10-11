@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"sort"
 	"strings"
 	"time"
 
@@ -143,6 +144,14 @@ func (d Data) PotionsInInventory(potionType data.PotionType) []data.Item {
 			potions = append(potions, i)
 		}
 	}
+
+	// Sort potions column-first: leftmost column top-to-bottom, then next column
+	sort.Slice(potions, func(i, j int) bool {
+		if potions[i].Position.X == potions[j].Position.X {
+			return potions[i].Position.Y < potions[j].Position.Y
+		}
+		return potions[i].Position.X < potions[j].Position.X
+	})
 
 	return potions
 }

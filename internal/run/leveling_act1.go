@@ -50,18 +50,13 @@ func (a Leveling) act1() error {
 
 	// --- Quest and Farming Logic ---
 
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && lvl.Value < 80 {
-
-		return NewMausoleum().Run()
-	}
-
 	// in case we're farming already, directly skip to a4 (we end up in a1 if we die while farming mausoleum)
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && lvl.Value >= 80 && a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].Completed() {
+	if a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].Completed() {
 
 		a.ctx.Logger.Info("Attempting to reach Act 4 via The Pandemonium Fortress waypoint.")
 		err := action.WayPoint(area.ThePandemoniumFortress)
 		if err == nil {
-			a.ctx.Logger.Info("Successfully reached Act 4 via waypoint. Ending Act 3 script.")
+			a.ctx.Logger.Info("Successfully reached Act 4 via waypoint.")
 			return nil
 		} else {
 			a.ctx.Logger.Info("Could not use waypoint to The Pandemonium Fortress. Falling back to manual portal entry.")
@@ -83,6 +78,11 @@ func (a Leveling) act1() error {
 
 			return NewMausoleum().Run()
 		}
+	}
+
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && lvl.Value <= 75 {
+
+		return NewMausoleum().Run()
 	}
 
 	if !a.ctx.Data.Quests[quest.Act1DenOfEvil].Completed() && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
@@ -209,6 +209,14 @@ func (a Leveling) setupLevelOneConfig() {
 		enabledRunewordRecipes = append(enabledRunewordRecipes, "Steel")
 	}
 
+	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+		a.ctx.CharacterCfg.Character.ClearPathDist = 7
+		a.ctx.CharacterCfg.Character.SorceressLeveling.UseMoatTrick = true
+		a.ctx.CharacterCfg.Character.SorceressLeveling.UseStaticOnMephisto = true
+	} else {
+		a.ctx.CharacterCfg.Character.ClearPathDist = 15
+	}
+
 	a.ctx.CharacterCfg.Game.Difficulty = difficulty.Normal
 	a.ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation = true
 	a.ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding = true
@@ -224,13 +232,6 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Health.RejuvPotionAtLife = 0
 	a.ctx.CharacterCfg.Health.ChickenAt = 7
 	a.ctx.CharacterCfg.Gambling.Enabled = true
-
-	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 7
-	} else {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 15
-	}
-
 	a.ctx.CharacterCfg.Health.MercRejuvPotionAt = 40
 	a.ctx.CharacterCfg.Health.MercChickenAt = 0
 	a.ctx.CharacterCfg.Health.MercHealingPotionAt = 25

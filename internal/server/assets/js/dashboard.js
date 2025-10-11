@@ -112,6 +112,36 @@ function createCharacterCard(key) {
                     </button>
                 </div>
             </div>
+            <div class="character-summary">
+                <div class="co-line">
+                    <span class="co-classlevel">Class/Level (Exp)</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-difficulty">Difficulty</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-area">Area</span>
+                </div>
+                <div class="co-line">
+                    <div class="co-xp" title="">
+                        <div class="xp-bar" style="height:6px;background:#2b2f36;border-radius:4px;overflow:hidden;width:180px;display:inline-block;vertical-align:middle;">
+                            <div class="xp-bar-fill" style="height:100%;width:0;background:linear-gradient(90deg,#6aa0ff,#3a7bff);"></div>
+                        </div>
+                        <span class="xp-percent" style="margin-left:8px;font-size:0.85em;color:#9bb3d3;">0%</span>
+                    </div>
+                </div>
+                <div class="co-line">
+                    <span class="co-life">Life: -</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-mana">Mana: -</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-mf">MF: -</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-gold">Gold: -</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-gf">GF: -</span>
+                    <span class="co-dot"> • </span>
+                    <span class="co-res">Res: -</span>
+                </div>
+            </div>
             <div class="character-details">
                 <div class="status-details">
                     <span class="status-badge"></span>
@@ -259,6 +289,10 @@ function updateCharacterCard(card, key, value, dropCount) {
     updateStats(card, key, value.Games, dropCount);
     updateRunStats(card, value.Games);
 
+    // Enrich with live character overview (support both UI and ui keys)
+    const uiPayload = value.UI || value.ui || null;
+    updateCharacterOverview(card, uiPayload, value.SupervisorStatus);
+
     if (statusDetails) {
         updateStartedTime(statusDetails, value.StartedAt);
     }
@@ -339,6 +373,180 @@ function updateStats(card, key, games, dropCount) {
     card.querySelector('.chickens').textContent = stats.totalChickens;
     card.querySelector('.deaths').textContent = stats.totalDeaths;
     card.querySelector('.errors').textContent = stats.totalErrors;
+}
+
+function updateCharacterOverview(card, ui, status) {
+    const classLevelEl = card.querySelector('.co-classlevel');
+    const diffEl = card.querySelector('.co-difficulty');
+    const areaEl = card.querySelector('.co-area');
+    const lifeEl = card.querySelector('.co-life');
+    const manaEl = card.querySelector('.co-mana');
+    const mfEl = card.querySelector('.co-mf');
+    const gfEl = card.querySelector('.co-gf');
+    const goldEl = card.querySelector('.co-gold');
+    const resEl = card.querySelector('.co-res');
+
+    // If not running, show placeholders
+    const isActive = status === 'In game' || status === 'Paused' || status === 'Starting';
+    if (!ui || !isActive) {
+        if (classLevelEl) classLevelEl.textContent = '—';
+        if (diffEl) diffEl.textContent = '—';
+        if (areaEl) areaEl.textContent = '—';
+        if (lifeEl) lifeEl.textContent = 'Life: —';
+        if (manaEl) manaEl.textContent = 'Mana: —';
+        if (mfEl) mfEl.textContent = 'MF: —';
+        if (gfEl) gfEl.textContent = 'GF: —';
+        if (goldEl) goldEl.textContent = 'Gold: —';
+        if (resEl) resEl.textContent = 'Res: —';
+        const xpFill = card.querySelector('.xp-bar-fill');
+        const xpPct = card.querySelector('.xp-percent');
+        if (xpFill) xpFill.style.width = '0%';
+        if (xpPct) xpPct.textContent = '0%';
+        return;
+    }
+
+    const cls = deriveClassName(ui.Class || '');
+    const lvl = ui.Level ?? 0;
+    const exp = ui.Experience ?? 0;
+    let lastExp = ui.LastExp ?? 0;
+    let nextExp = ui.NextExp ?? 0;
+
+    // Static XP thresholds table for levels 1–99 (total at level start, XP to next)
+    // Source: classic.battle.net Diablo II: LoD Experience Per Level
+    const xpTable = {
+        1: [0, 500], 2: [500, 1000], 3: [1500, 2250], 4: [3750, 4125], 5: [7875, 6300], 6: [14175, 8505], 7: [22680, 10206], 8: [32886, 11510],
+        9: [44396, 13319], 10: [57715, 14429], 11: [72144, 18036], 12: [90180, 22545], 13: [112725, 28181], 14: [140906, 35226], 15: [176132, 44033],
+        16: [220165, 55042], 17: [275207, 68801], 18: [344008, 86002], 19: [430010, 107503], 20: [537513, 134378], 21: [671891, 167973],
+        22: [839864, 209966], 23: [1049830, 262457], 24: [1312287, 328072], 25: [1640359, 410090], 26: [2050449, 512612], 27: [2563061, 640765],
+        28: [3203826, 698434], 29: [3902260, 761293], 30: [4663553, 829810], 31: [5493363, 904492], 32: [6397855, 985897], 33: [7383752, 1074627],
+        34: [8458379, 1171344], 35: [9629723, 1276765], 36: [10906488, 1391674], 37: [12298162, 1516924], 38: [13815086, 1653448],
+        39: [15468534, 1802257], 40: [17270791, 1964461], 41: [19235252, 2141263], 42: [21376515, 2333976], 43: [23710491, 2544034],
+        44: [26254525, 2772997], 45: [29027522, 3022566], 46: [32050088, 3294598], 47: [35344686, 3591112], 48: [38935798, 3914311],
+        49: [42850109, 4266600], 50: [47116709, 4650593], 51: [51767302, 5069147], 52: [56836449, 5525370], 53: [62361819, 6022654],
+        54: [68384473, 6564692], 55: [74949165, 7155515], 56: [82104680, 7799511], 57: [89904191, 8501467], 58: [98405658, 9266598],
+        59: [107672256, 10100593], 60: [117772849, 11009646], 61: [128782495, 12000515], 62: [140783010, 13080560],
+        63: [153863570, 14257811], 64: [168121381, 15541015], 65: [183662396, 16939705], 66: [200602101, 18464279],
+        67: [219066380, 20126064], 68: [239192444, 21937409], 69: [261129853, 23911777], 70: [285041630, 26063836],
+        71: [311105466, 28409582], 72: [339515048, 30966444], 73: [370481492, 33753424], 74: [404234916, 36791232],
+        75: [441026148, 40102443], 76: [481128591, 43711663], 77: [524840254, 47645713], 78: [572485967, 51933826],
+        79: [624419793, 56607872], 80: [681027665, 61702579], 81: [742730244, 67255812], 82: [809986056, 73308835],
+        83: [883294891, 79906630], 84: [963201521, 87098226], 85: [1050299747, 94937067], 86: [1145236814, 103481403],
+        87: [1248718217, 112794729], 88: [1361512946, 122946255], 89: [1484459201, 134011418], 90: [1618470619, 146072446],
+        91: [1764543065, 159218965], 92: [1923762030, 173548673], 93: [2097310703, 189168053], 94: [2286478756, 206193177],
+        95: [2492671933, 224750564], 96: [2717422497, 244978115], 97: [2962400612, 267026144], 98: [3229426756, 291058498],
+        99: [3520485254, 0]
+    };
+
+    // Prefer static table if available or if NextExp looks invalid (0/negative)
+    let gained = 0, needed = 1, toNext = 0, pct = 0, nextThreshold = 0;
+    if (xpTable[lvl]) {
+        const [floor, toNextFromTable] = xpTable[lvl];
+        lastExp = floor;
+        toNext = Math.max(0, toNextFromTable);
+        nextThreshold = toNext > 0 ? (floor + toNext) : exp;
+        gained = Math.max(0, exp - lastExp);
+        needed = Math.max(1, toNext > 0 ? toNext : 1);
+        pct = Math.max(0, Math.min(1, toNext > 0 ? (gained / needed) : 1));
+    } else {
+        // Fallback to dynamic stats when table entry not present
+        // A) Thresholds: lastExp=start of level (abs), nextExp=next level threshold (abs)
+        const thrGained = Math.max(0, exp - lastExp);
+        const thrNeeded = Math.max(1, nextExp - lastExp);
+        const thrToNext = Math.max(0, nextExp - exp);
+        const thrPct = Math.max(0, Math.min(1, thrGained / thrNeeded));
+        const thrValid = (nextExp > lastExp) && (exp >= lastExp) && (exp <= nextExp);
+
+        // B) Remaining: nextExp is remaining-to-next (delta)
+        const remGained = Math.max(0, exp - lastExp);
+        const remToNext = Math.max(0, nextExp);
+        const remNeeded = Math.max(1, remGained + remToNext);
+        const remPct = Math.max(0, Math.min(1, remGained / remNeeded));
+        const remValid = (remToNext >= 0);
+
+        const isAtCap = (lvl >= 99);
+        if (!isAtCap) {
+            const thrBelievable = thrValid && thrToNext > 0 && thrPct < 0.995;
+            const remBelievable = remValid && remToNext > 0 && remPct < 0.995;
+            if (thrBelievable || (!remBelievable && thrValid)) {
+                gained = thrGained; needed = thrNeeded; toNext = thrToNext; pct = thrPct; nextThreshold = nextExp;
+            } else if (remBelievable || (!thrBelievable && remValid)) {
+                gained = remGained; needed = remNeeded; toNext = remToNext; pct = remPct; nextThreshold = exp + remToNext;
+            } else {
+                if (thrValid) { gained = thrGained; needed = thrNeeded; toNext = thrToNext; pct = thrPct; nextThreshold = nextExp; }
+                else { gained = remGained; needed = remNeeded; toNext = remToNext; pct = remPct; nextThreshold = exp + remToNext; }
+            }
+        } else {
+            gained = thrGained; needed = 1; toNext = 0; pct = 1; nextThreshold = exp;
+        }
+    }
+    const diff = titleCase(ui.Difficulty || '');
+    const area = ui.Area || '';
+    const life = ui.Life ?? 0;
+    const maxLife = ui.MaxLife ?? 0;
+    const mana = ui.Mana ?? 0;
+    const maxMana = ui.MaxMana ?? 0;
+    const mf = ui.MagicFind ?? 0;
+    const gf = ui.GoldFind ?? 0;
+    const gold = ui.Gold ?? 0;
+    const fr = ui.FireResist ?? 0;
+    const cr = ui.ColdResist ?? 0;
+    const lr = ui.LightningResist ?? 0;
+    const pr = ui.PoisonResist ?? 0;
+
+    const pctText = isFinite(pct) ? `${(pct * 100).toFixed(1)}%` : '100%';
+    if (classLevelEl) {
+        classLevelEl.textContent = `${cls} / Level: ${lvl} (${pctText})`;
+        classLevelEl.title = `XP: ${formatNumber(exp)} / Next: ${formatNumber(nextThreshold)} (Gained: ${formatNumber(gained)} | To Next: ${formatNumber(toNext)})\nRaw: LastExp=${formatNumber(lastExp)}, NextExp=${formatNumber(nextExp)}`;
+    }
+    const xpFill = card.querySelector('.xp-bar-fill');
+    const xpPct = card.querySelector('.xp-percent');
+    if (xpFill) xpFill.style.width = `${Math.max(0, Math.min(100, (pct * 100))).toFixed(1)}%`;
+    if (xpPct) xpPct.textContent = pctText;
+    if (diffEl) diffEl.textContent = `${diff}`;
+    if (areaEl) areaEl.textContent = `${area}`;
+    if (lifeEl) lifeEl.textContent = `Life: ${life}/${maxLife}`;
+    if (manaEl) manaEl.textContent = `Mana: ${mana}/${maxMana}`;
+    if (mfEl) mfEl.textContent = `MF: ${mf}%`;
+    if (gfEl) gfEl.textContent = `GF: ${gf}%`;
+    if (goldEl) goldEl.textContent = `Gold: ${gold}`;
+    if (resEl) resEl.innerHTML = `<span class="res-fr">FR: ${fr}</span> / <span class="res-cr">CR: ${cr}</span> / <span class="res-lr">LR: ${lr}</span> / <span class="res-pr">PR: ${pr}</span>`;
+}
+
+// Helpers to prettify class/difficulty
+function titleCase(s) {
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
+function deriveClassName(raw) {
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    // If raw already equals a known class name, just title-case it
+    const known = [
+        'amazon', 'assassin', 'barbarian', 'druid', 'necromancer', 'paladin', 'sorceress'
+    ];
+    for (const k of known) {
+        if (lower === k) return titleCase(k);
+    }
+    // Heuristics: detect by containment
+    if (lower.includes('sorc')) return 'Sorceress';
+    if (lower.includes('paladin')) return 'Paladin';
+    if (lower.includes('barb')) return 'Barbarian';
+    if (lower.includes('assassin') || lower.includes('sin')) return 'Assassin';
+    if (lower.includes('druid')) return 'Druid';
+    if (lower.includes('amazon')) return 'Amazon';
+    if (lower.includes('necromancer') || lower.includes('necro')) return 'Necromancer';
+    // Fallback: split on underscores and title-case first part
+    const base = lower.split('_')[0];
+    return titleCase(base);
+}
+
+function formatNumber(n) {
+    try {
+        return Number(n).toLocaleString();
+    } catch {
+        return n;
+    }
 }
 
 

@@ -136,6 +136,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const novaSorceressOptions = document.querySelector('.nova-sorceress-options');
     const bossStaticThresholdInput = document.getElementById('novaBossStaticThreshold');
     const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
+    const blizzardSorceressOptions = document.querySelector('.blizzard-sorceress-options');
+    const sorceressLevelingOptions = document.querySelector('.sorceress_leveling-options');
 	const runewordSearchInput = document.getElementById('search-runewords');
     const useTeleportCheckbox = document.getElementById('characterUseTeleport');
     const clearPathDistContainer = document.getElementById('clearPathDistContainer');
@@ -156,10 +158,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const berserkerBarbOptions = document.querySelector('.berserker-barb-options');
         const novaSorceressOptions = document.querySelector('.nova-sorceress-options');
         const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
+        const blizzardSorceressOptions = document.querySelector('.blizzard-sorceress-options');
+        const sorceressLevelingOptions = document.querySelector('.sorceress_leveling-options');
         // Hide all options first
         berserkerBarbOptions.style.display = 'none';
         novaSorceressOptions.style.display = 'none';
         mosaicAssassinOptions.style.display = 'none';
+        blizzardSorceressOptions.style.display = 'none';
+        sorceressLevelingOptions.style.display = 'none';
         noSettingsMessage.style.display = 'none';
         
         // Show relevant options based on class
@@ -170,6 +176,10 @@ document.addEventListener('DOMContentLoaded', function () {
             updateNovaSorceressOptions();
         } else if (selectedClass === 'mosaic') {
             mosaicAssassinOptions.style.display = 'block';
+        } else if (selectedClass === 'sorceress') {
+            blizzardSorceressOptions.style.display = 'block';
+        } else if (selectedClass === 'sorceress_leveling') {
+            sorceressLevelingOptions.style.display = 'block';                        
         } else {
             noSettingsMessage.style.display = 'block';
         }

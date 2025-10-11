@@ -64,9 +64,13 @@ func (a Leveling) act2() error {
 
 	// Gold Farming Logic (and immediate return if farming is needed)
 	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
+		a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
 
-		return NewMausoleum().Run()
+		NewMausoleum().Run()
+		err := action.WayPoint(area.LutGholein)
+		if err != nil {
+			a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s.", err.Error()))
+		}
 	}
 
 	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 10000 {
@@ -201,22 +205,25 @@ func (a Leveling) act2() error {
 		return NewQuests().getHoradricCube()
 	}
 
-	if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value < 18 {
-		a.ctx.Logger.Info("Not yet level 18 yet. Leveling in Sewers.")
-		a.ctx.CharacterCfg.Character.ClearPathDist = 10
-		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
-			a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
-		}
-
+	if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value < 18 || (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && !a.ctx.Data.Quests[quest.Act2RadamentsLair].Completed()) {
+		a.ctx.Logger.Info("Starting Radament.")
 		return NewQuests().killRadamentQuest()
 
 	}
 
-	if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value == 18 {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 10
-		if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
-			a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
-		}
+	if itm, found := a.ctx.Data.Inventory.Find("BookofSkill"); found {
+		a.ctx.Logger.Info("BookofSkill found in inventory. Using it...")
+
+		// Use the book of skill
+		step.CloseAllMenus()
+		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
+		screenPos := ui.GetScreenCoordsForItem(itm)
+		utils.Sleep(200)
+		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+		step.CloseAllMenus()
+
+		a.ctx.Logger.Info("Book of Skill used successfully.")
+
 	}
 
 	if a.ctx.Data.Quests[quest.Act2TheHoradricStaff].HasStatus(quest.StatusInProgress4) {

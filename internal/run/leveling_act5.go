@@ -19,11 +19,11 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config" // Make sure this import is present
-	//	"github.com/lxn/win"
+	"github.com/lxn/win"
 )
 
 func (a Leveling) act5() error {
-	if a.ctx.Data.PlayerUnit.Area != area.Harrogath && a.ctx.Data.PlayerUnit.Area != area.FrozenRiver {
+	if a.ctx.Data.PlayerUnit.Area != area.Harrogath {
 		return nil
 	}
 
@@ -33,8 +33,7 @@ func (a Leveling) act5() error {
 
 	// Gold Farming Logic (and immediate return if farming is needed)
 	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 30000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
+		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) {
 
 		a.ctx.Logger.Info("Low on gold. Initiating Crystalline Passage gold farm.")
 		if err := a.CrystallinePassage(); err != nil {
@@ -45,6 +44,16 @@ func (a Leveling) act5() error {
 		return nil // Key: This immediately exits the 'act5' function, ending the current game run.
 	}
 	// If we reach this point, it means gold is sufficient, and we skip farming for this run.
+
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000 {
+
+		NewLowerKurastChest().Run()
+
+		err := action.WayPoint(area.Harrogath)
+		if err != nil {
+			return err
+		}
+	}
 
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
@@ -190,8 +199,10 @@ func (a Leveling) act5() error {
 			if malah, found := a.ctx.Data.Monsters.FindOne(npc.Malah, data.MonsterTypeNone); found {
 				action.MoveToCoords(malah.Position)
 			}
-			action.InteractNPC(npc.Malah)
 
+			action.InteractNPC(npc.Malah)
+			utils.Sleep(1000)
+			a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
 			// Adding a longer delay to ensure the game state has time to update
 			utils.Sleep(2500)
 
@@ -227,6 +238,32 @@ func (a Leveling) act5() error {
 		step.CloseAllMenus() // Close inventory after attempt
 	}
 
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
+
+		//Deactivate shrine interaction for late leveling phase (with low gear in hell searching for shrines leads to more problems than benefits)
+		if a.ctx.CharacterCfg.Game.InteractWithShrines {
+			a.ctx.CharacterCfg.Game.InteractWithShrines = false
+
+			if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
+				a.ctx.Logger.Error(fmt.Sprintf("Failed to save character configuration: %s", err.Error()))
+			}
+		}
+
+
+		NewLowerKurastChest().Run()
+		NewMephisto(nil).Run()
+		NewMausoleum().Run()
+		diabloRun := NewDiablo()
+		err := diabloRun.Run()
+		if err != nil {
+			return err
+		}
+		err = action.WayPoint(area.Harrogath)
+		if err != nil {
+			return err
+		}
+	}
+
 	if !a.ctx.Data.Quests[quest.Act5RiteOfPassage].Completed() {
 		err := NewQuests().killAncientsQuest()
 		if err != nil {
@@ -257,3 +294,5 @@ func (a Leveling) CrystallinePassage() error {
 	return nil
 
 }
+
+

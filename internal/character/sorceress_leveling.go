@@ -52,11 +52,11 @@ type SorceressLeveling struct {
 
 // fireSkillSequence defines the skill allocation for levels < 32
 var fireSkillSequence = []skill.ID{
-	skill.FireBolt,    // Lvl 2 (1st point)
+	skill.FrozenArmor, // Lvl 2 (1st point)
 	skill.FireBolt,    // Lvl 2 (+1 from Den of Evil, 2nd point)
 	skill.FireBolt,    // Lvl 3 (3rd point)
 	skill.FireBolt,    // Lvl 4 (4th point)
-	skill.FrozenArmor, // Lvl 5 (1st point)
+	skill.FireBolt,    // Lvl 5 (1st point)
 	skill.FireBolt,    // Lvl 6 (1st point)
 	skill.FireBolt,    // Lvl 7 (1st point)
 	skill.FireBolt,    // Lvl 8 (5th point)
@@ -646,7 +646,7 @@ func (s SorceressLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		skill.FireBolt,
 	}
 
-	if level.Value >= 4 {
+	if level.Value >= 2 {
 		skillBindings = append(skillBindings, skill.FrozenArmor)
 	}
 	if level.Value >= 6 {
@@ -813,88 +813,164 @@ func (s SorceressLeveling) KillCouncil() error {
 
 func (s SorceressLeveling) KillMephisto() error {
 
-	/*originalBackToTownCfg := s.CharacterCfg.BackToTown
-	s.CharacterCfg.BackToTown.NoHpPotions = false
-	s.CharacterCfg.BackToTown.NoMpPotions = false
-	s.CharacterCfg.BackToTown.EquipmentBroken = false
-	s.CharacterCfg.BackToTown.MercDied = false
+	if s.CharacterCfg.Character.SorceressLeveling.UseStaticOnMephisto {
 
-	defer func() {
-		s.CharacterCfg.BackToTown = originalBackToTownCfg
-		s.Logger.Info("Restored original back-to-town checks after Mephisto fight.")
-	}()*/
+		var attackOption step.AttackOption = step.Distance(SorceressLevelingMinDistance, SorceressLevelingMaxDistance)
 
-	ctx := context.Get()
-	opts := step.Distance(15, 80)
-	ctx.ForceAttack = true
-
-	defer func() {
-		ctx.ForceAttack = false
-	}()
-
-	type positionAndWaitTime struct {
-		x        int
-		y        int
-		duration int
-	}
-
-	// Move to initial position
-	utils.Sleep(350)
-	err := step.MoveTo(data.Position{X: 17563, Y: 8072})
-	if err != nil {
-		return err
-	}
-
-	utils.Sleep(350)
-
-	// Initial movement sequence
-	initialPositions := []positionAndWaitTime{
-		{17575, 8086, 350}, {17584, 8088, 1200},
-		{17600, 8090, 550}, {17609, 8090, 2500},
-	}
-
-	for _, pos := range initialPositions {
-		err := step.MoveTo(data.Position{X: pos.x, Y: pos.y})
-		if err != nil {
-			return err
-		}
-		utils.Sleep(pos.duration)
-	}
-
-	// Clear area around position
-	err = action.ClearAreaAroundPosition(data.Position{X: 17609, Y: 8090}, 10, data.MonsterAnyFilter())
-	if err != nil {
-		return err
-	}
-
-	err = step.MoveTo(data.Position{X: 17609, Y: 8090})
-	if err != nil {
-		return err
-	}
-
-	maxAttack := 100
-	attackCount := 0
-
-	for attackCount < maxAttack {
-		ctx.PauseIfNotPriority()
+		staticFieldRange := step.Distance(0, StaticFieldEffectiveRange)
+		err := step.MoveTo(data.Position{X: 17565, Y: 8065})
 
 		monster, found := s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
-
 		if !found {
+			s.Logger.Error("Mephisto not found at initial approach, aborting kill.")
 			return nil
 		}
 
-		if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-			step.PrimaryAttack(monster.UnitID, 2, true, opts)
-			utils.Sleep(50)
+		if s.Data.PlayerUnit.Skills[skill.Blizzard].Level > 0 {
+			s.Logger.Info("Applying initial Blizzard cast.")
+			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, attackOption)
+			time.Sleep(time.Millisecond * 300) // Wait for cast to register and apply chill
 		}
 
-		step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
-		utils.Sleep(100)
-		attackCount++
+		canCastStaticField := s.Data.PlayerUnit.Skills[skill.StaticField].Level > 0
+		_, isStaticFieldBound := s.Data.KeyBindings.KeyBindingForSkill(skill.StaticField)
+
+		if canCastStaticField && isStaticFieldBound {
+			s.Logger.Info("Starting aggressive Static Field phase on Mephisto.")
+
+			requiredLifePercent := 0.0
+			switch s.CharacterCfg.Game.Difficulty {
+			case difficulty.Normal, difficulty.Nightmare:
+				requiredLifePercent = 40.0
+			case difficulty.Hell:
+				requiredLifePercent = 70.0
+			}
+
+			maxStaticAttacks := 50
+			staticAttackCount := 0
+
+			for staticAttackCount < maxStaticAttacks {
+				monster, found = s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
+				if !found || monster.Stats[stat.Life] <= 0 {
+					s.Logger.Info("Mephisto died or vanished during Static Phase.")
+					break
+				}
+
+				monsterLifePercent := float64(monster.Stats[stat.Life]) / float64(monster.Stats[stat.MaxLife]) * 100
+
+				if monsterLifePercent <= requiredLifePercent {
+					s.Logger.Info(fmt.Sprintf("Mephisto life threshold (%.0f%%) reached. Transitioning to moat movement.", requiredLifePercent))
+					break
+				}
+
+				distanceToMonster := pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position)
+
+				if distanceToMonster > StaticFieldEffectiveRange && s.Data.PlayerUnit.Skills[skill.Teleport].Level > 0 {
+					s.Logger.Debug("Mephisto too far for Static Field, repositioning closer.")
+
+					step.MoveTo(monster.Position)
+					utils.Sleep(150)
+					continue
+				}
+
+				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
+					s.Logger.Debug("Using Static Field on Mephisto.")
+					step.SecondaryAttack(skill.StaticField, monster.UnitID, 1, staticFieldRange)
+					time.Sleep(time.Millisecond * 150)
+				} else {
+					time.Sleep(time.Millisecond * 50)
+				}
+				staticAttackCount++
+			}
+		} else {
+			s.Logger.Info("Static Field not available or bound, skipping Static Phase.")
+		}
+
+		err = step.MoveTo(data.Position{X: 17563, Y: 8072})
+		if err != nil {
+			return err
+		}
+
 	}
 
-	return nil
+	if !s.CharacterCfg.Character.SorceressLeveling.UseMoatTrick {
+
+		return s.killMonsterByName(npc.Mephisto, data.MonsterTypeUnique, nil)
+
+	} else {
+
+		ctx := context.Get()
+		opts := step.Distance(15, 80)
+		ctx.ForceAttack = true
+
+		defer func() {
+			ctx.ForceAttack = false
+		}()
+
+		type positionAndWaitTime struct {
+			x        int
+			y        int
+			duration int
+		}
+
+		// Move to initial position
+		utils.Sleep(350)
+		err := step.MoveTo(data.Position{X: 17563, Y: 8072})
+		if err != nil {
+			return err
+		}
+
+		utils.Sleep(350)
+
+		// Initial movement sequence
+		initialPositions := []positionAndWaitTime{
+			{17575, 8086, 350}, {17584, 8088, 1200},
+			{17600, 8090, 550}, {17609, 8090, 2500},
+		}
+
+		for _, pos := range initialPositions {
+			err := step.MoveTo(data.Position{X: pos.x, Y: pos.y})
+			if err != nil {
+				return err
+			}
+			utils.Sleep(pos.duration)
+		}
+
+		// Clear area around position
+		err = action.ClearAreaAroundPosition(data.Position{X: 17609, Y: 8090}, 10, data.MonsterAnyFilter())
+		if err != nil {
+			return err
+		}
+
+		err = step.MoveTo(data.Position{X: 17609, Y: 8090})
+		if err != nil {
+			return err
+		}
+
+		maxAttack := 100
+		attackCount := 0
+
+		for attackCount < maxAttack {
+			ctx.PauseIfNotPriority()
+
+			monster, found := s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
+
+			if !found {
+				return nil
+			}
+
+			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+				step.PrimaryAttack(monster.UnitID, 2, true, opts)
+				utils.Sleep(50)
+			}
+
+			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
+			utils.Sleep(100)
+			attackCount++
+		}
+		return nil
+
+	}
 }
 
 func (s SorceressLeveling) KillIzual() error {
