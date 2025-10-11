@@ -33,7 +33,10 @@ func VendorRefill(forceRefill bool, sellJunk bool, tempLock ...[][]int) (err err
 	if vendorNPC == npc.Ormus {
 		_, needsBuy := town.ShouldBuyKeys()
 		if needsBuy && ctx.Data.PlayerUnit.Class != data.Assassin {
-			MoveToCoords(data.Position{X: 5224, Y: 5045})
+			if err := FindHratliEverywhere(); err != nil {
+				// If moveToHratli returns an error, it means a forced game quit is required.
+				return err
+			}
 			vendorNPC = npc.Hratli
 		}
 	}
