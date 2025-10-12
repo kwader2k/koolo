@@ -2,9 +2,9 @@ name: Koolo Leveling Build CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, development]
   pull_request:
-    branches: [main, master]
+    branches: [main, master, development]
   workflow_dispatch:
   release:
     types: [published]
