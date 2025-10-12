@@ -18,6 +18,8 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
+var _ context.LevelingCharacter = (*AssassinLeveling)(nil)
+
 const (
 	assassinMaxAttacksLoop = 3
 	levelingminDistance    = 10

@@ -19,6 +19,8 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
+var _ context.LevelingCharacter = (*PaladinLeveling)(nil)
+
 const (
 	paladinLevelingMaxAttacksLoop = 10
 )
