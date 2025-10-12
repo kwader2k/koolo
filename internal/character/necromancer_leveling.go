@@ -57,8 +57,7 @@ type NecromancerLeveling struct {
 }
 
 func (n *NecromancerLeveling) GetAdditionalRunewords() []string {
-	additionalRunewords := action.GetCastersCommonRunewords()
-	return additionalRunewords
+	return append(action.GetCastersCommonRunewords(), "White")
 }
 
 func (n *NecromancerLeveling) CheckKeyBindings() []skill.ID {
@@ -487,3 +486,4 @@ func (n *NecromancerLeveling) KillNihlathak() error {
 func (n *NecromancerLeveling) KillBaal() error {
 	return n.killBoss(npc.BaalCrab)
 }
+
