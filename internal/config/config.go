@@ -123,6 +123,14 @@ type CharacterCfg struct {
 			FindItemSwitch              bool `yaml:"find_item_switch"`
 			SkipPotionPickupInTravincal bool `yaml:"skip_potion_pickup_in_travincal"`
 		} `yaml:"berserker_barb"`
+		BlizzardSorceress struct {
+			UseMoatTrick        bool `yaml:"use_moat_trick"`
+			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
+		} `yaml:"blizzard_sorceress"`
+		SorceressLeveling struct {
+			UseMoatTrick        bool `yaml:"use_moat_trick"`
+			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
+		} `yaml:"sorceress_leveling"`
 		NovaSorceress struct {
 			BossStaticThreshold int `yaml:"boss_static_threshold"`
 		} `yaml:"nova_sorceress"`
@@ -133,14 +141,6 @@ type CharacterCfg struct {
 			UseBladesOfIce    bool `yaml:"useBladesOfIce"`
 			UseFistsOfFire    bool `yaml:"useFistsOfFire"`
 		} `yaml:"mosaic_sin"`
-		BlizzardSorceress struct {
-			UseMoatTrick        bool `yaml:"useMoatTrick"`
-			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
-		} `yaml:"blizzardSorceress"`
-		SorceressLeveling struct {
-			UseMoatTrick        bool `yaml:"useMoatTrick"`
-			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
-		} `yaml:"sorceressLeveling"`
 	} `yaml:"character"`
 
 	Game struct {
