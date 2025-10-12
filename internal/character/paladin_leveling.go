@@ -160,7 +160,6 @@ func (s PaladinLeveling) BuffSkills() []skill.ID {
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.HolyShield); found {
 		skillsList = append(skillsList, skill.HolyShield)
 	}
-	s.Logger.Info("Buff skills", "skills", skillsList)
 	return skillsList
 }
 
@@ -191,7 +190,7 @@ func (s PaladinLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		skillBindings = append(skillBindings, skill.BlessedHammer)
 	}
 
-	if lvl.Value >= 30 {
+	if s.Data.PlayerUnit.Skills[skill.HolyShield].Level > 0 {
 		skillBindings = append(skillBindings, skill.HolyShield)
 	}
 
