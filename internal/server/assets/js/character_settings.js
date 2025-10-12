@@ -44,7 +44,7 @@ window.onload = function () {
     const buildSelectElement = document.querySelector('select[name="characterClass"]');
     buildSelectElement.addEventListener('change', function() {
         const selectedBuild = buildSelectElement.value;
-        const levelingBuilds = ['paladin', 'sorceress_leveling', 'druid_leveling'];
+        const levelingBuilds = ['paladin', 'sorceress_leveling', 'druid_leveling', 'necromancer', 'assassin'];
 
         const enabledRunListElement = document.getElementById('enabled_runs');
         if (!enabledRunListElement) return;
@@ -82,12 +82,13 @@ function filterDisabledRuns(searchTerm) {
 
 function checkLevelingProfile() {
     const levelingProfiles = [
-        "sorceress_leveling_hydraorb",
-        "sorceress_leveling_lightning",
         "sorceress_leveling",
-        "paladin_leveling",
-        "druid_leveling"
+        "paladin",
+        "druid_leveling",
+        "necromancer",
+        "assassin"
     ];
+
     const characterClass = document.getElementById('characterClass').value;
 
     if (levelingProfiles.includes(characterClass)) {

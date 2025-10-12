@@ -29,7 +29,7 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 			return DruidLeveling{BaseCharacter: bc}, nil
 		}
 
-		return nil, fmt.Errorf("leveling only available for sorceress, assassin, necromancer and paladin")
+		return nil, fmt.Errorf("leveling only available for sorceress, assassin, necromancer, druid and paladin")
 	}
 
 	switch strings.ToLower(ctx.CharacterCfg.Character.Class) {
