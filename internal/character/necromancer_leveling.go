@@ -8,10 +8,8 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
-	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
@@ -289,74 +287,7 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 		}
 	}
 
-	questSkillPoints := 0
-
-	if n.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
-		questSkillPoints += 4
-	}
-
-	if n.CharacterCfg.Game.Difficulty == difficulty.Hell {
-		questSkillPoints += 4
-	}
-
-	if n.Data.Quests[quest.Act1DenOfEvil].Completed() {
-		questSkillPoints += 1
-	}
-	if n.Data.Quests[quest.Act2RadamentsLair].Completed() {
-		questSkillPoints += 2
-	}
-	if n.Data.Quests[quest.Act4TheFallenAngel].Completed() {
-		questSkillPoints += 4
-	}
-
-	totalPoints := (int(lvl.Value) - 1) + questSkillPoints
-	if totalPoints < 0 {
-		totalPoints = 0
-	}
-
-	var skillsToAllocateBasedOnLevel []skill.ID
-	if totalPoints < len(skillSequence) {
-		skillsToAllocateBasedOnLevel = skillSequence[:totalPoints]
-	} else {
-		skillsToAllocateBasedOnLevel = skillSequence
-	}
-
-	targetLevels := make(map[skill.ID]int)
-	for _, sk := range skillsToAllocateBasedOnLevel {
-		targetLevels[sk]++
-	}
-
-	skillsToAllocate := make([]skill.ID, 0)
-
-	var uniqueSkills []skill.ID
-	seenSkills := make(map[skill.ID]bool)
-	for _, sk := range skillsToAllocateBasedOnLevel {
-		if _, seen := seenSkills[sk]; !seen {
-			uniqueSkills = append(uniqueSkills, sk)
-			seenSkills[sk] = true
-		}
-	}
-
-	for _, sk := range uniqueSkills {
-		target := targetLevels[sk]
-		if target == 0 {
-			continue
-		}
-
-		currentLevel := 0
-		if skillData, found := n.Data.PlayerUnit.Skills[sk]; found {
-			currentLevel = int(skillData.Level)
-		}
-
-		pointsToAdd := target - currentLevel
-		if pointsToAdd > 0 {
-			for i := 0; i < pointsToAdd; i++ {
-				skillsToAllocate = append(skillsToAllocate, sk)
-			}
-		}
-	}
-
-	return skillsToAllocate
+	return skillSequence
 }
 
 func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
@@ -486,4 +417,3 @@ func (n *NecromancerLeveling) KillNihlathak() error {
 func (n *NecromancerLeveling) KillBaal() error {
 	return n.killBoss(npc.BaalCrab)
 }
-
