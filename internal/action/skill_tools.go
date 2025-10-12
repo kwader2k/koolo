@@ -250,6 +250,11 @@ func calculateSkillPositionInUI(mainSkill bool, skillID skill.ID) (data.Position
 			continue
 		}
 
+		//Skip skills with charges
+		if ctx.Data.PlayerUnit.Skills[skID].Charges > 0 {
+			continue
+		}
+
 		descs[skID] = sk
 		if sk.Desc().Page == targetSkill.Desc().Page {
 			pageSkills[sk.Desc().Page] = append(pageSkills[sk.Desc().Page], skID)
