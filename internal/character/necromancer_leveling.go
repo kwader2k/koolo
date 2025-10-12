@@ -15,11 +15,14 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
+
+var _ context.LevelingCharacter = (*NecromancerLeveling)(nil)
 
 const (
 	AmplifyDamageMaxDistance           = 25
@@ -51,6 +54,11 @@ var (
 type NecromancerLeveling struct {
 	BaseCharacter
 	lastAmplifyDamageCast time.Time
+}
+
+func (n *NecromancerLeveling) GetAdditionalRunewords() []string {
+	additionalRunewords := action.GetCastersCommonRunewords()
+	return additionalRunewords
 }
 
 func (n *NecromancerLeveling) CheckKeyBindings() []skill.ID {
