@@ -123,8 +123,17 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 			}
 		}
 
-		if o.IsHovered {
-			ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
+		isPortal := o.IsPortal() || o.IsRedPortal()
+
+		if o.IsHovered || isPortal {
+			if isPortal {
+				if err := ctx.PacketSender.InteractWithTp(o); err != nil {
+					ctx.Logger.Error("failed to interact with portal/waypoint", "error", err)
+				}
+			} else {
+				ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
+			}
+
 			waitingForInteraction = true
 			interactionAttempts++
 
