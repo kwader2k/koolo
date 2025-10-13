@@ -43,6 +43,99 @@ func IsAnyEnemyAroundPlayer(radius int) (bool, data.Monster) {
 	return false, data.Monster{}
 }
 
+// ShouldSwitchTarget checks if we've lost line of sight to the target for too long,
+// or if there are no more alive monsters in the area.
+// Returns true if we should abandon the current target and find a new one
+// lastLineOfSight map tracks when we last had line of sight to each target
+//
+// How to Use in Other Characters:
+//
+//  1. Add to your character struct:
+//     type YourCharacter struct {
+//     BaseCharacter
+//     lastLineOfSight map[data.UnitID]time.Time
+//     }
+//
+//  2. Initialize the map in your KillMonsterSequence function:
+//     if c.lastLineOfSight == nil {
+//     c.lastLineOfSight = make(map[data.UnitID]time.Time)
+//     }
+//
+//  3. Call this function after finding your target monster:
+//     targetMonster, found := c.Data.Monsters.FindByID(id)
+//     if !found {
+//     return nil
+//     }
+//
+//     // Check if we should switch targets due to lost line of sight
+//     if action.ShouldSwitchTarget(id, targetMonster, c.lastLineOfSight) {
+//     completedAttackLoops = 0
+//     continue  // Skip to next loop iteration to find a new target
+//     }
+//
+// The function will automatically track line of sight and return true when
+// the target has been out of sight for more than 1 second, prompting a target switch.
+// It will also return true if the target is dead or no alive monsters remain.
+func ShouldSwitchTarget(targetID data.UnitID, targetMonster data.Monster, lastLineOfSight map[data.UnitID]time.Time) bool {
+	const lostLineOfSightTimeout = time.Second * 1
+
+	ctx := context.Get()
+
+	// Check if the target monster is dead
+	if targetMonster.Stats[stat.Life] <= 0 {
+		ctx.Logger.Debug("Target monster is dead, switching targets", "targetID", targetID)
+		delete(lastLineOfSight, targetID)
+		return true
+	}
+
+	// Check if there are any alive monsters in the area
+	hasAliveMonsters := false
+	for _, monster := range ctx.Data.Monsters.Enemies() {
+		if monster.Stats[stat.Life] > 0 {
+			hasAliveMonsters = true
+			break
+		}
+	}
+
+	if !hasAliveMonsters {
+		ctx.Logger.Debug("No alive monsters in area, ending combat")
+		// Clear the entire map since combat is ending
+		for k := range lastLineOfSight {
+			delete(lastLineOfSight, k)
+		}
+		return true
+	}
+
+	// Check if we have line of sight to the target
+	hasLineOfSight := ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, targetMonster.Position)
+
+	if hasLineOfSight {
+		// Update the last time we had line of sight
+		lastLineOfSight[targetID] = time.Now()
+		return false
+	}
+
+	// We don't have line of sight - check how long it's been
+	lastSeen, exists := lastLineOfSight[targetID]
+	if !exists {
+		// First time checking this monster, record current time
+		lastLineOfSight[targetID] = time.Now()
+		return false
+	}
+
+	// If we've lost line of sight for too long, switch targets
+	if time.Since(lastSeen) > lostLineOfSightTimeout {
+		ctx.Logger.Debug("Lost line of sight to target for too long, switching targets",
+			"targetID", targetID,
+			"timeSinceLastSeen", time.Since(lastSeen))
+		// Clean up old entry
+		delete(lastLineOfSight, targetID)
+		return true
+	}
+
+	return false
+}
+
 func FindSafePosition(targetMonster data.Monster, dangerDistance int, safeDistance int, minAttackDistance int, maxAttackDistance int) (data.Position, bool) {
 	ctx := context.Get()
 	playerPos := ctx.Data.PlayerUnit.Position
