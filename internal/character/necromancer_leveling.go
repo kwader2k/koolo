@@ -31,12 +31,15 @@ const (
 	NecroLevelingMaxAttacksLoop        = 100
 	BonePrisonMaxDistance              = 25
 	LevelToResetSkills                 = 26
+	RaiseSkeletonMaxDistance           = 25
+	RaiseSkeletonCheckRadius           = 25
 )
 
 var (
 	boneSpearRange         = step.Distance(0, BoneSpearMaxDistance)
 	amplifyDamageRange     = step.Distance(0, AmplifyDamageMaxDistance)
 	bonePrisonRange        = step.Distance(0, BonePrisonMaxDistance)
+	raiseSkeletonRange     = step.Distance(0, RaiseSkeletonMaxDistance)
 	bonePrisonAllowedAreas = []area.ID{
 		area.CatacombsLevel4, area.Tristram, area.MooMooFarm,
 		area.RockyWaste, area.DryHills, area.FarOasis,
@@ -54,6 +57,7 @@ var (
 type NecromancerLeveling struct {
 	BaseCharacter
 	lastAmplifyDamageCast time.Time
+	lastLineOfSight       map[data.UnitID]time.Time
 }
 
 func (n *NecromancerLeveling) GetAdditionalRunewords() []string {
@@ -77,16 +81,67 @@ func (n *NecromancerLeveling) hasSkill(sk skill.ID) bool {
 	return found && skill.Level > 0
 }
 
+func (n *NecromancerLeveling) hasSkeletonNearby() bool {
+	for _, m := range n.Data.Monsters {
+		if m.Name == npc.NecroSkeleton && m.IsPet() {
+			distance := n.PathFinder.DistanceFromMe(m.Position)
+			if distance <= RaiseSkeletonCheckRadius {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (n *NecromancerLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
 ) error {
+	const priorityMonsterSearchRange = 15
 	completedAttackLoops := 0
 	previousUnitID := 0
 	bonePrisonnedMonsters := make(map[data.UnitID]time.Time)
 
+	// Initialize line of sight tracking map
+	if n.lastLineOfSight == nil {
+		n.lastLineOfSight = make(map[data.UnitID]time.Time)
+	}
+
+	priorityMonsters := []npc.ID{npc.FallenShaman, npc.MummyGenerator, npc.BaalSubjectMummy, npc.FetishShaman, npc.CarverShaman}
+
 	for {
-		id, found := monsterSelector(*n.Data)
+		var id data.UnitID
+		var found bool
+
+		// Check for priority monsters first
+		var closestPriorityMonster data.Monster
+		minDistance := -1
+
+		for _, monsterNpcID := range priorityMonsters {
+			for _, m := range n.Data.Monsters {
+				if m.Name == monsterNpcID && m.Stats[stat.Life] > 0 {
+					distance := n.PathFinder.DistanceFromMe(m.Position)
+					if distance < priorityMonsterSearchRange {
+						if minDistance == -1 || distance < minDistance {
+							minDistance = distance
+							closestPriorityMonster = m
+						}
+					}
+				}
+			}
+		}
+
+		if minDistance != -1 {
+			id = closestPriorityMonster.UnitID
+			found = true
+			n.Logger.Debug("Priority monster found", "name", closestPriorityMonster.Name, "distance", minDistance)
+		}
+
+		// Fall back to regular monster selector if no priority monster found
+		if !found {
+			id, found = monsterSelector(*n.Data)
+		}
+
 		if !found {
 			return nil
 		}
@@ -109,11 +164,19 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		if n.hasSkill(skill.BonePrison) && targetMonster.IsElite() && slices.Contains(bonePrisonAllowedAreas, n.Data.PlayerUnit.Area) {
+		// Check if we should switch targets due to lost line of sight
+		if action.ShouldSwitchTarget(id, targetMonster, n.lastLineOfSight) {
+			completedAttackLoops = 0
+			continue
+		}
+
+		// Cast Bone Prison on elites (in allowed areas) and on Duriel
+		shouldCastBonePrison := n.hasSkill(skill.BonePrison) && slices.Contains(bonePrisonAllowedAreas, n.Data.PlayerUnit.Area)
+		if shouldCastBonePrison && (targetMonster.IsElite() || targetMonster.Name == npc.Duriel) {
 			if lastPrisonCast, found := bonePrisonnedMonsters[targetMonster.UnitID]; !found || time.Since(lastPrisonCast) > time.Second*4 {
 				step.SecondaryAttack(skill.BonePrison, targetMonster.UnitID, 1, bonePrisonRange)
 				bonePrisonnedMonsters[targetMonster.UnitID] = time.Now()
-				n.Logger.Debug("Casting Bone Prison")
+				n.Logger.Debug("Casting Bone Prison", "target", targetMonster.Name)
 				utils.Sleep(150)
 			}
 		}
@@ -152,15 +215,78 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 
 		lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
 
-		if n.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
+		// Before learning Teeth, use Raise Skeleton + basic attack
+		if !n.hasSkill(skill.Teeth) {
+			// Try to raise skeletons if we don't have any nearby and there's a corpse
+			if !n.hasSkeletonNearby() && len(n.Data.Corpses) > 0 {
+				// Check if there's a corpse within range of the player
+				isCorpseNearby := false
+				for _, c := range n.Data.Corpses {
+					distanceToPlayer := float64(n.PathFinder.DistanceFromMe(c.Position))
+					if distanceToPlayer < float64(RaiseSkeletonMaxDistance) {
+						isCorpseNearby = true
+						break
+					}
+				}
+
+				if isCorpseNearby {
+					step.SecondaryAttack(skill.ID(70), targetMonster.UnitID, 1, raiseSkeletonRange)
+					n.Logger.Debug("Casting Raise Skeleton")
+					utils.Sleep(300) // Give time for skeleton to spawn
+					completedAttackLoops++
+					previousUnitID = int(id)
+					continue
+				}
+			}
+
+			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 3))
+			n.Logger.Debug("Using Basic attack (pre-Teeth)")
+			utils.Sleep(150)
+		} else if n.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
 			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 2))
 			n.Logger.Debug("Using Basic attack")
 			utils.Sleep(150)
 		} else if n.hasSkill(skill.BoneSpear) {
+			// Smart positioning for Bone Spear - check if enemies are too close
+			enemyNearby, closestEnemy := action.IsAnyEnemyAroundPlayer(5)
+			if enemyNearby && closestEnemy.UnitID != targetMonster.UnitID {
+				// Find safe position to cast from
+				safePos, found := action.FindSafePosition(
+					targetMonster,
+					5,                    // dangerDistance - stay away from enemies
+					10,                   // safeDistance - preferred distance from enemies
+					5,                    // minAttackDistance - min range for Bone Spear
+					BoneSpearMaxDistance, // maxAttackDistance - max range for Bone Spear
+				)
+				if found {
+					n.Logger.Debug("Repositioning to safe casting position for Bone Spear")
+					step.MoveTo(safePos)
+					utils.Sleep(150)
+				}
+			}
+
 			step.PrimaryAttack(targetMonster.UnitID, 3, true, boneSpearRange)
 			n.Logger.Debug("Casting Bone Spear")
 			utils.Sleep(150)
 		} else if n.hasSkill(skill.Teeth) {
+			// Smart positioning for Teeth - check if enemies are too close
+			enemyNearby, closestEnemy := action.IsAnyEnemyAroundPlayer(4)
+			if enemyNearby && closestEnemy.UnitID != targetMonster.UnitID {
+				// Find safe position to cast from
+				safePos, found := action.FindSafePosition(
+					targetMonster,
+					4,                    // dangerDistance - stay away from enemies
+					8,                    // safeDistance - preferred distance from enemies
+					3,                    // minAttackDistance - min range for Teeth
+					BoneSpearMaxDistance, // maxAttackDistance - same as Bone Spear
+				)
+				if found {
+					n.Logger.Debug("Repositioning to safe casting position for Teeth")
+					step.MoveTo(safePos)
+					utils.Sleep(150)
+				}
+			}
+
 			step.SecondaryAttack(skill.Teeth, targetMonster.UnitID, 3, boneSpearRange)
 			n.Logger.Debug("Casting Teeth")
 			utils.Sleep(150)
@@ -196,6 +322,11 @@ func (n *NecromancerLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		}
 
 	} else {
+		// Before Teeth, bind Raise Skeleton
+		if !n.hasSkill(skill.Teeth) {
+			skillBindings = append(skillBindings, skill.ID(70)) // Raise Skeleton
+		}
+
 		if n.hasSkill(skill.Teeth) {
 			skillBindings = append(skillBindings, skill.Teeth)
 		}
@@ -486,4 +617,3 @@ func (n *NecromancerLeveling) KillNihlathak() error {
 func (n *NecromancerLeveling) KillBaal() error {
 	return n.killBoss(npc.BaalCrab)
 }
-
