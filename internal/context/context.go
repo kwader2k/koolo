@@ -38,29 +38,28 @@ type Status struct {
 }
 
 type Context struct {
-	Name                 string
-	ExecutionPriority    Priority
-	CharacterCfg         *config.CharacterCfg
-	Data                 *game.Data
-	EventListener        *event.Listener
-	HID                  *game.HID
-	Logger               *slog.Logger
-	Manager              *game.Manager
-	GameReader           *game.MemoryReader
-	MemoryInjector       *game.MemoryInjector
-	PathFinder           *pather.PathFinder
-	BeltManager          *health.BeltManager
-	HealthManager        *health.Manager
-	Char                 Character
-	LastBuffAt           time.Time
-	ContextDebug         map[Priority]*Debug
-	CurrentGame          *CurrentGameHelper
-	SkillPointIndex      int // NEW FIELD: Tracks the next skill to consider from the character's SkillPoints() list
-	ForceAttack          bool
-	StopSupervisorFn     StopFunc
-	CleanStopRequested   bool
-	RestartWithCharacter string // Used to indicate which character to start after a clean stop
-	//PacketSender       *game.PacketSender
+	Name               string
+	ExecutionPriority  Priority
+	CharacterCfg       *config.CharacterCfg
+	Data               *game.Data
+	EventListener      *event.Listener
+	HID                *game.HID
+	Logger             *slog.Logger
+	Manager            *game.Manager
+	GameReader         *game.MemoryReader
+	MemoryInjector     *game.MemoryInjector
+	PathFinder         *pather.PathFinder
+	BeltManager        *health.BeltManager
+	HealthManager      *health.Manager
+	Char               Character
+	LastBuffAt         time.Time
+	ContextDebug       map[Priority]*Debug
+	CurrentGame        *CurrentGameHelper
+	SkillPointIndex    int // NEW FIELD: Tracks the next skill to consider from the character's SkillPoints() list
+	ForceAttack        bool
+	StopSupervisorFn   StopFunc
+	CleanStopRequested bool
+	PacketSender       *game.PacketSender
 }
 
 type Debug struct {
@@ -153,6 +152,10 @@ func getGoroutineID() uint64 {
 
 func (ctx *Context) RefreshGameData() {
 	*ctx.Data = ctx.GameReader.GetData()
+}
+
+func (ctx *Context) RefreshInventory() {
+	ctx.Data.Inventory = ctx.GameReader.GetInventory()
 }
 
 func (ctx *Context) Detach() {
