@@ -2,111 +2,33 @@ package step
 
 import (
 	"fmt"
-	"github.com/hectorgimenez/d2go/pkg/data"
+
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/context"
-	"github.com/hectorgimenez/koolo/internal/game"
-	"github.com/hectorgimenez/koolo/internal/utils"
-	"time"
-)
-
-const (
-	maxEntranceDistance = 6
-	maxMoveRetries      = 3
 )
 
 func InteractEntrance(area area.ID) error {
-	maxInteractionAttempts := 5
-	interactionAttempts := 0
-	waitingForInteraction := false
-	currentMouseCoords := data.Position{}
-	lastRun := time.Time{}
-
-	// If we move the mouse to interact with an entrance, we will set this variable.
-	var lastEntranceLevel data.Level
-
 	ctx := context.Get()
 	ctx.SetLastStep("InteractEntrance")
 
-	for {
-		ctx.PauseIfNotPriority()
-
-		if ctx.Data.AreaData.Area == area && time.Since(lastRun) > time.Millisecond*500 && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position) {
-			return nil
-		}
-
-		if interactionAttempts > maxInteractionAttempts {
-			return fmt.Errorf("area %s [%d] could not be interacted", area.Area().Name, area)
-		}
-
-		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*500 {
-			continue
-		}
-
-		lastRun = time.Now()
-		for _, l := range ctx.Data.AdjacentLevels {
-			// It is possible to have multiple entrances to the same area (A2 sewers, A2 palace, etc)
-			// Once we "select" an area and start to move the mouse to hover with it, we don't want
-			// to change the area to the 2nd entrance in the same area on the next iteration.
-			if l.Area == area && (lastEntranceLevel == (data.Level{}) || lastEntranceLevel == l) {
-				distance := ctx.PathFinder.DistanceFromMe(l.Position)
-				if distance > maxEntranceDistance {
-					// Try to move closer with retries
-					for retry := 0; retry < maxMoveRetries; retry++ {
-						if err := MoveTo(l.Position); err != nil {
-							// If MoveTo fails, try direct movement
-							screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(
-								l.Position.X-2,
-								l.Position.Y-2,
-							)
-							ctx.HID.Click(game.LeftButton, screenX, screenY)
-							utils.Sleep(800)
-							ctx.RefreshGameData()
-						}
-
-						// Check if we're close enough now
-						newDistance := ctx.PathFinder.DistanceFromMe(l.Position)
-						if newDistance <= maxEntranceDistance {
-							break
-						}
-
-						if retry == maxMoveRetries-1 {
-							return fmt.Errorf("entrance too far away (distance: %d)", distance)
-						}
-					}
-				}
-
-				if l.IsEntrance {
-					lx, ly := ctx.PathFinder.GameCoordsToScreenCords(l.Position.X-1, l.Position.Y-1)
-					if ctx.Data.HoverData.UnitType == 5 || ctx.Data.HoverData.UnitType == 2 && ctx.Data.HoverData.IsHovered {
-						ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
-						waitingForInteraction = true
-						utils.Sleep(200)
-					}
-
-					x, y := utils.Spiral(interactionAttempts)
-					x = x / 3
-					y = y / 3
-					currentMouseCoords = data.Position{X: lx + x, Y: ly + y}
-					ctx.HID.MovePointer(lx+x, ly+y)
-					interactionAttempts++
-					utils.Sleep(100)
-					
-							
-					//Add a random movement logic when interaction attempts fail
-					if interactionAttempts > 1 && interactionAttempts%3 == 0 {
-					ctx.Logger.Debug("Failed to interact with entrance, performing random movement to reset position.")
-					ctx.PathFinder.RandomMovement()
-					utils.Sleep(1000)
-					}
-
-					lastEntranceLevel = l
-
-					continue
-				}
-
-				return fmt.Errorf("area %s [%d] is not an entrance", area.Area().Name, area)
-			}
-		}
+	// TESTING MODE: Only use packet-based interaction (no fallback)
+	// This forces the bot to fail if packets don't work, so we can verify packet functionality
+	success, packetErr := TryInteractEntrancePacket(area)
+	if success {
+		ctx.Logger.Debug("Entrance interaction succeeded via packet method")
+		return nil
 	}
+
+	// If packet method failed, return the error (no fallback during testing)
+	if packetErr != nil {
+		ctx.Logger.Error("Packet entrance interaction failed - NO FALLBACK (testing mode)",
+			"error", packetErr)
+		return fmt.Errorf("packet entrance interaction failed (testing mode): %w", packetErr)
+	}
+
+	return fmt.Errorf("packet entrance interaction failed for unknown reason (testing mode)")
+
+	// === FALLBACK DISABLED FOR TESTING ===
+	// To re-enable mouse fallback after testing, restore the original mouse-based code
+	// that was here (check git history or backup)
 }
