@@ -181,20 +181,3 @@ func waitForAreaTransition(ctx *context.Status, targetArea area.ID, timeout time
 // TryInteractEntrancePacket is a safe wrapper that attempts packet interaction
 // but returns a specific error if packet method should be skipped in favor of mouse method.
 // This allows for graceful fallback in the main InteractEntrance function.
-func TryInteractEntrancePacket(targetArea area.ID) (success bool, err error) {
-	ctx := context.Get()
-
-	// Check if we have packet send capability
-	if ctx.PacketSender == nil {
-		return false, fmt.Errorf("packet sender not initialized")
-	}
-
-	// Try packet interaction
-	err = InteractEntrancePacket(targetArea)
-	if err == nil {
-		return true, nil
-	}
-
-	// Return failure with error details
-	return false, err
-}

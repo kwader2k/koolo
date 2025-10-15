@@ -27,28 +27,20 @@ func InteractEntrance(targetArea area.ID) error {
 
 	if isSewerEntrance {
 		ctx.Logger.Debug("Act 3 Sewers entrance detected, forcing mouse interaction for reliability")
-		return interactEntranceMouse(targetArea)
+		return InteractEntranceMouse(targetArea)
 	}
 
 	// Check if packet casting is enabled for entrance interaction
 	if ctx.CharacterCfg.PacketCasting.UseForEntranceInteraction {
 		ctx.Logger.Debug("Attempting entrance interaction via packet method")
-		success, packetErr := TryInteractEntrancePacket(targetArea)
-		if success {
-			ctx.Logger.Debug("Entrance interaction succeeded via packet method")
-			return nil
-		}
-
-		// Log packet failure and fall back to mouse method
-		ctx.Logger.Debug("Packet entrance interaction failed, falling back to mouse method",
-			"error", packetErr)
+		return InteractEntrancePacket(targetArea)
 	}
 
 	// Use mouse-based interaction (original implementation)
-	return interactEntranceMouse(targetArea)
+	return InteractEntranceMouse(targetArea)
 }
 
-func interactEntranceMouse(targetArea area.ID) error {
+func InteractEntranceMouse(targetArea area.ID) error {
 	maxInteractionAttempts := 5
 	interactionAttempts := 0
 	waitingForInteraction := false
