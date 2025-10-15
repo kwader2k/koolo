@@ -127,8 +127,16 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 
 		if o.IsHovered || isPortal {
 			if isPortal {
-				if err := ctx.PacketSender.InteractWithTp(o); err != nil {
-					ctx.Logger.Error("failed to interact with portal/waypoint", "error", err)
+				// Check if packet casting is enabled for TP interaction
+				if ctx.CharacterCfg.PacketCasting.UseForTpInteraction {
+					ctx.Logger.Debug("Attempting TP interaction via packet method")
+					if err := ctx.PacketSender.InteractWithTp(o); err != nil {
+						ctx.Logger.Error("Packet TP interaction failed", "error", err)
+						return fmt.Errorf("failed to interact with portal via packet: %w", err)
+					}
+				} else {
+					// Use mouse click for portals
+					ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
 				}
 			} else {
 				ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)

@@ -246,6 +246,36 @@ Paladin
                            value="{{ .Config.Game.StopLevelingAt }}"/>
                 </label>
             </fieldset>
+
+            <!-- Packet Usage Options -->
+            <article style="margin-top: 20px; background-color: #f9f9f9; padding: 15px; border: 4px solid #ffa600;">
+                <header><strong>⚠️ USING PACKETS</strong></header>
+                <p style="font-size: 0.9em; color: #666;">
+                    Enabling these settings directly sends network packets instead of simulating mouse clicks. 
+                    <strong>Mouse clicking is generally safer</strong> and less detectable. 
+                    Enable packet usage only if you understand the risks. Disabled by default.
+                </p>
+                <fieldset class="grid">
+                    <label>
+                        <input type="checkbox" name="packetCastingUseForEntranceInteraction" {{ if .Config.PacketCasting.UseForEntranceInteraction }}checked{{ end }}/>
+                        Use packets for entrance interaction
+                    </label>
+                    <label>
+                        <input type="checkbox" name="packetCastingUseForItemPickup" {{ if .Config.PacketCasting.UseForItemPickup }}checked{{ end }}/>
+                        Use packets for item pickup
+                    </label>
+                </fieldset>
+                <fieldset class="grid">
+                    <label>
+                        <input type="checkbox" name="packetCastingUseForTpInteraction" {{ if .Config.PacketCasting.UseForTpInteraction }}checked{{ end }}/>
+                        Use packets for TP interaction
+                    </label>
+                    <label style="visibility: hidden;">
+                        <!-- Spacer for grid alignment -->
+                    </label>
+                </fieldset>
+            </article>
+            </fieldset>
             <fieldset class="grid">
                 <label>
             <div 

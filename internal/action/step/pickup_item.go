@@ -10,6 +10,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
@@ -84,17 +85,94 @@ func PickupItem(it data.Item, itemPickupAttempt int) error {
 }
 
 func pickupItem(ctx *context.Status, target data.Item) bool {
-	err := ctx.PacketSender.PickUpItem(target)
+	// Check if packet casting is enabled for item pickup
+	if ctx.CharacterCfg.PacketCasting.UseForItemPickup {
+		ctx.Logger.Debug("Attempting item pickup via packet method")
+		err := ctx.PacketSender.PickUpItem(target)
 
-	if err != nil {
-		ctx.Logger.Debug(fmt.Sprintf("failed to send pick item packet: %v", err))
+		if err != nil {
+			ctx.Logger.Error("Packet pickup failed", "error", err)
+			return false
+		}
+
+		utils.Sleep(100)
+		ctx.RefreshInventory()
+		_, exists := findItemOnGround(target.UnitID)
+		if !exists {
+			ctx.Logger.Debug("Item pickup via packet successful")
+			return true
+		}
+
+		ctx.Logger.Error("Packet sent but item still on ground")
 		return false
 	}
 
-	utils.Sleep(100)
-	ctx.RefreshInventory()
-	_, exists := findItemOnGround(target.UnitID)
-	return !exists
+	// Use mouse-based pickup (original implementation)
+	return pickupItemMouse(ctx, target)
+}
+
+func pickupItemMouse(ctx *context.Status, target data.Item) bool {
+	const maxInteractions = 15
+	const spiralDelay = 50 * time.Millisecond
+	const clickDelay = 100 * time.Millisecond
+	const pickupTimeout = 3 * time.Second
+
+	startTime := time.Now()
+	var waitingForInteraction time.Time
+	spiralAttempt := 0
+
+	baseScreenX, baseScreenY := ctx.PathFinder.GameCoordsToScreenCords(target.Position.X, target.Position.Y)
+
+	for {
+		ctx.RefreshGameData()
+
+		// Check if item was picked up
+		_, exists := findItemOnGround(target.UnitID)
+		if !exists {
+			return true
+		}
+
+		// Check timeout conditions
+		if spiralAttempt > maxInteractions ||
+			(!waitingForInteraction.IsZero() && time.Since(waitingForInteraction) > pickupTimeout) ||
+			time.Since(startTime) > pickupTimeout {
+			return false
+		}
+
+		offsetX, offsetY := utils.ItemSpiral(spiralAttempt)
+		cursorX := baseScreenX + offsetX
+		cursorY := baseScreenY + offsetY
+
+		// Move cursor directly to target position
+		ctx.HID.MovePointer(cursorX, cursorY)
+		time.Sleep(spiralDelay)
+
+		// Click on item if mouse is hovering over
+		currentItem, itemExists := findItemOnGround(target.UnitID)
+		if itemExists && currentItem.UnitID == ctx.GameReader.GameReader.GetData().HoverData.UnitID {
+			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
+			time.Sleep(clickDelay)
+
+			if waitingForInteraction.IsZero() {
+				waitingForInteraction = time.Now()
+			}
+			continue
+		}
+
+		// Sometimes we got stuck because mouse is hovering a chest and item is behind it
+		if isChestorShrineHovered() {
+			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		spiralAttempt++
+	}
+}
+
+func isChestorShrineHovered() bool {
+	ctx := context.Get()
+	hoverData := ctx.Data.HoverData
+	return hoverData.IsHovered && (hoverData.UnitType == 2 || hoverData.UnitType == 5)
 }
 
 func hasHostileMonstersNearby(pos data.Position) bool {

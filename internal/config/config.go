@@ -94,6 +94,13 @@ type CharacterCfg struct {
 
 	ConfigFolderName string `yaml:"-"`
 
+	// Packet casting options (disabled by default for safety)
+	PacketCasting struct {
+		UseForEntranceInteraction bool `yaml:"useForEntranceInteraction"`
+		UseForItemPickup          bool `yaml:"useForItemPickup"`
+		UseForTpInteraction       bool `yaml:"useForTpInteraction"`
+	} `yaml:"packetCasting"`
+
 	Scheduler Scheduler `yaml:"scheduler"`
 	Health    struct {
 		HealingPotionAt     int `yaml:"healingPotionAt"`
