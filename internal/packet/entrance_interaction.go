@@ -15,14 +15,6 @@ type EntranceInteraction struct {
 	UnitID   uint32
 }
 
-// Marshal converts the EntranceInteraction struct to bytes
-func (p *EntranceInteraction) Marshal() []byte {
-	buf := make([]byte, 5)
-	buf[0] = p.PacketID
-	binary.LittleEndian.PutUint32(buf[1:5], p.UnitID)
-	return buf
-}
-
 // NewEntranceInteraction creates an entrance interaction packet
 // Example: Blood Moor → Den of Evil with UnitID 1585685452
 // Returns bytes: [0x40, 0xCC, 0xA3, 0x83, 0x5E]
@@ -31,4 +23,12 @@ func NewEntranceInteraction(entrance data.Entrance) *EntranceInteraction {
 		PacketID: 0x40, // Discovered packet ID for entrance interaction
 		UnitID:   uint32(entrance.ID),
 	}
+}
+
+// GetPayload converts the EntranceInteraction struct to bytes
+func (p *EntranceInteraction) GetPayload() []byte {
+	buf := make([]byte, 5)
+	buf[0] = byte(p.PacketID)
+	binary.LittleEndian.PutUint32(buf[1:], p.UnitID)
+	return buf
 }

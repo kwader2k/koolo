@@ -40,3 +40,10 @@ func (ps *PacketSender) InteractWithTp(object data.Object) error {
 	}
 	return nil
 }
+
+func (ps *PacketSender) InteractWithEntrance(entrance data.Entrance) error {
+	if err := ps.SendPacket(packet.NewEntranceInteraction(entrance).GetPayload()); err != nil {
+		return fmt.Errorf("failed to send entrance interaction packet: %w", err)
+	}
+	return nil
+}
