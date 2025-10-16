@@ -198,15 +198,6 @@ func (a Leveling) act1() error {
 
 // setupLevelOneConfig centralizes the configuration logic for a new character.
 func (a Leveling) setupLevelOneConfig() {
-
-	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 7
-		a.ctx.CharacterCfg.Character.SorceressLeveling.UseMoatTrick = true
-		a.ctx.CharacterCfg.Character.SorceressLeveling.UseStaticOnMephisto = true
-	} else {
-		a.ctx.CharacterCfg.Character.ClearPathDist = 15
-	}
-
 	a.ctx.CharacterCfg.Game.Difficulty = difficulty.Normal
 	a.ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation = true
 	a.ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding = true

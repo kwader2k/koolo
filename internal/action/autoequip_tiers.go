@@ -88,6 +88,7 @@ var (
 		item.Name(item.Goldwrap):           2000.0,
 		item.Name(item.Snakecord):          1000.0,
 		item.Name(item.LenymsCord):         0.0,
+		item.Name(item.RunewordInsight):    0.0,
 	}
 
 	classWeightModifiers = map[data.Class]map[stat.ID]float64{
@@ -694,3 +695,4 @@ func getMaxSkillTabPage() int {
 
 	return maxPage
 }
+
