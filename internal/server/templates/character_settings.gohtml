@@ -449,22 +449,6 @@
                 {{ end }}
             </table>
             <h3>Game Settings</h3><br>
-            <label>
-                <input type="checkbox" name="createLobbyGames" {{ if .Config.Game.CreateLobbyGames }}checked{{ end }}/>
-                Create Lobby Games
-            </label><br>
-            <fieldset class="grid">
-                <label>
-                    Game name pattern
-                    <input name="companionGameNameTemplate" placeholder="{{ .Config.Companion.GameNameTemplate }}"
-                           value="{{ .Config.Companion.GameNameTemplate }}"/>
-                </label>
-                <label>
-                    Game password (leave blank for public games)
-                    <input name="companionGamePassword" placeholder="{{ .Config.Companion.GamePassword }}"
-                           value="{{ .Config.Companion.GamePassword }}"/>
-                </label>
-            </fieldset>
             <fieldset class="grid">
                 <label>
                     Game Difficulty
@@ -480,21 +464,11 @@
                            value="{{ .Config.MaxGameLength }}"/>
                 </label>
             </fieldset>
-            <h3>Companion System</h3><br>
-            <p>The companion system allows you to have your characters play together in a group. If you enable this and don't set it as Leader, it will be a follower. In that case, make sure to specify a Leader Name.</p>
+            <h3>Companion System</h3>
             <br>
             <label>
-                <input type="checkbox" name="companionEnabled" id="companionEnabled" {{ if .Config.Companion.Enabled }}checked{{ end }}/>
-                Enabled
-            </label>
-            <label>
                 <input type="checkbox" name="companionLeader" id="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
-                Set as Leader
-            </label>
-            <label>
-            Leader Name
-            <input name="companionLeaderName" placeholder="{{ .Config.Companion.LeaderName }}"
-                   value="{{ .Config.Companion.LeaderName }}"/>
+                Open tp for manual player
             </label>
             <h4>Run Settings</h4><br>
             <label>
