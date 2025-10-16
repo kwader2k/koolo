@@ -4,6 +4,7 @@
     --pico-form-element-spacing-horizontal: 0.5rem;
     --pico-font-size: 100%;
 }
+
 .conditional-field {
     transition: all 0.3s ease;
     padding: 10px;
@@ -89,7 +90,8 @@
     list-style: none;
     padding-left: 0;
     margin-left: 0;
-    margin-bottom: 0.5rem; /* Add some space between items */
+    margin-bottom: 0.5rem;
+    /* Add some space between items */
 }
 
 #scheduler-settings {
@@ -110,12 +112,12 @@
     padding: 1rem;
     border-radius: 8px;
     border: 1px solid #2a3140;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     transition: box-shadow 0.3s ease;
 }
 
 .scheduler-day:hover {
-    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
 }
 
 .scheduler-day h4 {
@@ -229,7 +231,8 @@
     align-items: center;
     background-color: #1c212c;
     transition: background-color 0.2s;
-    border: none; /* Remove border from summary */
+    border: none;
+    /* Remove border from summary */
 }
 
 .run-list li summary:hover {
@@ -237,7 +240,8 @@
 }
 
 .run-list li summary:focus {
-    outline: none; /* Remove the annoying outline */
+    outline: none;
+    /* Remove the annoying outline */
 }
 
 .run-list li summary span {
@@ -247,12 +251,16 @@
 .run-list li summary button {
 
     cursor: pointer;
-    padding: 2.5px 5px; /* 50% smaller padding */
+    padding: 2.5px 5px;
+    /* 50% smaller padding */
     margin-left: 10px;
-    font-size: 0.8rem; /* 50% smaller font size */
+    font-size: 0.8rem;
+    /* 50% smaller font size */
     color: #ffffff;
-    border: 1px solid #2a3140; /* Fixed: changed from border-radius to border */
-    border-radius: 4px; /* Added correct border-radius property */
+    border: 1px solid #2a3140;
+    /* Fixed: changed from border-radius to border */
+    border-radius: 4px;
+    /* Added correct border-radius property */
     transition: background-color 0.2s, transform 0.1s;
     align-items: center;
     justify-content: center;
@@ -261,12 +269,14 @@
 
 .run-list li summary button.remove-run {
     margin-top: 15px;
-    background-color: #dc3545; /* Red for remove button */
+    background-color: #dc3545;
+    /* Red for remove button */
 }
 
 .run-list li summary button.add-run {
     margin-top: 15px;
-    background-color: #28a745; /* Green for add button */
+    background-color: #28a745;
+    /* Green for add button */
 }
 
 .run-list li summary button:hover {
@@ -278,15 +288,18 @@
 }
 
 .run-list li summary button.remove-run:hover {
-    background-color: #c82333; /* Darker red on hover */
+    background-color: #c82333;
+    /* Darker red on hover */
 }
 
 .run-list li summary button.add-run:hover {
-    background-color: #218838; /* Darker green on hover */
+    background-color: #218838;
+    /* Darker green on hover */
 }
 
 .run-list li summary button i {
-    font-size: 0.9rem; /* 50% smaller icon size */
+    font-size: 0.9rem;
+    /* 50% smaller icon size */
 }
 
 .run-list li details[open] summary {
@@ -314,12 +327,13 @@
     display: flex;
     align-items: center;
 }
+
 .options-group {
-     margin-bottom: 20px;
-     padding: 10px;
-     border: 1px solid #444;
-     border-radius: 5px;
- }
+    margin-bottom: 20px;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 5px;
+}
 
 .options-group label {
     display: flex;
@@ -368,14 +382,109 @@
 }
 
 .sticky-bottom {
-    position: sticky;
-    bottom: 0;
-    background-color: var(--pico-background-color);
-    margin-bottom: 0;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    background: linear-gradient(to top, var(--pico-background-color) 70%, transparent) !important;
+    backdrop-filter: blur(5px) !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    padding: 1rem !important;
+    padding-left: max(1rem, calc((100% - 1200px) / 2)) !important;
+    padding-right: max(1rem, calc((100% - 1200px) / 2)) !important;
+    z-index: 9999 !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 1rem !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.sticky-bottom a,
+.sticky-bottom input[type="submit"] {
+    width: 100% !important;
+    margin: 0 !important;
+}
+
+/* Add padding to form content so it doesn't get hidden behind fixed buttons */
+.compact-form {
+    padding-bottom: 120px !important;
 }
 
 .non-ladder-checkbox-container {
     display: flex;
     align-items: center;
     padding-top: 12px;
+}
+
+/* Muling Configuration Styles */
+#mule-profiles-container {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#mule-profiles-container h6 {
+    margin-top: 0;
+    color: #7aa6ff;
+}
+
+#mule-profiles-container p {
+    margin-bottom: 1rem;
+}
+
+.mule-profile-entry {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+
+.mule-profile-entry select {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.mule-profile-entry .remove-mule-profile {
+    width: 40px;
+    min-width: 40px;
+    padding: 0.5rem;
+    margin-bottom: 0;
+    background-color: var(--pico-del-color);
+    border-color: var(--pico-del-color);
+}
+
+.mule-profile-entry .remove-mule-profile:hover {
+    background-color: #c23934;
+}
+
+#add-mule-profile {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+#mule-character-info {
+    padding: 1rem;
+    background-color: rgba(122, 166, 255, 0.1);
+    border-left: 4px solid #7aa6ff;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+#mule-character-info i {
+    color: #7aa6ff;
+    margin-right: 0.5rem;
+}
+
+#mule-settings {
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
 }
