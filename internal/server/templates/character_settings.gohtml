@@ -63,9 +63,11 @@
                         <option value="assassin" {{ if eq .Config.Character.Class
                         "assassin" }}selected{{ end }}>Assassin (Leveling)
                         </option>
+                        <!-- Temporary disabled until improvements are made
                         <option value="necromancer" {{ if eq .Config.Character.Class
                         "necromancer" }}selected{{ end }}>Necromancer (Leveling)
                         </option>
+                        -->
                         <option value="sorceress_leveling" {{ if eq .Config.Character.Class
                         "sorceress_leveling" }}selected{{ end }}>Sorceress (Leveling)
                         </option>
@@ -151,7 +153,7 @@
                         <label>
                             Use static on Mephisto
                             <input type="checkbox" id="useStaticOnMephisto" name="useStaticOnMephisto" {{ if .Config.Character.SorceressLeveling.UseStaticOnMephisto }}checked{{ end }}/>
-                        </label>                       
+                        </label>
                     </fieldset>
                 </div>
 
