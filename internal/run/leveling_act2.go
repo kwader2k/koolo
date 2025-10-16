@@ -44,6 +44,11 @@ func (a Leveling) act2() error {
 
 	action.VendorRefill(false, true)
 
+	// Buy 2-socket Bone Wands for Necromancer (White runeword)
+	if err := action.BuyAct2BoneWands(a.ctx); err != nil {
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to buy Bone Wands: %s", err.Error()))
+	}
+
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
 	// Priority 0: Check if Act 2 is fully completed (Seven Tombs quest completed)

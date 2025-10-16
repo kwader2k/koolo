@@ -51,7 +51,7 @@
 //[name] == flawedskull # # [maxquantity] == 5
 //[name] == flawedtopaz # # [maxquantity] == 5
 
-[name] == flawlessamethyst # # [maxquantity] == 3
+[name] == flawlessamethyst # # [maxquantity] == 4
 
 // potions
 [name] == minorhealingpotion
