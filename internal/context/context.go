@@ -59,6 +59,7 @@ type Context struct {
 	ForceAttack        bool
 	StopSupervisorFn   StopFunc
 	CleanStopRequested bool
+	RestartWithCharacter string
 	PacketSender       *game.PacketSender
 }
 
