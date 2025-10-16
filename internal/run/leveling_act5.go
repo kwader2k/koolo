@@ -27,7 +27,7 @@ func (a Leveling) act5() error {
 		return nil
 	}
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	action.VendorRefill(false, true)
 

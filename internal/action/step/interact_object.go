@@ -82,7 +82,14 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 
 		// Give some time before retrying the interaction
 		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*200 {
-			continue
+			if time.Since(lastRun) < time.Millisecond*200 {
+				utils.Sleep(200)
+				continue
+			} else {
+				ctx.PathFinder.RandomMovement()
+				utils.Sleep(200)
+				MoveTo(obj.Position)
+			}
 		}
 
 		var o data.Object

@@ -19,13 +19,17 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 		switch strings.ToLower(ctx.CharacterCfg.Character.Class) {
 		case "sorceress_leveling":
 			return SorceressLeveling{BaseCharacter: bc}, nil
+		case "necromancer":
+			return &NecromancerLeveling{BaseCharacter: bc}, nil
 		case "paladin":
 			return PaladinLeveling{BaseCharacter: bc}, nil
 		case "assassin":
 			return AssassinLeveling{BaseCharacter: bc}, nil
+		case "druid_leveling":
+			return DruidLeveling{BaseCharacter: bc}, nil
 		}
 
-		return nil, fmt.Errorf("leveling only available for sorceress, assassin and paladin")
+		return nil, fmt.Errorf("leveling only available for sorceress, assassin, necromancer, druid and paladin")
 	}
 
 	switch strings.ToLower(ctx.CharacterCfg.Character.Class) {

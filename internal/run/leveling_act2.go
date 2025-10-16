@@ -33,7 +33,7 @@ func (a Leveling) act2() error {
 
 	running = true
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	// Buy a 12 slot belt if we don't have one
 	if err := buyAct2Belt(a.ctx); err != nil {
@@ -188,10 +188,28 @@ func (a Leveling) act2() error {
 
 	if horadricStaffQuestCompleted && summonerQuestCompleted {
 		a.ctx.Logger.Info("Horadric Staff and Summoner quests are completed. Proceeding to Duriel or leveling.")
-		if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value < 24 {
-			a.ctx.Logger.Info("Player not level 24, farming tombs before Duriel.")
-			return NewTalRashaTombs().Run()
+		a.ctx.Logger.Info("Character class check", "class", a.ctx.CharacterCfg.Character.Class)
+
+		// Check if Necromancer has Bone Prison before Duriel
+		if a.ctx.CharacterCfg.Character.Class == "necromancer" {
+			a.ctx.Logger.Debug("Necromancer detected, checking for Bone Prison skill")
+			bonePrisonSkill, hasBonePrison := a.ctx.Data.PlayerUnit.Skills[skill.BonePrison]
+			a.ctx.Logger.Debug("Bone Prison check", "hasBonePrison", hasBonePrison, "skillLevel", bonePrisonSkill.Level)
+
+			if !hasBonePrison || bonePrisonSkill.Level < 1 {
+				a.ctx.Logger.Info("Necromancer needs Bone Prison skill before Duriel. Farming tombs.")
+				return NewTalRashaTombs().Run()
+			}
+			a.ctx.Logger.Info("Necromancer has Bone Prison, ready for Duriel.")
+		} else {
+			lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+			a.ctx.Logger.Info("Not Necromancer or level check", "level", lvl.Value)
+			if lvl.Value < 24 {
+				a.ctx.Logger.Info("Player not level 24, farming tombs before Duriel.")
+				return NewTalRashaTombs().Run()
+			}
 		}
+
 		a.prepareStaff() // Make sure staff is prepared before Duriel
 		return a.duriel()
 	}
@@ -292,7 +310,7 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Info("Summoner quest chain (journal, portal, WP) completed.")
-		action.UpdateQuestLog()
+		action.UpdateQuestLog(false)
 		return nil // Return to re-evaluate after completing this chain.
 	}
 
@@ -334,16 +352,32 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.Logger.Info("Summoner quest chain (journal, portal, WP) completed.")
-		action.UpdateQuestLog()
+		action.UpdateQuestLog(false)
 		return nil // Return to re-evaluate after completing this chain.
 	}
 
 	if !a.ctx.Data.Quests[quest.Act2TheSevenTombs].HasStatus(quest.StatusQuestNotStarted) {
-		// Try to get level 24 before moving to Duriel and Act3
+		// Try to get level 24 (or Bone Prison for Necromancer) before moving to Duriel and Act3
+		a.ctx.Logger.Info("Character class check", "class", a.ctx.CharacterCfg.Character.Class)
 
-		if lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); lvl.Value < 24 {
-			a.ctx.Logger.Info("Player not level 24, farming tombs before Duriel.")
-			return NewTalRashaTombs().Run()
+		// Check if Necromancer has Bone Prison before Duriel
+		if a.ctx.CharacterCfg.Character.Class == "necromancer" {
+			a.ctx.Logger.Debug("Necromancer detected, checking for Bone Prison skill")
+			bonePrisonSkill, hasBonePrison := a.ctx.Data.PlayerUnit.Skills[skill.BonePrison]
+			a.ctx.Logger.Debug("Bone Prison check", "hasBonePrison", hasBonePrison, "skillLevel", bonePrisonSkill.Level)
+
+			if !hasBonePrison || bonePrisonSkill.Level < 1 {
+				a.ctx.Logger.Info("Necromancer needs Bone Prison skill before Duriel. Farming tombs.")
+				return NewTalRashaTombs().Run()
+			}
+			a.ctx.Logger.Info("Necromancer has Bone Prison, ready for Duriel.")
+		} else {
+			lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+			a.ctx.Logger.Info("Not Necromancer or level check", "level", lvl.Value)
+			if lvl.Value < 24 {
+				a.ctx.Logger.Info("Player not level 24, farming tombs before Duriel.")
+				return NewTalRashaTombs().Run()
+			}
 		}
 
 		a.prepareStaff()
@@ -419,7 +453,7 @@ func (a Leveling) findStaff() error {
 
 func (a Leveling) findAmulet() error {
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	action.InteractNPC(npc.Drognan)
 
@@ -480,7 +514,7 @@ func (a Leveling) findAmulet() error {
 	// This stops us being blocked from getting into Palace
 	action.InteractNPC(npc.Drognan)
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	return nil
 }
@@ -560,7 +594,7 @@ func (a Leveling) duriel() error {
 
 	action.ReturnTown()
 
-	action.UpdateQuestLog()
+	action.UpdateQuestLog(false)
 
 	return nil
 }

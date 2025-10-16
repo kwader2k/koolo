@@ -220,7 +220,8 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 			playerLevel = lvl.Value
 		}
 
-		if target == item.LocationEquipped && playerLevel > 5 {
+		//Avoid equiping 2 handed unless it's a runeword
+		if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword {
 			return false
 		}
 	}

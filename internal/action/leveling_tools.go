@@ -204,6 +204,19 @@ func EnsureStatPoints() error {
 
 }
 
+func HasSkillPointsToUse() bool {
+	ctx := context.Get()
+
+	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+	skillPoints, hasUnusedPoints := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
+
+	if !isLevelingChar || !hasUnusedPoints || skillPoints.Value == 0 {
+		return false
+	}
+
+	return true
+}
+
 func EnsureSkillPoints() error {
 	ctx := context.Get()
 
@@ -323,13 +336,7 @@ func EnsureSkillBindings() error {
 		return nil
 	}
 
-	level, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	mainSkill, skillsToBind := char.SkillsToBind()
-
-	if level.Value < 15 {
-		ctx.Logger.Debug("Player under level 15, forcing 'Attack' as main (left-click) skill.")
-		mainSkill = skill.AttackSkill
-	}
 
 	notBoundSkills := make([]skill.ID, 0)
 	for _, sk := range skillsToBind {
@@ -599,11 +606,12 @@ func calculateSkillPositionInUI(mainSkill bool, skillID skill.ID) (data.Position
 	}
 }
 
-func UpdateQuestLog() error {
+func UpdateQuestLog(fullUpdate bool) error {
 	ctx := context.Get()
 	ctx.SetLastAction("UpdateQuestLog")
 
 	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); !isLevelingChar {
+		ctx.Logger.Debug("Update quest log : early exit not LevelingCharacter")
 		return nil
 	}
 
@@ -611,6 +619,13 @@ func UpdateQuestLog() error {
 	utils.Sleep(1000)
 
 	currentAct := ctx.Data.PlayerUnit.Area.Act()
+	startAct := currentAct
+
+	actWaitTimeMS := 300
+	if fullUpdate {
+		startAct = 1
+		actWaitTimeMS = 1000
+	}
 
 	var actButtonPositions map[int]data.Position
 	if ctx.Data.LegacyGraphics {
@@ -619,13 +634,15 @@ func UpdateQuestLog() error {
 		actButtonPositions = uiQuestLogActButtonsD2R
 	}
 
-	if pos, found := actButtonPositions[currentAct]; found {
-		ctx.Logger.Debug(fmt.Sprintf("Clicking Quest Log Act %d button at (%d, %d)", currentAct, pos.X, pos.Y))
+	for i := startAct; i <= currentAct; i++ {
+		if pos, found := actButtonPositions[i]; found {
+			ctx.Logger.Debug(fmt.Sprintf("Clicking Quest Log Act %d button at (%d, %d)", i, pos.X, pos.Y))
 
-		ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-		utils.Sleep(300)
-	} else {
-		ctx.Logger.Warn(fmt.Sprintf("Could not find Quest Log button coordinates for current Act: %d", currentAct))
+			ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
+			utils.Sleep(actWaitTimeMS)
+		} else {
+			ctx.Logger.Warn(fmt.Sprintf("Could not find Quest Log button coordinates for current Act: %d", i))
+		}
 	}
 
 	return step.CloseAllMenus()
@@ -878,4 +895,31 @@ func WaitForAllMembersWhenLeveling() error {
 			return nil
 		}
 	}
+}
+
+func GetSkillTotalLevel(skill skill.ID) uint {
+	ctx := context.Get()
+	skillLevel := ctx.Data.PlayerUnit.Skills[skill].Level
+
+	if skillLevel > 0 {
+		if allSkill, allFound := ctx.Data.PlayerUnit.Stats.FindStat(stat.AllSkills, 0); allFound {
+			skillLevel += uint(allSkill.Value)
+		}
+
+		//Assume it's a player class skill for now
+		if classSkills, classFound := ctx.Data.PlayerUnit.Stats.FindStat(stat.AddClassSkills, int(ctx.Data.PlayerUnit.Class)); classFound {
+			skillLevel += uint(classSkills.Value)
+		}
+
+		//Todo Tabs + skills
+
+		//Todo individual + skills
+	}
+
+	return skillLevel
+}
+
+func GetCastersCommonRunewords() []string {
+	castersRunewords := []string{"Stealth", "Spirit", "Heart of the Oak"}
+	return castersRunewords
 }

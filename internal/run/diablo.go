@@ -6,6 +6,7 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
@@ -14,10 +15,11 @@ import (
 )
 
 var diabloSpawnPosition = data.Position{X: 7792, Y: 5294}
+var diabloFightPosition = data.Position{X: 7788, Y: 5292}
 var chaosNavToPosition = data.Position{X: 7732, Y: 5292} //into path towards vizier
 
-type Diablo struct {	
-ctx *context.Status
+type Diablo struct {
+	ctx *context.Status
 }
 
 func NewDiablo() *Diablo {
@@ -40,7 +42,13 @@ func (d *Diablo) Run() error {
 		return err
 	}
 
+	_, isLevelingChar := d.ctx.Char.(context.LevelingCharacter)
+
 	action.MoveToArea(area.ChaosSanctuary)
+
+	if isLevelingChar {
+		action.Buff()
+	}
 
 	// We move directly to Diablo spawn position if StartFromStar is enabled, not clearing the path
 	d.ctx.Logger.Debug(fmt.Sprintf("StartFromStar value: %t", d.ctx.CharacterCfg.Game.Diablo.StartFromStar))
@@ -112,7 +120,7 @@ func (d *Diablo) Run() error {
 			action.ClearAreaAroundPlayer(10, d.ctx.Data.MonsterFilterAnyReachable())
 
 			//Buff refresh before Infector
-			if object.DiabloSeal1 == sealID {
+			if object.DiabloSeal1 == sealID || isLevelingChar {
 				action.Buff()
 			}
 
@@ -163,19 +171,25 @@ func (d *Diablo) Run() error {
 
 	}
 
-			if d.ctx.CharacterCfg.Game.Diablo.KillDiablo {
-		
+	if d.ctx.CharacterCfg.Game.Diablo.KillDiablo {
+
 		originalClearPathDistCfg := d.ctx.CharacterCfg.Character.ClearPathDist
 		d.ctx.CharacterCfg.Character.ClearPathDist = 0
 
 		defer func() {
-			d.ctx.CharacterCfg.Character.ClearPathDist  = originalClearPathDistCfg
-		
-		}()  
-  
+			d.ctx.CharacterCfg.Character.ClearPathDist = originalClearPathDistCfg
+
+		}()
+
 		action.Buff()
 
-		action.MoveToCoords(diabloSpawnPosition)
+		if isLevelingChar && d.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
+			action.MoveToCoords(diabloSpawnPosition)
+			action.InRunReturnTownRoutine()
+			action.MoveToCoordIgnoreClearPath(diabloFightPosition)
+		} else {
+			action.MoveToCoords(diabloSpawnPosition)
+		}
 
 		// Check if we should disable item pickup for Diablo
 		if d.ctx.CharacterCfg.Game.Diablo.DisableItemPickupDuringBosses {
@@ -185,7 +199,6 @@ func (d *Diablo) Run() error {
 		return d.ctx.Char.KillDiablo()
 
 	}
-
 
 	return nil
 }
@@ -201,6 +214,7 @@ func (d *Diablo) killSealElite(boss string) error {
 		timeout = 15 * time.Second
 	}
 
+	_, isLevelingChar := d.ctx.Char.(context.LevelingCharacter)
 	for time.Since(startTime) < timeout {
 		for _, m := range d.ctx.Data.Monsters.Enemies(d.ctx.Data.MonsterFilterAnyReachable()) {
 			if action.IsMonsterSealElite(m) {
@@ -216,7 +230,9 @@ func (d *Diablo) killSealElite(boss string) error {
 				d.ctx.Logger.Debug(fmt.Sprintf("Clearing area around seal elite with radius %d", clearRadius))
 
 				err := action.ClearAreaAroundPosition(m.Position, clearRadius, func(monsters data.Monsters) (filteredMonsters []data.Monster) {
-					if action.IsMonsterSealElite(m) {
+					if isLevelingChar {
+						filteredMonsters = append(filteredMonsters, m)
+					} else if action.IsMonsterSealElite(m) {
 						filteredMonsters = append(filteredMonsters, m)
 					}
 					return filteredMonsters

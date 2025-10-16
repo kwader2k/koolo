@@ -74,8 +74,10 @@ Paladin
                         <option value="assassin" {{ if eq .Config.Character.Class
                         "assassin" }}selected{{ end }}>Assassin (Leveling)
                         </option>
-              
-          <option value="sorceress_leveling" {{ if eq .Config.Character.Class
+                        <option value="necromancer" {{ if eq .Config.Character.Class
+                        "necromancer" }}selected{{ end }}>Necromancer (Leveling)
+                        </option>
+                        <option value="sorceress_leveling" {{ if eq .Config.Character.Class
                         "sorceress_leveling" }}selected{{ end }}>Sorceress (Leveling)
                         </option>
                         <option value="trapsin" {{ if eq .Config.Character.Class
@@ -88,8 +90,10 @@ Paladin
                         </option>
                         <option value="winddruid" {{ if eq .Config.Character.Class
                         "winddruid" }}selected{{ end }}>Tornado Druid
-            
-            </option>
+                        </option>
+                        <option value="druid_leveling" {{ if eq .Config.Character.Class
+                        "druid_leveling" }}selected{{ end }}>Druid (Leveling)
+                        </option>
                         <option value="javazon" {{ if eq .Config.Character.Class
                         "javazon" }}selected{{ end }}>Javazon
                         </option>
@@ -530,25 +534,6 @@ end }}/>
                {{ end }}
             </table>
             <h3>Game Settings</h3><br>
-            <label>
-                <input type="checkbox" name="createLobbyGames" {{ if .Config.Game.CreateLobbyGames }}checked{{ end }}/>
-                Create Lobby Games
-    
-        </label><br>
-            <fieldset class="grid">
-                <label>
-                    Game name pattern
-                    <input name="companionGameNameTemplate" placeholder="{{ .Config.Companion.GameNameTemplate }}"
-                 
-          value="{{ .Config.Companion.GameNameTemplate }}"/>
-                </label>
-                <label>
-                    Game password (leave blank for public games)
-                    <input name="companionGamePassword" placeholder="{{ .Config.Companion.GamePassword }}"
-      
-                     value="{{ .Config.Companion.GamePassword }}"/>
-                </label>
-            </fieldset>
             <fieldset class="grid">
                 <label>
                     
@@ -567,26 +552,11 @@ Game Difficulty
                            value="{{ .Config.MaxGameLength }}"/>
                 </label>
             </fieldset>
-            <h3>Companion System</h3><br>
-       
-     <p>The companion system allows you to have your characters play together in a group.
-If you enable this and don't set it as Leader, it will be a follower.
-In that case, make sure to specify a Leader Name.</p>
+            <h3>Companion System</h3>
             <br>
             <label>
-                <input type="checkbox" name="companionEnabled" id="companionEnabled" {{ if .Config.Companion.Enabled }}checked{{ end }}/>
-                Enabled
-            </label>
-            <label>
-  
-              <input type="checkbox" name="companionLeader" id="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
-                Set as Leader
-            </label>
-            <label>
-            Leader Name
-            <input name="companionLeaderName" placeholder="{{ .Config.Companion.LeaderName }}"
-      
-             value="{{ .Config.Companion.LeaderName }}"/>
+                <input type="checkbox" name="companionLeader" id="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
+                Open tp for manual player
             </label>
             <h4>Run Settings</h4><br>
             <label>
