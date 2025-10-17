@@ -11,7 +11,7 @@ Make sure the game is set to English to prevent any language-related bugs.
 
 Use better_build.bat to build the application.
 
-- Use "Sorc (Leveling)", "Paladin (Leveling)" or "Assassin (Leveling)".
+- Use "Sorc (Leveling)", "Paladin (Leveling)", "Assassin (Leveling)" or "Druid (Leveling)".
 - Choose "leveling" as enabled run under "Run Settings"
 - Start your char with lvl 1 as the autoconfig currently works at lvl 1 only. Alternatively you can check act1.go for detailed manual config. This handling will be enhanced later.
 

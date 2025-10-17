@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
@@ -53,6 +55,72 @@ func NewSinglePlayerSupervisor(name string, bot *Bot, statsHandler *StatsHandler
 }
 
 var ErrUnrecoverableClientState = errors.New("unrecoverable client state, forcing restart")
+
+func (s *SinglePlayerSupervisor) orderRuns(runs []string) []string {
+
+	if s.bot.ctx.CharacterCfg.Game.Difficulty == "Nightmare" {
+
+		s.bot.ctx.Logger.Info("Changing difficulty to Nightmare")
+
+		s.changeDifficulty(difficulty.Nightmare)
+
+	}
+
+	if s.bot.ctx.CharacterCfg.Game.Difficulty == "Hell" {
+
+		s.bot.ctx.Logger.Info("Changing difficulty to Hell")
+
+		s.changeDifficulty(difficulty.Hell)
+
+	}
+
+	lvl, _ := s.bot.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+
+	if s.bot.ctx.CharacterCfg.Game.StopLevelingAt > 0 && lvl.Value >= s.bot.ctx.CharacterCfg.Game.StopLevelingAt {
+
+		s.bot.ctx.Logger.Info("Character level is already high enough, stopping.")
+
+		s.Stop()
+
+		return nil
+
+	}
+
+	return runs
+
+}
+
+func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
+
+	s.bot.ctx.GameReader.GetSelectedCharacterName()
+
+	s.bot.ctx.HID.Click(game.LeftButton, 6, 6)
+
+	utils.Sleep(1000)
+
+	switch d {
+
+	case difficulty.Normal:
+
+		s.bot.ctx.HID.Click(game.LeftButton, 400, 350)
+
+	case difficulty.Nightmare:
+
+		s.bot.ctx.HID.Click(game.LeftButton, 400, 400)
+
+	case difficulty.Hell:
+
+		s.bot.ctx.HID.Click(game.LeftButton, 400, 450)
+
+	}
+
+	utils.Sleep(1000)
+
+	s.bot.ctx.HID.Click(game.LeftButton, 6, 6)
+
+	utils.Sleep(1000)
+
+}
 
 // Start will return error if it can be started, otherwise will always return nil
 func (s *SinglePlayerSupervisor) Start() error {
@@ -129,7 +197,17 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		// In-game logic
 		timeSpentNotInGameStart = time.Now()
-		runs := run.BuildRuns(s.bot.ctx.CharacterCfg)
+
+		stringRuns := make([]string, len(s.bot.ctx.CharacterCfg.Game.Runs))
+		for i, r := range s.bot.ctx.CharacterCfg.Game.Runs {
+			stringRuns[i] = string(r)
+		}
+		orderedRuns := s.orderRuns(stringRuns)
+		if orderedRuns == nil {
+			return nil
+		}
+
+		runs := run.BuildRuns(s.bot.ctx.CharacterCfg, orderedRuns)
 		gameStart := time.Now()
 		cfg, _ := config.GetCharacter(s.name)
 
