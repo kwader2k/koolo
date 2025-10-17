@@ -213,6 +213,8 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 		return false
 	}
 
+	isSorc := ctx.CharacterCfg.Character.Class == "sorceress_leveling"
+
 	if _, isTwoHanded := newItem.FindStat(stat.TwoHandedMinDamage, 0); isTwoHanded {
 		// We need to fetch the level stat safely.
 		playerLevel := 0
@@ -222,6 +224,10 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 
 		//Avoid equiping 2 handed unless it's a runeword
 		if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword {
+			return false
+		}
+
+		if target == item.LocationEquipped && playerLevel >= 24 && isSorc {
 			return false
 		}
 	}
