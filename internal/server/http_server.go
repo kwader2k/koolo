@@ -170,7 +170,15 @@ func (s *WebSocketServer) readPump(client *Client) {
 }
 
 func (s *HttpServer) BroadcastStatus() {
-	for {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Skip if no clients connected
+		if len(s.wsServer.clients) == 0 {
+			continue
+		}
+
 		data := s.getStatusData()
 		jsonData, err := json.Marshal(data)
 		if err != nil {
@@ -178,9 +186,19 @@ func (s *HttpServer) BroadcastStatus() {
 			continue
 		}
 
-		s.wsServer.broadcast <- jsonData
-		time.Sleep(1 * time.Second)
+		select {
+		case s.wsServer.broadcast <- jsonData:
+		default:
+			// Channel full, skip this update
+			slog.Debug("Broadcast channel full, skipping update")
+		}
 	}
+}
+
+// Optimize JSON response
+func (s *HttpServer) writeJSON(w http.ResponseWriter, data interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(data)
 }
 
 func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, error) {
@@ -213,9 +231,19 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 			return result
 		},
 	}
+
+	// Parse templates once at startup
 	templates, err := template.New("").Funcs(helperFuncs).ParseFS(templatesFS, "templates/*.gohtml")
 	if err != nil {
 		return nil, err
+	}
+
+	// Pre-execute templates to cache them (optional but faster)
+	for _, tmpl := range templates.Templates() {
+		if tmpl.Name() != "" {
+			var buf bytes.Buffer
+			_ = tmpl.Execute(&buf, nil) // Warm up the cache
+		}
 	}
 
 	return &HttpServer{
@@ -387,7 +415,7 @@ func containss(slice []string, item string) bool {
 func (s *HttpServer) initialData(w http.ResponseWriter, r *http.Request) {
 	data := s.getStatusData()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	s.writeJSON(w, data)
 }
 
 func (s *HttpServer) getStatusData() IndexData {
@@ -400,7 +428,7 @@ func (s *HttpServer) getStatusData() IndexData {
 		// Enrich with lightweight live character overview for UI
 		if data := s.manager.GetData(supervisorName); data != nil {
 			// Defaults
-			var lvl, exp, life, maxLife, mana, maxMana, mf, gf, gold int
+			var lvl, exp, life, maxLife, mana, maxMana, mf, gf int
 			var lastExp, nextExp int
 			var fr, cr, lr, pr int
 			var mfr, mcr, mlr, mpr int
@@ -435,9 +463,6 @@ func (s *HttpServer) getStatusData() IndexData {
 			if v, ok := data.PlayerUnit.FindStat(stat.GoldFind, 0); ok {
 				gf = v.Value
 			}
-
-			gold = data.PlayerUnit.TotalPlayerGold()
-
 			if v, ok := data.PlayerUnit.FindStat(stat.FireResist, 0); ok {
 				fr = v.Value
 			}
@@ -525,7 +550,6 @@ func (s *HttpServer) getStatusData() IndexData {
 				ColdResist:      cr,
 				LightningResist: lr,
 				PoisonResist:    pr,
-				Gold:            gold,
 			}
 		}
 
@@ -586,7 +610,11 @@ func (s *HttpServer) Listen(port int) error {
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
 
 	s.server = &http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+		Addr:           fmt.Sprintf(":%d", port),
+		ReadTimeout:    15 * time.Second,
+		WriteTimeout:   15 * time.Second,
+		IdleTimeout:    60 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
 
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -1143,18 +1171,6 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.MosaicSin.UseClawsOfThunder = r.Form.Has("mosaicUseClawsOfThunder")
 			cfg.Character.MosaicSin.UseBladesOfIce = r.Form.Has("mosaicUseBladesOfIce")
 			cfg.Character.MosaicSin.UseFistsOfFire = r.Form.Has("mosaicUseFistsOfFire")
-		}
-
-		// Blizzard Sorc specific options
-		if cfg.Character.Class == "sorceress" {
-			cfg.Character.BlizzardSorceress.UseMoatTrick = r.Form.Has("useMoatTrick")
-			cfg.Character.BlizzardSorceress.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
-		}
-
-		// Sorceress Leveling specific options
-		if cfg.Character.Class == "sorceress_leveling" {
-			cfg.Character.SorceressLeveling.UseMoatTrick = r.Form.Has("useMoatTrick")
-			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
 		}
 
 		for y, row := range cfg.Inventory.InventoryLock {
