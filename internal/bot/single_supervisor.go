@@ -123,12 +123,14 @@ func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
 }
 
 // Start will return error if it can be started, otherwise will always return nil
-func (s *SinglePlayerSupervisor) Start() error {
+func (s *SinglePlayerSupervisor) Start(gameStartedCh chan<- bool) error { // <-- MODIFIED: Accept channel
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancelFn = cancel
 
 	err := s.ensureProcessIsRunningAndPrepare()
 	if err != nil {
+		// If preparation fails, signal to the manager that the start failed.
+		gameStartedCh <- false
 		return fmt.Errorf("error preparing game: %w", err)
 	}
 
@@ -146,7 +148,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		if firstRun {
 			if err = s.waitUntilCharacterSelectionScreen(); err != nil {
-				return fmt.Errorf("error waiting for character selection screen: %w", err)
+				// We don't signal failure here, as the menu flow below will handle timeouts/unrecoverable state
 			}
 		}
 
@@ -226,6 +228,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 
 		if firstRun {
+			select {
+			case gameStartedCh <- true:
+				s.bot.ctx.Logger.Info("Signaled SupervisorManager that bot is in-game and startup lock is released.", slog.String("supervisor", s.name))
+			default:
+				// Do not block if manager is not listening (should not happen with unbuffered channel)
+			}
 			missingKeybindings := s.bot.ctx.Char.CheckKeyBindings()
 			if len(missingKeybindings) > 0 {
 				var missingKeybindingsText = "Missing key binding for skill(s):"

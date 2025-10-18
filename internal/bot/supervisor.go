@@ -18,7 +18,7 @@ import (
 )
 
 type Supervisor interface {
-	Start() error
+	Start(gameStartedCh chan<- bool) error
 	Name() string
 	Stop()
 	Stats() Stats
@@ -69,24 +69,31 @@ func (s *baseSupervisor) TogglePause() {
 	}
 }
 
+// Inside internal/bot/supervisor.go (or wherever baseSupervisor lives)
+
 func (s *baseSupervisor) Stop() {
 	s.bot.ctx.Logger.Info("Stopping...", slog.String("configuration", s.name))
+
+	// CRITICAL: Set the priority flag first. This is the official signal
+	// used by manager.go to prevent crash-detector auto-restarts.
+	s.bot.ctx.SwitchPriority(ct.PriorityStop)
+
+	// Now cancel the context to trigger the bot's internal loop to exit.
 	if s.cancelFn != nil {
 		s.cancelFn()
 	}
 
-	s.bot.ctx.SwitchPriority(ct.PriorityStop)
-
 	s.bot.ctx.MemoryInjector.Unload()
 	s.bot.ctx.GameReader.Close()
 
+	// Kill the client, which is the cause of the 5s delay,
+	// but is required for an intentional stop.
 	if s.bot.ctx.CharacterCfg.KillD2OnStop || s.bot.ctx.CharacterCfg.Scheduler.Enabled {
 		s.KillClient()
 	}
 
 	s.bot.ctx.Logger.Info("Finished stopping", slog.String("configuration", s.name))
 }
-
 func (s *baseSupervisor) KillClient() error {
 
 	process, err := os.FindProcess(int(s.bot.ctx.GameReader.Process.GetPID()))

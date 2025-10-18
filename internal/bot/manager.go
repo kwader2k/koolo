@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -11,7 +12,7 @@ import (
 	"github.com/hectorgimenez/koolo/cmd/koolo/log"
 	"github.com/hectorgimenez/koolo/internal/character"
 	"github.com/hectorgimenez/koolo/internal/config"
-	"github.com/hectorgimenez/koolo/internal/context"
+	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -27,6 +28,15 @@ type SupervisorManager struct {
 	supervisors    map[string]Supervisor
 	crashDetectors map[string]*game.CrashDetector
 	eventListener  *event.Listener
+	startMux       sync.Mutex
+	startQueue     []string
+	isStarting     bool
+}
+
+type startParams struct {
+	supervisorName   string
+	attachToExisting bool
+	pidHwnd          []uint32
 }
 
 func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *SupervisorManager {
@@ -36,6 +46,7 @@ func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *S
 		supervisors:    make(map[string]Supervisor),
 		crashDetectors: make(map[string]*game.CrashDetector),
 		eventListener:  eventListener,
+		startQueue:     make([]string, 0),
 	}
 }
 
@@ -50,66 +61,87 @@ func (mng *SupervisorManager) AvailableSupervisors() []string {
 	return availableSupervisors
 }
 
+// Start handles the queuing logic.
 func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool, pidHwnd ...uint32) error {
-	// Avoid multiple instances of the supervisor - shitstorm prevention
+	mng.startMux.Lock()
+	defer mng.startMux.Unlock()
+
+	// 1. Check if the bot is already running (original check)
 	if _, exists := mng.supervisors[supervisorName]; exists {
 		return fmt.Errorf("supervisor %s is already running", supervisorName)
 	}
 
-	// Reload config to get the latest local changes before starting the supervisor
-	err := config.Load()
-	if err != nil {
-		return fmt.Errorf("error loading config: %w", err)
-	}
-
-	supervisorLogger, err := log.NewLogger(config.Koolo.Debug.Log, config.Koolo.LogSaveDirectory, supervisorName)
-	if err != nil {
-		return err
-	}
-
-	var optionalPID uint32
-	var optionalHWND win.HWND
-
-	if attachToExisting {
-		if len(pidHwnd) == 2 {
-			mng.logger.Info("Attaching to existing game", "pid", pidHwnd[0], "hwnd", pidHwnd[1])
-			optionalPID = pidHwnd[0]
-			optionalHWND = win.HWND(pidHwnd[1])
-		} else {
-			return fmt.Errorf("pid and hwnd are required when attaching to an existing game")
+	// 2. Check if a bot is currently in the starting phase (the global lock)
+	if mng.isStarting {
+		// A bot is currently in the startup phase. Queue the request.
+		for _, name := range mng.startQueue {
+			if name == supervisorName {
+				mng.logger.Debug(fmt.Sprintf("Supervisor %s already in queue. Ignoring duplicate click.", supervisorName))
+				return nil
+			}
 		}
+
+		mng.startQueue = append(mng.startQueue, supervisorName)
+		mng.logger.Info(fmt.Sprintf("Supervisor %s queued. Queue size: %d", supervisorName, len(mng.startQueue)))
+		return nil
 	}
 
-	supervisor, crashDetector, err := mng.buildSupervisor(supervisorName, supervisorLogger, attachToExisting, optionalPID, optionalHWND)
-	if err != nil {
-		return err
-	}
+	// 3. No bot is starting. Start immediately.
+	mng.isStarting = true // Acquire the starting lock
 
-	if oldCrashDetector, exists := mng.crashDetectors[supervisorName]; exists {
-		oldCrashDetector.Stop() // Stop the old crash detector if it exists
-	}
-
-	mng.supervisors[supervisorName] = supervisor
-	mng.crashDetectors[supervisorName] = crashDetector
-
-	if config.Koolo.GameWindowArrangement {
-		go func() {
-			// When the game starts, its doing some weird stuff like repositioning and resizing window automatically
-			// we need to wait until this is done in order to reposition, or it will be overridden
-			time.Sleep(time.Second * 5)
-			mng.rearrangeWindows()
-		}()
-	}
-
-	// Start the Crash Detector in a thread to avoid blocking and speed up start
-	go crashDetector.Start()
-
-	err = supervisor.Start()
-	if err != nil {
-		mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
-	}
+	// Start the actual execution in a goroutine
+	go mng.handleStartExecution(startParams{
+		supervisorName:   supervisorName,
+		attachToExisting: attachToExisting,
+		pidHwnd:          pidHwnd,
+	})
 
 	return nil
+}
+
+// handleStartExecution manages the startup of a bot until it is InGame, and then manages the queue state.
+func (mng *SupervisorManager) handleStartExecution(params startParams) {
+	// 1. Channel signals whether the supervisor reached the InGame state (true) or failed (false)
+	gameStartedCh := make(chan bool, 1)
+
+	// Run the bot's lifecycle in a separate goroutine
+	go mng.runSupervisorLifecycle(params, gameStartedCh)
+
+	// Wait for the in-game signal. This signifies the end of the "starting" phase.
+	successfullyStarted := <-gameStartedCh
+
+	if successfullyStarted {
+		mng.logger.Info(fmt.Sprintf("Supervisor %s reached in-game state. Checking queue.", params.supervisorName))
+	} else {
+		mng.logger.Warn(fmt.Sprintf("Supervisor %s failed to start. Checking queue.", params.supervisorName))
+	}
+
+	// CRITICAL FIX: Atomic queue check and start lock management.
+	mng.startMux.Lock()
+
+	if len(mng.startQueue) == 0 {
+		// Queue is empty. Release the global start lock completely.
+		mng.isStarting = false
+		mng.startMux.Unlock()
+		mng.logger.Debug("Queue empty. Global start lock released.")
+		return
+	}
+
+	// Queue is NOT empty. Dequeue the next bot and keep the isStarting lock set to true.
+	nextSupervisorName := mng.startQueue[0]
+	mng.startQueue = mng.startQueue[1:] // Dequeue
+
+	// Unlock the main mutex *before* launching the next goroutine.
+	mng.startMux.Unlock()
+
+	mng.logger.Info(fmt.Sprintf("Starting next bot from queue: %s", nextSupervisorName))
+
+	// Launch the next queued bot (this starts the next lifecycle).
+	go mng.handleStartExecution(startParams{
+		supervisorName:   nextSupervisorName,
+		attachToExisting: false,
+		pidHwnd:          nil,
+	})
 }
 
 func (mng *SupervisorManager) ReloadConfig() error {
@@ -131,44 +163,136 @@ func (mng *SupervisorManager) ReloadConfig() error {
 			continue
 		}
 
-		// Preserve runtime data
-		//oldRuntimeData := ctx.CharacterCfg.Runtime
-
 		// Update the config
 		*ctx.CharacterCfg = *newCfg
-		//ctx.CharacterCfg.Runtime = oldRuntimeData
 	}
 
 	return nil
 }
 
-func (mng *SupervisorManager) StopAll() {
-	for _, s := range mng.supervisors {
+func (mng *SupervisorManager) runSupervisorLifecycle(params startParams, gameStartedCh chan<- bool) {
+	// Reload config for the latest changes before execution
+	err := config.Load()
+	if err != nil {
+		mng.logger.Error(fmt.Sprintf("error loading config for %s: %v", params.supervisorName, err))
+		gameStartedCh <- false // Signal failure to the manager
+		return
+	}
+
+	supervisorLogger, err := log.NewLogger(config.Koolo.Debug.Log, config.Koolo.LogSaveDirectory, params.supervisorName)
+	if err != nil {
+		gameStartedCh <- false
+		return
+	}
+
+	var optionalPID uint32
+	var optionalHWND win.HWND
+
+	if params.attachToExisting {
+		if len(params.pidHwnd) == 2 {
+			mng.logger.Info("Attaching to existing game", "pid", params.pidHwnd[0], "hwnd", params.pidHwnd[1])
+			optionalPID = params.pidHwnd[0]
+			optionalHWND = win.HWND(params.pidHwnd[1])
+		} else {
+			mng.logger.Error(fmt.Sprintf("pid and hwnd are required when attaching to an existing game for %s", params.supervisorName))
+			gameStartedCh <- false
+			return
+		}
+	}
+
+	supervisor, crashDetector, err := mng.buildSupervisor(params.supervisorName, supervisorLogger, params.attachToExisting, optionalPID, optionalHWND)
+	if err != nil {
+		mng.logger.Error(fmt.Sprintf("error building supervisor %s: %s", params.supervisorName, err.Error()))
+		gameStartedCh <- false
+		return
+	}
+
+	// Add the supervisor to the map
+	mng.startMux.Lock()
+	if oldCrashDetector, exists := mng.crashDetectors[params.supervisorName]; exists {
+		oldCrashDetector.Stop()
+	}
+	mng.supervisors[params.supervisorName] = supervisor
+	mng.crashDetectors[params.supervisorName] = crashDetector
+	mng.startMux.Unlock()
+
+	if config.Koolo.GameWindowArrangement {
+		go func() {
+			time.Sleep(time.Second * 5)
+			mng.rearrangeWindows()
+		}()
+	}
+
+	go crashDetector.Start()
+
+	// This blocks for the bot's entire lifecycle
+	err = supervisor.Start(gameStartedCh)
+	if err != nil {
+		mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", params.supervisorName, err.Error()))
+	}
+
+	// Bot has finished its lifecycle. Clean up.
+	mng.logger.Info(fmt.Sprintf("Supervisor %s has finished its lifecycle. Cleaning up and checking exit reason.", params.supervisorName))
+
+	// Call the function that cleans up and checks the exit condition.
+	mng.finishSupervisorLifecycle(params.supervisorName)
+}
+
+// finishSupervisorLifecycle handles cleanup and prevents unwanted restarts.
+func (mng *SupervisorManager) finishSupervisorLifecycle(supervisorName string) {
+	mng.startMux.Lock()
+	defer mng.startMux.Unlock()
+
+	s, found := mng.supervisors[supervisorName]
+
+	// 1. Stop crash detector and delete from maps (standard cleanup)
+	if cd, ok := mng.crashDetectors[supervisorName]; ok {
+		cd.Stop()
+		delete(mng.crashDetectors, supervisorName)
+	}
+
+	// 2. Deleting from the supervisor map.
+	if found {
+		delete(mng.supervisors, supervisorName)
+	}
+
+	// 3. Crucial check: If the bot was manually stopped by the user, the context priority will be PriorityStop.
+	if found && s.GetContext().ExecutionPriority == ct.PriorityStop {
+		mng.logger.Info(fmt.Sprintf("Supervisor %s was intentionally stopped. Cleanup complete.", supervisorName))
+		return // Exit early, preventing crash detector's restartFunc from being called/restarting bot logic.
+	}
+
+	// If we reach here, the bot crashed or naturally finished runs.
+	mng.logger.Info(fmt.Sprintf("Supervisor %s finished run/crashed. Cleanup complete.", supervisorName))
+}
+
+// Stop is simplified to be fast and non-blocking, setting the priority flag first.
+func (mng *SupervisorManager) Stop(supervisorName string) {
+	mng.startMux.Lock()
+	s, found := mng.supervisors[supervisorName]
+
+	if found {
+		// CRITICAL: Set the priority while holding the lock to ensure a crash/stop race doesn't miss the flag.
+		s.GetContext().SwitchPriority(ct.PriorityStop)
+	}
+	mng.startMux.Unlock() // Release the lock immediately to prevent deadlocks
+
+	if found {
+		// Calling s.Stop() breaks the loop in single_supervisor.go, causing
+		// supervisor.Start() in runSupervisorLifecycle to return, which then
+		// triggers the final finishSupervisorLifecycle cleanup.
 		s.Stop()
+		mng.logger.Info(fmt.Sprintf("Sent stop signal to supervisor %s. Cleanup initiated.", supervisorName))
+	} else {
+		mng.logger.Warn(fmt.Sprintf("Stop failed: Supervisor %s not found or already stopped.", supervisorName))
 	}
 }
 
-func (mng *SupervisorManager) Stop(supervisor string) {
-	s, found := mng.supervisors[supervisor]
-	if found {
-		// Log the stop sequence
-		mng.logger.Info("Stopping supervisor instance", slog.String("supervisor", supervisor))
-
-		// Stop the Supervisor's internal loops and kill the client if configured
+func (mng *SupervisorManager) StopAll() {
+	for _, s := range mng.supervisors {
+		// Set priority first, then stop
+		s.GetContext().SwitchPriority(ct.PriorityStop)
 		s.Stop()
-
-		// Delete from the list of active Supervisors
-		delete(mng.supervisors, supervisor)
-
-		// Stop the crash detector associated with it
-		if cd, ok := mng.crashDetectors[supervisor]; ok {
-			cd.Stop()
-			delete(mng.crashDetectors, supervisor)
-		}
-
-		// The logic to start the next character has been removed from here.
-		// The restartFunc is now the single source of truth for this,
-		// preventing the mule from restarting itself.
 	}
 }
 
@@ -199,7 +323,7 @@ func (mng *SupervisorManager) GetData(characterName string) *game.Data {
 	return nil
 }
 
-func (mng *SupervisorManager) GetContext(characterName string) *context.Context {
+func (mng *SupervisorManager) GetContext(characterName string) *ct.Context {
 	for name, supervisor := range mng.supervisors {
 		if name == characterName {
 			return supervisor.GetContext()
@@ -243,7 +367,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 		return nil, nil, fmt.Errorf("error creating game injector: %w", err)
 	}
 
-	ctx := context.NewContext(supervisorName)
+	ctx := ct.NewContext(supervisorName)
 
 	hidM := game.NewHID(gr, gi)
 	pf := pather.NewPathFinder(gr, ctx.Data, hidM, cfg)
@@ -285,6 +409,13 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	restartFunc := func() {
 
 		ctx := supervisor.GetContext()
+
+		// CRITICAL FIX: Abort restart if the bot was manually stopped.
+		if ctx.ExecutionPriority == ct.PriorityStop {
+			mng.logger.Info("Restart aborted: Supervisor was already intentionally stopped by user (PriorityStop).", slog.String("supervisor", supervisorName))
+			return
+		}
+
 		if ctx.CleanStopRequested {
 			if ctx.RestartWithCharacter != "" {
 				mng.logger.Info("Supervisor requested restart with different character",
@@ -306,6 +437,8 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 		}
 
 		mng.logger.Info("Restarting supervisor after crash", slog.String("supervisor", supervisorName))
+
+		// Ensure the crashing client is fully killed and removed from maps (sets PriorityStop, triggers cleanup)
 		mng.Stop(supervisorName)
 		time.Sleep(5 * time.Second) // Wait a bit before restarting
 
@@ -380,9 +513,9 @@ func (mng *SupervisorManager) GetSupervisorStats(supervisor string) Stats {
 func (mng *SupervisorManager) rearrangeWindows() {
 	width := win.GetSystemMetrics(0)
 	height := win.GetSystemMetrics(1)
-	var windowBorderX int32 = 2   // left + right window border is 2px
-	var windowBorderY int32 = 40  // upper window border is usually 40px
-	var windowOffsetX int32 = -10 // offset horizontal window placement by -10 pixel
+	var windowBorderX int32 = 2
+	var windowBorderY int32 = 40
+	var windowOffsetX int32 = -10
 	maxColumns := width / (1280 + windowBorderX)
 	maxRows := height / (720 + windowBorderY)
 
@@ -390,13 +523,12 @@ func (mng *SupervisorManager) rearrangeWindows() {
 		"Arranging windows",
 		slog.String("displaywidth", strconv.FormatInt(int64(width), 10)),
 		slog.String("displayheight", strconv.FormatInt(int64(height), 10)),
-		slog.String("max columns", strconv.FormatInt(int64(maxColumns+1), 10)), // +1 as we are counting from 0
+		slog.String("max columns", strconv.FormatInt(int64(maxColumns+1), 10)),
 		slog.String("max rows", strconv.FormatInt(int64(maxRows+1), 10)),
 	)
 
 	var column, row int32
 	for _, sp := range mng.supervisors {
-		// reminder that columns are vertical (they go up and down) and rows are horizontal (they go left and right)
 		if column > maxColumns {
 			column = 0
 			row++
