@@ -98,25 +98,49 @@ func main() {
 	// Use wrapWithRecover for all goroutines to handle panics
 	g.Go(wrapWithRecover(logger, func() error {
 		defer cancel()
+
+		// Load saved window size or use defaults
 		displayScale := config.GetCurrentDisplayScale()
-		w, err := gowebview.New(&gowebview.Config{URL: "http://localhost:8087", WindowConfig: &gowebview.WindowConfig{
-			Title: "Koolo",
-			Size: &gowebview.Point{
-				X: int64(1280 * displayScale),
-				Y: int64(720 * displayScale),
+
+		// Use saved dimensions if available, otherwise use defaults
+		width := int64(1280 * displayScale)
+		height := int64(720 * displayScale)
+
+		if config.Koolo.WindowWidth > 0 {
+			width = int64(config.Koolo.WindowWidth)
+		}
+		if config.Koolo.WindowHeight > 0 {
+			height = int64(config.Koolo.WindowHeight)
+		}
+
+		w, err := gowebview.New(&gowebview.Config{
+			URL: "http://localhost:8087",
+			WindowConfig: &gowebview.WindowConfig{
+				Title: "Koolo",
+				Size: &gowebview.Point{
+					X: width,
+					Y: height,
+				},
 			},
-		}})
+		})
 		if err != nil {
 			w.Destroy()
 			return fmt.Errorf("error creating webview: %w", err)
 		}
 
+		// Allow window resizing (changed from HintFixed to HintNone)
 		w.SetSize(&gowebview.Point{
-			X: int64(1280 * displayScale),
-			Y: int64(720 * displayScale),
-		}, gowebview.HintFixed)
+			X: width,
+			Y: height,
+		}, gowebview.HintNone)
 
 		defer w.Destroy()
+
+		// Users can manually set desired dimension inside koolo\build\config\koolo.yaml
+		// Add these two lines at the end of the config file and modify it with desired resolution (1920x1080 for example):
+		// window_width: 1920
+		// window_height: 1080
+
 		w.Run()
 
 		return nil
