@@ -140,7 +140,12 @@ func ensureCubeIsEmpty() error {
 		}
 	}
 
-	ctx.HID.PressKey(win.VK_ESCAPE)
+	// Close cube menu - use legacy mode appropriate key
+	if ctx.Data.LegacyGraphics {
+		ctx.HID.PressKey(win.VK_SPACE)
+	} else {
+		ctx.HID.PressKey(win.VK_ESCAPE)
+	}
 	utils.Sleep(300)
 
 	stashInventory(true)
