@@ -560,6 +560,22 @@ end }}/>
                {{ end }}
             </table>
             <h3>Game Settings</h3><br>
+            <label>
+                <input type="checkbox" name="createLobbyGames" {{ if .Config.Game.CreateLobbyGames }}checked{{ end }}/>
+                Create Lobby Games
+            </label><br>
+            <fieldset class="grid">
+                <label>
+                    Game name pattern
+                    <input name="companionGameNameTemplate" placeholder="{{ .Config.Companion.GameNameTemplate }}"
+                           value="{{ .Config.Companion.GameNameTemplate }}"/>
+                </label>
+                <label>
+                    Game password (leave blank for public games)
+                    <input name="companionGamePassword" placeholder="{{ .Config.Companion.GamePassword }}"
+                           value="{{ .Config.Companion.GamePassword }}"/>
+                </label>
+            </fieldset>
             <fieldset class="grid">
                 <label>
                     
