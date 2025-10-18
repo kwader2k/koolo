@@ -4,6 +4,7 @@
         <label><input type="checkbox" name="gamePitOpenChests" {{ if .Config.Game.Pit.OpenChests }}checked{{ end }}> Open chests</label>
         <label><input type="checkbox" name="gamePitFocusOnElitePacks" {{ if .Config.Game.Pit.FocusOnElitePacks }}checked{{ end }}> Focus on elite packs</label>
         <label><input type="checkbox" name="gamePitOnlyClearLevel2" {{ if .Config.Game.Pit.OnlyClearLevel2 }}checked{{ end }}> Only clear level 2</label>
+        <label><input type="checkbox" name="gamePitBuffOnNewArea" {{ if .Config.Game.Pit.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -11,6 +12,7 @@
     <fieldset>
         <label><input type="checkbox" name="gameAndarielClearRoom" {{ if .Config.Game.Andariel.ClearRoom }}checked{{ end }}> Clear room first</label>
         <label><input type="checkbox" name="gameAndarielUseAntidoes" {{ if .Config.Game.Andariel.UseAntidoes }}checked{{ end }}> Use antidoes</label>
+        <label><input type="checkbox" name="gameAndarielBuffOnNewArea" {{ if .Config.Game.Andariel.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -23,12 +25,14 @@
 {{ define "countess" }}
     <fieldset>
         <label><input type="checkbox" name="gameCountessClearFloors" {{ if .Config.Game.Countess.ClearFloors }}checked{{ end }}> Clear all floors of Forgotten Tower </label>
+        <label><input type="checkbox" name="gameCountessBuffOnNewArea" {{ if .Config.Game.Countess.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
 {{ define "cows" }}
     <fieldset>
         <label><input type="checkbox" name="gameCowsOpenChests" {{ if .Config.Game.Cows.OpenChests }}checked{{ end }}> Open chests</label>
+        <label><input type="checkbox" name="gameCowsBuffOnNewArea" {{ if .Config.Game.Cows.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -40,6 +44,7 @@
             <label><input type="checkbox" name="gamePindleskinSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.Pindleskin.SkipOnImmunities "fire" }}checked{{ end }}> Fire</label>
             <label><input type="checkbox" name="gamePindleskinSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.Pindleskin.SkipOnImmunities "light" }}checked{{ end }}> Light</label>
             <label><input type="checkbox" name="gamePindleskinSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.Pindleskin.SkipOnImmunities "poison" }}checked{{ end }}> Poison</label>
+            <label><input type="checkbox" name="gamePindleskinBuffOnNewArea" {{ if .Config.Game.Pindleskin.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
         </fieldset>
     </fieldset>
 {{ end }}
@@ -48,6 +53,7 @@
     <fieldset>
         <label><input type="checkbox" name="gameStonytombOpenChests" {{ if .Config.Game.StonyTomb.OpenChests }}checked{{ end }}> Open chests</label>
         <label><input type="checkbox" name="gameStonytombFocusOnElitePacks" {{ if .Config.Game.StonyTomb.FocusOnElitePacks }}checked{{ end }}> Focus on elite packs</label>
+        <label><input type="checkbox" name="gameStonytombBuffOnNewArea" {{ if .Config.Game.StonyTomb.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -55,6 +61,7 @@
     <fieldset>
         <label><input type="checkbox" name="gameMausoleumOpenChests" {{ if .Config.Game.Mausoleum.OpenChests }}checked{{ end }}> Open chests</label>
         <label><input type="checkbox" name="gameMausoleumFocusOnElitePacks" {{ if .Config.Game.Mausoleum.FocusOnElitePacks }}checked{{ end }}> Focus on elite packs</label>
+        <label><input type="checkbox" name="gameMausoleumBuffOnNewArea" {{ if .Config.Game.Mausoleum.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -76,6 +83,7 @@
     <fieldset>
         <label><input type="checkbox" name="gameSpiderCavernOpenChests" {{ if .Config.Game.SpiderCavern.OpenChests }}checked{{ end }}> Open chests</label>
         <label><input type="checkbox" name="gameSpiderCavernFocusOnElitePacks" {{ if .Config.Game.SpiderCavern.FocusOnElitePacks }}checked{{ end }}> Focus on elite packs</label>
+        <label><input type="checkbox" name="gameSpiderCavernBuffOnNewArea" {{ if .Config.Game.SpiderCavern.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -91,6 +99,7 @@
         <label><input type="checkbox" name="gameMephistoKillCouncilMembers" {{ if .Config.Game.Mephisto.KillCouncilMembers }}checked{{ end }}> Kill council members</label>
         <label><input type="checkbox" name="gameMephistoOpenChests" {{ if .Config.Game.Mephisto.OpenChests }}checked{{ end }}> Open chests</label>
         <label><input type="checkbox" name="gameMephistoExitToA4" {{ if .Config.Game.Mephisto.ExitToA4 }}checked{{ end }}> Leave through red portal</label>
+        <label><input type="checkbox" name="gameMephistoBuffOnNewArea" {{ if .Config.Game.Mephisto.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -98,12 +107,15 @@
     <fieldset>
         <label><input type="checkbox" name="gameTristramFocusOnElitePacks" {{ if .Config.Game.Tristram.FocusOnElitePacks }}checked{{ end }}> Focus on elite packs</label>
         <label><input type="checkbox" name="gameTristramClearPortal" {{ if .Config.Game.Tristram.ClearPortal }}checked{{ end }}> Clear portal</label>
+        <label><input type="checkbox" name="gameTristramOnlyFarmRejuvs" {{ if .Config.Game.Tristram.OnlyFarmRejuvs }}checked{{ end }}> Only farm rejuvs</label>
+        <label><input type="checkbox" name="gameTristramBuffOnNewArea" {{ if .Config.Game.Tristram.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
 {{ define "nihlathak" }}
     <fieldset>
         <label><input type="checkbox" name="gameNihlathakClearArea" {{ if .Config.Game.Nihlathak.ClearArea }}checked{{ end }}> Clear area</label>
+        <label><input type="checkbox" name="gameNihlathakBuffOnNewArea" {{ if .Config.Game.Nihlathak.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -120,12 +132,14 @@
 {{ define "eldritch" }}
     <fieldset>
         <label><input type="checkbox" name="gameEldritchKillShenk" {{ if .Config.Game.Eldritch.KillShenk }}checked{{ end }}> Kill Shenk</label>
+        <label><input type="checkbox" name="gameEldritchBuffOnNewArea" {{ if .Config.Game.Eldritch.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
 {{ define "lower_kurast_chest" }}
     <fieldset>
         <label><input type="checkbox" name="gameLowerKurastChestOpenRacks" {{ if .Config.Game.LowerKurastChest.OpenRacks }}checked{{ end }}> Weapon Racks + Armor Stands</label>
+        <label><input type="checkbox" name="gameLowerKurastChestBuffOnNewArea" {{ if .Config.Game.LowerKurastChest.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
     </fieldset>
 {{ end }}
 
@@ -145,6 +159,8 @@
         <label><input type="checkbox" name="gameDiabloStartFromStar" {{ if .Config.Game.Diablo.StartFromStar }}checked{{ end }}> Start From Star (Disabled = Entrance) </label>
         <label><input type="checkbox" name="gameDiabloFocusOnElitePacks" {{ if .Config.Game.Diablo.FocusOnElitePacks }}checked{{ end }}> Elite Packs Only</label>
     </fieldset>
+
+    <label><input type="checkbox" name="gameDiabloBuffOnNewArea" {{ if .Config.Game.Diablo.BuffOnNewArea }}checked{{ end }}> Buff when entering a new area</label>
 {{ end }}
 
 {{ define "leveling" }}

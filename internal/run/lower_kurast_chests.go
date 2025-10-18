@@ -41,6 +41,10 @@ func (run LowerKurastChests) Run() error {
 		return err
 	}
 
+	if run.ctx.CharacterCfg.Game.LowerKurastChest.BuffOnNewArea {
+		action.Buff()
+	}
+
 	// Get bonfires from cached map data
 	var bonFirePositions []data.Position
 	if areaData, ok := run.ctx.GameReader.GetData().Areas[area.LowerKurast]; ok {
@@ -113,19 +117,17 @@ func (run LowerKurastChests) Run() error {
 		return err
 	}
 
+	_, isLevelingChar := run.ctx.Char.(context.LevelingCharacter)
 
-    _, isLevelingChar := run.ctx.Char.(context.LevelingCharacter)
+	if !isLevelingChar {
 
-    if !isLevelingChar {
+		// Move to A4 if possible to shorten the run time
+		err = action.WayPoint(area.ThePandemoniumFortress)
+		if err != nil {
+			return err
+		}
 
-	// Move to A4 if possible to shorten the run time
-	err = action.WayPoint(area.ThePandemoniumFortress)
-	if err != nil {
-		return err
 	}
-   
-   
-    }
 
 	// Done
 	return nil

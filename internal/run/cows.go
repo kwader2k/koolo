@@ -103,6 +103,10 @@ func (a Cows) Run() error {
 		return err
 	}
 
+	if a.ctx.CharacterCfg.Game.Cows.BuffOnNewArea {
+		action.Buff()
+	}
+
 	return action.ClearCurrentLevel(a.ctx.CharacterCfg.Game.Cows.OpenChests, data.MonsterAnyFilter())
 }
 
@@ -115,6 +119,10 @@ func (a Cows) getWirtsLeg() error {
 	err := action.WayPoint(area.StonyField)
 	if err != nil {
 		return err
+	}
+
+	if a.ctx.CharacterCfg.Game.Cows.BuffOnNewArea {
+		action.Buff()
 	}
 
 	cainStone, found := a.ctx.Data.Objects.FindOne(object.CairnStoneAlpha)

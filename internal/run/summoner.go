@@ -29,6 +29,8 @@ func (s Summoner) Run() error {
 		return err
 	}
 
+	action.Buff()
+
 	// Get the Summoner's position from the cached map data
 	areaData := s.ctx.Data.Areas[area.ArcaneSanctuary]
 	summonerNPC, found := areaData.NPCs.FindOne(npc.Summoner)

@@ -1195,41 +1195,62 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Runs = enabledRuns
 
 		cfg.Game.Cows.OpenChests = r.Form.Has("gameCowsOpenChests")
+		cfg.Game.Cows.BuffOnNewArea = r.Form.Has("gameCowsBuffOnNewArea")
 
 		cfg.Game.Pit.MoveThroughBlackMarsh = r.Form.Has("gamePitMoveThroughBlackMarsh")
 		cfg.Game.Pit.OpenChests = r.Form.Has("gamePitOpenChests")
 		cfg.Game.Pit.FocusOnElitePacks = r.Form.Has("gamePitFocusOnElitePacks")
 		cfg.Game.Pit.OnlyClearLevel2 = r.Form.Has("gamePitOnlyClearLevel2")
+		cfg.Game.Pit.BuffOnNewArea = r.Form.Has("gamePitBuffOnNewArea")
 
 		cfg.Game.Andariel.ClearRoom = r.Form.Has("gameAndarielClearRoom")
 		cfg.Game.Andariel.UseAntidoes = r.Form.Has("gameAndarielUseAntidoes")
+		cfg.Game.Andariel.BuffOnNewArea = r.Form.Has("gameAndarielBuffOnNewArea")
 
 		cfg.Game.Countess.ClearFloors = r.Form.Has("gameCountessClearFloors")
+		cfg.Game.Countess.BuffOnNewArea = r.Form.Has("gameCountessBuffOnNewArea")
 
 		cfg.Game.Pindleskin.SkipOnImmunities = []stat.Resist{}
 		for _, i := range r.Form["gamePindleskinSkipOnImmunities[]"] {
 			cfg.Game.Pindleskin.SkipOnImmunities = append(cfg.Game.Pindleskin.SkipOnImmunities, stat.Resist(i))
 		}
+		cfg.Game.Pindleskin.BuffOnNewArea = r.Form.Has("gamePindleskinBuffOnNewArea")
 
 		cfg.Game.StonyTomb.OpenChests = r.Form.Has("gameStonytombOpenChests")
 		cfg.Game.StonyTomb.FocusOnElitePacks = r.Form.Has("gameStonytombFocusOnElitePacks")
+		cfg.Game.StonyTomb.BuffOnNewArea = r.Form.Has("gameStonytombBuffOnNewArea")
+
 		cfg.Game.AncientTunnels.OpenChests = r.Form.Has("gameAncientTunnelsOpenChests")
 		cfg.Game.AncientTunnels.FocusOnElitePacks = r.Form.Has("gameAncientTunnelsFocusOnElitePacks")
+
 		cfg.Game.Duriel.UseThawing = r.Form.Has("gameDurielUseThawing")
+
 		cfg.Game.Mausoleum.OpenChests = r.Form.Has("gameMausoleumOpenChests")
 		cfg.Game.Mausoleum.FocusOnElitePacks = r.Form.Has("gameMausoleumFocusOnElitePacks")
+		cfg.Game.Mausoleum.BuffOnNewArea = r.Form.Has("gameMausoleumBuffOnNewArea")
+
 		cfg.Game.DrifterCavern.OpenChests = r.Form.Has("gameDrifterCavernOpenChests")
 		cfg.Game.DrifterCavern.FocusOnElitePacks = r.Form.Has("gameDrifterCavernFocusOnElitePacks")
+
 		cfg.Game.SpiderCavern.OpenChests = r.Form.Has("gameSpiderCavernOpenChests")
 		cfg.Game.SpiderCavern.FocusOnElitePacks = r.Form.Has("gameSpiderCavernFocusOnElitePacks")
+		cfg.Game.SpiderCavern.BuffOnNewArea = r.Form.Has("gameSpiderCavernBuffOnNewArea")
+
 		cfg.Game.ArachnidLair.OpenChests = r.Form.Has("gameArachnidLairOpenChests")
 		cfg.Game.ArachnidLair.FocusOnElitePacks = r.Form.Has("gameArachnidLairFocusOnElitePacks")
+
 		cfg.Game.Mephisto.KillCouncilMembers = r.Form.Has("gameMephistoKillCouncilMembers")
 		cfg.Game.Mephisto.OpenChests = r.Form.Has("gameMephistoOpenChests")
 		cfg.Game.Mephisto.ExitToA4 = r.Form.Has("gameMephistoExitToA4")
+		cfg.Game.Mephisto.BuffOnNewArea = r.Form.Has("gameMephistoBuffOnNewArea")
+
 		cfg.Game.Tristram.ClearPortal = r.Form.Has("gameTristramClearPortal")
 		cfg.Game.Tristram.FocusOnElitePacks = r.Form.Has("gameTristramFocusOnElitePacks")
+		cfg.Game.Tristram.OnlyFarmRejuvs = r.Form.Has("gameTristramOnlyFarmRejuvs")
+		cfg.Game.Tristram.BuffOnNewArea = r.Form.Has("gameTristramBuffOnNewArea")
+
 		cfg.Game.Nihlathak.ClearArea = r.Form.Has("gameNihlathakClearArea")
+		cfg.Game.Nihlathak.BuffOnNewArea = r.Form.Has("gameNihlathakBuffOnNewArea")
 
 		cfg.Game.Baal.KillBaal = r.Form.Has("gameBaalKillBaal")
 		cfg.Game.Baal.DollQuit = r.Form.Has("gameBaalDollQuit")
@@ -1238,11 +1259,16 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Baal.OnlyElites = r.Form.Has("gameBaalOnlyElites")
 
 		cfg.Game.Eldritch.KillShenk = r.Form.Has("gameEldritchKillShenk")
+		cfg.Game.Eldritch.BuffOnNewArea = r.Form.Has("gameEldritchBuffOnNewArea")
+
 		cfg.Game.LowerKurastChest.OpenRacks = r.Form.Has("gameLowerKurastChestOpenRacks")
+		cfg.Game.LowerKurastChest.BuffOnNewArea = r.Form.Has("gameLowerKurastChestBuffOnNewArea")
+
 		cfg.Game.Diablo.StartFromStar = r.Form.Has("gameDiabloStartFromStar")
 		cfg.Game.Diablo.KillDiablo = r.Form.Has("gameDiabloKillDiablo")
 		cfg.Game.Diablo.FocusOnElitePacks = r.Form.Has("gameDiabloFocusOnElitePacks")
 		cfg.Game.Diablo.DisableItemPickupDuringBosses = r.Form.Has("gameDiabloDisableItemPickupDuringBosses")
+		cfg.Game.Diablo.BuffOnNewArea = r.Form.Has("gameDiabloBuffOnNewArea")
 		attackFromDistance, err := strconv.Atoi(r.Form.Get("gameDiabloAttackFromDistance"))
 		if err != nil {
 			s.logger.Warn("Invalid Attack From Distance value, setting to default",
@@ -1255,6 +1281,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			cfg.Game.Diablo.AttackFromDistance = attackFromDistance
 		}
+
 		cfg.Game.Leveling.EnsurePointsAllocation = r.Form.Has("gameLevelingEnsurePointsAllocation")
 		cfg.Game.Leveling.EnsureKeyBinding = r.Form.Has("gameLevelingEnsureKeyBinding")
 		cfg.Game.Leveling.AutoEquip = r.Form.Has("gameLevelingAutoEquip")

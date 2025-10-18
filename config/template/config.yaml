@@ -86,9 +86,11 @@ game:
   # Specific runs settings
   pindleskin:
     skipOnImmunities: [ ] # Allowed values: cold, fire, light, poison
+    buffOnNewArea: false
   stony_tomb:
     openChests: true
     focusOnElitePacks: false
+    buffOnNewArea: false
   ancient_tunnels:
     openChests: true
     focusOnElitePacks: false
@@ -98,30 +100,37 @@ game:
   spider_cavern:
     openChests: true
     focusOnElitePacks: false
+    buffOnNewArea: false
   pit:
     # default - Outer Cloister -> Monastery Gates -> Tamoe Highland
     moveThroughBlackMarsh: false # Use Black Marsh -> Tamoe Highland route
     openChests: true
     focusOnElitePacks: false
     onlyClearLevel2: false
+    buffOnNewArea: false
   mephisto:
     killCouncilMembers: true # Will kill the council members after killing Mephisto
     openChests: true # Will open chests after killing Mephisto
+    buffOnNewArea: false
   tristram:
     focusOnElitePacks: false # Will clear only Elite monsters
     clearPortal: true # Kills Rakanishu and makes easier selecting the portal
+    onlyFarmRejuvs: false # If set to true, bot will only farm until it has a full belt of rejuvenation potions
+    buffOnNewArea: false
   nihlathak:
     clearArea: true
   diablo:
     killDiablo: true # Should bot kill Diablo after seals
     clearArea: true # Should bot clear Chaos Sanctuary
     onlyElites: true # Should bot target only elites
+    buffOnNewArea: false
   baal:
     killBaal: false
     dollQuit: false
     soulQuit: false
   eldritch:
     killShenk: true
+    buffOnNewArea: false
   leveling:
     ensurePointsAllocation: true # Bot will allocate skill and stat points by itself or perform stat/skill reset. Set to false if you do NOT want it
     ensureKeyBinding: true       # Bot will set key bindings by itself. Set to false if you want to do it manually

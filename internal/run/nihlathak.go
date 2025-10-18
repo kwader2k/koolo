@@ -35,6 +35,10 @@ func (n Nihlathak) Run() error {
 		return err
 	}
 
+	if n.ctx.CharacterCfg.Game.Nihlathak.BuffOnNewArea {
+		action.Buff()
+	}
+
 	// Move to Halls Of Vaught
 	if err = action.MoveToArea(area.HallsOfVaught); err != nil {
 		return err

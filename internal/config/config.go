@@ -165,22 +165,27 @@ type CharacterCfg struct {
 		MaxFailedMenuAttempts  int                   `yaml:"maxFailedMenuAttempts"`
 		Pindleskin             struct {
 			SkipOnImmunities []stat.Resist `yaml:"skipOnImmunities"`
+			BuffOnNewArea    bool          `yaml:"buffOnNewArea"`
 		} `yaml:"pindleskin"`
 		Cows struct {
-			OpenChests bool `yaml:"openChests"`
+			OpenChests    bool `yaml:"openChests"`
+			BuffOnNewArea bool `yaml:"buffOnNewArea"`
 		} `yaml:"cows"`
 		Pit struct {
 			MoveThroughBlackMarsh bool `yaml:"moveThroughBlackMarsh"`
 			OpenChests            bool `yaml:"openChests"`
 			FocusOnElitePacks     bool `yaml:"focusOnElitePacks"`
 			OnlyClearLevel2       bool `yaml:"onlyClearLevel2"`
+			BuffOnNewArea         bool `yaml:"buffOnNewArea"`
 		} `yaml:"pit"`
 		Countess struct {
-			ClearFloors bool `yaml:"clearFloors"`
+			ClearFloors   bool `yaml:"clearFloors"`
+			BuffOnNewArea bool `yaml:"buffOnNewArea"`
 		}
 		Andariel struct {
-			ClearRoom   bool `yaml:"clearRoom"`
-			UseAntidoes bool `yaml:"useAntidoes"`
+			ClearRoom     bool `yaml:"clearRoom"`
+			UseAntidoes   bool `yaml:"useAntidoes"`
+			BuffOnNewArea bool `yaml:"buffOnNewArea"`
 		}
 		Duriel struct {
 			UseThawing bool `yaml:"useThawing"`
@@ -188,14 +193,17 @@ type CharacterCfg struct {
 		StonyTomb struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+			BuffOnNewArea     bool `yaml:"buffOnNewArea"`
 		} `yaml:"stony_tomb"`
 		Mausoleum struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+			BuffOnNewArea     bool `yaml:"buffOnNewArea"`
 		} `yaml:"mausoleum"`
 		AncientTunnels struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+			BuffOnNewArea     bool `yaml:"buffOnNewArea"`
 		} `yaml:"ancient_tunnels"`
 		DrifterCavern struct {
 			OpenChests        bool `yaml:"openChests"`
@@ -204,6 +212,7 @@ type CharacterCfg struct {
 		SpiderCavern struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+			BuffOnNewArea     bool `yaml:"buffOnNewArea"`
 		} `yaml:"spider_cavern"`
 		ArachnidLair struct {
 			OpenChests        bool `yaml:"openChests"`
@@ -213,13 +222,17 @@ type CharacterCfg struct {
 			KillCouncilMembers bool `yaml:"killCouncilMembers"`
 			OpenChests         bool `yaml:"openChests"`
 			ExitToA4           bool `yaml:"exitToA4"`
+			BuffOnNewArea      bool `yaml:"buffOnNewArea"`
 		} `yaml:"mephisto"`
 		Tristram struct {
 			ClearPortal       bool `yaml:"clearPortal"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+			OnlyFarmRejuvs    bool `yaml:"onlyFarmRejuvs"`
+			BuffOnNewArea     bool `yaml:"buffOnNewArea"`
 		} `yaml:"tristram"`
 		Nihlathak struct {
-			ClearArea bool `yaml:"clearArea"`
+			ClearArea     bool `yaml:"clearArea"`
+			BuffOnNewArea bool `yaml:"buffOnNewArea"`
 		} `yaml:"nihlathak"`
 		Diablo struct {
 			KillDiablo                    bool `yaml:"killDiablo"`
@@ -227,6 +240,7 @@ type CharacterCfg struct {
 			FocusOnElitePacks             bool `yaml:"focusOnElitePacks"`
 			DisableItemPickupDuringBosses bool `yaml:"disableItemPickupDuringBosses"`
 			AttackFromDistance            int  `yaml:"attackFromDistance"`
+			BuffOnNewArea                 bool `yaml:"buffOnNewArea"`
 		} `yaml:"diablo"`
 		Baal struct {
 			KillBaal    bool `yaml:"killBaal"`
@@ -236,10 +250,12 @@ type CharacterCfg struct {
 			OnlyElites  bool `yaml:"onlyElites"`
 		} `yaml:"baal"`
 		Eldritch struct {
-			KillShenk bool `yaml:"killShenk"`
+			KillShenk     bool `yaml:"killShenk"`
+			BuffOnNewArea bool `yaml:"buffOnNewArea"`
 		} `yaml:"eldritch"`
 		LowerKurastChest struct {
-			OpenRacks bool `yaml:"openRacks"`
+			OpenRacks     bool `yaml:"openRacks"`
+			BuffOnNewArea bool `yaml:"buffOnNewArea"`
 		} `yaml:"lowerkurastchests"`
 		TerrorZone struct {
 			FocusOnElitePacks bool          `yaml:"focusOnElitePacks"`
