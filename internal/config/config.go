@@ -60,6 +60,8 @@ type KooloCfg struct {
 		ChatID  int64  `yaml:"chatId"`
 		Token   string `yaml:"token"`
 	}
+	WindowWidth  int `yaml:"window_width,omitempty"`
+	WindowHeight int `yaml:"window_height,omitempty"`
 }
 
 type Day struct {
@@ -133,14 +135,6 @@ type CharacterCfg struct {
 			UseBladesOfIce    bool `yaml:"useBladesOfIce"`
 			UseFistsOfFire    bool `yaml:"useFistsOfFire"`
 		} `yaml:"mosaic_sin"`
-		BlizzardSorceress struct {
-			UseMoatTrick        bool `yaml:"useMoatTrick"`
-			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
-		} `yaml:"blizzardSorceress"`
-		SorceressLeveling struct {
-			UseMoatTrick        bool `yaml:"useMoatTrick"`
-			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
-		} `yaml:"sorceressLeveling"`
 	} `yaml:"character"`
 
 	Game struct {
@@ -549,6 +543,24 @@ func SaveSupervisorConfig(supervisorName string, config *CharacterCfg) error {
 	}
 
 	return Load()
+}
+
+// Save saves the current Koolo configuration to disk
+func Save() error {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
+
+	text, err := yaml.Marshal(Koolo)
+	if err != nil {
+		return fmt.Errorf("error marshaling koolo config: %w", err)
+	}
+
+	err = os.WriteFile("config/koolo.yaml", text, 0644)
+	if err != nil {
+		return fmt.Errorf("error writing koolo config: %w", err)
+	}
+
+	return nil
 }
 
 func (c *CharacterCfg) Validate() {
