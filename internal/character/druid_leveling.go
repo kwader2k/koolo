@@ -6,7 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -14,7 +13,6 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
-	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
@@ -554,51 +552,7 @@ func (s DruidLeveling) SkillPoints() []skill.ID {
 		}
 	}
 
-	questSkillPoints := 0
-
-	switch s.CharacterCfg.Game.Difficulty {
-	case difficulty.Nightmare:
-		questSkillPoints = 4
-	case difficulty.Hell:
-		questSkillPoints = 8
-	}
-
-	if s.Data.Quests[quest.Act1DenOfEvil].Completed() {
-		questSkillPoints++
-	}
-	if s.Data.Quests[quest.Act2RadamentsLair].Completed() {
-		questSkillPoints++
-	}
-	if s.Data.Quests[quest.Act4TheFallenAngel].Completed() {
-		questSkillPoints += 2
-	}
-
-	totalPoints := (int(lvl.Value) - 1) + questSkillPoints
-	if totalPoints < 0 {
-		totalPoints = 0
-	}
-
-	var skillsToAllocateBasedOnLevel []skill.ID
-	if totalPoints < len(skillSequence) {
-		skillsToAllocateBasedOnLevel = skillSequence[:totalPoints]
-	} else {
-		skillsToAllocateBasedOnLevel = skillSequence
-	}
-
-	targetLevels := make(map[skill.ID]int)
-	skillsToAllocate := make([]skill.ID, 0)
-	for _, sk := range skillsToAllocateBasedOnLevel {
-		targetLevels[sk]++
-		currentLevel := 0
-		if skillData, found := s.Data.PlayerUnit.Skills[sk]; found {
-			currentLevel = int(skillData.Level)
-		}
-
-		if targetLevels[sk] > currentLevel {
-			skillsToAllocate = append(skillsToAllocate, sk)
-		}
-	}
-	return skillsToAllocate
+	return skillSequence
 }
 
 func (s DruidLeveling) KillCountess() error {

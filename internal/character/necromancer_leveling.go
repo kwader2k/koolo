@@ -3,15 +3,12 @@ package character
 import (
 	"fmt"
 	"slices"
-	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
-	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
@@ -58,6 +55,8 @@ type NecromancerLeveling struct {
 	BaseCharacter
 	lastAmplifyDamageCast time.Time
 	lastLineOfSight       map[data.UnitID]time.Time
+	lastBoneArmorCast     time.Time
+	lastBonePrisonCast    map[data.UnitID]time.Time
 }
 
 func (n *NecromancerLeveling) GetAdditionalRunewords() []string {
@@ -91,6 +90,93 @@ func (n *NecromancerLeveling) hasSkeletonNearby() bool {
 		}
 	}
 	return false
+}
+
+// ensureBoneArmor checks if Bone Armor is active and recasts if needed
+func (n *NecromancerLeveling) ensureBoneArmor() {
+	if !n.hasSkill(skill.BoneArmor) {
+		return
+	}
+
+	// Check if Bone Armor is active
+	if !n.Data.PlayerUnit.States.HasState(state.Bonearmor) {
+		// Cast Bone Armor immediately if it's down
+		step.SecondaryAttack(skill.BoneArmor, n.Data.PlayerUnit.ID, 1, step.Distance(0, 1))
+		n.lastBoneArmorCast = time.Now()
+		n.Logger.Debug("Casting Bone Armor (buff expired)")
+		utils.Sleep(200)
+		return
+	}
+
+	// Recast periodically even if active (to maintain max charges)
+	if time.Since(n.lastBoneArmorCast) > time.Second*10 {
+		step.SecondaryAttack(skill.BoneArmor, n.Data.PlayerUnit.ID, 1, step.Distance(0, 1))
+		n.lastBoneArmorCast = time.Now()
+		n.Logger.Debug("Refreshing Bone Armor")
+		utils.Sleep(200)
+	}
+}
+
+// shouldRetreat checks if we need to escape due to low health
+func (n *NecromancerLeveling) shouldRetreat() bool {
+	// Don't retreat during Ancients fight (can't TP out)
+	if n.Data.PlayerUnit.Area == area.ArreatSummit {
+		return false
+	}
+
+	// Retreat if health is critically low
+	if n.Data.PlayerUnit.HPPercent() < 30 {
+		n.Logger.Warn("Health critically low, attempting to retreat")
+		return true
+	}
+
+	return false
+}
+
+// castDefensiveBonePrison casts Bone Prison on the boss for defensive purposes
+func (n *NecromancerLeveling) castDefensiveBonePrison(boss data.Monster) {
+	if !n.hasSkill(skill.BonePrison) {
+		return
+	}
+
+	// Initialize map if needed
+	if n.lastBonePrisonCast == nil {
+		n.lastBonePrisonCast = make(map[data.UnitID]time.Time)
+	}
+
+	// Check if we recently cast on this boss
+	if lastCast, found := n.lastBonePrisonCast[boss.UnitID]; found && time.Since(lastCast) < time.Second*3 {
+		return
+	}
+
+	// Cast Bone Prison to trap the boss
+	step.SecondaryAttack(skill.BonePrison, boss.UnitID, 1, bonePrisonRange)
+	n.lastBonePrisonCast[boss.UnitID] = time.Now()
+	n.Logger.Debug("Casting defensive Bone Prison", "boss", boss.Name)
+	utils.Sleep(150)
+}
+
+// findSafeBossPosition finds a safe position to attack the boss from
+func (n *NecromancerLeveling) findSafeBossPosition(boss data.Monster, currentDistance int) (data.Position, bool) {
+	// Define safe casting distance based on boss proximity
+	minSafeDistance := 10
+	maxCastDistance := BoneSpearMaxDistance
+
+	// If boss is too close, increase safe distance
+	if currentDistance < 8 {
+		minSafeDistance = 12
+	}
+
+	// Use the action package helper to find a safe position
+	safePos, found := action.FindSafePosition(
+		boss,
+		8,               // dangerDistance - minimum distance from boss
+		minSafeDistance, // safeDistance - preferred distance from boss
+		10,              // minAttackDistance - min range for attacks
+		maxCastDistance, // maxAttackDistance - max range for attacks
+	)
+
+	return safePos, found
 }
 
 func (n *NecromancerLeveling) KillMonsterSequence(
@@ -420,74 +506,141 @@ func (n *NecromancerLeveling) SkillPoints() []skill.ID {
 		}
 	}
 
-	questSkillPoints := 0
+	return skillSequence
+}
 
-	if n.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
-		questSkillPoints += 4
-	}
+// killBossSequence handles boss encounters with defensive tactics
+func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.MonsterType) error {
+	completedAttackLoops := 0
+	const maxBossAttackLoops = 200
+	lastRepositionTime := time.Time{}
+	repositionCooldown := time.Second * 2
 
-	if n.CharacterCfg.Game.Difficulty == difficulty.Hell {
-		questSkillPoints += 4
-	}
+	n.Logger.Info("Starting boss fight", "boss", bossNPC)
 
-	if n.Data.Quests[quest.Act1DenOfEvil].Completed() {
-		questSkillPoints += 1
-	}
-	if n.Data.Quests[quest.Act2RadamentsLair].Completed() {
-		questSkillPoints += 2
-	}
-	if n.Data.Quests[quest.Act4TheFallenAngel].Completed() {
-		questSkillPoints += 4
-	}
+	for {
+		context.Get().PauseIfNotPriority()
 
-	totalPoints := (int(lvl.Value) - 1) + questSkillPoints
-	if totalPoints < 0 {
-		totalPoints = 0
-	}
-
-	var skillsToAllocateBasedOnLevel []skill.ID
-	if totalPoints < len(skillSequence) {
-		skillsToAllocateBasedOnLevel = skillSequence[:totalPoints]
-	} else {
-		skillsToAllocateBasedOnLevel = skillSequence
-	}
-
-	targetLevels := make(map[skill.ID]int)
-	for _, sk := range skillsToAllocateBasedOnLevel {
-		targetLevels[sk]++
-	}
-
-	skillsToAllocate := make([]skill.ID, 0)
-
-	var uniqueSkills []skill.ID
-	seenSkills := make(map[skill.ID]bool)
-	for _, sk := range skillsToAllocateBasedOnLevel {
-		if _, seen := seenSkills[sk]; !seen {
-			uniqueSkills = append(uniqueSkills, sk)
-			seenSkills[sk] = true
-		}
-	}
-
-	for _, sk := range uniqueSkills {
-		target := targetLevels[sk]
-		if target == 0 {
-			continue
+		// Check if we should retreat (except for Ancients)
+		if n.shouldRetreat() {
+			n.Logger.Warn("Retreating from boss fight due to low health")
+			// Try to use TP scroll - just return error, chicken system will handle it
+			return fmt.Errorf("retreated due to low health")
 		}
 
-		currentLevel := 0
-		if skillData, found := n.Data.PlayerUnit.Skills[sk]; found {
-			currentLevel = int(skillData.Level)
+		// Ensure Bone Armor is always active
+		n.ensureBoneArmor()
+
+		// Find the boss
+		boss, found := n.Data.Monsters.FindOne(bossNPC, monsterType)
+		if !found {
+			n.Logger.Debug("Boss not found, may be dead")
+			return nil
 		}
 
-		pointsToAdd := target - currentLevel
-		if pointsToAdd > 0 {
-			for i := 0; i < pointsToAdd; i++ {
-				skillsToAllocate = append(skillsToAllocate, sk)
+		// Check if boss is dead
+		if boss.Stats[stat.Life] <= 0 {
+			n.Logger.Info("Boss defeated", "boss", bossNPC)
+			return nil
+		}
+
+		// Check max attack loops to prevent infinite combat
+		if completedAttackLoops >= maxBossAttackLoops {
+			n.Logger.Warn("Max boss attack loops reached", "loops", completedAttackLoops)
+			return fmt.Errorf("max boss attack loops reached")
+		}
+
+		// Calculate distance to boss
+		distanceToBoss := n.PathFinder.DistanceFromMe(boss.Position)
+
+		// Cast Bone Prison if boss is too close or as defensive measure
+		if distanceToBoss < 15 {
+			n.castDefensiveBonePrison(boss)
+		}
+
+		// Reposition if needed and not on cooldown
+		if time.Since(lastRepositionTime) > repositionCooldown {
+			shouldReposition := false
+
+			// Reposition if boss is too close
+			if distanceToBoss < 6 {
+				n.Logger.Debug("Boss too close, repositioning", "distance", distanceToBoss)
+				shouldReposition = true
+			}
+
+			// Reposition if health is getting low (but not critical)
+			if n.Data.PlayerUnit.HPPercent() < 50 && distanceToBoss < 10 {
+				n.Logger.Debug("Health low, repositioning to safer distance")
+				shouldReposition = true
+			}
+
+			// Check for other monsters nearby
+			enemyNearby, _ := action.IsAnyEnemyAroundPlayer(5)
+			if enemyNearby && distanceToBoss > 5 {
+				n.Logger.Debug("Enemies nearby, repositioning")
+				shouldReposition = true
+			}
+
+			if shouldReposition {
+				safePos, found := n.findSafeBossPosition(boss, distanceToBoss)
+				if found {
+					n.Logger.Debug("Moving to safe position")
+					step.MoveTo(safePos)
+					lastRepositionTime = time.Now()
+					utils.Sleep(150)
+					continue
+				}
 			}
 		}
-	}
 
-	return skillsToAllocate
+		// Cast Amplify Damage on boss
+		if n.hasSkill(skill.AmplifyDamage) && !boss.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
+			step.SecondaryAttack(skill.AmplifyDamage, boss.UnitID, 1, amplifyDamageRange)
+			n.Logger.Debug("Casting Amplify Damage on boss")
+			n.lastAmplifyDamageCast = time.Now()
+			utils.Sleep(150)
+		}
+
+		// Attack with appropriate skill
+		lvl, _ := n.Data.PlayerUnit.FindStat(stat.Level, 0)
+
+		if n.hasSkill(skill.BoneSpear) {
+			// Ensure we have line of sight
+			if !n.PathFinder.LineOfSight(n.Data.PlayerUnit.Position, boss.Position) {
+				// Move to get line of sight
+				n.Logger.Debug("No line of sight, moving closer")
+				step.MoveTo(boss.Position)
+				utils.Sleep(200)
+				continue
+			}
+
+			step.PrimaryAttack(boss.UnitID, 3, true, boneSpearRange)
+			n.Logger.Debug("Casting Bone Spear on boss")
+			utils.Sleep(150)
+		} else if n.hasSkill(skill.Teeth) {
+			if !n.PathFinder.LineOfSight(n.Data.PlayerUnit.Position, boss.Position) {
+				n.Logger.Debug("No line of sight, moving closer")
+				step.MoveTo(boss.Position)
+				utils.Sleep(200)
+				continue
+			}
+
+			step.SecondaryAttack(skill.Teeth, boss.UnitID, 3, boneSpearRange)
+			n.Logger.Debug("Casting Teeth on boss")
+			utils.Sleep(150)
+		} else if lvl.Value < 2 || n.Data.PlayerUnit.MPPercent() < 15 {
+			// Basic attack for very low level or out of mana
+			step.PrimaryAttack(boss.UnitID, 2, false, step.Distance(1, 5))
+			n.Logger.Debug("Using basic attack on boss")
+			utils.Sleep(150)
+		} else {
+			// This shouldn't happen, but fallback to basic attack
+			step.PrimaryAttack(boss.UnitID, 2, false, step.Distance(1, 5))
+			utils.Sleep(150)
+		}
+
+		completedAttackLoops++
+	}
 }
 
 func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
@@ -505,19 +658,20 @@ func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
 			return nil
 		}
 
-		return n.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-			m, found := d.Monsters.FindOne(bossNPC, data.MonsterTypeUnique)
-			if !found {
-				return 0, false
-			}
-			return m.UnitID, true
-		}, nil)
+		// Use the new boss sequence for improved combat
+		return n.killBossSequence(bossNPC, data.MonsterTypeUnique)
 	}
 
 	return fmt.Errorf("boss with ID: %d not found", bossNPC)
 }
 
 func (n *NecromancerLeveling) killMonsterByName(id npc.ID, monsterType data.MonsterType, skipOnImmunities []stat.Resist) error {
+	// Check if this is a boss/super unique - use boss sequence
+	if monsterType == data.MonsterTypeSuperUnique || monsterType == data.MonsterTypeUnique {
+		return n.killBossSequence(id, monsterType)
+	}
+
+	// Regular monster - use normal sequence
 	for {
 		monster, found := n.Data.Monsters.FindOne(id, monsterType)
 		if !found || monster.Stats[stat.Life] <= 0 {
@@ -551,27 +705,42 @@ func (n *NecromancerLeveling) KillDuriel() error {
 }
 
 func (n *NecromancerLeveling) KillCouncil() error {
-	return n.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		var councilMembers []data.Monster
-		for _, m := range d.Monsters {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				councilMembers = append(councilMembers, m)
+	// Council is a special case - multiple bosses
+	// Kill them one by one using boss sequence
+	councilNPCs := []npc.ID{npc.CouncilMember, npc.CouncilMember2, npc.CouncilMember3}
+
+	for {
+		// Find closest living council member
+		var closestCouncil data.Monster
+		minDistance := 999
+		found := false
+
+		for _, councilNPC := range councilNPCs {
+			for _, m := range n.Data.Monsters {
+				if m.Name == councilNPC && m.Stats[stat.Life] > 0 {
+					distance := n.PathFinder.DistanceFromMe(m.Position)
+					if distance < minDistance {
+						minDistance = distance
+						closestCouncil = m
+						found = true
+					}
+				}
 			}
 		}
 
-		sort.Slice(councilMembers, func(i, j int) bool {
-			distanceI := n.PathFinder.DistanceFromMe(councilMembers[i].Position)
-			distanceJ := n.PathFinder.DistanceFromMe(councilMembers[j].Position)
-
-			return distanceI < distanceJ
-		})
-
-		for _, m := range councilMembers {
-			return m.UnitID, true
+		// No more council members alive
+		if !found {
+			n.Logger.Info("All council members defeated")
+			return nil
 		}
 
-		return 0, false
-	}, nil)
+		// Kill the closest council member using boss tactics
+		n.Logger.Info("Engaging council member", "name", closestCouncil.Name)
+		err := n.killBossSequence(closestCouncil.Name, data.MonsterTypeSuperUnique)
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func (n *NecromancerLeveling) KillMephisto() error {
@@ -591,19 +760,57 @@ func (n *NecromancerLeveling) KillPindle() error {
 }
 
 func (n *NecromancerLeveling) KillAncients() error {
+	// Ancients is special - can't retreat, must fight to the death
+	// Disable back to town checks temporarily
 	originalBackToTownCfg := n.CharacterCfg.BackToTown
 	n.CharacterCfg.BackToTown.NoHpPotions = false
 	n.CharacterCfg.BackToTown.NoMpPotions = false
 	n.CharacterCfg.BackToTown.EquipmentBroken = false
 	n.CharacterCfg.BackToTown.MercDied = false
 
-	for _, m := range n.Data.Monsters.Enemies(data.MonsterEliteFilter()) {
-		foundMonster, found := n.Data.Monsters.FindOne(m.Name, data.MonsterTypeSuperUnique)
-		if !found {
-			continue
+	n.Logger.Info("Starting Ancients fight")
+
+	// Kill ancients one by one, focusing on closest
+	for {
+		// Find all living ancients
+		var ancients []data.Monster
+		for _, m := range n.Data.Monsters.Enemies(data.MonsterEliteFilter()) {
+			if m.Stats[stat.Life] > 0 {
+				ancients = append(ancients, m)
+			}
 		}
-		step.MoveTo(data.Position{X: 10062, Y: 12639})
-		n.killMonsterByName(foundMonster.Name, data.MonsterTypeSuperUnique, nil)
+
+		// No more ancients alive
+		if len(ancients) == 0 {
+			n.Logger.Info("All ancients defeated")
+			break
+		}
+
+		// Find closest ancient
+		var closest data.Monster
+		minDistance := 999
+		for _, ancient := range ancients {
+			distance := n.PathFinder.DistanceFromMe(ancient.Position)
+			if distance < minDistance {
+				minDistance = distance
+				closest = ancient
+			}
+		}
+
+		// Move to safe position near platform center for better positioning
+		if minDistance > 15 {
+			step.MoveTo(data.Position{X: 10062, Y: 12639})
+			utils.Sleep(200)
+		}
+
+		n.Logger.Info("Engaging ancient", "name", closest.Name, "distance", minDistance)
+
+		// Use boss sequence for the ancient
+		err := n.killBossSequence(closest.Name, data.MonsterTypeSuperUnique)
+		if err != nil {
+			n.Logger.Error("Error fighting ancient", "error", err)
+			// Continue fighting even on error for ancients
+		}
 	}
 
 	n.CharacterCfg.BackToTown = originalBackToTownCfg

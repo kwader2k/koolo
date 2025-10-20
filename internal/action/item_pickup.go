@@ -369,8 +369,9 @@ func shouldBePickedUp(i data.Item) bool {
 
 	// Skip picking up gold, usually early game there are small amounts of gold in many places full of enemies, better
 	// stay away of that
+	// Leaving it for now, but can probably be removed due to the auto MinGoldPickupThreshold in leveling config
 	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
-	if isLevelingChar && ctx.Data.PlayerUnit.TotalPlayerGold() < 50000 && i.Name != "Gold" {
+	if isLevelingChar && ctx.Data.PlayerUnit.TotalPlayerGold() < 2000 && i.Name != "Gold" {
 		return true
 	}
 

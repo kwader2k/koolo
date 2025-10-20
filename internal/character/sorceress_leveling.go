@@ -716,7 +716,6 @@ func (s SorceressLeveling) StatPoints() []context.StatAllocation {
 
 func (s SorceressLeveling) SkillPoints() []skill.ID {
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-	var skillsToReturn []skill.ID
 
 	var activeSkillSequence []skill.ID
 	if lvl.Value < 24 {
@@ -725,23 +724,7 @@ func (s SorceressLeveling) SkillPoints() []skill.ID {
 		activeSkillSequence = blizzardSkillSequence
 	}
 
-	skillPointCountInSequence := make(map[skill.ID]int)
-
-	for _, skID := range activeSkillSequence {
-		skillPointCountInSequence[skID]++
-
-		currentSkillLevel := 0
-		if current, found := s.Data.PlayerUnit.Skills[skID]; found {
-			currentSkillLevel = int(current.Level)
-		}
-
-		if currentSkillLevel < skillPointCountInSequence[skID] {
-			skillsToReturn = append(skillsToReturn, skID)
-		}
-	}
-
-	s.Logger.Info("Assigning skill points", "level", lvl.Value, "skillPoints (to attempt)", skillsToReturn)
-	return skillsToReturn
+	return activeSkillSequence
 }
 
 func (s SorceressLeveling) KillCountess() error {

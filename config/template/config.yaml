@@ -14,6 +14,14 @@ hidePortraits: true  # Set to true to hide mercenary and other players portraits
 enableCubeRecipes: true # Enable cubing of flawlesses and tokens
 stopLevelingAt: 0
 
+# Packet casting options (ADVANCED - disabled by default for safety)
+# Packet casting sends network packets directly instead of simulating mouse clicks
+# Mouse clicking is generally safer and less detectable
+packetCasting:
+  useForEntranceInteraction: false # Use packets for entering dungeons/levels
+  useForItemPickup: false          # Use packets for picking up items  
+  useForTpInteraction: false       # Use packets for using town portals
+
 scheduler:
   enabled: false
   days:

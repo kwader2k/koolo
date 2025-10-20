@@ -152,14 +152,16 @@ func stashInventory(firstRun bool) {
 	ctx := context.Get()
 	ctx.SetLastAction("stashInventory")
 
-	currentTab := 1
+	// Determine starting tab based on configuration
+	startTab := 1 // Personal stash by default (tab 1)
 	if ctx.CharacterCfg.Character.StashToShared {
-		currentTab = 2
+		startTab = 2 // Start with first shared stash tab if configured (tabs 2-4 are shared)
 	}
+
+	currentTab := startTab
 	SwitchStashTab(currentTab)
 
 	// Make a copy of inventory items to avoid issues if the slice changes during iteration
-	// For example, if an item is stashed and the underlying data structure is updated
 	itemsToProcess := make([]data.Item, 0)
 	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if i.IsPotion() {
@@ -169,32 +171,38 @@ func stashInventory(firstRun bool) {
 		itemsToProcess = append(itemsToProcess, i)
 	}
 
-	for _, i := range itemsToProcess { // Iterate over the copy
+	for _, i := range itemsToProcess {
 		stashIt, dropIt, matchedRule, ruleFile := shouldStashIt(i, firstRun)
 
 		if dropIt {
 			ctx.Logger.Info(fmt.Sprintf("Dropping item %s [%s] due to MaxQuantity rule.", i.Desc().Name, i.Quality.ToString()))
-			blacklistItem(i) // Blacklist the item to prevent immediate re-pickup
+			blacklistItem(i)
 			utils.Sleep(500)
-			DropItem(i) // Call the new DropItem function
+			DropItem(i)
 			utils.Sleep(500)
 			step.CloseAllMenus()
-			continue // Move to the next item
+			continue
 		}
 
 		if !stashIt {
 			continue
 		}
 
-		// Always stash unique charms to the shared stash
+		// Determine target tab for this specific item
+		targetStartTab := startTab
+
+		// Always stash unique charms to the shared stash (override personal stash setting)
 		if (i.Name == "grandcharm" || i.Name == "smallcharm" || i.Name == "largecharm") && i.Quality == item.QualityUnique {
-			currentTab = 2 // Force shared stash for unique charms
-			SwitchStashTab(currentTab)
+			targetStartTab = 2 // Force shared stash for unique charms
 		}
 
-		itemStashed := false // Flag to track if the current item was stashed
-		// Loop through tabs 1 to 5 trying to stash the item
-		for tabAttempt := 1; tabAttempt <= 5; tabAttempt++ {
+		itemStashed := false
+		// Loop through tabs trying to stash the item
+		// For shared stash mode: try tabs 2, 3, 4, then fall back to 1 if all shared tabs are full
+		// For personal stash mode: try tab 1, then 2, 3, 4 if personal is full
+		maxTab := 4 // We only have 4 tabs total
+
+		for tabAttempt := targetStartTab; tabAttempt <= maxTab; tabAttempt++ {
 			SwitchStashTab(tabAttempt)
 
 			if stashItemAction(i, matchedRule, ruleFile, firstRun) {
@@ -203,30 +211,33 @@ func stashInventory(firstRun bool) {
 
 				if res != nip.RuleResultFullMatch && firstRun {
 					ctx.Logger.Info(
-						fmt.Sprintf("Item %s [%s] stashed because it was found in the inventory during the first run.", i.Desc().Name, i.Quality.ToString()),
+						fmt.Sprintf("Item %s [%s] stashed to tab %d because it was found in the inventory during the first run.", i.Desc().Name, i.Quality.ToString(), tabAttempt),
 					)
 				} else {
 					ctx.Logger.Info(
-						fmt.Sprintf("Item %s [%s] stashed", i.Desc().Name, i.Quality.ToString()),
+						fmt.Sprintf("Item %s [%s] stashed to tab %d", i.Desc().Name, i.Quality.ToString(), tabAttempt),
 						slog.String("nipFile", fmt.Sprintf("%s:%d", r.Filename, r.LineNumber)),
 						slog.String("rawRule", r.RawLine),
 					)
 				}
-				break // Item stashed, move to the next item in itemsToStash
+				break
 			}
-			// If we reach here, the item was not stashed on the current tab
 			ctx.Logger.Debug(fmt.Sprintf("Item %s could not be stashed on tab %d. Trying next.", i.Name, tabAttempt))
 		}
 
-		if !itemStashed {
-			ctx.Logger.Warn(fmt.Sprintf("ERROR: Item %s [%s] could not be stashed into any tab. Stash might be full or item too large.", i.Desc().Name, i.Quality.ToString()))
-			// TODO: Potentially stop the bot or alert the user more critically here
+		// If we couldn't stash in shared tabs and started with shared, try personal as last resort
+		if !itemStashed && targetStartTab == 2 {
+			ctx.Logger.Debug(fmt.Sprintf("All shared stash tabs full for %s, trying personal stash as fallback", i.Name))
+			SwitchStashTab(1)
+			if stashItemAction(i, matchedRule, ruleFile, firstRun) {
+				itemStashed = true
+				ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) as fallback", i.Desc().Name, i.Quality.ToString()))
+			}
 		}
 
-		// Reset currentTab for the next item to either personal or shared if configured
-		currentTab = 1
-		if ctx.CharacterCfg.Character.StashToShared {
-			currentTab = 2
+		if !itemStashed {
+			ctx.Logger.Warn(fmt.Sprintf("ERROR: Item %s [%s] could not be stashed into any tab. All stash tabs might be full.", i.Desc().Name, i.Quality.ToString()))
+			// TODO: Potentially stop the bot or alert the user more critically here
 		}
 	}
 	step.CloseAllMenus()

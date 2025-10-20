@@ -1,305 +1,258 @@
+/* ========================================
+   FORM ELEMENTS & CHARACTER SETTINGS
+   Using shared variables from dashboard.css uwu
+   ======================================== */
+
+/* Base Form Spacing */
 :root {
-    --pico-typography-spacing-vertical: 0.3rem;
-    --pico-form-element-spacing-vertical: 0.3rem;
-    --pico-form-element-spacing-horizontal: 0.5rem;
+    --pico-typography-spacing-vertical: 0.4rem;
+    --pico-form-element-spacing-vertical: 0.4rem;
+    --pico-form-element-spacing-horizontal: 0.7rem;
     --pico-font-size: 100%;
 }
+
+/* ========================================
+   CONDITIONAL FIELDS
+   ======================================== */
 .conditional-field {
-    transition: all 0.3s ease;
-    padding: 10px;
-    border-radius: 8px;
-    background-color: rgba(255, 255, 255, 0.05);
-    margin: 0.5rem 0;
-    border: 1px solid #2a3140;
+    transition: all var(--transition-normal);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.03);
+    margin: var(--spacing-sm) 0;
+    border: 1px solid var(--border-color);
 }
 
+.conditional-field:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--primary);
+}
+
+/* ========================================
+   INPUT WITH INFO
+   ======================================== */
 .input-with-info {
     position: relative;
 }
 
 .input-info {
     font-size: 0.8rem;
-    color: #aaa;
-    margin-top: 4px;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-xs);
     font-style: italic;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.input-info::before {
+    content: "ℹ";
+    color: var(--primary);
+    font-style: normal;
+    font-weight: bold;
 }
 
 #clearPathDist {
     width: 100%;
 }
 
-/* Style the walking radius input */
+/* ========================================
+   WALKING RADIUS CONTAINER
+   ======================================== */
 .walking-radius-container {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: var(--spacing-sm);
 }
 
 .walking-radius-container label {
-    font-weight: bold;
-    color: #7aa6ff;
-    margin-bottom: 5px;
+    font-weight: 700;
+    color: var(--primary-hover);
+    margin-bottom: var(--spacing-xs);
+    letter-spacing: 0.3px;
 }
 
 .walking-radius-slider {
     position: relative;
-    height: 30px;
+    height: 36px;
+    display: flex;
+    align-items: center;
 }
 
 .walking-radius-value {
     position: absolute;
-    right: 10px;
-    top: 5px;
-    background-color: #2a3140;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 0.8em;
-    color: #fff;
+    right: var(--spacing-sm);
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bg-tertiary);
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.85em;
+    color: var(--primary);
+    font-weight: 700;
+    border: 1px solid var(--primary);
+    box-shadow: 0 2px 8px rgba(0, 137, 235, 0.3);
 }
 
+/* ========================================
+   ERROR MESSAGE
+   ======================================== */
 .error-message {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 10px 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
+    background: linear-gradient(135deg, rgba(220, 53, 69, 0.15) 0%, rgba(220, 53, 69, 0.05) 100%);
+    border: 1px solid var(--status-danger);
+    color: #ff9aa5;
+    padding: var(--spacing-md) var(--spacing-md);
+    border-radius: var(--radius-lg);
+    margin-bottom: var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    box-shadow: var(--shadow-md);
 }
 
+.error-message::before {
+    content: "⚠";
+    font-size: 1.5em;
+    color: var(--status-danger);
+}
+
+/* ========================================
+   INLINE LABEL
+   ======================================== */
 .inline-label {
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-sm) 0;
 }
 
 .inline-label span {
     white-space: nowrap;
     flex-shrink: 0;
+    font-weight: 600;
+    color: var(--text-primary);
 }
 
 .inline-label input {
     flex-grow: 1;
 }
 
+/* ========================================
+   RUN LIST
+   ======================================== */
 .run-list {
     padding: 0;
+    list-style: none;
 }
 
 .run-list li {
     list-style: none;
     padding-left: 0;
     margin-left: 0;
-    margin-bottom: 0.5rem; /* Add some space between items */
+    margin-bottom: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: all var(--transition-fast);
 }
 
-#scheduler-settings {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 1rem;
-    max-width: 1200px;
-    margin: 0 auto;
+.run-list li:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-sm);
 }
-
-/* Add this new rule */
-#scheduler-settings[style*="display: none"] {
-    display: none !important;
-}
-
-.scheduler-day {
-    background-color: #1c212c;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #2a3140;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    transition: box-shadow 0.3s ease;
-}
-
-.scheduler-day:hover {
-    box-shadow: 0 6px 8px rgba(0,0,0,0.15);
-}
-
-.scheduler-day h4 {
-    margin-top: 0;
-    margin-bottom: 0.75rem;
-    color: #ffffff;
-    font-weight: bold;
-}
-
-.time-range {
-    display: flex;
-    align-items: center;
-    margin-bottom: 0.75rem;
-}
-
-.time-range input[type="time"] {
-    width: 15rem;
-    margin-right: 0.1rem;
-    padding: 0.15rem;
-    border: 1px solid #2a3140;
-    border-radius: 3px;
-    font-size: 0.90rem;
-}
-
-.time-range span {
-    margin: 0 0.5rem;
-    margin-bottom: 5%;
-    color: #ffffff;
-    font-weight: bold;
-}
-
-.remove-time-range {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
-    font-size: 1rem;
-    cursor: pointer;
-    margin-left: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.remove-time-range:hover {
-    background-color: #c82333;
-}
-
-.add-time-range {
-    margin-top: 0.75rem;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.95rem;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    transition: background-color 0.2s;
-}
-
-.add-time-range:hover {
-    background-color: #0056b3;
-}
-
-.add-time-range i {
-    margin-right: 0.5rem;
-}
-
-.recipe-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.recipe-item {
-    display: flex;
-    align-items: center;
-    background-color: #1c212c;
-    padding: 5px 10px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-}
-
-.recipe-item:hover {
-    background-color: #2a3140;
-}
-
-.recipe-item input[type="checkbox"] {
-    margin-right: 10px;
-}
-
-.recipe-item span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Add these styles to your existing CSS file */
 
 .run-list li summary {
     display: flex;
+    align-content: center;
+    flex-wrap: wrap;
+    flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    background-color: #1c212c;
-    transition: background-color 0.2s;
-    border: none; /* Remove border from summary */
+    padding: var(--pico-form-element-spacing-horizontal);
+    background: #161a23;
+    transition: background var(--transition-fast);
+    border: none;
+    cursor: pointer;
+    gap: var(--spacing-md);
 }
 
 .run-list li summary:hover {
-    background-color: #2a3140;
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .run-list li summary:focus {
-    outline: none; /* Remove the annoying outline */
+    outline: none;
 }
 
 .run-list li summary span {
     flex-grow: 1;
+    padding-left: 0; 
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: capitalize;
+    display: flex;
+    align-items: center; 
 }
 
 .run-list li summary button {
-
     cursor: pointer;
-    padding: 2.5px 5px; /* 50% smaller padding */
-    margin-left: 10px;
-    font-size: 0.8rem; /* 50% smaller font size */
-    color: #ffffff;
-    border: 1px solid #2a3140; /* Fixed: changed from border-radius to border */
-    border-radius: 4px; /* Added correct border-radius property */
-    transition: background-color 0.2s, transform 0.1s;
+    padding: 5px 8px;
+    margin: var(--spacing-md);
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     outline: none;
+    font-weight: 600;
+    flex-shrink: 0; 
 }
 
 .run-list li summary button.remove-run {
-    margin-top: 15px;
-    background-color: #dc3545; /* Red for remove button */
+    background: #c82333;
+    color: #ebe4e4;
+    border-radius: 4px;
 }
 
 .run-list li summary button.add-run {
-    margin-top: 15px;
-    background-color: #28a745; /* Green for add button */
+    background: #28a043;
+    color: #ebe4e4;
+    border-radius: 4px;
 }
 
 .run-list li summary button:hover {
     transform: scale(1.05);
-}
-
-.run-list li summary span {
-    padding-left: 10px;
+    box-shadow: var(--shadow-md);
 }
 
 .run-list li summary button.remove-run:hover {
-    background-color: #c82333; /* Darker red on hover */
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.6);
 }
 
 .run-list li summary button.add-run:hover {
-    background-color: #218838; /* Darker green on hover */
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.6)
 }
 
 .run-list li summary button i {
-    font-size: 0.9rem; /* 50% smaller icon size */
+    font-size: 0.95rem;
 }
 
 .run-list li details[open] summary {
-    border-bottom: 1px solid #2a3140;
+    border-bottom: 1px solid var(--divider-color);
 }
 
 .run-list li details p {
     margin: 0;
-    padding: 0.5rem 1rem;
-    background-color: #1c212c;
+    padding: var(--spacing-md);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-secondary);
+    line-height: 1.6;
 }
 
-/* New styles for the summary content */
+/* Summary Content */
 .summary-content {
     display: flex;
     align-items: center;
@@ -314,68 +267,396 @@
     display: flex;
     align-items: center;
 }
+
+/* ========================================
+   OPTIONS GROUP
+   ======================================== */
 .options-group {
-     margin-bottom: 20px;
-     padding: 10px;
-     border: 1px solid #444;
-     border-radius: 5px;
- }
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    background: rgba(255, 255, 255, 0.02);
+    transition: all var(--transition-fast);
+}
+
+.options-group:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--primary);
+}
 
 .options-group label {
     display: flex;
     align-items: center;
-    margin-bottom: 5px;
+    margin-bottom: var(--spacing-sm);
+    padding: var(--spacing-xs);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast);
+    color: var(--text-primary);
 }
 
 .options-group legend {
-    font-weight: bold;
-    padding: 0 5px;
+    font-weight: 700;
+    padding: 0 var(--spacing-sm);
+    color: var(--primary);
+    font-size: 1.1em;
+    letter-spacing: 0.3px;
 }
 
 .options-group input[type="checkbox"] {
-    margin-right: 8px;
+    margin-right: var(--spacing-sm);
+    cursor: pointer;
+    accent-color: var(--primary);
 }
 
 .options-group label:hover {
-    background-color: #2d2d2d;
-    border-radius: 4px;
-    padding: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--radius-md);
 }
 
+/* ========================================
+   CLASS-SPECIFIC SETTINGS
+   ======================================== */
 #class-specific-settings {
-    margin: 1rem 0;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #2a3140;
+    margin: var(--spacing-md) 0;
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 #class-specific-settings h4 {
     margin-top: 0;
-    margin-bottom: 1rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--primary);
+    font-size: 1.2em;
+    font-weight: 700;
 }
 
 #no-settings-message {
     text-align: center;
-    padding: 1rem;
-    color: #666;
+    padding: var(--spacing-md);
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 #class-specific-settings small {
     display: block;
     text-align: center;
-    color: #666;
-    margin-top: 0.5rem;
+    color: var(--text-secondary);
+    margin-top: var(--spacing-sm);
+    font-size: 0.85em;
 }
 
+/* ========================================
+   STICKY BOTTOM
+   ======================================== */
 .sticky-bottom {
     position: sticky;
     bottom: 0;
-    background-color: var(--pico-background-color);
+    background: var(--bg-secondary);
     margin-bottom: 0;
+    padding: var(--spacing-md);
+    border-top: 2px solid var(--primary);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 100;
 }
 
+/* ========================================
+   NON-LADDER CHECKBOX
+   ======================================== */
 .non-ladder-checkbox-container {
     display: flex;
     align-items: center;
-    padding-top: 12px;
+    padding-top: var(--spacing-md);
+    gap: var(--spacing-sm);
+}
+
+.non-ladder-checkbox-container label {
+    color: var(--text-primary);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.non-ladder-checkbox-container input[type="checkbox"] {
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+/* ========================================
+   SCHEDULER SETTINGS
+   ======================================== */
+#scheduler-settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-md);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+#scheduler-settings[style*="display: none"] {
+    display: none !important;
+}
+
+.scheduler-day {
+    background: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-normal);
+}
+
+.scheduler-day:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.scheduler-day h4 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-md);
+    color: var(--primary-hover);
+    font-weight: 700;
+    font-size: 1.1em;
+    letter-spacing: 0.3px;
+}
+
+/* ========================================
+   TIME RANGE
+   ======================================== */
+.time-range {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+    gap: var(--spacing-sm);
+}
+
+.time-range input[type="time"] {
+    width: 15rem;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: 0.90rem;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.time-range input[type="time"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(0, 137, 235, 0.2);
+}
+
+.time-range span {
+    margin: 0 var(--spacing-xs);
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+.remove-time-range {
+    background: linear-gradient(135deg, var(--status-danger) 0%, #c82333 100%);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-full);
+    width: 2rem;
+    height: 2rem;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-left: var(--spacing-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    box-shadow: var(--shadow-sm);
+}
+
+.remove-time-range:hover {
+    background: linear-gradient(135deg, #c82333 0%, var(--status-danger) 100%);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    transform: scale(1.1);
+}
+
+.add-time-range {
+    margin-top: var(--spacing-md);
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+    color: var(--text-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    transition: all var(--transition-fast);
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+}
+
+.add-time-range:hover {
+    background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary) 100%);
+    box-shadow: 0 4px 12px rgba(0, 137, 235, 0.4);
+    transform: translateY(-2px);
+}
+
+.add-time-range i {
+    margin-right: var(--spacing-sm);
+}
+
+/* ========================================
+   RECIPE GRID
+   ======================================== */
+.recipe-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+}
+
+.recipe-item {
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    border: 1px solid var(--border-color);
+    cursor: pointer;
+}
+
+.recipe-item:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--primary);
+    transform: translateX(4px);
+}
+
+.recipe-item input[type="checkbox"] {
+    margin-right: var(--spacing-sm);
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.recipe-item span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 768px) {
+    #scheduler-settings {
+        grid-template-columns: 1fr;
+    }
+    
+    .recipe-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .time-range {
+        flex-wrap: wrap;
+    }
+    
+    .time-range input[type="time"] {
+        width: 100%;
+    }
+    
+    .inline-label {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-sm);
+    }
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+.recipe-item:focus-within,
+.options-group label:focus-within {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Muling Configuration Styles */
+#mule-profiles-container {
+    margin: 1rem 0;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#mule-profiles-container h6 {
+    margin-top: 0;
+    color: #7aa6ff;
+}
+
+#mule-profiles-container p {
+    margin-bottom: 1rem;
+}
+
+.mule-profile-entry {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    align-items: center;
+}
+
+.mule-profile-entry select {
+    flex: 1;
+    margin-bottom: 0;
+}
+
+.mule-profile-entry .remove-mule-profile {
+    width: 40px;
+    min-width: 40px;
+    padding: 0.5rem;
+    margin-bottom: 0;
+    background-color: var(--pico-del-color);
+    border-color: var(--pico-del-color);
+}
+
+.mule-profile-entry .remove-mule-profile:hover {
+    background-color: #c23934;
+}
+
+#add-mule-profile {
+    width: 100%;
+    margin-top: 0.5rem;
+}
+
+#mule-character-info {
+    padding: 1rem;
+    background-color: rgba(122, 166, 255, 0.1);
+    border-left: 4px solid #7aa6ff;
+    border-radius: 4px;
+    margin-top: 1rem;
+}
+
+#mule-character-info i {
+    color: #7aa6ff;
+    margin-right: 0.5rem;
+}
+
+#mule-settings {
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    padding: 1rem;
+    background-color: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
 }

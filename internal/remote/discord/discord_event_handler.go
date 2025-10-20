@@ -16,11 +16,20 @@ func (b *Bot) Handle(_ context.Context, e event.Event) error {
 
 		switch evt := e.(type) {
 		case event.GameCreatedEvent:
-			message := fmt.Sprintf("%s\nGame: %s\nPassword: %s", evt.Message(), evt.Name, evt.Password)
+			message := fmt.Sprintf("**[%s]** %s\nGame: %s\nPassword: %s", evt.Supervisor(), evt.Message(), evt.Name, evt.Password)
 			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
 			return err
-		case event.GameFinishedEvent, event.RunStartedEvent, event.RunFinishedEvent:
-			_, err := b.discordSession.ChannelMessageSend(b.channelID, e.Message())
+		case event.GameFinishedEvent:
+			message := fmt.Sprintf("**[%s]** %s", evt.Supervisor(), evt.Message())
+			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
+			return err
+		case event.RunStartedEvent:
+			message := fmt.Sprintf("**[%s]** started a new run: **%s**", evt.Supervisor(), evt.RunName)
+			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
+			return err
+		case event.RunFinishedEvent:
+			message := fmt.Sprintf("**[%s]** finished run: **%s** (%s)", evt.Supervisor(), evt.RunName, evt.Reason)
+			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
 			return err
 		default:
 			break
@@ -32,9 +41,12 @@ func (b *Bot) Handle(_ context.Context, e event.Event) error {
 			return err
 		}
 
+		// Add supervisor name to screenshot messages
+		message := fmt.Sprintf("**[%s]** %s", e.Supervisor(), e.Message())
+
 		_, err = b.discordSession.ChannelMessageSendComplex(b.channelID, &discordgo.MessageSend{
 			File:    &discordgo.File{Name: "Screenshot.jpeg", ContentType: "image/jpeg", Reader: buf},
-			Content: e.Message(),
+			Content: message,
 		})
 
 		return err

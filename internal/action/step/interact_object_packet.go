@@ -9,41 +9,23 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/context"
-	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/town"
-	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 const (
-	maxInteractionAttempts = 5
-	portalSyncDelay        = 200
-	maxPortalSyncAttempts  = 15
+	maxPacketInteractionAttempts = 5
+	packetPortalSyncDelay        = 200
+	maxPacketPortalSyncAttempts  = 15
 )
 
-// InteractObject routes to packet or mouse implementation based on config
-func InteractObject(obj data.Object, isCompletedFn func() bool) error {
-	ctx := context.Get()
-
-	// For portals (blue/red), check if packet mode is enabled
-	if (obj.IsPortal() || obj.IsRedPortal()) && ctx.CharacterCfg.PacketCasting.UseForTpInteraction {
-		return InteractObjectPacket(obj, isCompletedFn)
-	}
-
-	// Default to mouse interaction
-	return InteractObjectMouse(obj, isCompletedFn)
-}
-
-// InteractObjectMouse is the original mouse-based object interaction
-func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
+func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 	interactionAttempts := 0
-	mouseOverAttempts := 0
 	waitingForInteraction := false
-	currentMouseCoords := data.Position{}
 	lastRun := time.Time{}
 
 	ctx := context.Get()
-	ctx.SetLastStep("InteractObjectMouse")
+	ctx.SetLastStep("InteractObjectPacket")
 
 	// If there is no completion check, just assume the interaction is completed after clicking
 	if isCompletedFn == nil {
@@ -88,14 +70,15 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 	for !isCompletedFn() {
 		ctx.PauseIfNotPriority()
 
-		if interactionAttempts >= maxInteractionAttempts || mouseOverAttempts >= 20 {
-			return fmt.Errorf("[%s] failed interacting with object [%v] in Area: [%s]", ctx.Name, obj.Name, ctx.Data.PlayerUnit.Area.Area().Name)
+		if interactionAttempts >= maxPacketInteractionAttempts {
+			return fmt.Errorf("[%s] failed interacting with object via packet [%v] in Area: [%s]", ctx.Name, obj.Name, ctx.Data.PlayerUnit.Area.Area().Name)
 		}
 
 		ctx.RefreshGameData()
 
 		// Give some time before retrying the interaction
 		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*200 {
+			utils.Sleep(200)
 			continue
 		}
 
@@ -128,10 +111,13 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 				utils.Sleep(100)
 				continue
 			}
-		}
 
-		if o.IsHovered {
-			ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
+			// Send packet interaction
+			ctx.Logger.Debug("Attempting TP interaction via packet method")
+			if err := ctx.PacketSender.InteractWithTp(o); err != nil {
+				ctx.Logger.Error("Packet TP interaction failed", "error", err)
+				return fmt.Errorf("failed to interact with portal via packet: %w", err)
+			}
 
 			waitingForInteraction = true
 			interactionAttempts++
@@ -139,7 +125,7 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 			// For portals with expected area, we need to wait for proper area sync
 			if expectedArea != 0 {
 				utils.Sleep(500) // Initial delay for area transition
-				for attempts := 0; attempts < maxPortalSyncAttempts; attempts++ {
+				for attempts := 0; attempts < maxPacketPortalSyncAttempts; attempts++ {
 					ctx.RefreshGameData()
 					if ctx.Data.PlayerUnit.Area == expectedArea {
 						if areaData, ok := ctx.Data.Areas[expectedArea]; ok {
@@ -154,29 +140,13 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 							}
 						}
 					}
-					utils.Sleep(portalSyncDelay)
+					utils.Sleep(packetPortalSyncDelay)
 				}
 				return fmt.Errorf("portal sync timeout - expected area: %v, current: %v", expectedArea, ctx.Data.PlayerUnit.Area)
 			}
-			continue
 		} else {
-			objectX := o.Position.X - 2
-			objectY := o.Position.Y - 2
-			distance := ctx.PathFinder.DistanceFromMe(o.Position)
-			if distance > 15 {
-				return fmt.Errorf("object is too far away: %d. Current distance: %d", o.Name, distance)
-			}
-
-			mX, mY := ui.GameCoordsToScreenCords(objectX, objectY)
-			// In order to avoid the spiral (super slow and shitty) let's try to point the mouse to the top of the portal directly
-			if mouseOverAttempts == 2 && o.IsPortal() {
-				mX, mY = ui.GameCoordsToScreenCords(objectX-4, objectY-4)
-			}
-
-			x, y := utils.Spiral(mouseOverAttempts)
-			currentMouseCoords = data.Position{X: mX + x, Y: mY + y}
-			ctx.HID.MovePointer(mX+x, mY+y)
-			mouseOverAttempts++
+			// For non-portal objects, packets are not supported yet
+			return fmt.Errorf("packet interaction only supported for portals currently")
 		}
 	}
 

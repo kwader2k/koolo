@@ -59,6 +59,8 @@ type Context struct {
 	ForceAttack        bool
 	StopSupervisorFn   StopFunc
 	CleanStopRequested bool
+	RestartWithCharacter string
+	PacketSender       *game.PacketSender
 }
 
 type Debug struct {
@@ -76,6 +78,13 @@ type CurrentGameHelper struct {
 	PickupItems                bool
 	FailedToCreateGameAttempts int
 	FailedMenuAttempts         int
+	// When this is set, the supervisor will stop and the manager will start a new supervisor for the specified character.
+	SwitchToCharacter string
+	// Used to store the original character name when muling, so we can switch back.
+	OriginalCharacter string
+	CurrentMuleIndex  int
+	ShouldCheckStash  bool
+	StashFull         bool
 }
 
 func (ctx *Context) StopSupervisor() {
@@ -144,6 +153,10 @@ func getGoroutineID() uint64 {
 
 func (ctx *Context) RefreshGameData() {
 	*ctx.Data = ctx.GameReader.GetData()
+}
+
+func (ctx *Context) RefreshInventory() {
+	ctx.Data.Inventory = ctx.GameReader.GetInventory()
 }
 
 func (ctx *Context) Detach() {

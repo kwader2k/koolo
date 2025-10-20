@@ -85,6 +85,9 @@ func AutoEquip() error {
 		playerChanged, err := equipBestItems(playerItems, playerScores, item.LocationEquipped)
 		if err != nil {
 			ctx.Logger.Error(fmt.Sprintf("Player equip error: %v. Continuing...", err))
+			if errors.Is(err, ErrNotEnoughSpace) {
+				return err
+			}
 		}
 
 		// Mercenary
@@ -213,6 +216,8 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 		return false
 	}
 
+	isSorc := ctx.CharacterCfg.Character.Class == "sorceress_leveling"
+
 	if _, isTwoHanded := newItem.FindStat(stat.TwoHandedMinDamage, 0); isTwoHanded {
 		// We need to fetch the level stat safely.
 		playerLevel := 0
@@ -222,6 +227,10 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 
 		//Avoid equiping 2 handed unless it's a runeword
 		if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword {
+			return false
+		}
+
+		if target == item.LocationEquipped && playerLevel >= 24 && isSorc {
 			return false
 		}
 	}
@@ -547,6 +556,9 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			}
 			equippedSomething = true // We made a change (selling junk), so we should re-evaluate
 			*ctx.Data = ctx.GameReader.GetData()
+			if _, found := findInventorySpace(currentlyEquipped); !found {
+				return false, err
+			}
 			continue
 		}
 

@@ -428,7 +428,7 @@ func (s *HttpServer) getStatusData() IndexData {
 		// Enrich with lightweight live character overview for UI
 		if data := s.manager.GetData(supervisorName); data != nil {
 			// Defaults
-			var lvl, exp, life, maxLife, mana, maxMana, mf, gf int
+			var lvl, exp, life, maxLife, mana, maxMana, mf, gold, gf int
 			var lastExp, nextExp int
 			var fr, cr, lr, pr int
 			var mfr, mcr, mlr, mpr int
@@ -460,6 +460,8 @@ func (s *HttpServer) getStatusData() IndexData {
 			if v, ok := data.PlayerUnit.FindStat(stat.MagicFind, 0); ok {
 				mf = v.Value
 			}
+			// Total gold from inventory and private stash
+			gold = data.PlayerUnit.TotalPlayerGold()
 			if v, ok := data.PlayerUnit.FindStat(stat.GoldFind, 0); ok {
 				gf = v.Value
 			}
@@ -545,6 +547,7 @@ func (s *HttpServer) getStatusData() IndexData {
 				Mana:            mana,
 				MaxMana:         maxMana,
 				MagicFind:       mf,
+				Gold:            gold,
 				GoldFind:        gf,
 				FireResist:      fr,
 				ColdResist:      cr,
@@ -554,13 +557,13 @@ func (s *HttpServer) getStatusData() IndexData {
 		}
 
 		// Check if this is a companion follower
-		cfg, found := config.Characters[supervisorName]
+		cfg, found := config.GetCharacter(supervisorName)
 		if found {
 			// Add companion information to the stats
 			if cfg.Companion.Enabled && !cfg.Companion.Leader {
 				// This is a companion follower
 				stats.IsCompanionFollower = true
-				//stats.MuleEnabled = cfg.Muling.Enabled
+				stats.MuleEnabled = cfg.Muling.Enabled
 			}
 		}
 
@@ -604,7 +607,7 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/initial-data", s.initialData)         // Web socket data
 	http.HandleFunc("/api/reload-config", s.reloadConfig)   // New handler
 	http.HandleFunc("/api/companion-join", s.companionJoin) // Companion join handler
-	//http.HandleFunc("/reset-muling", s.resetMuling)
+	http.HandleFunc("/reset-muling", s.resetMuling)
 
 	assets, _ := fs.Sub(assetsFS, "assets")
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
@@ -693,7 +696,7 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 	Supervisor := r.URL.Query().Get("characterName")
 
 	// Get the current auth method for the supervisor we wanna start
-	supCfg, currFound := config.Characters[Supervisor]
+	supCfg, currFound := config.GetCharacter(Supervisor)
 	if !currFound {
 		// There's no config for the current supervisor. THIS SHOULDN'T HAPPEN
 		return
@@ -715,7 +718,7 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 			}
 
 			// Prevent launching if another client that is using token auth is starting
-			sCfg, found := config.Characters[sup]
+			sCfg, found := config.GetCharacter(sup)
 			if found {
 				if sCfg.AuthMethod == "TokenAuth" {
 					return
@@ -766,7 +769,7 @@ func (s *HttpServer) index(w http.ResponseWriter) {
 
 func (s *HttpServer) drops(w http.ResponseWriter, r *http.Request) {
 	sup := r.URL.Query().Get("supervisor")
-	cfg, found := config.Characters[sup]
+	cfg, found := config.GetCharacter(sup)
 	if !found {
 		http.Error(w, "Can't fetch drop data because the configuration "+sup+" wasn't found", http.StatusNotFound)
 		return
@@ -1021,7 +1024,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		supervisorName := r.Form.Get("name")
-		cfg, found := config.Characters[supervisorName]
+		cfg, found := config.GetCharacter(supervisorName)
 		if !found {
 			err = config.CreateFromTemplate(supervisorName)
 			if err != nil {
@@ -1032,7 +1035,6 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 				return
 			}
-			cfg = config.Characters["template"]
 		}
 
 		cfg.MaxGameLength, _ = strconv.Atoi(r.Form.Get("maxGameLength"))
@@ -1173,6 +1175,16 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.MosaicSin.UseFistsOfFire = r.Form.Has("mosaicUseFistsOfFire")
 		}
 
+		if cfg.Character.Class == "sorceress" {
+			cfg.Character.BlizzardSorceress.UseMoatTrick = r.Form.Has("useMoatTrick")
+			cfg.Character.BlizzardSorceress.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
+		}
+
+		// Sorceress Leveling specific options
+		if cfg.Character.Class == "sorceress_leveling" {
+			cfg.Character.SorceressLeveling.UseMoatTrick = r.Form.Has("useMoatTrick")
+			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
+		}
 		for y, row := range cfg.Inventory.InventoryLock {
 			for x := range row {
 				if r.Form.Has(fmt.Sprintf("inventoryLock[%d][%d]", y, x)) {
@@ -1199,6 +1211,11 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.InteractWithShrines = r.Form.Has("interactWithShrines")
 		cfg.Game.StopLevelingAt, _ = strconv.Atoi(r.Form.Get("stopLevelingAt"))
 		cfg.Game.IsNonLadderChar = r.Form.Has("isNonLadderChar")
+
+		// Packet Casting
+		cfg.PacketCasting.UseForEntranceInteraction = r.Form.Has("packetCastingUseForEntranceInteraction")
+		cfg.PacketCasting.UseForItemPickup = r.Form.Has("packetCastingUseForItemPickup")
+		cfg.PacketCasting.UseForTpInteraction = r.Form.Has("packetCastingUseForTpInteraction")
 		cfg.Game.Difficulty = difficulty.Difficulty(r.Form.Get("gameDifficulty"))
 		cfg.Game.RandomizeRuns = r.Form.Has("gameRandomizeRuns")
 
@@ -1335,9 +1352,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.BackToTown.EquipmentBroken = r.Form.Has("equipmentBroken")
 
 		// Muling
-		//cfg.Muling.Enabled = r.FormValue("mulingEnabled") == "on"
-		//cfg.Muling.MuleProfiles = r.Form["mulingMuleProfiles[]"]
-		//cfg.Muling.ReturnTo = r.FormValue("mulingReturnTo")
+		cfg.Muling.Enabled = r.FormValue("mulingEnabled") == "on"
+		cfg.Muling.MuleProfiles = r.Form["mulingMuleProfiles[]"]
+		cfg.Muling.ReturnTo = r.FormValue("mulingReturnTo")
 
 		config.SaveSupervisorConfig(supervisorName, cfg)
 		http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -1345,9 +1362,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	supervisor := r.URL.Query().Get("supervisor")
-	cfg := config.Characters["template"]
+	cfg, _ := config.GetCharacter("template")
 	if supervisor != "" {
-		cfg = config.Characters[supervisor]
+		cfg, _ = config.GetCharacter(supervisor)
 	}
 
 	enabledRuns := make([]string, 0)
@@ -1379,6 +1396,21 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 	dayNames := []string{"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"}
 
+	// Get list of mule profiles (for farmer's mule dropdown)
+	// and farmer profiles (for mule's return character dropdown)
+	muleProfiles := []string{}
+	farmerProfiles := []string{}
+	allCharacters := config.GetCharacters()
+	for profileName, profileCfg := range allCharacters {
+		if strings.ToLower(profileCfg.Character.Class) == "mule" {
+			muleProfiles = append(muleProfiles, profileName)
+		} else {
+			farmerProfiles = append(farmerProfiles, profileName)
+		}
+	}
+	sort.Strings(muleProfiles)
+	sort.Strings(farmerProfiles)
+
 	s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
 		Supervisor:         supervisor,
 		Config:             cfg,
@@ -1388,6 +1420,8 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		AvailableTZs:       availableTZs,
 		RecipeList:         config.AvailableRecipes,
 		RunewordRecipeList: config.AvailableRunewordRecipes,
+		AvailableProfiles:  muleProfiles,
+		FarmerProfiles:     farmerProfiles,
 	})
 }
 
@@ -1411,7 +1445,7 @@ func (s *HttpServer) companionJoin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the supervisor exists and is a companion
-	cfg, found := config.Characters[requestData.Supervisor]
+	cfg, found := config.GetCharacter(requestData.Supervisor)
 	if !found {
 		http.Error(w, "Supervisor not found", http.StatusNotFound)
 		return
@@ -1444,14 +1478,14 @@ func (s *HttpServer) resetMuling(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cfg, found := config.Characters[characterName]
+	cfg, found := config.GetCharacter(characterName)
 	if !found {
 		http.Error(w, "Character config not found", http.StatusNotFound)
 		return
 	}
 
 	s.logger.Info("Resetting muling index for character", "character", characterName)
-	//cfg.MulingState.CurrentMuleIndex = 0
+	cfg.MulingState.CurrentMuleIndex = 0
 
 	err := config.SaveSupervisorConfig(characterName, cfg)
 	if err != nil {
@@ -1520,3 +1554,4 @@ func (s *HttpServer) resetDroplogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "dir": dir, "removed": removed})
 }
+

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
@@ -43,54 +43,6 @@ func (d Duriel) Name() string {
 }
 
 func (d Duriel) Run() error {
-	
-	
-	
-		if d.ctx.CharacterCfg.Game.Duriel.UseThawing {
-			
-
-		
-		potsToBuy := 6
-		if d.ctx.Data.MercHPPercent() > 0 && !d.ctx.CharacterCfg.HidePortraits {
-			potsToBuy = 12
-		}
-
-		action.VendorRefill(false, true)
-		action.BuyAtVendor(npc.Lysander, action.VendorItemRequest{
-			Item:     "ThawingPotion",
-			Quantity: potsToBuy,
-			Tab:      4,
-		})
-
-		d.ctx.HID.PressKeyBinding(d.ctx.Data.KeyBindings.Inventory)
-
-		x := 0
-		for _, itm := range d.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-			if itm.Name != "ThawingPotion" {
-				continue
-			}
-			pos := ui.GetScreenCoordsForItem(itm)
-			utils.Sleep(500)
-
-			if x > 5 {
-
-				d.ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-				utils.Sleep(300)
-				if d.ctx.Data.LegacyGraphics {
-					d.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionXClassic, ui.MercAvatarPositionYClassic)
-				} else {
-					d.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionX, ui.MercAvatarPositionY)
-				}
-
-			} else {
-				d.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
-			}
-			x++
-		}
-		step.CloseAllMenus()
-
-	}
-	
 	err := action.WayPoint(area.CanyonOfTheMagi)
 	if err != nil {
 		return err
@@ -162,12 +114,10 @@ func (d Duriel) Run() error {
 		utils.Sleep(20000)
 	}
 
-						_, isLevelingChar := d.ctx.Char.(context.LevelingCharacter)
+	_, isLevelingChar := d.ctx.Char.(context.LevelingCharacter)
 	if isLevelingChar && d.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
 
-				
-	action.ClearAreaAroundPlayer(20, data.MonsterAnyFilter())
-
+		action.ClearAreaAroundPlayer(20, data.MonsterAnyFilter())
 
 		action.ReturnTown()
 		action.IdentifyAll(false)
@@ -176,11 +126,11 @@ func (d Duriel) Run() error {
 		action.Repair()
 		action.VendorRefill(true, true)
 
-	err = action.UsePortalInTown()
-	if err != nil {
-		return err
-	}}
-
+		err = action.UsePortalInTown()
+		if err != nil {
+			return err
+		}
+	}
 
 	for _, obj := range d.ctx.Data.Areas[realTalRashaTomb].Objects {
 		if obj.Name == object.HoradricOrifice {
@@ -188,8 +138,81 @@ func (d Duriel) Run() error {
 		}
 	}
 
+	// Get thawing potions before entering Duriel's lair
+	if d.ctx.CharacterCfg.Game.Duriel.UseThawing {
+		d.ctx.Logger.Info("Returning to town for thawing potions before Duriel")
+
+		// Use the existing portal from the previous town prep
+		err = action.ReturnTown()
+		if err != nil {
+			return err
+		}
+
+		potsToBuy := 6
+		if d.ctx.Data.MercHPPercent() > 0 && !d.ctx.CharacterCfg.HidePortraits {
+			potsToBuy = 12
+		}
+
+		// Explicitly interact with Lysander for thawing potions
+		d.ctx.Logger.Info("Buying thawing potions from Lysander")
+		err = action.InteractNPC(npc.Lysander)
+		if err != nil {
+			return err
+		}
+
+		err = action.BuyAtVendor(npc.Lysander, action.VendorItemRequest{
+			Item:     "ThawingPotion",
+			Quantity: potsToBuy,
+			Tab:      4,
+		})
+		if err != nil {
+			return err
+		}
+
+		d.ctx.HID.PressKeyBinding(d.ctx.Data.KeyBindings.Inventory)
+		utils.Sleep(300)
+
+		x := 0
+		for _, itm := range d.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+			if itm.Name != "ThawingPotion" {
+				continue
+			}
+			pos := ui.GetScreenCoordsForItem(itm)
+			utils.Sleep(500)
+
+			if x > 5 {
+				d.ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
+				utils.Sleep(300)
+				if d.ctx.Data.LegacyGraphics {
+					d.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionXClassic, ui.MercAvatarPositionYClassic)
+				} else {
+					d.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionX, ui.MercAvatarPositionY)
+				}
+			} else {
+				d.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
+			}
+			x++
+		}
+		step.CloseAllMenus()
+
+		// Go back through the portal
+		d.ctx.Logger.Info("Returning through portal to Duriel's entrance")
+		err = action.UsePortalInTown()
+		if err != nil {
+			return err
+		}
+
+		// Move back to the orifice area
+		for _, obj := range d.ctx.Data.Areas[realTalRashaTomb].Objects {
+			if obj.Name == object.HoradricOrifice {
+				action.MoveToCoords(obj.Position)
+			}
+		}
+	}
+
 	duriellair, found := d.ctx.Data.Objects.FindOne(object.DurielsLairPortal)
 	if found {
+		// Now enter Duriel's lair with thawing potions active
 		action.InteractObject(duriellair, func() bool {
 			return d.ctx.Data.PlayerUnit.Area == area.DurielsLair && d.ctx.Data.AreaData.IsInside(d.ctx.Data.PlayerUnit.Position)
 		})
