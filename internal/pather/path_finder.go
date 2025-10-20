@@ -3,6 +3,8 @@ package pather
 import (
 	"fmt"
 	"math"
+	"sync"
+	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -12,11 +14,29 @@ import (
 	"github.com/hectorgimenez/koolo/internal/pather/astar"
 )
 
+// Smart path cache with LRU and area awareness
+type pathCacheEntry struct {
+	path         Path
+	distance     int
+	timestamp    time.Time
+	lastAccessed time.Time
+	accessCount  int
+	forArea      area.ID // Track which area this path is for
+}
+
+type pathCache struct {
+	entries     map[string]*pathCacheEntry
+	currentArea area.ID
+	mu          sync.RWMutex
+}
+
 type PathFinder struct {
 	gr   *game.MemoryReader
 	data *game.Data
 	hid  *game.HID
 	cfg  *config.CharacterCfg
+	// Add smart path cache
+	cache *pathCache
 }
 
 func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *config.CharacterCfg) *PathFinder {
@@ -25,10 +45,139 @@ func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *c
 		data: data,
 		hid:  hid,
 		cfg:  cfg,
+		cache: &pathCache{
+			entries:     make(map[string]*pathCacheEntry),
+			currentArea: 0,
+		},
+	}
+}
+
+// Generate cache key from area + quantized positions
+// Quantization reduces cache size by grouping nearby positions
+func (pf *PathFinder) getCacheKey(from, to data.Position, forArea area.ID) string {
+	// Quantize positions to 5-unit grid to increase cache hits
+	// This means positions within 5 units share the same cache key
+	fromX := (from.X / 5) * 5
+	fromY := (from.Y / 5) * 5
+	toX := (to.X / 5) * 5
+	toY := (to.Y / 5) * 5
+
+	return fmt.Sprintf("%d_%d_%d_%d_%d", forArea, fromX, fromY, toX, toY)
+}
+
+// Smart cache cleanup with LRU strategy
+// This is the KEY improvement - we don't expire by time, we expire by usage
+func (pf *PathFinder) cleanCache() {
+	pf.cache.mu.Lock()
+	defer pf.cache.mu.Unlock()
+
+	now := time.Now()
+
+	// STRATEGY 1: Remove entries from old areas immediately
+	// When area changes, old paths are useless
+	for key, entry := range pf.cache.entries {
+		if entry.forArea != pf.cache.currentArea {
+			delete(pf.cache.entries, key)
+		}
+	}
+
+	// STRATEGY 2: LRU eviction when cache is full
+	// Keep frequently accessed paths, remove rarely used ones
+	if len(pf.cache.entries) > 300 {
+		// Build list of candidates for eviction
+		type evictionCandidate struct {
+			key   string
+			score float64 // Lower score = more likely to evict
+		}
+
+		candidates := make([]evictionCandidate, 0, len(pf.cache.entries))
+
+		for key, entry := range pf.cache.entries {
+			// Calculate eviction score based on:
+			// 1. How recently accessed (more recent = higher score)
+			// 2. How frequently accessed (more frequent = higher score)
+			// 3. How old the entry is (older = slightly lower score)
+
+			timeSinceAccess := now.Sub(entry.lastAccessed).Seconds()
+			timeSinceCreation := now.Sub(entry.timestamp).Seconds()
+
+			// Score formula (higher = keep, lower = evict):
+			// - Recent access gives high score
+			// - Multiple accesses multiply score
+			// - Very old entries get penalty
+			accessRecencyScore := 1000.0 / (timeSinceAccess + 1)
+			frequencyMultiplier := float64(entry.accessCount)
+			ageScore := math.Max(0, 100.0-timeSinceCreation/10.0)
+
+			score := (accessRecencyScore * frequencyMultiplier) + ageScore
+
+			candidates = append(candidates, evictionCandidate{
+				key:   key,
+				score: score,
+			})
+		}
+
+		// Sort candidates by score (lowest first)
+		// Simple selection to find bottom 25% for eviction
+		evictCount := len(candidates) / 4 // Remove 25% of cache
+		if evictCount < 50 {
+			evictCount = 50 // Minimum 50 entries removed
+		}
+
+		// Find entries with lowest scores
+		for i := 0; i < evictCount && len(candidates) > 0; i++ {
+			lowestIdx := 0
+			lowestScore := candidates[0].score
+
+			for j := 1; j < len(candidates); j++ {
+				if candidates[j].score < lowestScore {
+					lowestScore = candidates[j].score
+					lowestIdx = j
+				}
+			}
+
+			// Evict the lowest score entry
+			delete(pf.cache.entries, candidates[lowestIdx].key)
+
+			// Remove from candidates list
+			candidates[lowestIdx] = candidates[len(candidates)-1]
+			candidates = candidates[:len(candidates)-1]
+		}
+	}
+}
+
+// Check and handle area changes
+func (pf *PathFinder) checkAreaChange() {
+	currentArea := pf.data.PlayerUnit.Area
+
+	pf.cache.mu.RLock()
+	if currentArea != pf.cache.currentArea {
+		pf.cache.mu.RUnlock()
+
+		// Area changed - clear cache for old area
+		pf.cache.mu.Lock()
+		if currentArea != pf.cache.currentArea {
+			// Double-check after acquiring write lock
+			oldArea := pf.cache.currentArea
+			pf.cache.currentArea = currentArea
+
+			// Remove all entries from old area
+			for key, entry := range pf.cache.entries {
+				if entry.forArea == oldArea {
+					delete(pf.cache.entries, key)
+				}
+			}
+		}
+		pf.cache.mu.Unlock()
+	} else {
+		pf.cache.mu.RUnlock()
 	}
 }
 
 func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {
+	// Check for area changes first
+	pf.checkAreaChange()
+
 	// First try direct path
 	if path, distance, found := pf.GetPathFrom(pf.data.PlayerUnit.Position, to); found {
 		return path, distance, true
@@ -43,6 +192,24 @@ func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {
 }
 
 func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
+	currentArea := pf.data.PlayerUnit.Area
+
+	// Check cache first
+	cacheKey := pf.getCacheKey(from, to, currentArea)
+
+	pf.cache.mu.Lock()
+	if cached, exists := pf.cache.entries[cacheKey]; exists {
+		// Cache hit - update access statistics
+		cached.lastAccessed = time.Now()
+		cached.accessCount++
+		path := cached.path
+		distance := cached.distance
+		pf.cache.mu.Unlock()
+		return path, distance, true
+	}
+	pf.cache.mu.Unlock()
+
+	// Cache miss - calculate path
 	a := pf.data.AreaData
 
 	// We don't want to modify the original grid
@@ -138,7 +305,32 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 			}
 		}
 	}
+
+	// Calculate path using A*
 	path, distance, found := astar.CalculatePath(grid, from, to)
+
+	// Store result in cache if found
+	if found {
+		now := time.Now()
+		pf.cache.mu.Lock()
+		pf.cache.entries[cacheKey] = &pathCacheEntry{
+			path:         path,
+			distance:     distance,
+			timestamp:    now,
+			lastAccessed: now,
+			accessCount:  1,
+			forArea:      currentArea,
+		}
+
+		// Clean cache if getting full
+		shouldClean := len(pf.cache.entries) > 300
+		pf.cache.mu.Unlock()
+
+		if shouldClean {
+			// Run cleanup in background to avoid blocking
+			go pf.cleanCache()
+		}
+	}
 
 	if config.Koolo.Debug.RenderMap {
 		pf.renderMap(grid, from, to, path)
