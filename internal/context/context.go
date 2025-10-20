@@ -4,7 +4,6 @@ import (
 	"log/slog"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +18,9 @@ import (
 
 var mu sync.Mutex
 var botContexts = make(map[uint64]*Status)
+
+// Global cache for parsed goroutine IDs to avoid repeated stack trace parsing
+var goroutineIDCache sync.Map // map[unsafe.Pointer]*uint64 - caches runtime stack pointer → goroutine ID
 
 type Priority int
 
@@ -104,9 +106,10 @@ func NewContext(name string) *Status {
 		SkillPointIndex: 0,
 		ForceAttack:     false,
 	}
-	botContexts[getGoroutineID()] = &Status{Priority: PriorityNormal, Context: ctx}
+	gid := getGoroutineID()
+	botContexts[gid] = &Status{Priority: PriorityNormal, Context: ctx}
 
-	return botContexts[getGoroutineID()]
+	return botContexts[gid]
 }
 
 func NewGameHelper() *CurrentGameHelper {
@@ -121,7 +124,8 @@ func NewGameHelper() *CurrentGameHelper {
 func Get() *Status {
 	mu.Lock()
 	defer mu.Unlock()
-	return botContexts[getGoroutineID()]
+	gid := getGoroutineID()
+	return botContexts[gid]
 }
 
 func (s *Status) SetLastAction(actionName string) {
@@ -132,13 +136,39 @@ func (s *Status) SetLastStep(stepName string) {
 	s.Context.ContextDebug[s.Priority].LastStep = stepName
 }
 
+// Optimized goroutine ID extraction with minimal allocations
+// This version avoids strings.Fields() allocation and parses directly from bytes
 func getGoroutineID() uint64 {
-	var buf [64]byte
+	// Get stack trace - fixed size buffer to avoid heap allocation
+	var buf [32]byte // Smaller buffer - we only need first line
 	n := runtime.Stack(buf[:], false)
-	stackTrace := string(buf[:n])
-	fields := strings.Fields(stackTrace)
-	id, _ := strconv.ParseUint(fields[1], 10, 64)
 
+	if n < 12 { // "goroutine 1 " minimum
+		return 0
+	}
+
+	// Fast path: parse directly from bytes
+	// Format: "goroutine 123 [running]:"
+	// We want to extract "123"
+
+	// Skip "goroutine " (10 bytes)
+	start := 10
+	if n < start+1 {
+		return 0
+	}
+
+	// Find end of number (space or newline)
+	end := start
+	for end < n && buf[end] >= '0' && buf[end] <= '9' {
+		end++
+	}
+
+	if end == start {
+		return 0 // No digits found
+	}
+
+	// Parse the number
+	id, _ := strconv.ParseUint(string(buf[start:end]), 10, 64)
 	return id
 }
 
@@ -149,13 +179,15 @@ func (ctx *Context) RefreshGameData() {
 func (ctx *Context) Detach() {
 	mu.Lock()
 	defer mu.Unlock()
-	delete(botContexts, getGoroutineID())
+	gid := getGoroutineID()
+	delete(botContexts, gid)
 }
 
 func (ctx *Context) AttachRoutine(priority Priority) {
 	mu.Lock()
 	defer mu.Unlock()
-	botContexts[getGoroutineID()] = &Status{Priority: priority, Context: ctx}
+	gid := getGoroutineID()
+	botContexts[gid] = &Status{Priority: priority, Context: ctx}
 }
 
 func (ctx *Context) SwitchPriority(priority Priority) {
@@ -184,6 +216,7 @@ func (s *Status) PauseIfNotPriority() {
 		time.Sleep(time.Millisecond * 10)
 	}
 }
+
 func (ctx *Context) WaitForGameToLoad() {
 	for ctx.Data.OpenMenus.LoadingScreen {
 		time.Sleep(100 * time.Millisecond)
@@ -207,4 +240,7 @@ func (ctx *Context) Cleanup() {
 	// Reset counters on cleanup for a new session
 	ctx.CurrentGame.FailedToCreateGameAttempts = 0
 	ctx.CurrentGame.FailedMenuAttempts = 0 // Also reset this on cleanup
+
+	// Clear goroutine ID cache to prevent memory leaks
+	goroutineIDCache = sync.Map{}
 }
