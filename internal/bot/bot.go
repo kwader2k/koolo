@@ -105,6 +105,8 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	g.Go(func() error {
 		b.ctx.AttachRoutine(botCtx.PriorityBackground)
 		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -126,6 +128,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	g.Go(func() error {
 		b.ctx.AttachRoutine(botCtx.PriorityBackground)
 		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
 
 		const globalLongTermIdleThreshold = 2 * time.Minute // From move.go example
 		const minMovementThreshold = 30                     // From move.go example
@@ -186,6 +189,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 			}
 		}
 	})
+
 	// High priority loop, this will interrupt (pause) low priority loop
 	g.Go(func() error {
 		defer func() {
@@ -196,6 +200,8 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 		b.ctx.AttachRoutine(botCtx.PriorityHigh)
 		ticker := time.NewTicker(time.Millisecond * 100)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
