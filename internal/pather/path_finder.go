@@ -21,13 +21,20 @@ type pathCacheEntry struct {
 	timestamp    time.Time
 	lastAccessed time.Time
 	accessCount  int
-	forArea      area.ID // Track which area this path is for
+	forArea      area.ID
 }
 
 type pathCache struct {
 	entries     map[string]*pathCacheEntry
 	currentArea area.ID
 	mu          sync.RWMutex
+}
+
+type gridCache struct {
+	preparedGrid *game.Grid
+	forArea      area.ID
+	timestamp    time.Time
+	mu           sync.RWMutex
 }
 
 type PathFinder struct {
@@ -37,6 +44,8 @@ type PathFinder struct {
 	cfg  *config.CharacterCfg
 	// Add smart path cache
 	cache *pathCache
+	// Add grid cache
+	gridCache *gridCache
 }
 
 func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *config.CharacterCfg) *PathFinder {
@@ -49,14 +58,16 @@ func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *c
 			entries:     make(map[string]*pathCacheEntry),
 			currentArea: 0,
 		},
+		gridCache: &gridCache{
+			preparedGrid: nil,
+			forArea:      0,
+		},
 	}
 }
 
 // Generate cache key from area + quantized positions
-// Quantization reduces cache size by grouping nearby positions
 func (pf *PathFinder) getCacheKey(from, to data.Position, forArea area.ID) string {
-	// Quantize positions to 5-unit grid to increase cache hits
-	// This means positions within 5 units share the same cache key
+	// Quantize to 5-unit grid
 	fromX := (from.X / 5) * 5
 	fromY := (from.Y / 5) * 5
 	toX := (to.X / 5) * 5
@@ -66,45 +77,32 @@ func (pf *PathFinder) getCacheKey(from, to data.Position, forArea area.ID) strin
 }
 
 // Smart cache cleanup with LRU strategy
-// This is the KEY improvement - we don't expire by time, we expire by usage
 func (pf *PathFinder) cleanCache() {
 	pf.cache.mu.Lock()
 	defer pf.cache.mu.Unlock()
 
 	now := time.Now()
 
-	// STRATEGY 1: Remove entries from old areas immediately
-	// When area changes, old paths are useless
+	// Remove entries from old areas
 	for key, entry := range pf.cache.entries {
 		if entry.forArea != pf.cache.currentArea {
 			delete(pf.cache.entries, key)
 		}
 	}
 
-	// STRATEGY 2: LRU eviction when cache is full
-	// Keep frequently accessed paths, remove rarely used ones
+	// LRU eviction when cache is full
 	if len(pf.cache.entries) > 300 {
-		// Build list of candidates for eviction
 		type evictionCandidate struct {
 			key   string
-			score float64 // Lower score = more likely to evict
+			score float64
 		}
 
 		candidates := make([]evictionCandidate, 0, len(pf.cache.entries))
 
 		for key, entry := range pf.cache.entries {
-			// Calculate eviction score based on:
-			// 1. How recently accessed (more recent = higher score)
-			// 2. How frequently accessed (more frequent = higher score)
-			// 3. How old the entry is (older = slightly lower score)
-
 			timeSinceAccess := now.Sub(entry.lastAccessed).Seconds()
 			timeSinceCreation := now.Sub(entry.timestamp).Seconds()
 
-			// Score formula (higher = keep, lower = evict):
-			// - Recent access gives high score
-			// - Multiple accesses multiply score
-			// - Very old entries get penalty
 			accessRecencyScore := 1000.0 / (timeSinceAccess + 1)
 			frequencyMultiplier := float64(entry.accessCount)
 			ageScore := math.Max(0, 100.0-timeSinceCreation/10.0)
@@ -117,14 +115,11 @@ func (pf *PathFinder) cleanCache() {
 			})
 		}
 
-		// Sort candidates by score (lowest first)
-		// Simple selection to find bottom 25% for eviction
-		evictCount := len(candidates) / 4 // Remove 25% of cache
+		evictCount := len(candidates) / 4
 		if evictCount < 50 {
-			evictCount = 50 // Minimum 50 entries removed
+			evictCount = 50
 		}
 
-		// Find entries with lowest scores
 		for i := 0; i < evictCount && len(candidates) > 0; i++ {
 			lowestIdx := 0
 			lowestScore := candidates[0].score
@@ -136,10 +131,8 @@ func (pf *PathFinder) cleanCache() {
 				}
 			}
 
-			// Evict the lowest score entry
 			delete(pf.cache.entries, candidates[lowestIdx].key)
 
-			// Remove from candidates list
 			candidates[lowestIdx] = candidates[len(candidates)-1]
 			candidates = candidates[:len(candidates)-1]
 		}
@@ -151,17 +144,15 @@ func (pf *PathFinder) checkAreaChange() {
 	currentArea := pf.data.PlayerUnit.Area
 
 	pf.cache.mu.RLock()
-	if currentArea != pf.cache.currentArea {
-		pf.cache.mu.RUnlock()
+	needsUpdate := currentArea != pf.cache.currentArea
+	pf.cache.mu.RUnlock()
 
-		// Area changed - clear cache for old area
+	if needsUpdate {
 		pf.cache.mu.Lock()
 		if currentArea != pf.cache.currentArea {
-			// Double-check after acquiring write lock
 			oldArea := pf.cache.currentArea
 			pf.cache.currentArea = currentArea
 
-			// Remove all entries from old area
 			for key, entry := range pf.cache.entries {
 				if entry.forArea == oldArea {
 					delete(pf.cache.entries, key)
@@ -169,21 +160,124 @@ func (pf *PathFinder) checkAreaChange() {
 			}
 		}
 		pf.cache.mu.Unlock()
-	} else {
-		pf.cache.mu.RUnlock()
+
+		// Invalidate grid cache on area change
+		pf.gridCache.mu.Lock()
+		pf.gridCache.preparedGrid = nil
+		pf.gridCache.forArea = currentArea
+		pf.gridCache.mu.Unlock()
 	}
 }
 
+// Get or create prepared grid with objects/monsters added to collision
+// This caches the expensive grid preparation (copying + adding obstacles) for 500ms
+// Dramatically reduces CPU when path cache misses but grid is still valid
+func (pf *PathFinder) getPreparedGrid() *game.Grid {
+	currentArea := pf.data.PlayerUnit.Area
+
+	// Check if we have a valid cached grid
+	pf.gridCache.mu.RLock()
+	if pf.gridCache.preparedGrid != nil &&
+		pf.gridCache.forArea == currentArea &&
+		time.Since(pf.gridCache.timestamp) < 500*time.Millisecond {
+		// Use cached grid
+		cached := pf.gridCache.preparedGrid
+		pf.gridCache.mu.RUnlock()
+		return cached
+	}
+	pf.gridCache.mu.RUnlock()
+
+	// Need to prepare new grid
+	a := pf.data.AreaData
+	grid := a.Grid.Copy()
+
+	// Special handling for Arcane Sanctuary
+	if pf.data.PlayerUnit.Area == area.ArcaneSanctuary && pf.data.CanTeleport() {
+		for y := 0; y < len(grid.CollisionGrid); y++ {
+			for x := 0; x < len(grid.CollisionGrid[y]); x++ {
+				if grid.CollisionGrid[y][x] == game.CollisionTypeNonWalkable {
+					grid.CollisionGrid[y][x] = game.CollisionTypeLowPriority
+				}
+			}
+		}
+	}
+
+	// Lut Gholein fix
+	if a.Area == area.LutGholein {
+		a.CollisionGrid[13][210] = game.CollisionTypeNonWalkable
+	}
+
+	// Add objects to collision grid
+	for _, o := range pf.data.AreaData.Objects {
+		if !grid.IsWalkable(o.Position) {
+			continue
+		}
+		relativePos := grid.RelativePosition(o.Position)
+		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeObject
+
+		// Simplified loop - only mark immediate surroundings
+		for i := -2; i <= 2; i++ {
+			for j := -2; j <= 2; j++ {
+				if i == 0 && j == 0 {
+					continue
+				}
+				ny, nx := relativePos.Y+i, relativePos.X+j
+				if ny >= 0 && ny < len(grid.CollisionGrid) && nx >= 0 && nx < len(grid.CollisionGrid[ny]) {
+					if grid.CollisionGrid[ny][nx] == game.CollisionTypeWalkable {
+						grid.CollisionGrid[ny][nx] = game.CollisionTypeLowPriority
+					}
+				}
+			}
+		}
+	}
+
+	// Add monsters to collision grid
+	for _, m := range pf.data.Monsters {
+		if !grid.IsWalkable(m.Position) {
+			continue
+		}
+		relativePos := grid.RelativePosition(m.Position)
+		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeMonster
+	}
+
+	// Barricade towers in Act 5
+	if a.Area == area.FrigidHighlands || a.Area == area.FrozenTundra || a.Area == area.ArreatPlateau {
+		for _, n := range pf.data.NPCs {
+			if n.ID != npc.BarricadeTower || len(n.Positions) == 0 {
+				continue
+			}
+			relativePos := grid.RelativePosition(n.Positions[0])
+
+			for dy := -2; dy <= 2; dy++ {
+				for dx := -2; dx <= 2; dx++ {
+					ty, tx := relativePos.Y+dy, relativePos.X+dx
+					if ty >= 0 && ty < len(grid.CollisionGrid) && tx >= 0 && tx < len(grid.CollisionGrid[ty]) {
+						grid.CollisionGrid[ty][tx] = game.CollisionTypeNonWalkable
+					}
+				}
+			}
+		}
+	}
+
+	// Cache the prepared grid
+	pf.gridCache.mu.Lock()
+	pf.gridCache.preparedGrid = grid
+	pf.gridCache.forArea = currentArea
+	pf.gridCache.timestamp = time.Now()
+	pf.gridCache.mu.Unlock()
+
+	return grid
+}
+
+// GetPath calculates path from current player position to target
+// Uses path cache first, then grid cache, then full calculation
 func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {
-	// Check for area changes first
 	pf.checkAreaChange()
 
-	// First try direct path
 	if path, distance, found := pf.GetPathFrom(pf.data.PlayerUnit.Position, to); found {
 		return path, distance, true
 	}
 
-	// If direct path fails, try to find nearby walkable position
 	if walkableTo, found := pf.findNearbyWalkablePosition(to); found {
 		return pf.GetPathFrom(pf.data.PlayerUnit.Position, walkableTo)
 	}
@@ -191,6 +285,8 @@ func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {
 	return nil, 0, false
 }
 
+// GetPathFrom calculates path from specific position to target
+// Implements two-level caching: path cache + grid cache
 func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 	currentArea := pf.data.PlayerUnit.Area
 
@@ -199,7 +295,6 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 
 	pf.cache.mu.Lock()
 	if cached, exists := pf.cache.entries[cacheKey]; exists {
-		// Cache hit - update access statistics
 		cached.lastAccessed = time.Now()
 		cached.accessCount++
 		path := cached.path
@@ -209,29 +304,15 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 	}
 	pf.cache.mu.Unlock()
 
-	// Cache miss - calculate path
+	// Cache miss - use prepared grid
 	a := pf.data.AreaData
 
-	// We don't want to modify the original grid
-	grid := a.Grid.Copy()
-
-	// Special handling for Arcane Sanctuary (to allow pathing with platforms)
-	if pf.data.PlayerUnit.Area == area.ArcaneSanctuary && pf.data.CanTeleport() {
-		// Make all non-walkable tiles into low priority tiles for teleport pathing
-		for y := 0; y < len(grid.CollisionGrid); y++ {
-			for x := 0; x < len(grid.CollisionGrid[y]); x++ {
-				if grid.CollisionGrid[y][x] == game.CollisionTypeNonWalkable {
-					grid.CollisionGrid[y][x] = game.CollisionTypeLowPriority
-				}
-			}
-		}
-	}
-	// Lut Gholein map is a bit bugged, we should close this fake path to avoid pathing issues
-	if a.Area == area.LutGholein {
-		a.CollisionGrid[13][210] = game.CollisionTypeNonWalkable
-	}
-
-	if !a.IsInside(to) {
+	// Use cached prepared grid instead of rebuilding
+	var grid *game.Grid
+	if a.IsInside(to) {
+		grid = pf.getPreparedGrid()
+	} else {
+		// Destination outside current area - need merged grid
 		expandedGrid, err := pf.mergeGrids(to)
 		if err != nil {
 			return nil, 0, false
@@ -242,74 +323,10 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 	from = grid.RelativePosition(from)
 	to = grid.RelativePosition(to)
 
-	// Add objects to the collision grid as obstacles
-	for _, o := range pf.data.AreaData.Objects {
-		if !grid.IsWalkable(o.Position) {
-			continue
-		}
-		relativePos := grid.RelativePosition(o.Position)
-		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeObject
-		for i := -2; i <= 2; i++ {
-			for j := -2; j <= 2; j++ {
-				if i == 0 && j == 0 {
-					continue
-				}
-				if relativePos.Y+i < 0 || relativePos.Y+i >= len(grid.CollisionGrid) || relativePos.X+j < 0 || relativePos.X+j >= len(grid.CollisionGrid[relativePos.Y]) {
-					continue
-				}
-				if grid.CollisionGrid[relativePos.Y+i][relativePos.X+j] == game.CollisionTypeWalkable {
-					grid.CollisionGrid[relativePos.Y+i][relativePos.X+j] = game.CollisionTypeLowPriority
-
-				}
-			}
-		}
-	}
-
-	// Add monsters to the collision grid as obstacles
-	for _, m := range pf.data.Monsters {
-		if !grid.IsWalkable(m.Position) {
-			continue
-		}
-		relativePos := grid.RelativePosition(m.Position)
-		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeMonster
-	}
-
-	// set barricade tower as non walkable in act 5
-	if a.Area == area.FrigidHighlands || a.Area == area.FrozenTundra || a.Area == area.ArreatPlateau {
-		towerCount := 0
-		for _, n := range pf.data.NPCs {
-			if n.ID != npc.BarricadeTower {
-				continue
-			}
-			if len(n.Positions) == 0 {
-				continue
-			}
-			npcPos := n.Positions[0]
-			relativePos := grid.RelativePosition(npcPos)
-			towerCount++
-
-			// Set a 5x5 area around the barricade tower as non-walkable
-			blockedCells := 0
-			for dy := -2; dy <= 2; dy++ {
-				for dx := -2; dx <= 2; dx++ {
-					towerY := relativePos.Y + dy
-					towerX := relativePos.X + dx
-
-					// Bounds checking to prevent array index out of bounds
-					if towerY >= 0 && towerY < len(grid.CollisionGrid) &&
-						towerX >= 0 && towerX < len(grid.CollisionGrid[towerY]) {
-						grid.CollisionGrid[towerY][towerX] = game.CollisionTypeNonWalkable
-						blockedCells++
-					}
-				}
-			}
-		}
-	}
-
 	// Calculate path using A*
 	path, distance, found := astar.CalculatePath(grid, from, to)
 
-	// Store result in cache if found
+	// Store in cache if found
 	if found {
 		now := time.Now()
 		pf.cache.mu.Lock()
@@ -322,12 +339,10 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 			forArea:      currentArea,
 		}
 
-		// Clean cache if getting full
 		shouldClean := len(pf.cache.entries) > 300
 		pf.cache.mu.Unlock()
 
 		if shouldClean {
-			// Run cleanup in background to avoid blocking
 			go pf.cleanCache()
 		}
 	}
@@ -339,6 +354,8 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 	return path, distance, found
 }
 
+// mergeGrids combines current area grid with adjacent area grid
+// Used when pathfinding to destination in adjacent area
 func (pf *PathFinder) mergeGrids(to data.Position) (*game.Grid, error) {
 	for _, a := range pf.data.AreaData.AdjacentLevels {
 		destination := pf.data.Areas[a.Area]
@@ -363,7 +380,6 @@ func (pf *PathFinder) mergeGrids(to data.Position) (*game.Grid, error) {
 				resultGrid[i] = make([]game.CollisionType, width)
 			}
 
-			// Let's copy both grids into the result grid
 			copyGrid(resultGrid, origin.CollisionGrid, origin.OffsetX-minX, origin.OffsetY-minY)
 			copyGrid(resultGrid, destination.CollisionGrid, destination.OffsetX-minX, destination.OffsetY-minY)
 
@@ -376,6 +392,8 @@ func (pf *PathFinder) mergeGrids(to data.Position) (*game.Grid, error) {
 	return nil, fmt.Errorf("destination grid not found")
 }
 
+// copyGrid copies source collision grid into destination at specified offset
+// Helper function for grid merging operations
 func copyGrid(dest [][]game.CollisionType, src [][]game.CollisionType, offsetX, offsetY int) {
 	for y := 0; y < len(src); y++ {
 		for x := 0; x < len(src[0]); x++ {
@@ -384,10 +402,14 @@ func copyGrid(dest [][]game.CollisionType, src [][]game.CollisionType, offsetX, 
 	}
 }
 
+// GetClosestWalkablePath finds path to nearest walkable position near destination
+// Useful when destination itself is not walkable
 func (pf *PathFinder) GetClosestWalkablePath(dest data.Position) (Path, int, bool) {
 	return pf.GetClosestWalkablePathFrom(pf.data.PlayerUnit.Position, dest)
 }
 
+// GetClosestWalkablePathFrom finds path from specific position to nearest walkable position near destination
+// Searches in expanding squares around destination
 func (pf *PathFinder) GetClosestWalkablePathFrom(from, dest data.Position) (Path, int, bool) {
 	a := pf.data.AreaData
 	if a.IsWalkable(dest) || !a.IsInside(dest) {
@@ -422,8 +444,9 @@ func (pf *PathFinder) GetClosestWalkablePathFrom(from, dest data.Position) (Path
 	return nil, 0, false
 }
 
+// findNearbyWalkablePosition searches for nearest walkable tile around target
+// Used as fallback when direct path calculation fails
 func (pf *PathFinder) findNearbyWalkablePosition(target data.Position) (data.Position, bool) {
-	// Search in expanding squares around the target position
 	for radius := 1; radius <= 3; radius++ {
 		for x := -radius; x <= radius; x++ {
 			for y := -radius; y <= radius; y++ {
