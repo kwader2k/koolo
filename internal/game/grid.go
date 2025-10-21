@@ -65,10 +65,20 @@ func (g *Grid) IsWalkable(p data.Position) bool {
 	return p.X >= 0 && p.X < g.Width && p.Y >= 0 && p.Y < g.Height && g.CollisionGrid[p.Y][p.X] != CollisionTypeNonWalkable
 }
 
+// Improved Copy() - pre-allocate full 2D array then copy row-by-row
+// This reduces allocation overhead compared to allocating each row separately
 func (g *Grid) Copy() *Grid {
+	// Pre-allocate the entire 2D slice at once
+	totalSize := g.Height * g.Width
+	flatCopy := make([]CollisionType, totalSize)
+
+	// Build 2D slice pointing into the flat array
 	cg := make([][]CollisionType, g.Height)
 	for y := 0; y < g.Height; y++ {
-		cg[y] = make([]CollisionType, g.Width)
+		start := y * g.Width
+		end := start + g.Width
+		cg[y] = flatCopy[start:end]
+		// Use copy() which is optimized by Go runtime
 		copy(cg[y], g.CollisionGrid[y])
 	}
 
