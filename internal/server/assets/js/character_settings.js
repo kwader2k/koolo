@@ -7,13 +7,8 @@
 // CONSTANTS
 // ========================================
 const SETTINGS_CONFIG = {
-    LEVELING_PROFILES: [
-        'sorceress_leveling_hydraorb',
-        'sorceress_leveling_lightning',
-        'sorceress_leveling',
-        'paladin_leveling'
-    ],
-    LEVELING_CLASSES: ['paladin', 'sorceress_leveling']
+    LEVELING_PROFILES: ['paladin', 'sorceress_leveling', 'druid_leveling', 'necromancer', 'assassin'],
+    LEVELING_CLASSES: ['paladin', 'sorceress_leveling', 'druid_leveling', 'necromancer', 'assassin']
 };
 
 // ========================================
