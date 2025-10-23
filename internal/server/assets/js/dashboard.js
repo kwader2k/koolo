@@ -1154,8 +1154,3 @@ document.addEventListener('DOMContentLoaded', () => {
     APIClient.fetchInitialData();
     wsManager.connect();
 });
-
-// Cleanup on page unload
-window.addEventListener('beforeunload', () => {
-    wsManager.disconnect();
-});
