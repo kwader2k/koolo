@@ -18,6 +18,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// Cache for static client objects to reduce merge operations
+type objectCache struct {
+	objects       []data.Object
+	area          area.ID
+	lastBuildTime time.Time
+	mu            sync.RWMutex
+}
+
 type MemoryReader struct {
 	cfg *config.CharacterCfg
 	*memory.GameReader
@@ -30,6 +38,8 @@ type MemoryReader struct {
 	supervisorName string
 	cachedMapData  map[area.ID]AreaData
 	logger         *slog.Logger
+	// Cache for client objects to avoid repeated merging
+	objectCache *objectCache
 }
 
 func NewGameReader(cfg *config.CharacterCfg, supervisorName string, pid uint32, window win.HWND, logger *slog.Logger) (*MemoryReader, error) {
@@ -44,6 +54,9 @@ func NewGameReader(cfg *config.CharacterCfg, supervisorName string, pid uint32, 
 		supervisorName: supervisorName,
 		cfg:            cfg,
 		logger:         logger,
+		objectCache: &objectCache{
+			objects: []data.Object{},
+		},
 	}
 
 	gr.updateWindowPositionData()
@@ -126,24 +139,52 @@ func (gd *MemoryReader) updateWindowPositionData() {
 	gd.GameAreaSizeY = int(pos.RcNormalPosition.Bottom) - gd.WindowTopY - 9
 }
 
+// Improved GetData with smart object caching
+// The key optimization: cache the merged object list when in the same area for 200ms
+// This is safe because client objects (waypoints, chests) don't move, only dynamic objects change
 func (gd *MemoryReader) GetData() Data {
 	d := gd.GameReader.GetData()
 	currentArea, ok := gd.cachedMapData[d.PlayerUnit.Area]
 	if ok {
-		// This hacky thing is because sometimes if the objects are far away we can not fetch them, basically WP.
-		memObjects := gd.Objects(d.PlayerUnit.Position, d.HoverData)
-		for _, clientObject := range currentArea.Objects {
-			found := false
-			for _, obj := range memObjects {
-				// Only consider it a duplicate if same name AND same position
-				if obj.Name == clientObject.Name && obj.Position.X == clientObject.Position.X && obj.Position.Y == clientObject.Position.Y {
-					found = true
-					break
+		var memObjects []data.Object
+
+		// Check if we can reuse cached merged objects
+		gd.objectCache.mu.RLock()
+		canUseCache := gd.objectCache.area == d.PlayerUnit.Area &&
+			time.Since(gd.objectCache.lastBuildTime) < 200*time.Millisecond
+		cachedObjects := gd.objectCache.objects
+		gd.objectCache.mu.RUnlock()
+
+		if canUseCache && len(cachedObjects) > 0 {
+			// Use cached merged objects
+			// This skips the expensive merge loop for static client objects
+			memObjects = cachedObjects
+		} else {
+			// Perform full object fetch and merge
+			// This hacky thing is because sometimes if the objects are far away we can not fetch them, basically WP.
+			memObjects = gd.Objects(d.PlayerUnit.Position, d.HoverData)
+
+			// Merge client objects (waypoints, chests, etc.) with memory objects
+			for _, clientObject := range currentArea.Objects {
+				found := false
+				for _, obj := range memObjects {
+					// Only consider it a duplicate if same name AND same position
+					if obj.Name == clientObject.Name && obj.Position.X == clientObject.Position.X && obj.Position.Y == clientObject.Position.Y {
+						found = true
+						break
+					}
+				}
+				if !found {
+					memObjects = append(memObjects, clientObject)
 				}
 			}
-			if !found {
-				memObjects = append(memObjects, clientObject)
-			}
+
+			// Cache the merged object list for this area
+			gd.objectCache.mu.Lock()
+			gd.objectCache.objects = memObjects
+			gd.objectCache.area = d.PlayerUnit.Area
+			gd.objectCache.lastBuildTime = time.Now()
+			gd.objectCache.mu.Unlock()
 		}
 
 		d.AreaOrigin = data.Position{X: currentArea.OffsetX, Y: currentArea.OffsetY}

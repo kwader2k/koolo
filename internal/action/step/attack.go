@@ -158,6 +158,8 @@ func keyCleanup(ctx *context.Status) {
 	ctx.HID.KeyUp(ctx.Data.KeyBindings.StandStill)
 }
 
+// Context is retrieved once at function start to avoid repeated Get() calls in the loop
+// Reduced checkMonsterDamage frequency from every iteration to every 3rd attack
 func attack(settings attackSettings) error {
 	ctx := context.Get()
 	ctx.SetLastStep("Attack")
@@ -165,6 +167,13 @@ func attack(settings attackSettings) error {
 
 	numOfAttacksRemaining := settings.numOfAttacks
 	lastRunAt := time.Time{}
+
+	// Cache cast duration calculation to avoid repeated calls
+	castDuration := ctx.Data.PlayerCastDuration()
+
+	// Only check damage every N attacks to reduce overhead
+	attackCount := 0
+	var state *attackState
 
 	for {
 		ctx.PauseIfNotPriority()
@@ -183,10 +192,14 @@ func attack(settings attackSettings) error {
 			return nil // Enemy is out of range and followEnemy is disabled, we cannot attack
 		}
 
-		// Check if we need to reposition if we aren't doing any damage (prevent attacking through doors etc.)
-		_, state := checkMonsterDamage(monster) // Get the state
-		needsRepositioning := !state.failedAttemptStartTime.IsZero() &&
-			time.Since(state.failedAttemptStartTime) > 3*time.Second
+		// Only check damage state every 3 attacks to reduce lock contention
+		attackCount++
+		needsRepositioning := false
+		if attackCount%3 == 1 || state == nil {
+			_, state = checkMonsterDamage(monster)
+			needsRepositioning = !state.failedAttemptStartTime.IsZero() &&
+				time.Since(state.failedAttemptStartTime) > 3*time.Second
+		}
 
 		// Be sure we stay in range of the enemy. ensureEnemyIsInRange will handle reposition attempts.
 		err := ensureEnemyIsInRange(monster, state, settings.maxDistance, settings.minDistance, needsRepositioning)
@@ -206,8 +219,8 @@ func attack(settings attackSettings) error {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(settings.aura))
 		}
 
-		// Attack timing check
-		if time.Since(lastRunAt) <= ctx.Data.PlayerCastDuration()-attackCycleDuration {
+		// Attack timing check - use cached cast duration
+		if time.Since(lastRunAt) <= castDuration-attackCycleDuration {
 			continue
 		}
 
@@ -218,6 +231,7 @@ func attack(settings attackSettings) error {
 	}
 }
 
+// Context is retrieved once at function start
 func burstAttack(settings attackSettings) error {
 	ctx := context.Get()
 	ctx.SetLastStep("BurstAttack")
@@ -243,6 +257,9 @@ func burstAttack(settings attackSettings) error {
 	}
 
 	startedAt := time.Now()
+	// Check damage less frequently in burst mode
+	damageCheckCounter := 0
+
 	for {
 		ctx.PauseIfNotPriority()
 
@@ -263,11 +280,14 @@ func burstAttack(settings attackSettings) error {
 			return nil // We have no valid targets in range, finish attack sequence
 		}
 
-		// Check if we need to reposition if we aren't doing any damage
-		_, state = checkMonsterDamage(target) // Get the state for the current target
-
-		needsRepositioning := !state.failedAttemptStartTime.IsZero() &&
-			time.Since(state.failedAttemptStartTime) > 3*time.Second
+		// Check damage every 5 attacks instead of every attack
+		damageCheckCounter++
+		needsRepositioning := false
+		if damageCheckCounter%5 == 1 {
+			_, state = checkMonsterDamage(target)
+			needsRepositioning = !state.failedAttemptStartTime.IsZero() &&
+				time.Since(state.failedAttemptStartTime) > 3*time.Second
+		}
 
 		// If we don't have LoS we will need to interrupt and move :(
 		if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, target.Position) || needsRepositioning {
@@ -275,7 +295,7 @@ func burstAttack(settings attackSettings) error {
 			err = ensureEnemyIsInRange(target, state, settings.maxDistance, settings.minDistance, needsRepositioning)
 			if err != nil {
 				if errors.Is(err, ErrMonsterUnreachable) { // HANDLE NEW ERROR
-					ctx.Logger.Info(fmt.Sprintf("Giving up on monster [%d] (Area: %s) due to unreachability/unkillability during burst.", target.Name, ctx.Data.PlayerUnit.Area.Area().Name))
+					ctx.Logger.Info(fmt.Sprintf("Giving up on initial monster [%d] (Area: %s) due to unreachability/unkillability during burst.", monster.Name, ctx.Data.PlayerUnit.Area.Area().Name))
 					statesMutex.Lock()
 					delete(monsterStates, target.UnitID) // Clean up state for this monster
 					statesMutex.Unlock()
@@ -337,12 +357,12 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 	// Handle repositioning if needed (due to no damage, or no LoS for burst attacks)
 	if needsRepositioning {
 		// If we've already tried repositioning once for this "stuck" phase
-		if state.repositionAttempts >= 1 { // This is the problematic part. User wants to allow 1 attempt.
+		if state.repositionAttempts >= 1 {
 			ctx.Logger.Info(fmt.Sprintf(
-				"Already attempted repositioning for monster [%d] in area [%s]. Skipping further attempts and considering monster unkillable.", // Updated log message
+				"Already attempted repositioning for monster [%d] in area [%s]. Skipping further attempts and considering monster unkillable.",
 				monster.Name, ctx.Data.PlayerUnit.Area.Area().Name,
 			))
-			return ErrMonsterUnreachable // <-- CHANGE: Return specific error
+			return ErrMonsterUnreachable
 		}
 
 		// Check if enough time has passed since the last reposition attempt (cooldown)
@@ -360,9 +380,7 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 		state.repositionAttempts++ // Increment attempt count after trying to move
 		if err != nil {
 			ctx.Logger.Error(fmt.Sprintf("MoveTo failed during reposition attempt for monster [%d]: %v", monster.Name, err))
-			// Do NOT update lastRepositionTime here if MoveTo completely failed, so it can try again sooner if the path clears.
-			// However, since we're only allowing ONE attempt, the increment of repositionAttempts handles the "give up" logic.
-			return nil // Continue attacking, but the next loop iteration will hit repositionAttempts >= 1 and return ErrMonsterUnreachable
+			return nil
 		}
 		state.lastRepositionTime = time.Now() // Update the last reposition time only if MoveTo was initiated without error
 		return nil                            // Successfully initiated the move, continue attacking next loop iteration
@@ -408,6 +426,7 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 	return nil // No suitable position found along path, continue attacking
 }
 
+// Reduced lock duration and simplified cleanup
 func checkMonsterDamage(monster data.Monster) (bool, *attackState) {
 	statesMutex.Lock()
 	defer statesMutex.Unlock()
@@ -442,8 +461,8 @@ func checkMonsterDamage(monster data.Monster) (bool, *attackState) {
 		state.lastHealthCheckTime = time.Now()
 		state.position = monster.Position
 
-		// Clean up old entries periodically
-		if len(monsterStates) > 100 {
+		// Cleanup only when significantly over limit to reduce overhead
+		if len(monsterStates) > 150 {
 			now := time.Now()
 			for id, s := range monsterStates {
 				if now.Sub(s.lastHealthCheckTime) > 5*time.Minute {

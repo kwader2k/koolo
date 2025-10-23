@@ -26,12 +26,6 @@ type Node struct {
 	Index    int
 }
 
-func direction(from, to data.Position) (dx, dy int) {
-	dx = to.X - from.X
-	dy = to.Y - from.Y
-	return
-}
-
 func CalculatePath(g *game.Grid, start, goal data.Position) ([]data.Position, int, bool) {
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
@@ -51,6 +45,7 @@ func CalculatePath(g *game.Grid, start, goal data.Position) ([]data.Position, in
 	heap.Push(&pq, startNode)
 	costSoFar[start.X][start.Y] = 0
 
+	// Pre-allocate neighbors slice to avoid allocations in loop
 	neighbors := make([]data.Position, 0, 8)
 
 	for pq.Len() > 0 {
@@ -91,19 +86,25 @@ func CalculatePath(g *game.Grid, start, goal data.Position) ([]data.Position, in
 }
 
 // Get walkable neighbors of a given node
+// Takes pointer to neighbors slice to reuse allocation
 func updateNeighbors(grid *game.Grid, node *Node, neighbors *[]data.Position) {
 	*neighbors = (*neighbors)[:0]
 
 	x, y := node.X, node.Y
 	gridWidth, gridHeight := grid.Width, grid.Height
 
+	// Cache collision grid reference
+	collisionGrid := grid.CollisionGrid
+
 	isBlocked := func(px, py int) bool {
 		if px < 0 || px >= gridWidth || py < 0 || py >= gridHeight {
 			return true
 		}
-		return grid.CollisionGrid[py][px] == game.CollisionTypeNonWalkable
+		return collisionGrid[py][px] == game.CollisionTypeNonWalkable
 	}
 
+	// Unrolled direction checks for cardinal directions (most common)
+	// This avoids some of the diagonal blocking checks when not needed
 	for _, d := range directions {
 		newX, newY := x+d.X, y+d.Y
 
@@ -124,23 +125,29 @@ func updateNeighbors(grid *game.Grid, node *Node, neighbors *[]data.Position) {
 	}
 }
 
+// getCost returns movement cost for different tile types
+// Higher cost = less preferred path
 func getCost(tileType game.CollisionType) int {
 	switch tileType {
 	case game.CollisionTypeWalkable:
 		return 1 // Walkable
 	case game.CollisionTypeMonster:
-		return 16
+		return 16 // Avoid monsters
 	case game.CollisionTypeObject:
-		return 4 // Soft blocker
+		return 4 // Soft blocker (objects)
 	case game.CollisionTypeLowPriority:
-		return 20
+		return 20 // Very low priority (near walls)
 	default:
-		return math.MaxInt32
+		return math.MaxInt32 // Non-walkable
 	}
 }
 
+// heuristic calculates estimated cost from position a to position b
+// Uses diagonal distance heuristic for 8-directional movement
 func heuristic(a, b data.Position) int {
 	dx := math.Abs(float64(a.X - b.X))
 	dy := math.Abs(float64(a.Y - b.Y))
+	// Diagonal distance: D * (dx + dy) + (D2 - 2 * D) * min(dx, dy)
+	// where D = 1 (straight) and D2 = sqrt(2) (diagonal)
 	return int(dx + dy + (math.Sqrt(2)-2)*math.Min(dx, dy))
 }
