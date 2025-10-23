@@ -212,9 +212,12 @@ class CharacterClassManager {
         const berserkerBarbOptions = document.querySelector('.berserker-barb-options');
         const novaSorceressOptions = document.querySelector('.nova-sorceress-options');
         const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
+        const blizzardSorceressOptions = document.querySelector('.blizzard-sorceress-options');
+        const sorceressLevelingOptions = document.querySelector('.sorceress_leveling-options');
 
         // Hide all options first
-        [berserkerBarbOptions, novaSorceressOptions, mosaicAssassinOptions, noSettingsMessage]
+        [berserkerBarbOptions, novaSorceressOptions, mosaicAssassinOptions, 
+         blizzardSorceressOptions, sorceressLevelingOptions, noSettingsMessage]
             .forEach(el => {
                 if (el) el.style.display = 'none';
             });
@@ -227,6 +230,10 @@ class CharacterClassManager {
             this.updateNovaSorceressOptions();
         } else if (selectedClass === 'mosaic' && mosaicAssassinOptions) {
             mosaicAssassinOptions.style.display = 'block';
+        } else if (selectedClass === 'sorceress' && blizzardSorceressOptions) {
+            blizzardSorceressOptions.style.display = 'block';
+        } else if (selectedClass === 'sorceress_leveling' && sorceressLevelingOptions) {
+            sorceressLevelingOptions.style.display = 'block';
         } else if (noSettingsMessage) {
             noSettingsMessage.style.display = 'block';
         }
@@ -316,6 +323,7 @@ class CharacterClassManager {
 class TeleportManager {
     static init() {
         this.setupTeleportToggle();
+        this.setupExtraBuffsToggle();
         this.setupClearPathSlider();
     }
 
@@ -330,6 +338,20 @@ class TeleportManager {
         };
 
         useTeleportCheckbox.addEventListener('change', toggleVisibility);
+        toggleVisibility(); // Initialize
+    }
+
+    static setupExtraBuffsToggle() {
+        const useExtraBuffsCheckbox = document.getElementById('characterUseExtraBuffs');
+        const useExtraBuffsDistContainer = document.getElementById('useExtraBuffsDistContainer');
+
+        if (!useExtraBuffsCheckbox || !useExtraBuffsDistContainer) return;
+
+        const toggleVisibility = () => {
+            useExtraBuffsDistContainer.style.display = useExtraBuffsCheckbox.checked ? 'block' : 'none';
+        };
+
+        useExtraBuffsCheckbox.addEventListener('change', toggleVisibility);
         toggleVisibility(); // Initialize
     }
 
@@ -517,6 +539,12 @@ window.addEventListener('load', () => {
 
     // Update initial hidden field
     RunsManager.updateEnabledRunsHiddenField();
+});
+
+// Support DOMContentLoaded for compatibility
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize initial states
+    CharacterClassManager.updateNovaSorceressOptions();
 });
 
 // Expose global functions for potential inline usage
