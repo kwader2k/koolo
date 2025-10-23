@@ -37,9 +37,6 @@ func (a Leveling) act1() error {
 		a.setupLevelOneConfig()
 	}
 
-	// Adjust belt and merc settings based on difficulty
-	a.AdjustDifficultyConfig()
-
 	// Refill potions and ensure bindings for players level > 1
 	if lvl.Value > 1 {
 		action.VendorRefill(false, true)
@@ -122,11 +119,6 @@ func (a Leveling) act1() error {
 		return NewTristram().Run()
 	}
 
-	// Farming for normal difficulty below 400 gold
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 400 && !a.isCainInTown() && !a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() {
-		return NewTristramEarlyGoldfarm().Run()
-	}
-
 	// Cain quest: talking to Akara
 	if !a.isCainInTown() && !a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
 
@@ -206,6 +198,7 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
 	a.ctx.CharacterCfg.Character.UseTeleport = true
 	a.ctx.CharacterCfg.Character.UseMerc = false
+	a.ctx.CharacterCfg.Character.StashToShared = false
 	a.ctx.CharacterCfg.Game.UseCainIdentify = true
 	a.ctx.CharacterCfg.CloseMiniPanel = false
 	a.ctx.CharacterCfg.Health.HealingPotionAt = 40
@@ -242,6 +235,7 @@ func (a Leveling) setupLevelOneConfig() {
 		{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	}
 	a.ctx.CharacterCfg.Game.InteractWithShrines = true
+	a.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 2000
 	a.ctx.CharacterCfg.Inventory.HealingPotionCount = 4
 	a.ctx.CharacterCfg.Inventory.ManaPotionCount = 8
 	a.ctx.CharacterCfg.Inventory.RejuvPotionCount = 0
@@ -255,8 +249,18 @@ func (a Leveling) setupLevelOneConfig() {
 func (a Leveling) AdjustDifficultyConfig() {
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
+	//Let setupLevelOneConfig do the initial setup
+	if lvl.Value == 1 {
+		return
+	}
+
+	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+		a.ctx.CharacterCfg.Character.UseTeleport = true
+	}
+
 	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
-	if lvl.Value >= 4 && lvl.Value < 12 {
+	a.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 5000 * lvl.Value
+	if lvl.Value >= 4 && lvl.Value < 24 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 
 		if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {

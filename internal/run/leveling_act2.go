@@ -40,9 +40,12 @@ func (a Leveling) act2() error {
 		return err
 	}
 
-	a.AdjustDifficultyConfig()
-
 	action.VendorRefill(false, true)
+
+	// Buy 2-socket Bone Wands for Necromancer (White runeword)
+	if err := action.BuyAct2BoneWands(a.ctx); err != nil {
+		a.ctx.Logger.Error(fmt.Sprintf("Failed to buy Bone Wands: %s", err.Error()))
+	}
 
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
@@ -63,18 +66,16 @@ func (a Leveling) act2() error {
 	}
 
 	// Gold Farming Logic (and immediate return if farming is needed)
-	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-		a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
-
-		NewMausoleum().Run()
-		err := action.WayPoint(area.LutGholein)
-		if err != nil {
-			a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s.", err.Error()))
+	if action.IsLowGold() || a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
+		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
+			return NewQuests().killRadamentQuest()
+		} else {
+			NewMausoleum().Run()
+			err := action.WayPoint(area.LutGholein)
+			if err != nil {
+				a.ctx.Logger.Error(fmt.Sprintf("Waypoint to Lut Gholein failed after farming: %s.", err.Error()))
+			}
 		}
-	}
-
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 10000 {
-		return NewQuests().killRadamentQuest()
 	}
 
 	if a.ctx.Data.Quests[quest.Act2TheSevenTombs].HasStatus(quest.StatusInProgress6) {

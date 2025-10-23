@@ -1,17 +1,17 @@
 We are completing the leveling feature and work on other improvements.
 
-Currently working classes: Sorceress, Paladin, Assassin
+Currently working classes: Sorceress, Paladin, Assassin, Druid and Necromancer
 
 As written more detailed below you need to install:
 
 - Go (1.24, not 1.25!)
-- Garble
+- Garble (0.14.2, not 0.15.x)
 
 Make sure the game is set to English to prevent any language-related bugs.
 
 Use better_build.bat to build the application.
 
-- Use "Sorc (Leveling)", "Paladin (Leveling)", "Assassin (Leveling)" or "Druid (Leveling)".
+- Use "Sorc (Leveling)", "Paladin (Leveling)", "Assassin (Leveling)", "Druid (Leveling)", "Necromancer (Leveling).
 - Choose "leveling" as enabled run under "Run Settings"
 - Start your char with lvl 1 as the autoconfig currently works at lvl 1 only. Alternatively you can check act1.go for detailed manual config. This handling will be enhanced later.
 

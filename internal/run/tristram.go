@@ -15,40 +15,15 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
-var TristramlStartingPosition = data.Position{
-	X: 25173,
-	Y: 5087,
-}
-
-var TristramClearPos1 = data.Position{
-	X: 25173,
-	Y: 5113,
-}
-
-var TristramClearPos2 = data.Position{
-	X: 25175,
-	Y: 5166,
-}
-
-var TristramClearPos3 = data.Position{
-	X: 25163,
-	Y: 5192,
-}
-var TristramClearPos4 = data.Position{
-	X: 25139,
-	Y: 5186,
-}
-var TristramClearPos5 = data.Position{
-	X: 25126,
-	Y: 5167,
-}
-var TristramClearPos6 = data.Position{
-	X: 25122,
-	Y: 5151,
-}
-var TristramClearPos7 = data.Position{
-	X: 25123,
-	Y: 5140,
+var areas = []data.Position{
+	{X: 25173, Y: 5087}, // TristramlStartingPosition
+	{X: 25173, Y: 5113}, // TristramClearPos1
+	{X: 25175, Y: 5166}, // TristramClearPos2
+	{X: 25163, Y: 5192}, // TristramClearPos3
+	{X: 25139, Y: 5186}, // TristramClearPos4
+	{X: 25126, Y: 5167}, // TristramClearPos5
+	{X: 25122, Y: 5151}, // TristramClearPos6
+	{X: 25123, Y: 5140}, // TristramClearPos7
 }
 
 type Tristram struct {
@@ -67,6 +42,10 @@ func (t Tristram) Name() string {
 
 func (t Tristram) Run() error {
 
+	if t.shouldTakeRejuvsAndLeave() {
+		return nil
+	}
+
 	// Use waypoint to StonyField
 	err := action.WayPoint(area.StonyField)
 	if err != nil {
@@ -84,10 +63,18 @@ func (t Tristram) Run() error {
 	// Move to the cairnStone
 	action.MoveToCoords(cairnStone.Position)
 
+	if t.shouldTakeRejuvsAndLeave() {
+		return nil
+	}
+
 	// Clear area around the portal
 	_, isLevelingChar := t.ctx.Char.(context.LevelingCharacter)
 	if t.ctx.CharacterCfg.Game.Tristram.ClearPortal || isLevelingChar && t.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare {
 		action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+
+		if t.shouldTakeRejuvsAndLeave() {
+			return nil
+		}
 	}
 
 	// Handle opening Tristram Portal, will be skipped if its already opened
@@ -129,24 +116,26 @@ func (t Tristram) Run() error {
 	}
 
 	t.ctx.Logger.Info("Clearing Tristram")
-	action.MoveToCoords(TristramlStartingPosition)
-	action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos1)
-	action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos2)
-	action.ClearAreaAroundPlayer(35, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos3)
-	action.ClearAreaAroundPlayer(40, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos4)
-	action.ClearAreaAroundPlayer(40, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos5)
-	action.ClearAreaAroundPlayer(40, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos6)
-	action.ClearAreaAroundPlayer(40, data.MonsterAnyFilter())
-	action.MoveToCoords(TristramClearPos7)
-	action.ClearAreaAroundPlayer(40, data.MonsterAnyFilter())
+	for _, pos := range areas {
+		if t.shouldTakeRejuvsAndLeave() {
+			return nil
+		}
+		action.MoveToCoords(pos)
+		action.ClearAreaAroundPlayer(40, data.MonsterAnyFilter())
+	}
 
 	return nil
+}
+
+func (t Tristram) shouldTakeRejuvsAndLeave() bool {
+	if t.ctx.CharacterCfg.Game.Tristram.OnlyFarmRejuvs {
+		missingRejuvPotionCount := t.ctx.BeltManager.GetMissingCount(data.RejuvenationPotion)
+		t.ctx.Logger.Debug("missing rejuv potions", "count", missingRejuvPotionCount)
+		return missingRejuvPotionCount == 0
+	} else {
+		t.ctx.Logger.Debug("Goodbye Tristram, and thanks for all the juvs!")
+		return false
+	}
 }
 
 func (t Tristram) openPortalIfNotOpened() error {

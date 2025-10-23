@@ -142,6 +142,7 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 		time.Sleep(time.Millisecond * 300)
 	}
 
+	s.SwapToSlot(0)
 }
 
 func (s *Berserker) getSortedHorkableCorpses(corpses data.Monsters, maxRange int) []data.Monster {
@@ -329,6 +330,7 @@ func (s *Berserker) killAllCouncilMembers() error {
 	context.Get().DisableItemPickup()
 	for {
 		if !s.anyCouncilMemberAlive() {
+			s.Logger.Info("All council members have been defeated!!!!")
 			return nil
 		}
 

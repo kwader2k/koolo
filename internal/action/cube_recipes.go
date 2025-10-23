@@ -207,6 +207,38 @@ var (
 			PurchaseRequired: true,
 			PurchaseItems:    []string{"Ring"},
 		},
+		
+		// Caster Belt
+		{
+			Name:             "Caster Belt",
+			Items:            []string{"IthRune", "PerfectAmethyst", "Jewel"},
+			PurchaseRequired: true,
+			PurchaseItems:    []string{"LightBelt", "SharkskinBelt", "VampirefangBelt"},
+		},
+
+		// Caster Boots
+		{
+			Name:             "Caster Boots",
+			Items:            []string{"ThulRune", "PerfectAmethyst", "Jewel"},
+			PurchaseRequired: true,
+			PurchaseItems:    []string{"Boots", "DemonhideBoots", "WyrmhideBoots"},
+		},
+		
+		// Blood Amulet
+		{
+			Name:             "Blood Amulet",
+			Items:            []string{"AmnRune", "PerfectRuby", "Jewel"},
+			PurchaseRequired: true,
+			PurchaseItems:    []string{"Amulet"},
+		},	
+
+		// Blood Ring
+		{
+			Name:             "Blood Ring",
+			Items:            []string{"SolRune", "PerfectRuby", "Jewel"},
+			PurchaseRequired: true,
+			PurchaseItems:    []string{"Ring"},
+		},	
 
 		// Blood Gloves
 		{

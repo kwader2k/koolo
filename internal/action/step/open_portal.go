@@ -1,7 +1,7 @@
 package step
 
 import (
-	"errors" 
+	"errors"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/object"
@@ -10,7 +10,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
-
 
 var ErrPlayerDied = errors.New("player is dead")
 
@@ -34,8 +33,8 @@ func OpenPortal() error {
 		}
 
 		// Give some time to portal to popup before retrying...
-		if time.Since(lastRun) < time.Millisecond*500 {
-		continue
+		if time.Since(lastRun) < time.Millisecond*1000 {
+			continue
 		}
 
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.TomeOfTownPortal))

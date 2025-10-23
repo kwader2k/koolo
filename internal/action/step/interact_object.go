@@ -21,7 +21,21 @@ const (
 	maxPortalSyncAttempts  = 15
 )
 
+// InteractObject routes to packet or mouse implementation based on config
 func InteractObject(obj data.Object, isCompletedFn func() bool) error {
+	ctx := context.Get()
+
+	// For portals (blue/red), check if packet mode is enabled
+	if (obj.IsPortal() || obj.IsRedPortal()) && ctx.CharacterCfg.PacketCasting.UseForTpInteraction {
+		return InteractObjectPacket(obj, isCompletedFn)
+	}
+
+	// Default to mouse interaction
+	return InteractObjectMouse(obj, isCompletedFn)
+}
+
+// InteractObjectMouse is the original mouse-based object interaction
+func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 	interactionAttempts := 0
 	mouseOverAttempts := 0
 	waitingForInteraction := false
@@ -29,7 +43,7 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 	lastRun := time.Time{}
 
 	ctx := context.Get()
-	ctx.SetLastStep("InteractObject")
+	ctx.SetLastStep("InteractObjectMouse")
 
 	// If there is no completion check, just assume the interaction is completed after clicking
 	if isCompletedFn == nil {
@@ -82,14 +96,7 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 
 		// Give some time before retrying the interaction
 		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*200 {
-			if time.Since(lastRun) < time.Millisecond*200 {
-				utils.Sleep(200)
-				continue
-			} else {
-				ctx.PathFinder.RandomMovement()
-				utils.Sleep(200)
-				MoveTo(obj.Position)
-			}
+			continue
 		}
 
 		var o data.Object
@@ -125,6 +132,7 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 
 		if o.IsHovered {
 			ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
+
 			waitingForInteraction = true
 			interactionAttempts++
 

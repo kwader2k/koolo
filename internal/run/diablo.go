@@ -9,6 +9,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/utils"
@@ -44,7 +45,9 @@ func (d *Diablo) Run() error {
 
 	_, isLevelingChar := d.ctx.Char.(context.LevelingCharacter)
 
-	action.MoveToArea(area.ChaosSanctuary)
+	if err := action.MoveToArea(area.ChaosSanctuary); err != nil {
+		return err
+	}
 
 	if isLevelingChar {
 		action.Buff()
@@ -66,7 +69,7 @@ func (d *Diablo) Run() error {
 
 		if !d.ctx.Data.CanTeleport() {
 			d.ctx.Logger.Debug("Non-teleporting character detected, clearing path to Vizier from star")
-			err := action.ClearThroughPath(chaosNavToPosition, 30, d.getMonsterFilter())
+			err := action.MoveToCoords(chaosNavToPosition)
 			if err != nil {
 				d.ctx.Logger.Error(fmt.Sprintf("Failed to clear path to Vizier from star: %v", err))
 				return err
@@ -81,7 +84,7 @@ func (d *Diablo) Run() error {
 			action.ClearAreaAroundPlayer(30, data.MonsterAnyFilter())
 		}
 		//path through towards vizier
-		err := action.ClearThroughPath(chaosNavToPosition, 30, d.getMonsterFilter())
+		err := action.MoveToCoords(chaosNavToPosition)
 		if err != nil {
 			return err
 		}
@@ -104,7 +107,7 @@ func (d *Diablo) Run() error {
 				return fmt.Errorf("seal not found: %d", sealID)
 			}
 
-			err := action.ClearThroughPath(seal.Position, 20, d.getMonsterFilter())
+			err := action.MoveToCoords(seal.Position)
 			if err != nil {
 				return err
 			}
@@ -186,7 +189,7 @@ func (d *Diablo) Run() error {
 		if isLevelingChar && d.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
 			action.MoveToCoords(diabloSpawnPosition)
 			action.InRunReturnTownRoutine()
-			action.MoveToCoordIgnoreClearPath(diabloFightPosition)
+			step.MoveTo(diabloFightPosition, step.WithIgnoreMonsters())
 		} else {
 			action.MoveToCoords(diabloSpawnPosition)
 		}
@@ -229,9 +232,10 @@ func (d *Diablo) killSealElite(boss string) error {
 
 				d.ctx.Logger.Debug(fmt.Sprintf("Clearing area around seal elite with radius %d", clearRadius))
 
+				utils.Sleep(500)
 				err := action.ClearAreaAroundPosition(m.Position, clearRadius, func(monsters data.Monsters) (filteredMonsters []data.Monster) {
 					if isLevelingChar {
-						filteredMonsters = append(filteredMonsters, m)
+						filteredMonsters = append(filteredMonsters, monsters...)
 					} else if action.IsMonsterSealElite(m) {
 						filteredMonsters = append(filteredMonsters, m)
 					}

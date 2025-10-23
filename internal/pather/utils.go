@@ -7,6 +7,7 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
@@ -213,6 +214,9 @@ func (pf *PathFinder) LineOfSight(origin data.Position, destination data.Positio
 func (pf *PathFinder) HasDoorBetween(origin data.Position, destination data.Position) (bool, *data.Object) {
 	path, _, pathFound := pf.GetPathFrom(origin, destination)
 	if !pathFound {
+		if door, found := pf.GetClosestDoor(origin); found {
+			return true, door
+		}
 		return false, nil
 	}
 
@@ -247,4 +251,84 @@ func (pf *PathFinder) BeyondPosition(start, target data.Position, distance int) 
 		X: target.X + int(dx*float64(distance)),
 		Y: target.Y + int(dy*float64(distance)),
 	}
+}
+
+func (pf *PathFinder) GetClosestDestructible(position data.Position) (*data.Object, bool) {
+	breakableObjects := []object.Name{
+		object.Barrel, object.Urn2, object.Urn3, object.Casket,
+		object.Casket5, object.Casket6, object.LargeUrn1, object.LargeUrn4,
+		object.LargeUrn5, object.Crate, object.HollowLog, object.Sarcophagus,
+	}
+
+	const immediateVicinity = 2.0
+	var closestObject *data.Object
+	minDistance := immediateVicinity
+
+	// check for breakable objects
+	for _, o := range pf.data.Objects {
+		for _, breakableName := range breakableObjects {
+			if o.Name == breakableName && o.Selectable {
+				distanceToObj := utils.CalculateDistance(position, o.Position)
+				if distanceToObj < minDistance {
+					minDistance = distanceToObj
+					closestObject = &o
+				}
+			}
+		}
+	}
+
+	if closestObject != nil {
+		return closestObject, true
+	}
+
+	return nil, false
+}
+
+func (pf *PathFinder) GetClosestDoor(position data.Position) (*data.Object, bool) {
+	const immediateVicinity = 5.0
+	var closestObject *data.Object
+	minDistance := immediateVicinity
+
+	// Then, check for doors. If a closer door is found, prioritize it.
+	for _, o := range pf.data.Objects {
+		if o.IsDoor() && o.Selectable {
+			distanceToDoor := utils.CalculateDistance(position, o.Position)
+			if distanceToDoor < immediateVicinity && distanceToDoor < minDistance {
+				minDistance = distanceToDoor
+				closestObject = &o
+			}
+		}
+	}
+
+	if closestObject != nil {
+		return closestObject, true
+	}
+
+	return nil, false
+}
+
+func (pf *PathFinder) GetClosestChest(position data.Position) (*data.Object, bool) {
+	var closestObject *data.Object
+	minDistance := 20.0
+
+	// check for breakable objects
+	for _, o := range pf.data.Objects {
+		if o.Selectable {
+			if !o.IsChest() && !o.IsSuperChest() {
+				continue
+			}
+
+			distanceToObj := utils.CalculateDistance(position, o.Position)
+			if distanceToObj < minDistance {
+				minDistance = distanceToObj
+				closestObject = &o
+			}
+		}
+	}
+
+	if closestObject != nil {
+		return closestObject, true
+	}
+
+	return nil, false
 }

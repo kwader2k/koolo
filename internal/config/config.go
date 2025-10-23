@@ -94,6 +94,13 @@ type CharacterCfg struct {
 
 	ConfigFolderName string `yaml:"-"`
 
+	// Packet casting options (disabled by default for safety)
+	PacketCasting struct {
+		UseForEntranceInteraction bool `yaml:"useForEntranceInteraction"`
+		UseForItemPickup          bool `yaml:"useForItemPickup"`
+		UseForTpInteraction       bool `yaml:"useForTpInteraction"`
+	} `yaml:"packetCasting"`
+
 	Scheduler Scheduler `yaml:"scheduler"`
 	Health    struct {
 		HealingPotionAt     int `yaml:"healingPotionAt"`
@@ -119,10 +126,21 @@ type CharacterCfg struct {
 		UseTeleport                  bool   `yaml:"useTeleport"`
 		ClearPathDist                int    `yaml:"clearPathDist"`
 		ShouldHireAct2MercFrozenAura bool   `yaml:"shouldHireAct2MercFrozenAura"`
+		UseExtraBuffs                bool   `yaml:"useExtraBuffs"`
+		BuffOnNewArea                bool   `yaml:"buffOnNewArea"`
+		BuffAfterWP                  bool   `yaml:"buffAfterWP"`
 		BerserkerBarb                struct {
 			FindItemSwitch              bool `yaml:"find_item_switch"`
 			SkipPotionPickupInTravincal bool `yaml:"skip_potion_pickup_in_travincal"`
 		} `yaml:"berserker_barb"`
+		BlizzardSorceress struct {
+			UseMoatTrick        bool `yaml:"use_moat_trick"`
+			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
+		} `yaml:"blizzard_sorceress"`
+		SorceressLeveling struct {
+			UseMoatTrick        bool `yaml:"use_moat_trick"`
+			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
+		} `yaml:"sorceress_leveling"`
 		NovaSorceress struct {
 			BossStaticThreshold int `yaml:"boss_static_threshold"`
 		} `yaml:"nova_sorceress"`
@@ -133,20 +151,13 @@ type CharacterCfg struct {
 			UseBladesOfIce    bool `yaml:"useBladesOfIce"`
 			UseFistsOfFire    bool `yaml:"useFistsOfFire"`
 		} `yaml:"mosaic_sin"`
-		BlizzardSorceress struct {
-			UseMoatTrick        bool `yaml:"useMoatTrick"`
-			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
-		} `yaml:"blizzardSorceress"`
-		SorceressLeveling struct {
-			UseMoatTrick        bool `yaml:"useMoatTrick"`
-			UseStaticOnMephisto bool `yaml:"useStaticOnMephisto"`
-		} `yaml:"sorceressLeveling"`
 	} `yaml:"character"`
 
 	Game struct {
 		MinGoldPickupThreshold int                   `yaml:"minGoldPickupThreshold"`
 		UseCainIdentify        bool                  `yaml:"useCainIdentify"`
 		InteractWithShrines    bool                  `yaml:"interactWithShrines"`
+		InteractWithChests     bool                  `yaml:"interactWithChests"`
 		StopLevelingAt         int                   `yaml:"stopLevelingAt"`
 		IsNonLadderChar        bool                  `yaml:"isNonLadderChar"`
 		ClearTPArea            bool                  `yaml:"clearTPArea"`
@@ -190,6 +201,9 @@ type CharacterCfg struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
 		} `yaml:"ancient_tunnels"`
+		Summoner struct {
+			KillFireEye bool `yaml:"killFireEye"`
+		} `yaml:"summoner"`
 		DrifterCavern struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
@@ -210,6 +224,7 @@ type CharacterCfg struct {
 		Tristram struct {
 			ClearPortal       bool `yaml:"clearPortal"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+			OnlyFarmRejuvs    bool `yaml:"onlyFarmRejuvs"`
 		} `yaml:"tristram"`
 		Nihlathak struct {
 			ClearArea bool `yaml:"clearArea"`
@@ -275,6 +290,15 @@ type CharacterCfg struct {
 		Enabled bool        `yaml:"enabled"`
 		Items   []item.Name `yaml:"items"`
 	} `yaml:"gambling"`
+	Muling struct {
+		Enabled      bool     `yaml:"enabled"`
+		SwitchToMule string   `yaml:"switchToMule"`
+		ReturnTo     string   `yaml:"returnTo"`
+		MuleProfiles []string `yaml:"muleProfiles"`
+	} `yaml:"muling"`
+	MulingState struct {
+		CurrentMuleIndex int `yaml:"currentMuleIndex"`
+	} `yaml:"mulingState"`
 	CubeRecipes struct {
 		Enabled              bool     `yaml:"enabled"`
 		EnabledRecipes       []string `yaml:"enabledRecipes"`

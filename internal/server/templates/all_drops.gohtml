@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <title>All Drops</title>
     <style>
+         /* Primary Colors */
         .low-quality { color: #9CA3AF; }
         .normal-quality { color: #FFFFFF; }
         .superior-quality { color: #FFFFFF; }
@@ -16,7 +17,58 @@
         .unique-quality { color: #bfa969; }
         .crafted-quality { color: #FFA500; }
         .unknown-quality { color: #000000; }
-        .search-box { width: 100%; padding: 0.6rem 1rem; background-color: rgba(17, 24, 39, 0.75); border: 1px solid rgba(75, 85, 99, 0.4); border-radius: 0.5rem; color: white; outline: none; backdrop-filter: blur(8px); font-size: 0.95rem; }
+
+        /* Existing input styling */
+        .search-box {
+            width: 100%;
+            padding: 0.6rem 1rem;
+            background: rgba(31,41,55,0.35);
+            border: 1px solid rgba(75,85,99,0.6);
+            border-radius: 0.5rem;
+            color: #fff;
+            outline: none;
+            backdrop-filter: blur(8px);
+            font-size: 0.95rem;
+        }
+
+        /* Compact table + pickit rule clamp */
+        .container table { table-layout: fixed; width: 100%; }
+        .container thead th { position: sticky; top: 0; background: rgba(31,41,55,1); z-index: 2; }
+
+        /* Column widths for balance (tweak if needed) */
+        .container thead th:nth-child(1), .container tbody td:nth-child(1){ width: 12.5rem; } /* Time */
+        .container thead th:nth-child(2), .container tbody td:nth-child(2){ width: 9.5rem; }  /* Supervisor */
+        .container thead th:nth-child(3), .container tbody td:nth-child(3){ width: 9rem; }    /* Character */
+        .container thead th:nth-child(4), .container tbody td:nth-child(4){ width: 18rem; }   /* Item */
+        .container thead th:nth-child(5), .container tbody td:nth-child(5){ width: 12rem; }   /* Location */
+        .container thead th:nth-child(6), .container tbody td:nth-child(6){ width: 18rem; }   /* Rule */
+
+        /* Clamp the Rule column to a single line; expand on row hover */
+        .container tbody td:nth-child(6){
+          position: relative;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .container tbody tr:hover td:nth-child(6){
+          white-space: normal;
+          overflow: visible;
+        }
+
+        /* Subtle row hover */
+        .container tbody tr:hover{ background-color: rgb(9 16 33 / 20%); }
+
+        /* Search input polish (no gradients; keeps your palette) */
+        .search-box{
+          border: 1px solid rgba(66,69,73,0.8);
+          border-radius: 6px;
+          transition: border-color .2s ease, box-shadow .2s ease, transform .08s ease;
+        }
+        .search-box:hover{ transform: translateY(-1px); }
+        .search-box:focus{
+          border-color: #0089eb9e;
+          outline: none;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
@@ -47,7 +99,7 @@
         </div>
     </form>
 
-    <div class="overflow-x-auto">
+    <div class="bg-gray-800/40 border border-gray-700 rounded-lg p-2 overflow-hidden">
         <table class="min-w-full divide-y divide-gray-700">
             <thead>
             <tr class="bg-gray-800">
@@ -79,8 +131,6 @@
                             {{ if .String }}<div>{{ .String }}</div>{{ end }}
                         {{ end }}
                     </div>
-                    {{ else }}
-                    <div class="text-gray-400 text-xs italic">Unidentified</div>
                     {{ end }}
                 </td>
                 <td class="px-3 py-2 text-sm">{{ if .Drop.DropLocation }}{{ .Drop.DropLocation }}{{ end }}</td>
@@ -93,21 +143,27 @@
 </div>
 
 <script>
+/* === Export as HTML === */
 document.getElementById('exportBtn').addEventListener('click', async function(ev) {
     ev.preventDefault();
     try {
         const res = await fetch('/export-drops', { method: 'GET' });
         if (!res.ok) throw new Error('Export failed');
-        const json = await res.json();
-        const p = document.createElement('div');
-        p.className = 'bg-green-900/40 border border-green-800 rounded p-3 mb-4';
-        p.textContent = `Exported to: ${json.file}`;
-        document.querySelector('.container').prepend(p);
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'all_drops.html';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
     } catch (e) {
         alert('Failed to export: ' + (e && e.message ? e.message : e));
     }
 });
 
+/* === Open droplogs folder === */
 document.getElementById('openFolderBtn').addEventListener('click', async function(ev) {
     ev.preventDefault();
     try {
@@ -118,9 +174,9 @@ document.getElementById('openFolderBtn').addEventListener('click', async functio
     }
 });
 
+/* === Reset droplog  === */
 document.getElementById('resetBtn').addEventListener('click', async function(ev) {
     ev.preventDefault();
-    if (!confirm('This will delete droplog .jsonl and .html files. Continue?')) return;
     try {
         const res = await fetch('/reset-droplogs', { method: 'POST' });
         if (!res.ok) throw new Error('Reset failed');

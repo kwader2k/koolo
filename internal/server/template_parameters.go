@@ -45,6 +45,8 @@ type CharacterSettings struct {
 	AvailableTZs       map[int]string
 	RecipeList         []string
 	RunewordRecipeList []string
+	AvailableProfiles  []string
+	FarmerProfiles     []string
 }
 
 type ConfigData struct {
