@@ -38,7 +38,7 @@ const XP_TABLE = {
     82: [809986056, 73308835], 83: [883294891, 79906630], 84: [963201521, 87098226], 85: [1050299747, 94937067],
     86: [1145236814, 103481403], 87: [1248718217, 112794729], 88: [1361512946, 122946255], 89: [1484459201, 134011418],
     90: [1618470619, 146072446], 91: [1764543065, 159218965], 92: [1923762030, 173548673], 93: [2097310703, 189168053],
-    94: [2286478756, 206193177], 95:[2492671933, 224750564], 96: [2717422497, 244978115], 97: [2962400612, 267026144],
+    94: [2286478756, 206193177], 95: [2492671933, 224750564], 96: [2717422497, 244978115], 97: [2962400612, 267026144],
     98: [3229426756, 291058498], 99: [3520485254, 0]
 };
 
@@ -417,6 +417,8 @@ class CharacterCard {
                     <span class="co-dot">•</span>
                     <span class="co-gf">GF: —</span>
                     <span class="co-dot">•</span>
+                    <span class="co-gold">Gold: —</span>
+                    <span class="co-dot">•</span>
                     <span class="co-res">Res: —</span>
                 </div>
             </div>
@@ -649,6 +651,7 @@ class CharacterCard {
         const manaEl = this.element.querySelector('.co-mana');
         const mfEl = this.element.querySelector('.co-mf');
         const gfEl = this.element.querySelector('.co-gf');
+        const goldEl = this.element.querySelector('.co-gold');
         const resEl = this.element.querySelector('.co-res');
 
         const className = Utils.deriveClassName(ui.Class || '');
@@ -669,6 +672,7 @@ class CharacterCard {
         if (manaEl) manaEl.textContent = `Mana: ${ui.Mana || 0}/${ui.MaxMana || 0}`;
         if (mfEl) mfEl.textContent = `MF: ${ui.MagicFind || 0}%`;
         if (gfEl) gfEl.textContent = `GF: ${ui.GoldFind || 0}%`;
+        if (goldEl) goldEl.textContent = `Gold: ${ui.Gold || 0}`;
 
         if (resEl) {
             resEl.innerHTML = `<span class="res-fr">FR: ${ui.FireResist || 0}</span> / <span class="res-cr">CR: ${ui.ColdResist || 0}</span> / <span class="res-lr">LR: ${ui.LightningResist || 0}</span> / <span class="res-pr">PR: ${ui.PoisonResist || 0}</span>`;
@@ -683,6 +687,7 @@ class CharacterCard {
         const manaEl = this.element.querySelector('.co-mana');
         const mfEl = this.element.querySelector('.co-mf');
         const gfEl = this.element.querySelector('.co-gf');
+        const goldEl = this.element.querySelector('.co-gold');
         const resEl = this.element.querySelector('.co-res');
         const xpFill = this.element.querySelector('.xp-bar-fill');
         const xpPct = this.element.querySelector('.xp-percent');
@@ -694,6 +699,7 @@ class CharacterCard {
         if (manaEl) manaEl.textContent = 'Mana: —';
         if (mfEl) mfEl.textContent = 'MF: —';
         if (gfEl) gfEl.textContent = 'GF: —';
+        if (goldEl) goldEl.textContent = 'Gold: —';
         if (resEl) resEl.textContent = 'Res: —';
         if (xpFill) xpFill.style.width = '0%';
         if (xpPct) xpPct.textContent = '0%';
