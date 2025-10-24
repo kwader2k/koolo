@@ -175,11 +175,6 @@ func (s *HttpServer) BroadcastStatus() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		// Skip if no clients connected
-		if len(s.wsServer.clients) == 0 {
-			continue
-		}
-
 		data := s.getStatusData()
 		jsonData, err := json.Marshal(data)
 		if err != nil {
@@ -1623,3 +1618,4 @@ func (s *HttpServer) resetDroplogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "dir": dir, "removed": removed})
 }
+
