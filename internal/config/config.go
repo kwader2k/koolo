@@ -577,24 +577,6 @@ func SaveSupervisorConfig(supervisorName string, config *CharacterCfg) error {
 	return Load()
 }
 
-// Save saves the current Koolo configuration to disk
-func Save() error {
-	cfgMux.Lock()
-	defer cfgMux.Unlock()
-
-	text, err := yaml.Marshal(Koolo)
-	if err != nil {
-		return fmt.Errorf("error marshaling koolo config: %w", err)
-	}
-
-	err = os.WriteFile("config/koolo.yaml", text, 0644)
-	if err != nil {
-		return fmt.Errorf("error writing koolo config: %w", err)
-	}
-
-	return nil
-}
-
 func (c *CharacterCfg) Validate() {
 	if c.Character.Class == "nova" || c.Character.Class == "lightsorc" {
 		minThreshold := 65 // Default
@@ -611,5 +593,3 @@ func (c *CharacterCfg) Validate() {
 		}
 	}
 }
-
-
