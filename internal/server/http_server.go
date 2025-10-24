@@ -234,19 +234,19 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 		return nil, err
 	}
 
-// Pre-execute templates to cache them (optional but faster)
-for _, tmpl := range templates.Templates() {
-    if tmpl.Name() != "" {
-        var buf bytes.Buffer
-        _ = tmpl.Execute(&buf, nil) // Warm up the cache
-    }
-}
+	// Pre-execute templates to cache them (optional but faster)
+	for _, tmpl := range templates.Templates() {
+		if tmpl.Name() != "" {
+			var buf bytes.Buffer
+			_ = tmpl.Execute(&buf, nil) // Warm up the cache
+		}
+	}
 
-// Debug: List all loaded templates
-logger.Info("Loaded templates:")
-for _, t := range templates.Templates() {
-    logger.Info("  - " + t.Name())
-}
+	// Debug: List all loaded templates
+	logger.Info("Loaded templates:")
+	for _, t := range templates.Templates() {
+		logger.Info("  - " + t.Name())
+	}
 
 	return &HttpServer{
 		logger:    logger,
@@ -1042,6 +1042,18 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		}
 		newConfig.Telegram.ChatID = telegramChatId
 
+		// Parse window dimensions
+		if widthStr := r.Form.Get("window_width"); widthStr != "" {
+			if width, err := strconv.Atoi(widthStr); err == nil && width >= 0 {
+				newConfig.WindowWidth = width
+			}
+		}
+		if heightStr := r.Form.Get("window_height"); heightStr != "" {
+			if height, err := strconv.Atoi(heightStr); err == nil && height >= 0 {
+				newConfig.WindowHeight = height
+			}
+		}
+
 		err = config.ValidateAndSaveConfig(newConfig)
 		if err != nil {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: &newConfig, ErrorMessage: err.Error()})
@@ -1618,4 +1630,3 @@ func (s *HttpServer) resetDroplogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "dir": dir, "removed": removed})
 }
-
