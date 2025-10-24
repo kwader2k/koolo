@@ -46,9 +46,7 @@ func (a Leveling) act3() error {
 	}
 
 	// Gold Farming Logic for Lower Kurast (and immediate return if farming is needed)
-	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 30000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
+	if action.IsLowGold() {
 
 		a.ctx.Logger.Info("Low on gold. Initiating Lower Kurast Chests gold farm.")
 		if err := NewLowerKurastChest().Run(); err != nil {
@@ -258,7 +256,9 @@ func (a Leveling) act3() error {
 		return nil // Exit gracefully
 	} else if !willFound && !a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
 		a.ctx.Logger.Info("KhalimsFlail not found, starting quest")
-		NewTravincal().Run()
+		if err := NewTravincal().Run(); err != nil {
+			return err
+		}
 	}
 
 	return nil

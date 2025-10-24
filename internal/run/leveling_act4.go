@@ -88,9 +88,7 @@ func (a Leveling) act4() error {
 		return nil
 	}
 
-	if (a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 30000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 50000) ||
-		(a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 70000) {
+	if action.IsLowGold() {
 
 		a.ctx.Logger.Info("Low on gold. Initiating Chest Run.")
 

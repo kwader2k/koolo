@@ -130,9 +130,6 @@ func PreRun(firstRun bool) error {
 	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation {
 		ResetStats()
 		EnsureStatPoints()
-		if HasSkillPointsToUse() {
-			UpdateQuestLog(true)
-		}
 		EnsureSkillPoints()
 	}
 

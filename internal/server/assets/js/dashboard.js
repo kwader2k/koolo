@@ -1000,6 +1000,14 @@ function requestCompanionJoin(supervisor, gameName, password) {
         });
 }
 
+function openPickitEditor() {
+    // Get the current host and port
+    const url = window.location.protocol + '//' + window.location.host + '/pickit-editor';
+
+    // Open in default browser
+    window.open(url, '_blank');
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     fetchInitialData();
     connectWebSocket();

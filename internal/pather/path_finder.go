@@ -34,11 +34,16 @@ func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {
 		return path, distance, true
 	}
 
-	// If direct path fails, try to find nearby walkable position
-	if walkableTo, found := pf.findNearbyWalkablePosition(to); found {
-		return pf.GetPathFrom(pf.data.PlayerUnit.Position, walkableTo)
+	walkableTo, foundTo := pf.findNearbyWalkablePosition(to)
+	// If direct path fails, try to find nearby to walkable position
+	if foundTo {
+		path, distance, found := pf.GetPathFrom(pf.data.PlayerUnit.Position, walkableTo)
+		if found {
+			return path, distance, true
+		}
 	}
 
+	//We definitively tried our best
 	return nil, 0, false
 }
 

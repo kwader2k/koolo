@@ -4,6 +4,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
@@ -31,4 +32,10 @@ func GetTownByArea(a area.ID) Town {
 	}
 
 	return A5{}
+}
+
+func IsPositionInTown(position data.Position) bool {
+	ctx := context.Get()
+	actTown := GetTownByArea(ctx.Data.PlayerUnit.Area)
+	return ctx.Data.Areas[actTown.TownArea().Area().ID].IsInside(position)
 }

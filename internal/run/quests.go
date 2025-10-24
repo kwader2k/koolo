@@ -99,7 +99,9 @@ func (a Quests) clearDenQuest() error {
 		a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
 	}
 
-	action.ClearCurrentLevel(false, data.MonsterAnyFilter())
+	if err := action.ClearCurrentLevel(false, data.MonsterAnyFilter()); err != nil {
+		return err
+	}
 
 	_, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)
 	if !isLevelingChar {
@@ -181,7 +183,9 @@ func (a Quests) rescueCainQuest() error {
 
 		// Clear a large area around the new position.
 		a.ctx.Logger.Info(fmt.Sprintf("Clearing a %d unit radius around the current position...", clearRadius))
-		action.ClearAreaAroundPlayer(clearRadius, data.MonsterAnyFilter())
+		if err := action.ClearAreaAroundPlayer(clearRadius, data.MonsterAnyFilter()); err != nil {
+			return err
+		}
 	}
 
 	// --- End of new segmented approach ---
@@ -205,14 +209,21 @@ func (a Quests) rescueCainQuest() error {
 		return fmt.Errorf("error interacting with Inifuss Tree: %w", err)
 	}
 
-	scrollInifussUnitID := data.UnitID(524)
+	scrollInifussUnitID := 524
 	scrollInifussName := "Scroll of Inifuss"
 
 PickupLoop:
 	for i := 0; i < 5; i++ {
 		a.ctx.RefreshGameData()
 
-		_, foundInInv := a.ctx.Data.Inventory.FindByID(scrollInifussUnitID)
+		foundInInv := false
+		for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+			if itm.ID == scrollInifussUnitID {
+				foundInInv = true
+				break
+			}
+		}
+
 		if foundInInv {
 			a.ctx.Logger.Info(fmt.Sprintf("%s found in inventory. Proceeding with quest.", scrollInifussName))
 			break PickupLoop
@@ -222,7 +233,7 @@ PickupLoop:
 		var scrollObj data.Item
 		foundOnGround := false
 		for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationGround) {
-			if itm.UnitID == scrollInifussUnitID {
+			if itm.ID == scrollInifussUnitID {
 				scrollObj = itm
 				foundOnGround = true
 				break
@@ -264,7 +275,13 @@ PickupLoop:
 				}
 
 				a.ctx.RefreshGameData()
-				_, foundInInvAfterPickup := a.ctx.Data.Inventory.FindByID(scrollInifussUnitID)
+				foundInInvAfterPickup := false
+				for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+					if itm.ID == scrollInifussUnitID {
+						foundInInvAfterPickup = true
+						break
+					}
+				}
 				if foundInInvAfterPickup {
 					a.ctx.Logger.Info(fmt.Sprintf("Pickup confirmed for %s after %d attempts. Proceeding.", scrollInifussName, pickupAttempts+1))
 					break PickupLoop
@@ -277,7 +294,13 @@ PickupLoop:
 		}
 	}
 
-	_, foundInInv := a.ctx.Data.Inventory.FindByID(scrollInifussUnitID)
+	foundInInv := false
+	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if itm.ID == scrollInifussUnitID {
+			foundInInv = true
+			break
+		}
+	}
 	if !foundInInv {
 		a.ctx.Logger.Error(fmt.Sprintf("Failed to pick up %s after all attempts. Aborting current run.", scrollInifussName))
 		return errors.New("failed to pick up Scroll of Inifuss")

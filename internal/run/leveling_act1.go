@@ -37,9 +37,6 @@ func (a Leveling) act1() error {
 		a.setupLevelOneConfig()
 	}
 
-	// Adjust belt and merc settings based on difficulty
-	a.AdjustDifficultyConfig()
-
 	// Refill potions and ensure bindings for players level > 1
 	if lvl.Value > 1 {
 		action.VendorRefill(false, true)
@@ -120,11 +117,6 @@ func (a Leveling) act1() error {
 	// Cain quest: entering Tristram
 	if (a.ctx.Data.Quests[quest.Act1TheSearchForCain].HasStatus(quest.StatusInProgress2) || a.ctx.Data.Quests[quest.Act1TheSearchForCain].HasStatus(quest.StatusInProgress3) || a.ctx.Data.Quests[quest.Act1TheSearchForCain].HasStatus(quest.StatusInProgress4)) && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
 		return NewTristram().Run()
-	}
-
-	// Farming for normal difficulty below 400 gold
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.PlayerUnit.TotalPlayerGold() < 400 && !a.isCainInTown() && !a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() {
-		return NewTristramEarlyGoldfarm().Run()
 	}
 
 	// Cain quest: talking to Akara
@@ -257,8 +249,17 @@ func (a Leveling) setupLevelOneConfig() {
 func (a Leveling) AdjustDifficultyConfig() {
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
+	//Let setupLevelOneConfig do the initial setup
+	if lvl.Value == 1 {
+		return
+	}
+
+	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
+		a.ctx.CharacterCfg.Character.UseTeleport = true
+	}
+
 	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
-	a.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 2000 * lvl.Value
+	a.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 5000 * lvl.Value
 	if lvl.Value >= 4 && lvl.Value < 24 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85
 

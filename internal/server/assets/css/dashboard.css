@@ -21,6 +21,7 @@
     --co-mana: #758eff;
     --co-mf: #e391db;
     --co-gf: #e2ce25;
+    --co-gold: #eee8aa;
     
     /* Resistance Colors */
     --res-fire: #f5ab00;
@@ -252,6 +253,11 @@ body {
 
 .co-gf {
     color: var(--co-gf);
+    font-weight: 600;
+}
+
+.co-gold {
+    color: var(--co-gold);
     font-weight: 600;
 }
 
@@ -890,8 +896,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* ========================================

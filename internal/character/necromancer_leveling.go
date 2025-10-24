@@ -2,6 +2,7 @@ package character
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"time"
 
@@ -22,21 +23,18 @@ import (
 var _ context.LevelingCharacter = (*NecromancerLeveling)(nil)
 
 const (
-	AmplifyDamageMaxDistance           = 25
-	BoneSpearMaxDistance               = 25
-	CorpseExplosionRadiusAroundMonster = 5
-	NecroLevelingMaxAttacksLoop        = 100
-	BonePrisonMaxDistance              = 25
-	LevelToResetSkills                 = 26
-	RaiseSkeletonMaxDistance           = 25
-	RaiseSkeletonCheckRadius           = 25
+	AmplifyDamageMaxDistance    = 25
+	BoneSpearMaxDistance        = 25
+	NecroLevelingMaxAttacksLoop = 100
+	BonePrisonMaxDistance       = 25
+	LevelToResetSkills          = 26
+	RaiseSkeletonMaxDistance    = 25
 )
 
 var (
 	boneSpearRange         = step.Distance(0, BoneSpearMaxDistance)
 	amplifyDamageRange     = step.Distance(0, AmplifyDamageMaxDistance)
 	bonePrisonRange        = step.Distance(0, BonePrisonMaxDistance)
-	raiseSkeletonRange     = step.Distance(0, RaiseSkeletonMaxDistance)
 	bonePrisonAllowedAreas = []area.ID{
 		area.CatacombsLevel4, area.Tristram, area.MooMooFarm,
 		area.RockyWaste, area.DryHills, area.FarOasis,
@@ -53,10 +51,11 @@ var (
 
 type NecromancerLeveling struct {
 	BaseCharacter
-	lastAmplifyDamageCast time.Time
-	lastLineOfSight       map[data.UnitID]time.Time
-	lastBoneArmorCast     time.Time
-	lastBonePrisonCast    map[data.UnitID]time.Time
+	lastAmplifyDamageCast   time.Time
+	lastLineOfSight         map[data.UnitID]time.Time
+	lastBoneArmorCast       time.Time
+	lastBonePrisonCast      map[data.UnitID]time.Time
+	lastCorpseExplosionCast map[data.UnitID]time.Time
 }
 
 func (n *NecromancerLeveling) GetAdditionalRunewords() []string {
@@ -84,7 +83,7 @@ func (n *NecromancerLeveling) hasSkeletonNearby() bool {
 	for _, m := range n.Data.Monsters {
 		if m.Name == npc.NecroSkeleton && m.IsPet() {
 			distance := n.PathFinder.DistanceFromMe(m.Position)
-			if distance <= RaiseSkeletonCheckRadius {
+			if distance <= RaiseSkeletonMaxDistance {
 				return true
 			}
 		}
@@ -156,6 +155,29 @@ func (n *NecromancerLeveling) castDefensiveBonePrison(boss data.Monster) {
 	utils.Sleep(150)
 }
 
+func (n *NecromancerLeveling) castCorpseSkill(skillID skill.ID, corpse *data.Monster, maxDistance int) {
+	ctx := context.Get()
+
+	if ctx.PathFinder.DistanceFromMe(corpse.Position) > maxDistance {
+		return
+	}
+
+	if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, corpse.Position) {
+		return
+	}
+
+	if ctx.Data.PlayerUnit.RightSkill != skillID {
+		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skillID))
+		utils.Sleep(50)
+	}
+
+	ctx.HID.KeyDown(ctx.Data.KeyBindings.StandStill)
+	x, y := ctx.PathFinder.GameCoordsToScreenCords(corpse.Position.X, corpse.Position.Y)
+	ctx.HID.Click(game.RightButton, x, y)
+	ctx.HID.KeyUp(ctx.Data.KeyBindings.StandStill)
+	utils.Sleep(50)
+}
+
 // findSafeBossPosition finds a safe position to attack the boss from
 func (n *NecromancerLeveling) findSafeBossPosition(boss data.Monster, currentDistance int) (data.Position, bool) {
 	// Define safe casting distance based on boss proximity
@@ -187,46 +209,23 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 	completedAttackLoops := 0
 	previousUnitID := 0
 	bonePrisonnedMonsters := make(map[data.UnitID]time.Time)
-
+	ctx := context.Get()
 	// Initialize line of sight tracking map
 	if n.lastLineOfSight == nil {
 		n.lastLineOfSight = make(map[data.UnitID]time.Time)
 	}
 
-	priorityMonsters := []npc.ID{npc.FallenShaman, npc.MummyGenerator, npc.BaalSubjectMummy, npc.FetishShaman, npc.CarverShaman}
+	if n.lastCorpseExplosionCast == nil {
+		n.lastCorpseExplosionCast = make(map[data.UnitID]time.Time)
+	}
 
 	for {
 		var id data.UnitID
 		var found bool
 
-		// Check for priority monsters first
-		var closestPriorityMonster data.Monster
-		minDistance := -1
+		ctx.PauseIfNotPriority()
 
-		for _, monsterNpcID := range priorityMonsters {
-			for _, m := range n.Data.Monsters {
-				if m.Name == monsterNpcID && m.Stats[stat.Life] > 0 {
-					distance := n.PathFinder.DistanceFromMe(m.Position)
-					if distance < priorityMonsterSearchRange {
-						if minDistance == -1 || distance < minDistance {
-							minDistance = distance
-							closestPriorityMonster = m
-						}
-					}
-				}
-			}
-		}
-
-		if minDistance != -1 {
-			id = closestPriorityMonster.UnitID
-			found = true
-			n.Logger.Debug("Priority monster found", "name", closestPriorityMonster.Name, "distance", minDistance)
-		}
-
-		// Fall back to regular monster selector if no priority monster found
-		if !found {
-			id, found = monsterSelector(*n.Data)
-		}
+		id, found = monsterSelector(*n.Data)
 
 		if !found {
 			return nil
@@ -275,27 +274,32 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 		}
 
 		if n.hasSkill(skill.CorpseExplosion) {
+			corpses := n.getUsableCorpses()
 			radius := 3.0 + float64(n.Data.PlayerUnit.Skills[skill.CorpseExplosion].Level-1)*0.3
-			radiusSquared := float64(radius * radius)
+			radiusSquared := radius * radius
 			corpseExplosionMaxDistance := float64(BoneSpearMaxDistance) + radius
+			var nearbyCorpse *data.Monster
 
-			isCorpseNearby := false
-			for _, c := range n.Data.Corpses {
-				dx := float64(targetMonster.Position.X - c.Position.X)
-				dy := float64(targetMonster.Position.Y - c.Position.Y)
-				if (dx*dx+dy*dy) < radiusSquared && float64(n.PathFinder.DistanceFromMe(c.Position)) < corpseExplosionMaxDistance {
-					isCorpseNearby = true
+			for i := range corpses {
+				corpse := &corpses[i]
+				dx := float64(targetMonster.Position.X - corpse.Position.X)
+				dy := float64(targetMonster.Position.Y - corpse.Position.Y)
+				if (dx*dx+dy*dy) < radiusSquared && float64(n.PathFinder.DistanceFromMe(corpse.Position)) < corpseExplosionMaxDistance {
+					nearbyCorpse = corpse
 					break
 				}
 			}
 
-			if isCorpseNearby {
-				step.SecondaryAttack(skill.CorpseExplosion, targetMonster.UnitID, 1, step.Distance(1, int(corpseExplosionMaxDistance)))
-				n.Logger.Debug("Casting Corpse Explosion")
-				utils.Sleep(150)
-				completedAttackLoops++
-				previousUnitID = int(id)
-				continue
+			if nearbyCorpse != nil {
+				if lastCastTime, found := n.lastCorpseExplosionCast[targetMonster.UnitID]; !found || time.Since(lastCastTime) > time.Second*2 {
+					n.castCorpseSkill(skill.CorpseExplosion, nearbyCorpse, int(math.Ceil(corpseExplosionMaxDistance)))
+					n.Logger.Debug("Casting Corpse Explosion")
+					utils.Sleep(150)
+					n.lastCorpseExplosionCast[targetMonster.UnitID] = time.Now()
+					completedAttackLoops++
+					previousUnitID = int(id)
+					continue
+				}
 			}
 		}
 
@@ -303,20 +307,20 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 
 		// Before learning Teeth, use Raise Skeleton + basic attack
 		if !n.hasSkill(skill.Teeth) {
-			// Try to raise skeletons if we don't have any nearby and there's a corpse
-			if !n.hasSkeletonNearby() && len(n.Data.Corpses) > 0 {
-				// Check if there's a corpse within range of the player
-				isCorpseNearby := false
-				for _, c := range n.Data.Corpses {
-					distanceToPlayer := float64(n.PathFinder.DistanceFromMe(c.Position))
-					if distanceToPlayer < float64(RaiseSkeletonMaxDistance) {
-						isCorpseNearby = true
+			if !n.hasSkeletonNearby() {
+				corpses := n.getUsableCorpses()
+				var nearbyCorpse *data.Monster
+
+				for i := range corpses {
+					corpse := &corpses[i]
+					if n.PathFinder.DistanceFromMe(corpse.Position) <= RaiseSkeletonMaxDistance {
+						nearbyCorpse = corpse
 						break
 					}
 				}
 
-				if isCorpseNearby {
-					step.SecondaryAttack(skill.ID(70), targetMonster.UnitID, 1, raiseSkeletonRange)
+				if nearbyCorpse != nil {
+					n.castCorpseSkill(skill.RaiseSkeleton, nearbyCorpse, RaiseSkeletonMaxDistance)
 					n.Logger.Debug("Casting Raise Skeleton")
 					utils.Sleep(300) // Give time for skeleton to spawn
 					completedAttackLoops++
@@ -333,46 +337,10 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 			n.Logger.Debug("Using Basic attack")
 			utils.Sleep(150)
 		} else if n.hasSkill(skill.BoneSpear) {
-			// Smart positioning for Bone Spear - check if enemies are too close
-			enemyNearby, closestEnemy := action.IsAnyEnemyAroundPlayer(5)
-			if enemyNearby && closestEnemy.UnitID != targetMonster.UnitID {
-				// Find safe position to cast from
-				safePos, found := action.FindSafePosition(
-					targetMonster,
-					5,                    // dangerDistance - stay away from enemies
-					10,                   // safeDistance - preferred distance from enemies
-					5,                    // minAttackDistance - min range for Bone Spear
-					BoneSpearMaxDistance, // maxAttackDistance - max range for Bone Spear
-				)
-				if found {
-					n.Logger.Debug("Repositioning to safe casting position for Bone Spear")
-					step.MoveTo(safePos)
-					utils.Sleep(150)
-				}
-			}
-
 			step.PrimaryAttack(targetMonster.UnitID, 3, true, boneSpearRange)
 			n.Logger.Debug("Casting Bone Spear")
 			utils.Sleep(150)
 		} else if n.hasSkill(skill.Teeth) {
-			// Smart positioning for Teeth - check if enemies are too close
-			enemyNearby, closestEnemy := action.IsAnyEnemyAroundPlayer(4)
-			if enemyNearby && closestEnemy.UnitID != targetMonster.UnitID {
-				// Find safe position to cast from
-				safePos, found := action.FindSafePosition(
-					targetMonster,
-					4,                    // dangerDistance - stay away from enemies
-					8,                    // safeDistance - preferred distance from enemies
-					3,                    // minAttackDistance - min range for Teeth
-					BoneSpearMaxDistance, // maxAttackDistance - same as Bone Spear
-				)
-				if found {
-					n.Logger.Debug("Repositioning to safe casting position for Teeth")
-					step.MoveTo(safePos)
-					utils.Sleep(150)
-				}
-			}
-
 			step.SecondaryAttack(skill.Teeth, targetMonster.UnitID, 3, boneSpearRange)
 			n.Logger.Debug("Casting Teeth")
 			utils.Sleep(150)
@@ -823,4 +791,40 @@ func (n *NecromancerLeveling) KillNihlathak() error {
 
 func (n *NecromancerLeveling) KillBaal() error {
 	return n.killBoss(npc.BaalCrab)
+}
+
+func (n *NecromancerLeveling) getUsableCorpses() []data.Monster {
+	corpses := []data.Monster{}
+
+	unusableCorpseStates := []state.State{
+		state.CorpseNoselect,
+		state.CorpseNodraw,
+		state.Revive,
+		state.Redeemed,
+		state.Shatter,
+		state.Freeze,
+		state.Restinpeace,
+	}
+
+	for _, c := range n.Data.Corpses {
+		if c.IsMerc() {
+			continue
+		}
+
+		skipCorpse := false
+		for _, unusableState := range unusableCorpseStates {
+			if c.States.HasState(unusableState) {
+				skipCorpse = true
+				break
+			}
+		}
+
+		if skipCorpse {
+			continue
+		}
+
+		corpses = append(corpses, c)
+	}
+
+	return corpses
 }

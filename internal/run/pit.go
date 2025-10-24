@@ -60,7 +60,6 @@ func (p Pit) Run() error {
 
 	// Open a TP If we're the leader
 	action.OpenTPIfLeader()
-
 	// Clear the area if we don't have only clear lvl2 selected
 	if !p.ctx.CharacterCfg.Game.Pit.OnlyClearLevel2 {
 		if err := action.ClearCurrentLevel(p.ctx.CharacterCfg.Game.Pit.OpenChests, monsterFilter); err != nil {

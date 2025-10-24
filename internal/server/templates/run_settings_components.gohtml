@@ -58,6 +58,12 @@
     </fieldset>
 {{ end }}
 
+{{ define "summoner" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameSummonerKillFireEye" {{ if .Config.Game.Summoner.KillFireEye }}checked{{ end }}> Kill Fire Eye</label>
+    </fieldset>
+{{ end }}
+
 {{ define "ancient_tunnels" }}
     <fieldset>
         <label><input type="checkbox" name="gameAncientTunnelsOpenChests" {{ if .Config.Game.AncientTunnels.OpenChests }}checked{{ end }}> Open chests</label>
@@ -98,6 +104,7 @@
     <fieldset>
         <label><input type="checkbox" name="gameTristramFocusOnElitePacks" {{ if .Config.Game.Tristram.FocusOnElitePacks }}checked{{ end }}> Focus on elite packs</label>
         <label><input type="checkbox" name="gameTristramClearPortal" {{ if .Config.Game.Tristram.ClearPortal }}checked{{ end }}> Clear portal</label>
+        <label><input type="checkbox" name="gameTristramOnlyFarmRejuvs" {{ if .Config.Game.Tristram.OnlyFarmRejuvs }}checked{{ end }}> Only farm rejuvs</label>
     </fieldset>
 {{ end }}
 
@@ -145,6 +152,7 @@
         <label><input type="checkbox" name="gameDiabloStartFromStar" {{ if .Config.Game.Diablo.StartFromStar }}checked{{ end }}> Start From Star (Disabled = Entrance) </label>
         <label><input type="checkbox" name="gameDiabloFocusOnElitePacks" {{ if .Config.Game.Diablo.FocusOnElitePacks }}checked{{ end }}> Elite Packs Only</label>
     </fieldset>
+
 {{ end }}
 
 {{ define "leveling" }}

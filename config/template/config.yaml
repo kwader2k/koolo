@@ -70,6 +70,9 @@ character:
   useTeleport: true # If set to false, bot will not use teleport skill and will walk to the destination
   clearPathDist: 7 # Distance (in game units) to clear enemies while walking through areas
   shouldHireAct2MercFrozenAura: false # If true, bot will try to hire Act 2 merc with Frozen Aura skill
+  useExtraBuffs: false # If true, bot will enable the extra buffs functionality
+  buffOnNewArea: false # If true, bot will apply buffs when entering a new area
+  buffAfterWP: false # If true, bot will apply buffs after using a waypoint
 
 game:
   minGoldPickupThreshold: 500000 # If total gold amount is less than this, bot will pick up and sell magic+ items
@@ -110,6 +113,7 @@ game:
   tristram:
     focusOnElitePacks: false # Will clear only Elite monsters
     clearPortal: true # Kills Rakanishu and makes easier selecting the portal
+    onlyFarmRejuvs: false # If set to true, bot will only farm until it has a full belt of rejuvenation potions
   nihlathak:
     clearArea: true
   diablo:
@@ -122,6 +126,8 @@ game:
     soulQuit: false
   eldritch:
     killShenk: true
+  summoner:
+  killFireEye: false
   leveling:
     ensurePointsAllocation: true # Bot will allocate skill and stat points by itself or perform stat/skill reset. Set to false if you do NOT want it
     ensureKeyBinding: true       # Bot will set key bindings by itself. Set to false if you want to do it manually

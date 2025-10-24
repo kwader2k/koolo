@@ -2,9 +2,11 @@ package action
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -13,6 +15,26 @@ import (
 
 func ClearAreaAroundPlayer(radius int, filter data.MonsterFilter) error {
 	return ClearAreaAroundPosition(context.Get().Data.PlayerUnit.Position, radius, filter)
+}
+
+func IsPriorityMonster(m data.Monster) bool {
+	priorityMonsters := []npc.ID{
+		npc.FallenShaman,
+		npc.CarverShaman,
+		npc.DevilkinShaman,
+		npc.DarkShaman,
+		npc.WarpedShaman,
+		npc.MummyGenerator,
+		npc.BaalSubjectMummy,
+		npc.FetishShaman,
+	}
+
+	for _, priorityMonster := range priorityMonsters {
+		if m.Name == priorityMonster {
+			return true
+		}
+	}
+	return false
 }
 
 func ClearAreaAroundPosition(pos data.Position, radius int, filter data.MonsterFilter) error {
@@ -26,15 +48,43 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filter data.MonsterF
 	defer ctx.EnableItemPickup()
 
 	return ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		for _, m := range d.Monsters.Enemies(filter) {
+		enemies := d.Monsters.Enemies(filter)
+
+		sort.Slice(enemies, func(i, j int) bool {
+			monsterI := enemies[i]
+			monsterJ := enemies[j]
+
+			isPriorityI := IsPriorityMonster(monsterI)
+			isPriorityJ := IsPriorityMonster(monsterJ)
+
+			distanceI := ctx.PathFinder.DistanceFromMe(monsterI.Position)
+			distanceJ := ctx.PathFinder.DistanceFromMe(monsterJ.Position)
+
+			if isPriorityI && !isPriorityJ {
+				return true
+			} else if !isPriorityI && isPriorityJ {
+				return false
+			}
+
+			return distanceI < distanceJ
+		})
+
+		for _, m := range enemies {
 			distanceToTarget := pather.DistanceFromPoint(pos, m.Position)
-			hasDoorBetween, _ := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position)
-			if ctx.Data.AreaData.IsWalkable(m.Position) && distanceToTarget <= radius && (ctx.Data.CanTeleport() || !hasDoorBetween) {
-				return m.UnitID, true
+			if ctx.Data.AreaData.IsWalkable(m.Position) && distanceToTarget <= radius {
+				validEnemy := true
+				if !ctx.Data.CanTeleport() {
+					if hasDoorBetween, _ := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position); hasDoorBetween {
+						validEnemy = false
+					}
+				}
+				if validEnemy {
+					return m.UnitID, true
+				}
 			}
 		}
 
-		return 0, false
+		return data.UnitID(0), false
 	}, nil)
 }
 

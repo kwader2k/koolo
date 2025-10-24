@@ -142,7 +142,9 @@ document.addEventListener('DOMContentLoaded', function () {
     const sorceressLevelingOptions = document.querySelector('.sorceress_leveling-options');
 	const runewordSearchInput = document.getElementById('search-runewords');
     const useTeleportCheckbox = document.getElementById('characterUseTeleport');
+    const useExtraBuffsCheckbox = document.getElementById('characterUseExtraBuffs');
     const clearPathDistContainer = document.getElementById('clearPathDistContainer');
+    const useExtraBuffsDistContainer = document.getElementById('useExtraBuffsDistContainer');
     const clearPathDistInput = document.getElementById('clearPathDist');
     const clearPathDistValue = document.getElementById('clearPathDistValue');
 
@@ -195,6 +197,15 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }
+    function toggleUseExtraBuffsVisibility() {
+        if (useExtraBuffsCheckbox && useExtraBuffsDistContainer) {
+            if (useExtraBuffsCheckbox.checked) {
+                useExtraBuffsDistContainer.style.display = 'block';
+            } else {
+                useExtraBuffsDistContainer.style.display = 'none';
+            }
+        }
+    }
 
     // Update the displayed value when the slider changes
     function updateClearPathValue() {
@@ -208,6 +219,13 @@ document.addEventListener('DOMContentLoaded', function () {
         useTeleportCheckbox.addEventListener('change', toggleClearPathVisibility);
         // Initialize visibility
         toggleClearPathVisibility();
+    }
+
+    // Set up event listeners
+    if (useExtraBuffsCheckbox) {
+        useExtraBuffsCheckbox.addEventListener('change', toggleUseExtraBuffsVisibility);
+        // Initialize visibility
+        toggleUseExtraBuffsVisibility();
     }
 
     if (clearPathDistInput) {

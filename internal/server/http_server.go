@@ -47,6 +47,7 @@ type HttpServer struct {
 	manager   *bot.SupervisorManager
 	templates *template.Template
 	wsServer  *WebSocketServer
+	pickitAPI *PickitAPI
 }
 
 var (
@@ -238,18 +239,25 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 		return nil, err
 	}
 
-	// Pre-execute templates to cache them (optional but faster)
-	for _, tmpl := range templates.Templates() {
-		if tmpl.Name() != "" {
-			var buf bytes.Buffer
-			_ = tmpl.Execute(&buf, nil) // Warm up the cache
-		}
-	}
+// Pre-execute templates to cache them (optional but faster)
+for _, tmpl := range templates.Templates() {
+    if tmpl.Name() != "" {
+        var buf bytes.Buffer
+        _ = tmpl.Execute(&buf, nil) // Warm up the cache
+    }
+}
+
+// Debug: List all loaded templates
+logger.Info("Loaded templates:")
+for _, t := range templates.Templates() {
+    logger.Info("  - " + t.Name())
+}
 
 	return &HttpServer{
 		logger:    logger,
 		manager:   manager,
 		templates: templates,
+		pickitAPI: NewPickitAPI(),
 	}, nil
 }
 
@@ -460,8 +468,6 @@ func (s *HttpServer) getStatusData() IndexData {
 			if v, ok := data.PlayerUnit.FindStat(stat.MagicFind, 0); ok {
 				mf = v.Value
 			}
-			// Total gold from inventory and private stash
-			gold = data.PlayerUnit.TotalPlayerGold()
 			if v, ok := data.PlayerUnit.FindStat(stat.GoldFind, 0); ok {
 				gf = v.Value
 			}
@@ -610,6 +616,29 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/companion-join", s.companionJoin) // Companion join handler
 	http.HandleFunc("/reset-muling", s.resetMuling)
 
+	// Pickit Editor routes
+	http.HandleFunc("/pickit-editor", s.pickitEditorPage)
+	http.HandleFunc("/api/pickit/items", s.pickitAPI.handleGetItems)
+	http.HandleFunc("/api/pickit/items/search", s.pickitAPI.handleSearchItems)
+	http.HandleFunc("/api/pickit/items/categories", s.pickitAPI.handleGetCategories)
+	http.HandleFunc("/api/pickit/stats", s.pickitAPI.handleGetStats)
+	http.HandleFunc("/api/pickit/templates", s.pickitAPI.handleGetTemplates)
+	http.HandleFunc("/api/pickit/presets", s.pickitAPI.handleGetPresets)
+	http.HandleFunc("/api/pickit/rules", s.pickitAPI.handleGetRules)
+	http.HandleFunc("/api/pickit/rules/create", s.pickitAPI.handleCreateRule)
+	http.HandleFunc("/api/pickit/rules/update", s.pickitAPI.handleUpdateRule)
+	http.HandleFunc("/api/pickit/rules/delete", s.pickitAPI.handleDeleteRule)
+	http.HandleFunc("/api/pickit/rules/validate", s.pickitAPI.handleValidateRule)
+	http.HandleFunc("/api/pickit/rules/validate-nip", s.pickitAPI.handleValidateNIPLine)
+	http.HandleFunc("/api/pickit/files", s.pickitAPI.handleGetFiles)
+	http.HandleFunc("/api/pickit/files/import", s.pickitAPI.handleImportFile)
+	http.HandleFunc("/api/pickit/files/export", s.pickitAPI.handleExportFile)
+	http.HandleFunc("/api/pickit/files/rules/delete", s.pickitAPI.handleDeleteFileRule)
+	http.HandleFunc("/api/pickit/files/rules/update", s.pickitAPI.handleUpdateFileRule)
+	http.HandleFunc("/api/pickit/files/rules/append", s.pickitAPI.handleAppendNIPLine)
+	http.HandleFunc("/api/pickit/browse-folder", s.pickitAPI.handleBrowseFolder)
+	http.HandleFunc("/api/pickit/simulate", s.pickitAPI.handleSimulate)
+
 	assets, _ := fs.Sub(assetsFS, "assets")
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
 
@@ -690,6 +719,23 @@ func (s *HttpServer) debugData(w http.ResponseWriter, r *http.Request) {
 
 func (s *HttpServer) debugHandler(w http.ResponseWriter, r *http.Request) {
 	s.templates.ExecuteTemplate(w, "debug.gohtml", nil)
+}
+
+func (s *HttpServer) pickitEditorPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+
+	// Try without templates/ prefix first (like debug.gohtml)
+	err := s.templates.ExecuteTemplate(w, "pickit_editor.gohtml", nil)
+	if err != nil {
+		// If that fails, log what templates we have
+		s.logger.Error("Failed to execute pickit_editor template", "error", err)
+		s.logger.Info("Available templates:")
+		for _, t := range s.templates.Templates() {
+			s.logger.Info("  - " + t.Name())
+		}
+		http.Error(w, fmt.Sprintf("Template error: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
@@ -977,6 +1023,8 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		newConfig.Discord.EnableRunFinishMessages = r.Form.Has("enable_run_finish_messages")
 		newConfig.Discord.EnableDiscordChickenMessages = r.Form.Has("enable_discord_chicken_messages")
 		newConfig.Discord.EnableDiscordErrorMessages = r.Form.Has("enable_discord_error_messages")
+		newConfig.Discord.Token = r.Form.Get("discord_token")
+		newConfig.Discord.ChannelID = r.Form.Get("discord_channel_id")
 
 		// Discord admins who can use bot commands
 		discordAdmins := r.Form.Get("discord_admins")
@@ -1117,6 +1165,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Character.Class = r.Form.Get("characterClass")
 		cfg.Character.StashToShared = r.Form.Has("characterStashToShared")
 		cfg.Character.UseTeleport = r.Form.Has("characterUseTeleport")
+		cfg.Character.UseExtraBuffs = r.Form.Has("characterUseExtraBuffs")
+		cfg.Character.BuffOnNewArea = r.Form.Has("characterBuffOnNewArea")
+		cfg.Character.BuffAfterWP = r.Form.Has("characterBuffAfterWP")
 
 		// Process ClearPathDist - only relevant when teleport is disabled
 		if !cfg.Character.UseTeleport {
@@ -1176,6 +1227,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.MosaicSin.UseFistsOfFire = r.Form.Has("mosaicUseFistsOfFire")
 		}
 
+		// Blizzard Sorc specific options
 		if cfg.Character.Class == "sorceress" {
 			cfg.Character.BlizzardSorceress.UseMoatTrick = r.Form.Has("useMoatTrick")
 			cfg.Character.BlizzardSorceress.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
@@ -1186,6 +1238,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.SorceressLeveling.UseMoatTrick = r.Form.Has("useMoatTrick")
 			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
 		}
+
 		for y, row := range cfg.Inventory.InventoryLock {
 			for x := range row {
 				if r.Form.Has(fmt.Sprintf("inventoryLock[%d][%d]", y, x)) {
@@ -1210,6 +1263,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.UseCentralizedPickit = r.Form.Has("useCentralizedPickit")
 		cfg.Game.UseCainIdentify = r.Form.Has("useCainIdentify")
 		cfg.Game.InteractWithShrines = r.Form.Has("interactWithShrines")
+		cfg.Game.InteractWithChests = r.Form.Has("interactWithChests")
 		cfg.Game.StopLevelingAt, _ = strconv.Atoi(r.Form.Get("stopLevelingAt"))
 		cfg.Game.IsNonLadderChar = r.Form.Has("isNonLadderChar")
 
@@ -1246,23 +1300,34 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		cfg.Game.StonyTomb.OpenChests = r.Form.Has("gameStonytombOpenChests")
 		cfg.Game.StonyTomb.FocusOnElitePacks = r.Form.Has("gameStonytombFocusOnElitePacks")
+
 		cfg.Game.AncientTunnels.OpenChests = r.Form.Has("gameAncientTunnelsOpenChests")
 		cfg.Game.AncientTunnels.FocusOnElitePacks = r.Form.Has("gameAncientTunnelsFocusOnElitePacks")
+
 		cfg.Game.Duriel.UseThawing = r.Form.Has("gameDurielUseThawing")
+
 		cfg.Game.Mausoleum.OpenChests = r.Form.Has("gameMausoleumOpenChests")
 		cfg.Game.Mausoleum.FocusOnElitePacks = r.Form.Has("gameMausoleumFocusOnElitePacks")
+
 		cfg.Game.DrifterCavern.OpenChests = r.Form.Has("gameDrifterCavernOpenChests")
 		cfg.Game.DrifterCavern.FocusOnElitePacks = r.Form.Has("gameDrifterCavernFocusOnElitePacks")
+
 		cfg.Game.SpiderCavern.OpenChests = r.Form.Has("gameSpiderCavernOpenChests")
 		cfg.Game.SpiderCavern.FocusOnElitePacks = r.Form.Has("gameSpiderCavernFocusOnElitePacks")
+
 		cfg.Game.ArachnidLair.OpenChests = r.Form.Has("gameArachnidLairOpenChests")
 		cfg.Game.ArachnidLair.FocusOnElitePacks = r.Form.Has("gameArachnidLairFocusOnElitePacks")
+
 		cfg.Game.Mephisto.KillCouncilMembers = r.Form.Has("gameMephistoKillCouncilMembers")
 		cfg.Game.Mephisto.OpenChests = r.Form.Has("gameMephistoOpenChests")
 		cfg.Game.Mephisto.ExitToA4 = r.Form.Has("gameMephistoExitToA4")
+
 		cfg.Game.Tristram.ClearPortal = r.Form.Has("gameTristramClearPortal")
 		cfg.Game.Tristram.FocusOnElitePacks = r.Form.Has("gameTristramFocusOnElitePacks")
+		cfg.Game.Tristram.OnlyFarmRejuvs = r.Form.Has("gameTristramOnlyFarmRejuvs")
+
 		cfg.Game.Nihlathak.ClearArea = r.Form.Has("gameNihlathakClearArea")
+		cfg.Game.Summoner.KillFireEye = r.Form.Has("gameSummonerKillFireEye")
 
 		cfg.Game.Baal.KillBaal = r.Form.Has("gameBaalKillBaal")
 		cfg.Game.Baal.DollQuit = r.Form.Has("gameBaalDollQuit")
@@ -1271,7 +1336,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Baal.OnlyElites = r.Form.Has("gameBaalOnlyElites")
 
 		cfg.Game.Eldritch.KillShenk = r.Form.Has("gameEldritchKillShenk")
+
 		cfg.Game.LowerKurastChest.OpenRacks = r.Form.Has("gameLowerKurastChestOpenRacks")
+
 		cfg.Game.Diablo.StartFromStar = r.Form.Has("gameDiabloStartFromStar")
 		cfg.Game.Diablo.KillDiablo = r.Form.Has("gameDiabloKillDiablo")
 		cfg.Game.Diablo.FocusOnElitePacks = r.Form.Has("gameDiabloFocusOnElitePacks")
@@ -1288,6 +1355,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			}
 			cfg.Game.Diablo.AttackFromDistance = attackFromDistance
 		}
+
 		cfg.Game.Leveling.EnsurePointsAllocation = r.Form.Has("gameLevelingEnsurePointsAllocation")
 		cfg.Game.Leveling.EnsureKeyBinding = r.Form.Has("gameLevelingEnsureKeyBinding")
 		cfg.Game.Leveling.AutoEquip = r.Form.Has("gameLevelingAutoEquip")
@@ -1555,6 +1623,3 @@ func (s *HttpServer) resetDroplogs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "dir": dir, "removed": removed})
 }
-
-
-

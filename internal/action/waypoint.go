@@ -68,6 +68,11 @@ func WayPoint(dest area.ID) error {
 		return fmt.Errorf("failed to reach destination area %s using waypoint", area.Areas[dest].Name)
 	}
 
+	// apply buffs after exiting a waypoint if configured
+	if ctx.CharacterCfg.Character.BuffAfterWP {
+		Buff()
+	}
+
 	return nil
 }
 func useWP(dest area.ID) error {

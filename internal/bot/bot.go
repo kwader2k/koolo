@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"math"
 	"sync"
 	"time"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/run"
+	"github.com/hectorgimenez/koolo/internal/utils"
 
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"golang.org/x/sync/errgroup"
@@ -29,13 +29,6 @@ type Bot struct {
 	lastKnownPosition     data.Position
 	lastPositionCheckTime time.Time
 	MuleManager
-}
-
-// calculateDistance returns the Euclidean distance between two positions.
-func calculateDistance(p1, p2 data.Position) float64 {
-	dx := float64(p1.X - p2.X)
-	dy := float64(p1.Y - p2.Y)
-	return math.Sqrt(dx*dx + dy*dy)
 }
 
 func (b *Bot) NeedsTPsToContinue() bool {
@@ -158,7 +151,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 				// Check for position-based long-term idle
 				if currentPosition != (data.Position{}) && lastKnownPos != (data.Position{}) { // Ensure valid positions
-					distanceFromLastKnown := calculateDistance(lastKnownPos, currentPosition)
+					distanceFromLastKnown := utils.CalculateDistance(lastKnownPos, currentPosition)
 
 					if distanceFromLastKnown > float64(minMovementThreshold) {
 						// Player has moved significantly, reset position-based idle timer
@@ -207,6 +200,8 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					continue
 				}
 
+				_, isLevelingChar := b.ctx.Char.(botCtx.LevelingCharacter)
+
 				// Update activity for high-priority actions as they indicate bot is processing.
 				b.updateActivityAndPosition()
 
@@ -243,7 +238,15 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 				// Perform item pickup if enabled
 				if b.ctx.CurrentGame.PickupItems {
-					action.ItemPickup(30)
+					canPickup := true
+					if isLevelingChar {
+						if enemyFound, _ := action.IsAnyEnemyAroundPlayer(max(b.ctx.CharacterCfg.Character.ClearPathDist*2, 30)); enemyFound {
+							canPickup = false
+						}
+					}
+					if canPickup {
+						action.ItemPickup(30)
+					}
 				}
 				action.BuffIfRequired()
 

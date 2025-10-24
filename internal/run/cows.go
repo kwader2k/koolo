@@ -75,9 +75,12 @@ func (a Cows) Run() error {
 		if err != nil {
 			return err
 		}
+
+		utils.Sleep(500)
 		// Sell junk, refill potions, etc. (basically ensure space for getting the TP tome)
 		action.PreRun(false)
 
+		utils.Sleep(500)
 		err = a.preparePortal()
 		if err != nil {
 			return err
@@ -142,9 +145,18 @@ func (a Cows) getWirtsLeg() error {
 	if !found {
 		return errors.New("wirt corpse not found")
 	}
+
+	if err := action.MoveToCoords(wirtCorpse.Position); err != nil {
+		return err
+	}
+
 	err = action.InteractObject(wirtCorpse, func() bool {
 		return a.hasWirtsLeg()
 	})
+
+	if err != nil {
+		return err
+	}
 
 	return action.ReturnTown()
 }
@@ -165,13 +177,20 @@ func (a Cows) preparePortal() error {
 
 	// Track if we found a usable spare tome
 	var spareTome data.Item
-
+	tomeCount := 0
 	// Look for an existing spare tome (not in locked inventory slots)
 	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if strings.EqualFold(string(itm.Name), item.TomeOfTownPortal) && !action.IsInLockedInventorySlot(itm) {
-			spareTome = itm
-			break
+		if strings.EqualFold(string(itm.Name), item.TomeOfTownPortal) {
+			tomeCount++
+			if !action.IsInLockedInventorySlot(itm) {
+				spareTome = itm
+			}
 		}
+	}
+
+	//Only 1 tome in inventory, buy one
+	if tomeCount <= 1 {
+		spareTome = data.Item{}
 	}
 
 	// If no spare tome found, buy a new one
@@ -222,13 +241,16 @@ func (a Cows) cleanupExtraPortalTomes() error {
 			}
 		}
 
-		// Only drop extra unprotected tomes if we have any
-		if len(unprotectedTomes) > 0 {
-			a.ctx.Logger.Info("Extra TomeOfTownPortal found - dropping it")
-			for i := 0; i < len(unprotectedTomes); i++ {
-				err := action.DropInventoryItem(unprotectedTomes[i])
-				if err != nil {
-					return err
+		//Do not drop any tome if only 1 in inventory
+		if len(protectedTomes)+len(unprotectedTomes) > 1 {
+			// Only drop extra unprotected tomes if we have any
+			if len(unprotectedTomes) > 0 {
+				a.ctx.Logger.Info("Extra TomeOfTownPortal found - dropping it")
+				for i := 0; i < len(unprotectedTomes); i++ {
+					err := action.DropInventoryItem(unprotectedTomes[i])
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}

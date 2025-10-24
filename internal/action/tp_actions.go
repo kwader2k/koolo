@@ -53,11 +53,16 @@ func ReturnTown() error {
 		return errors.New("portal not found")
 	}
 
+	if err := step.MoveTo(portal.Position, step.WithIgnoreMonsters()); err != nil {
+		return err
+	}
+
 	initialInteractionErr := InteractObject(portal, func() bool {
 		// Check for death during interaction callback
 		if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
 			return false // Returning false will stop the interaction loop, and the error will be caught outside
 		}
+
 		return ctx.Data.PlayerUnit.Area.IsTown()
 	})
 
