@@ -48,6 +48,7 @@ health: # Healing configuration, all values in %
   mercHealingPotionAt: 80
   mercRejuvPotionAt: 30
   chickenAt: 30
+  townChickenAt: 0
   mercChickenAt: 10
 
 inventory:

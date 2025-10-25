@@ -356,10 +356,16 @@
                 <label>
                     Rejuv at (% of mana)
                     <input type="number" name="rejuvPotionAtMana" min="0" max="99" placeholder="{{ .Config.Health.RejuvPotionAtMana }}" value="{{ .Config.Health.RejuvPotionAtMana }}"/>
-                </label>
+                </label>       
                 <label>
                     Chicken at (%)
-                    <input type="number" name="chickenAt" min="0" max="99" placeholder="{{ .Config.Health.ChickenAt }}" value="{{ .Config.Health.ChickenAt }}"/>
+                    <input type="number" name="chickenAt" min="0" max="99" placeholder="{{ .Config.Health.ChickenAt }}"
+                           value="{{ .Config.Health.ChickenAt }}"/>
+                </label>
+                <label>
+                    Town Chicken at (%)
+                    <input type="number" name="townChickenAt" min="0" max="99" placeholder="{{ .Config.Health.TownChickenAt }}"
+                           value="{{ .Config.Health.TownChickenAt }}"/>
                 </label>
             </fieldset>
             <h4>Belt Layout</h4><br>

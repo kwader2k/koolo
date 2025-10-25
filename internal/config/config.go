@@ -110,6 +110,7 @@ type CharacterCfg struct {
 		MercHealingPotionAt int `yaml:"mercHealingPotionAt"`
 		MercRejuvPotionAt   int `yaml:"mercRejuvPotionAt"`
 		ChickenAt           int `yaml:"chickenAt"`
+		TownChickenAt       int `yaml:"townChickenAt"`
 		MercChickenAt       int `yaml:"mercChickenAt"`
 	} `yaml:"health"`
 	Inventory struct {

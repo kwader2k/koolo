@@ -19,6 +19,14 @@ func checkPlayerDeathForTP(ctx *context.Status) error {
 	if ctx.Data.PlayerUnit.HPPercent() <= 0 {
 		return health.ErrDied
 	}
+	// Player chicken check
+	if ctx.Data.PlayerUnit.HPPercent() <= ctx.Data.CharacterCfg.Health.ChickenAt {
+		return health.ErrChicken
+	}
+	// Mercenary chicken check
+	if ctx.Data.MercHPPercent() > 0 && ctx.Data.MercHPPercent() <= ctx.Data.CharacterCfg.Health.MercChickenAt {
+		return health.ErrMercChicken
+	}
 	return nil
 }
 
@@ -65,6 +73,10 @@ func ReturnTown() error {
 
 		return ctx.Data.PlayerUnit.Area.IsTown()
 	})
+
+	if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
+		return errCheck // Returning false will stop the interaction loop, and the error will be caught outside
+	}
 
 	if initialInteractionErr != nil {
 		ctx.Logger.Debug("Initial portal interaction failed, attempting to clear area.", "error", initialInteractionErr)
