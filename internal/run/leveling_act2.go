@@ -66,10 +66,11 @@ func (a Leveling) act2() error {
 	}
 
 	// Gold Farming Logic (and immediate return if farming is needed)
-	if action.IsLowGold() || a.ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
-		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
+	if action.IsLowGold() {
+		switch a.ctx.CharacterCfg.Game.Difficulty {
+		case difficulty.Normal:
 			return NewQuests().killRadamentQuest()
-		} else {
+		case difficulty.Hell:
 			NewMausoleum().Run()
 			err := action.WayPoint(area.LutGholein)
 			if err != nil {

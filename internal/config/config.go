@@ -262,6 +262,10 @@ type CharacterCfg struct {
 			AutoEquip                bool     `yaml:"autoEquip"`
 			AutoEquipFromSharedStash bool     `yaml:"autoEquipFromSharedStash"`
 			EnableRunewordMaker      bool     `yaml:"enableRunewordMaker"`
+			NightmareRequiredLevel   int      `yaml:"nightmareRequiredLevel"`
+			HellRequiredLevel        int      `yaml:"hellRequiredLevel"`
+			HellRequiredFireRes      int      `yaml:"hellRequiredFireRes"`
+			HellRequiredLightRes     int      `yaml:"hellRequiredLightRes"`
 			EnabledRunewordRecipes   []string `yaml:"enabledRunewordRecipes"`
 		} `yaml:"leveling"`
 		Quests struct {

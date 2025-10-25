@@ -64,49 +64,6 @@ func (a Leveling) act5() error {
 	// If we reach this point, it means gold is sufficient, and we skip farming for this run.
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
-	// Use a flag to indicate if difficulty was changed and needs saving
-	difficultyChanged := false
-
-	// Logic for Act5EveOfDestruction quest completion
-	if a.ctx.Data.Quests[quest.Act5EveOfDestruction].Completed() {
-
-		a.ctx.Logger.Info("Eve of Destruction completed")
-
-		currentDifficulty := a.ctx.CharacterCfg.Game.Difficulty
-		switch currentDifficulty {
-		case difficulty.Normal:
-			if lvl.Value >= 41 {
-				a.ctx.CharacterCfg.Game.Difficulty = difficulty.Nightmare
-				difficultyChanged = true
-			}
-		case difficulty.Nightmare:
-			// Get current FireResist and LightningResist values using FindStat on PlayerUnit
-			rawFireRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.FireResist, 0)
-			rawLightRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.LightningResist, 0)
-
-			// Apply Nightmare difficulty penalty (-40) to resistances for effective values
-			effectiveFireRes := rawFireRes.Value - 40
-			effectiveLightRes := rawLightRes.Value - 40
-
-			// Check conditions using effective resistance values
-			if lvl.Value >= 70 && effectiveFireRes >= 75 && effectiveLightRes >= 50 {
-				a.ctx.CharacterCfg.Game.Difficulty = difficulty.Hell
-
-				difficultyChanged = true
-			}
-		}
-
-		if difficultyChanged {
-			a.ctx.Logger.Info("Difficulty changed to %s. Saving character configuration...", a.ctx.CharacterCfg.Game.Difficulty)
-			// Use the new ConfigFolderName field here!
-			if err := config.SaveSupervisorConfig(a.ctx.CharacterCfg.ConfigFolderName, a.ctx.CharacterCfg); err != nil {
-				a.ctx.Logger.Error("Failed to save character configuration: %s", err.Error())
-				return fmt.Errorf("failed to save character configuration: %w", err)
-			}
-			return nil
-		}
-	}
-
 	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && lvl.Value < 60 || a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && lvl.Value < 30 {
 
 		diabloRun := NewDiablo()

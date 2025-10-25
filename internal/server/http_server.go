@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"io/fs"
 	"log/slog"
+	"math"
 	"net/http"
 	"reflect"
 	"slices"
@@ -1313,23 +1314,16 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Diablo.KillDiablo = r.Form.Has("gameDiabloKillDiablo")
 		cfg.Game.Diablo.FocusOnElitePacks = r.Form.Has("gameDiabloFocusOnElitePacks")
 		cfg.Game.Diablo.DisableItemPickupDuringBosses = r.Form.Has("gameDiabloDisableItemPickupDuringBosses")
-		attackFromDistance, err := strconv.Atoi(r.Form.Get("gameDiabloAttackFromDistance"))
-		if err != nil {
-			s.logger.Warn("Invalid Attack From Distance value, setting to default",
-				slog.String("error", err.Error()),
-				slog.Int("default", 0))
-			cfg.Game.Diablo.AttackFromDistance = 0 // 0 will not reposition
-		} else {
-			if attackFromDistance > 25 {
-				attackFromDistance = 25
-			}
-			cfg.Game.Diablo.AttackFromDistance = attackFromDistance
-		}
-
+		cfg.Game.Diablo.AttackFromDistance = s.getIntFromForm(r, "gameLevelingHellRequiredFireRes", 0, 25, 0)
 		cfg.Game.Leveling.EnsurePointsAllocation = r.Form.Has("gameLevelingEnsurePointsAllocation")
 		cfg.Game.Leveling.EnsureKeyBinding = r.Form.Has("gameLevelingEnsureKeyBinding")
 		cfg.Game.Leveling.AutoEquip = r.Form.Has("gameLevelingAutoEquip")
 		cfg.Game.Leveling.AutoEquipFromSharedStash = r.Form.Has("gameLevelingAutoEquipFromSharedStash")
+		cfg.Game.Leveling.NightmareRequiredLevel = s.getIntFromForm(r, "gameLevelingNightmareRequiredLevel", 1, 99, 41)
+		cfg.Game.Leveling.HellRequiredLevel = s.getIntFromForm(r, "gameLevelingNightmareRequiredLevel", 1, 99, 70)
+		cfg.Game.Leveling.HellRequiredFireRes = s.getIntFromForm(r, "gameLevelingHellRequiredFireRes", -100, 75, 15)
+		cfg.Game.Leveling.HellRequiredLightRes = s.getIntFromForm(r, "gameLevelingHellRequiredLightRes", -100, 75, -10)
+
 		// Socket Recipes
 		cfg.Game.Leveling.EnableRunewordMaker = r.Form.Has("gameLevelingEnableRunewordMaker")
 		enabledRunewordRecipes := r.Form["gameLevelingEnabledRunewordRecipes"]
@@ -1592,4 +1586,18 @@ func (s *HttpServer) resetDroplogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"status": "ok", "dir": dir, "removed": removed})
+}
+
+func (s *HttpServer) getIntFromForm(r *http.Request, param string, min int, max int, defaultValue int) int {
+	result := defaultValue
+	paramValue, err := strconv.Atoi(r.Form.Get(param))
+	if err != nil {
+		s.logger.Warn("Invalid form value, setting to default",
+			slog.String("parameter", param),
+			slog.String("error", err.Error()),
+			slog.Int("default", 0))
+	} else {
+		result = int(math.Max(math.Min(float64(paramValue), float64(max)), float64(min)))
+	}
+	return result
 }

@@ -161,6 +161,22 @@
         <label><input type="checkbox" name="gameLevelingEnsureKeyBinding" {{ if .Config.Game.Leveling.EnsureKeyBinding }}checked{{ end }}> Automatically bind skills</label>
         <label><input type="checkbox" name="gameLevelingAutoEquip" {{ if .Config.Game.Leveling.AutoEquip }}checked{{ end }}> Automatically equip better items</label>
         <label><input type="checkbox" name="gameLevelingAutoEquipFromSharedStash" {{ if .Config.Game.Leveling.AutoEquipFromSharedStash }}checked{{ end }}> AutoEquip items from Shared Stash</label>
+        <label>
+            Nightmare Level requirement :
+            <input type="number" name="gameLevelingNightmareRequiredLevel" value="{{ .Config.Game.Leveling.NightmareRequiredLevel }}" min="0" max="99">
+        </label>
+        <label>
+            Hell Level requirement :
+            <input type="number" name="gameLevelingHellRequiredLevel" value="{{ .Config.Game.Leveling.HellRequiredLevel }}" min="0" max="99">
+        </label>
+        <label>
+            Hell Fire Res requirement :
+            <input type="number" name="gameLevelingHellRequiredFireRes" value="{{ .Config.Game.Leveling.HellRequiredFireRes }}" min="-100" max="75">
+        </label>
+        <label>
+            Hell Light Res requirement :
+            <input type="number" name="gameLevelingHellRequiredLightRes" value="{{ .Config.Game.Leveling.HellRequiredLightRes }}" min="-100" max="75">
+        </label>
     </fieldset>
 {{ end }}
 

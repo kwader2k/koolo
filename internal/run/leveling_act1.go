@@ -194,6 +194,10 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation = true
 	a.ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding = true
 	a.ctx.CharacterCfg.Game.Leveling.AutoEquip = true
+	a.ctx.CharacterCfg.Game.Leveling.NightmareRequiredLevel = 41
+	a.ctx.CharacterCfg.Game.Leveling.HellRequiredLevel = 70
+	a.ctx.CharacterCfg.Game.Leveling.HellRequiredFireRes = 15
+	a.ctx.CharacterCfg.Game.Leveling.HellRequiredLightRes = -10
 	a.ctx.CharacterCfg.Game.Leveling.EnableRunewordMaker = true
 	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
 	a.ctx.CharacterCfg.Character.UseTeleport = true
@@ -252,6 +256,17 @@ func (a Leveling) AdjustDifficultyConfig() {
 	//Let setupLevelOneConfig do the initial setup
 	if lvl.Value == 1 {
 		return
+	}
+
+	//Values have never been set (or user is dumb), reset to default
+	if a.ctx.CharacterCfg.Game.Leveling.NightmareRequiredLevel <= 1 &&
+		a.ctx.CharacterCfg.Game.Leveling.HellRequiredLevel == 1 &&
+		a.ctx.CharacterCfg.Game.Leveling.HellRequiredFireRes == 0 &&
+		a.ctx.CharacterCfg.Game.Leveling.HellRequiredLightRes == 0 {
+		a.ctx.CharacterCfg.Game.Leveling.NightmareRequiredLevel = 41
+		a.ctx.CharacterCfg.Game.Leveling.HellRequiredLevel = 70
+		a.ctx.CharacterCfg.Game.Leveling.HellRequiredFireRes = 15
+		a.ctx.CharacterCfg.Game.Leveling.HellRequiredLightRes = -10
 	}
 
 	if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
