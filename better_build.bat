@@ -4,6 +4,10 @@ setlocal enabledelayedexpansion
 :: Preserve UI and critical packages
 set GOGARBLE=!github.com/hectorgimenez/koolo/internal/server*,!github.com/hectorgimenez/koolo/internal/event*,!github.com/inkeliz/gowebview*
 
+:: Required versions
+set REQUIRED_GO_VERSION=1.24
+set REQUIRED_GARBLE_VERSION=0.14.2
+
 :: Change to the script's directory
 cd /d "%~dp0"
 
@@ -11,12 +15,17 @@ call :print_header "Starting Koolo Build Process"
 
 :: Check for Go installation
 call :check_go_installation
+if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
+
+:: Check for Garble installation
+call :check_garble_installation
+if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
 
 :: Main script execution
 call :main
 if !errorlevel! neq 0 (
     call :print_error "Build process failed with error code !errorlevel!"
-    exit /b !errorlevel!
+    call :pause_and_exit !errorlevel!
 )
 echo.
 powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
@@ -34,11 +43,88 @@ if %errorlevel% neq 0 (
         call :install_go_with_chocolatey
     ) else (
         call :print_info "Please install Go manually and run this script again."
-        exit /b 1
+        call :pause_and_exit 1
     )
 ) else (
-    for /f "tokens=3" %%v in ('go version') do set go_version=%%v
-    call :print_success "Go version !go_version! is installed."
+    :: Extract Go version and check if it matches required version
+    for /f "tokens=3" %%v in ('go version') do set go_version_full=%%v
+    set go_version=!go_version_full:go=!
+    
+    :: Extract major.minor version (e.g., 1.24 from 1.24.3)
+    for /f "tokens=1,2 delims=." %%a in ("!go_version!") do set go_major_minor=%%a.%%b
+    
+    if "!go_major_minor!"=="%REQUIRED_GO_VERSION%" (
+        call :print_success "Go version !go_version! is installed."
+    ) else (
+        call :print_warning "You are currently using Go version !go_version!"
+        call :print_warning "The recommended version for this build is Go %REQUIRED_GO_VERSION%"
+        call :print_info "Please consider downloading Go %REQUIRED_GO_VERSION% from https://golang.org/dl/"
+        call :print_info "Using a different Go version may cause compatibility issues."
+        echo.
+        call :get_user_input "Do you want to continue anyway? (Y/N) " continue_with_go
+        if /i "!continue_with_go!" neq "Y" (
+            call :print_info "Build process cancelled. Please install Go %REQUIRED_GO_VERSION% and try again."
+            call :pause_and_exit 1
+        )
+    )
+)
+if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
+goto :eof
+
+:check_garble_installation
+call :print_info "Checking if Garble is installed"
+where garble >nul 2>&1
+if %errorlevel% neq 0 (
+    call :print_error "Garble is not installed or not in the system PATH."
+    call :print_info "You can install Garble using: go install mvdan.cc/garble@v%REQUIRED_GARBLE_VERSION%"
+    call :get_user_input "Do you want to attempt automatic installation? (Y/N) " install_garble
+    if /i "!install_garble!"=="Y" (
+        call :install_garble
+    ) else (
+        call :print_info "Please install Garble manually and run this script again."
+        call :pause_and_exit 1
+    )
+) else (
+    :: Check Garble version
+    for /f "tokens=1,2" %%a in ('garble version 2^>^&1') do (
+        if "%%a"=="mvdan.cc/garble" set garble_version_with_v=%%b
+    )
+    
+    :: Remove the 'v' prefix
+    set garble_version=!garble_version_with_v:~1!
+    
+    :: Extract exact version
+    for /f "tokens=1,2,3 delims=." %%a in ("!garble_version!") do set garble_major_minor=%%a.%%b.%%c
+    
+    if "!garble_major_minor!"=="%REQUIRED_GARBLE_VERSION%" (
+        call :print_success "Garble version !garble_version! is installed."
+    ) else (
+        call :print_warning "You are currently using Garble version !garble_version!"
+        call :print_warning "The recommended version for this build is Garble %REQUIRED_GARBLE_VERSION%"
+        call :print_info "Please consider installing Garble %REQUIRED_GARBLE_VERSION% using:"
+        call :print_info "go install mvdan.cc/garble@v%REQUIRED_GARBLE_VERSION%"
+        call :print_info "Using a different Garble version may cause build issues."
+        echo.
+        call :get_user_input "Do you want to continue anyway? (Y/N) " continue_with_garble
+        if /i "!continue_with_garble!" neq "Y" (
+            call :print_info "Build process cancelled. Please install Garble %REQUIRED_GARBLE_VERSION% and try again."
+            call :pause_and_exit 1
+        )
+    )
+)
+if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
+goto :eof
+
+:install_garble
+call :print_step "Attempting to install Garble %REQUIRED_GARBLE_VERSION%..."
+go install mvdan.cc/garble@v%REQUIRED_GARBLE_VERSION% >nul 2>&1
+where garble >nul 2>&1
+if %errorlevel% neq 0 (
+    call :print_error "Failed to install Garble. Please install it manually."
+    call :print_info "Run: go install mvdan.cc/garble@v%REQUIRED_GARBLE_VERSION%"
+    call :pause_and_exit 1
+) else (
+    call :print_success "Garble %REQUIRED_GARBLE_VERSION% has been successfully installed."
 )
 goto :eof
 
@@ -48,13 +134,13 @@ where choco >nul 2>&1
 if %errorlevel% neq 0 (
     call :print_error "Chocolatey is not installed. Please install Go manually."
     call :print_info "You can install Chocolatey from https://chocolatey.org/install"
-    exit /b 1
+    call :pause_and_exit 1
 )
 powershell -Command "Start-Process powershell -Verb runAs -ArgumentList 'choco install golang -y' -Wait"
 where go >nul 2>&1
 if %errorlevel% neq 0 (
     call :print_error "Failed to install Go. Please install it manually."
-    exit /b 1
+    call :pause_and_exit 1
 ) else (
     call :print_success "Go has been successfully installed."
 )
@@ -63,7 +149,7 @@ goto :eof
 :main
 :: Initial validation checks
 call :validate_environment
-if !errorlevel! neq 0 exit /b !errorlevel!
+if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
 
 :: Build Koolo binary with Garble
 call :print_header "Building Koolo Binary"
@@ -73,10 +159,13 @@ if "%1"=="" (set VERSION=dev) else (set VERSION=%1)
 for /f "delims=" %%a in ('powershell -Command "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
 for /f "delims=" %%b in ('powershell -Command "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"
 
-:: Build an obfuscated Koolo  binary
+:: Set the expected output executable path
+set "OUTPUT_EXE=build\%BUILD_ID%.exe"
+
+:: Build an obfuscated Koolo binary
 call :print_step "Compiling Obfuscated Koolo executable"
 (
-    garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "build\%BUILD_ID%.exe" ./cmd/koolo 2>&1
+    garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log
 
 :: Capture and style seed information
@@ -85,11 +174,22 @@ for /f "tokens=4" %%s in ('findstr /C:"-seed chosen at random:" garble.log') do 
 )
 del garble.log
 
-if !errorlevel! neq 0 (
-    call :print_error "Failed to build Koolo binary"
-    exit /b 1
+:: Check if the executable was actually created
+if exist "%OUTPUT_EXE%" (
+    call :print_success "Successfully built obfuscated executable: %BUILD_ID%.exe"
+) else (
+    call :print_error "Failed to build Koolo binary - executable was not created"
+    echo.
+    call :print_warning "Please verify the following:"
+    call :print_info "- Are you using the correct Go version? (Recommended: %REQUIRED_GO_VERSION%)"
+    call :print_info "- Are you using the correct Garble version? (Recommended: %REQUIRED_GARBLE_VERSION%)"
+    call :print_info "- Have you added your Koolo folder to the exclusion list in your Anti-Virus software?"
+    call :print_info "- Have you tried temporarily disabling your Anti-Virus completely?"
+    echo.
+    call :print_info "Anti-Virus software can sometimes interfere with the compilation process."
+    call :print_info "If the issue persists, please check the compilation errors above."
+    call :pause_and_exit 1
 )
-call :print_success "Successfully built obfuscated executable"
 
 :: Handle tools folder first
 call :print_header "Handling Tools"
@@ -99,7 +199,7 @@ if exist build\tools (
     if exist build\tools (
         call :print_error "Failed to delete tools folder"
         call :check_folder_permissions "build\tools"
-        exit /b 1
+        call :pause_and_exit 1
     )
 )
 call :print_step "Copying tools folder"
@@ -108,7 +208,7 @@ if !errorlevel! neq 0 (
     call :print_error "Failed to copy tools folder"
     call :check_folder_permissions "tools"
     call :check_folder_permissions "build"
-    exit /b 1
+    call :pause_and_exit 1
 )
 call :print_success "Tools folder successfully copied"
 
@@ -126,7 +226,7 @@ if exist build\config\Settings.json (
             call :print_success "Settings.json successfully replaced"
         ) else (
             call :print_error "Failed to copy Settings.json"
-            exit /b 1
+            call :pause_and_exit 1
         )
     ) else (
         call :print_info "Keeping existing Settings.json"
@@ -137,7 +237,7 @@ if exist build\config\Settings.json (
     copy /y config\Settings.json build\config\Settings.json > nul
     if !errorlevel! neq 0 (
         call :print_error "Failed to copy Settings.json"
-        exit /b 1
+        call :pause_and_exit 1
     )
     call :print_success "Settings.json successfully copied"
 )
@@ -148,7 +248,7 @@ if not exist build\config\koolo.yaml (
     copy config\koolo.yaml.dist build\config\koolo.yaml > nul
     if !errorlevel! neq 0 (
         call :print_error "Failed to copy koolo.yaml.dist"
-        exit /b 1
+        call :pause_and_exit 1
     )
     call :print_success "koolo.yaml.dist successfully copied"
 ) else (
@@ -161,7 +261,7 @@ if exist build\config\template rmdir /s /q build\config\template
 xcopy /q /E /I /y config\template build\config\template > nul
 if !errorlevel! neq 0 (
     call :print_error "Failed to copy template folder"
-    exit /b 1
+    call :pause_and_exit 1
 )
 call :print_success "Template folder successfully copied"
 
@@ -170,7 +270,7 @@ call :print_step "Copying README.md"
 copy README.md build > nul
 if !errorlevel! neq 0 (
     call :print_error "Failed to copy README.md"
-    exit /b 1
+    call :pause_and_exit 1
 )
 call :print_success "README.md successfully copied"
 
@@ -178,10 +278,12 @@ call :print_header "Build Process Completed"
 call :print_success "Artifacts are in the build directory"
 goto :eof
 
-:error
-call :print_header "Build Process Failed"
-call :print_error "Error occurred during the build process"
-goto :eof
+:: Function to pause and exit with error code
+:pause_and_exit
+echo.
+powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
+pause > nul
+exit %1
 
 :: Function to get user input
 :get_user_input
@@ -223,14 +325,9 @@ goto :eof
 powershell -Command "Write-Host '    INFO: %~1' -ForegroundColor Yellow"
 goto :eof
 
-:: Function to check file permissions
-:check_file_permissions
-dir "%~1" >nul 2>&1
-if !errorlevel! neq 0 (
-    call :print_error "Cannot access file: %~1"
-) else (
-    call :print_info "File %~1 is accessible"
-)
+:: Function to print a warning message
+:print_warning
+powershell -Command "Write-Host '    WARNING: %~1' -ForegroundColor Yellow"
 goto :eof
 
 :: Function to check folder permissions
@@ -297,9 +394,4 @@ if !errorlevel! neq 0 (
 del test_write.tmp >nul 2>&1
 
 call :print_success "Environment validation completed"
-goto :eof
-
-:: Function to print a warning message
-:print_warning
-powershell -Command "Write-Host '    WARNING: %~1' -ForegroundColor Yellow"
 goto :eof
