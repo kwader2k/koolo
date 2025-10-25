@@ -255,6 +255,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			defer ticker.Stop()
 			var lastPosition data.Position
 			var stuckSince time.Time
+			var droppedMouseItem bool // Track if we've already tried dropping mouse item
 
 			// Initial position check
 			if s.bot.ctx.GameReader.InGame() && s.bot.ctx.Data.PlayerUnit.ID > 0 {
@@ -277,8 +278,22 @@ func (s *SinglePlayerSupervisor) Start() error {
 					if currentPos.X == lastPosition.X && currentPos.Y == lastPosition.Y {
 						if stuckSince.IsZero() {
 							stuckSince = time.Now()
+							droppedMouseItem = false // Reset flag when first detecting stuck
 						}
-						if time.Since(stuckSince) > maxStuckDuration {
+
+						stuckDuration := time.Since(stuckSince)
+
+						// After 90 seconds stuck, try dropping mouse item
+						if stuckDuration > 90*time.Second && !droppedMouseItem {
+							s.bot.ctx.Logger.Warn("Player stuck for 90 seconds. Attempting to drop any item on cursor...")
+							// Click to drop any item that might be stuck on cursor
+							s.bot.ctx.HID.Click(game.LeftButton, 500, 500)
+							droppedMouseItem = true
+							s.bot.ctx.Logger.Info("Clicked to drop mouse item (if any). Continuing to monitor for movement...")
+						}
+
+						// After 3 minutes stuck, force restart
+						if stuckDuration > maxStuckDuration {
 							s.bot.ctx.Logger.Error(fmt.Sprintf("In-game activity monitor: Player has been stuck for over %s. Forcing client restart.", maxStuckDuration))
 							if err := s.KillClient(); err != nil {
 								s.bot.ctx.Logger.Error(fmt.Sprintf("Activity monitor failed to kill client: %v", err))
@@ -288,6 +303,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 						}
 					} else {
 						stuckSince = time.Time{} // Reset timer if the player has moved
+						droppedMouseItem = false // Reset flag if player moved
 					}
 					lastPosition = currentPos
 				}
