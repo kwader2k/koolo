@@ -65,11 +65,12 @@
                     Non-Ladder
                 </label>
             </fieldset>
-            <h5>Class-Specific Settings</h5>
-            <div id="class-specific-settings">
-                <div id="no-settings-message" style="display: none;">
-                    No custom settings available for this class.
-                </div>
+            <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">
+                <h5>Class-Specific Settings</h5>
+                <div id="class-specific-settings">
+                    <div id="no-settings-message" style="display: none;">
+                        No custom settings available for this class.
+                    </div>
                 <div class="berserker-barb-options" style="display: none;">
                     <fieldset class="grid">
                         <label>
@@ -139,56 +140,72 @@
                     </fieldset>
                 </div>
             </div>
-            <h5>Create Runewords</h5>
-            <div style="margin-left: 20px; margin-bottom: 20px;">
-                <input type="text" id="search-runewords" placeholder="Search runewords..." style="margin-bottom: 10px; width: 100%; max-width: 300px;">
-                <div class="recipe-grid" id="runeword-recipe-grid">
-                    {{ range $index, $recipe := .RunewordRecipeList }}
-                        <label class="runeword-item" style="display: none;"> <!-- Initially hidden -->
-                            <input type="checkbox" name="gameLevelingEnabledRunewordRecipes" value="{{ $recipe }}" {{ if contains $.Config.Game.Leveling.EnabledRunewordRecipes $recipe }}checked{{ end }}>
-                            <span class="runeword-name">{{ $recipe }}</span>
-                        </label>
-                    {{ end }}
+            </article>
+            <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">
+                <h5>General Settings</h5>
+                <fieldset class="grid">
+                    <label>
+                        <input type="checkbox" id="characterUseExtraBuffs" name="characterUseExtraBuffs" {{ if .Config.Character.UseExtraBuffs }}checked{{ end }}/>Enable extra buff features
+                    </label>
+                    <label>
+                        <input type="checkbox" id="characterUseTeleport" name="characterUseTeleport" {{ if .Config.Character.UseTeleport }}checked{{ end }}/>Use teleport when available
+                    </label>
+                    <label>
+                        <input type="checkbox" name="characterStashToShared" {{ if .Config.Character.StashToShared }}checked{{ end }}/>
+                        Always stash to shared tab
+                    </label>
+                </fieldset>
+                <fieldset class="grid">
+                    <label>
+                        <input type="checkbox" name="useCentralizedPickit" {{ if .Config.UseCentralizedPickit }}checked{{ end }}/>
+                        Use centralized pickit
+                    </label>
+                    <label>
+                        <input type="checkbox" name="useCainIdentify" {{ if .Config.Game.UseCainIdentify }}checked{{ end }}/>
+                        Identify with Cain
+                    </label>
+                    <label>
+                        <input type="checkbox" name="interactWithShrines" {{ if .Config.Game.InteractWithShrines }}checked{{ end }}/>
+                        Interact with shrines
+                    </label>
+                </fieldset>
+                <fieldset class="grid">
+                    <label>
+                        <input type="checkbox" name="interactWithChests" {{ if .Config.Game.InteractWithChests }}checked{{ end }}/>
+                        Interact with chests
+                    </label>
+                </fieldset>
+                <fieldset class="grid">
+                    <label>
+                        Level until (put 0 for no limit)
+                        <input type="number" name="stopLevelingAt" min="0" max="99" placeholder="{{ .Config.Game.StopLevelingAt }}" value="{{ .Config.Game.StopLevelingAt }}"/>
+                    </label>
+                    <label>
+                        Minimum Gold (will pick up Magic+ to sell for gold if below)
+                        <input min="0" type="number" name="gameMinGoldPickupThreshold" placeholder="{{ .Config.Game.MinGoldPickupThreshold }}" value="{{ .Config.Game.MinGoldPickupThreshold }}"/>
+                    </label>
+                </fieldset>
+                <div id="clearPathDistContainer" class="conditional-field" {{ if .Config.Character.UseTeleport }}style="display: none;"{{ end }}>
+                    <label for="clearPathDist">Clear Path Radius</label>
+                    <div class="walking-radius-slider">
+                        <input type="range" id="clearPathDist" name="clearPathDist" min="0" max="30" step="1" value="{{ if .Config.Character.ClearPathDist }}{{ .Config.Character.ClearPathDist }}{{ else }}12{{ end }}">
+                        <span class="walking-radius-value" id="clearPathDistValue">{{ if .Config.Character.ClearPathDist }}{{ .Config.Character.ClearPathDist }}{{ else }}12{{ end }}</span>
+                    </div>
+                    <div class="input-info">Distance (in game units) to clear enemies while walking through areas</div>
                 </div>
-            </div>
-            <fieldset class="grid">
-                <label>
-                    <input type="checkbox" id="characterUseExtraBuffs" name="characterUseExtraBuffs" {{ if .Config.Character.UseExtraBuffs }}checked{{ end }}/>Enable extra buff features
-                </label>
-                <label>
-                    <input type="checkbox" id="characterUseTeleport" name="characterUseTeleport" {{ if .Config.Character.UseTeleport }}checked{{ end }}/>Use teleport when available
-                </label>
-                <label>
-                    <input type="checkbox" name="characterStashToShared" {{ if .Config.Character.StashToShared }}checked{{ end }}/>
-                    Always stash to shared tab
-                </label>
-            </fieldset>
-            <fieldset class="grid">
-                <label>
-                    <input type="checkbox" name="useCentralizedPickit" {{ if .Config.UseCentralizedPickit }}checked{{ end }}/>
-                    Use centralized pickit
-                </label>
-                <label>
-                    <input type="checkbox" name="useCainIdentify" {{ if .Config.Game.UseCainIdentify }}checked{{ end }}/>
-                    Identify with Cain
-                </label>
-            </fieldset>
-            <fieldset class="grid">
-                <label>
-                    <input type="checkbox" name="interactWithShrines" {{ if .Config.Game.InteractWithShrines }}checked{{ end }}/>
-                    Interact with shrines
-                </label>
-                <label>
-                    <input type="checkbox" name="interactWithChests" {{ if .Config.Game.InteractWithChests }}checked{{ end }}/>
-                    Interact with chests
-                </label>
-            </fieldset>
-			<fieldset class="grid">
-                <label>
-                    Level until (put 0 for no limit)
-                    <input type="number" name="stopLevelingAt" min="0" max="99" placeholder="{{ .Config.Game.StopLevelingAt }}" value="{{ .Config.Game.StopLevelingAt }}"/>
-                </label>
-            </fieldset>
+                <h6>Create Runewords</h6>
+                <div style="margin-left: 20px;">
+                    <input type="text" id="search-runewords" placeholder="Search runewords..." style="margin-bottom: 10px; width: 100%; max-width: 300px;">
+                    <div class="recipe-grid" id="runeword-recipe-grid">
+                        {{ range $index, $recipe := .RunewordRecipeList }}
+                            <label class="runeword-item" style="display: none;"> <!-- Initially hidden -->
+                                <input type="checkbox" name="gameLevelingEnabledRunewordRecipes" value="{{ $recipe }}" {{ if contains $.Config.Game.Leveling.EnabledRunewordRecipes $recipe }}checked{{ end }}>
+                                <span class="runeword-name">{{ $recipe }}</span>
+                            </label>
+                        {{ end }}
+                    </div>
+                </div>
+            </article>
             <!-- Packet Usage Options -->
             <article style="margin-top: 20px; background-color: #f9f9f9; padding: 15px; border: 4px solid #ffa600;">
                 <header><strong>⚠️ USING PACKETS</strong></header>
@@ -201,6 +218,10 @@
                     <label>
                         <input type="checkbox" name="packetCastingUseForItemPickup" {{ if .Config.PacketCasting.UseForItemPickup }}checked{{ end }}/>
                         Use packets for item pickup
+                    </label>
+                    <label>
+                        <input type="checkbox" name="packetCastingUseForEntranceInteraction" {{ if .Config.PacketCasting.UseForEntranceInteraction }}checked{{ end }}/>
+                        Use packets for entrance interaction
                     </label>
                 </fieldset>
                 <fieldset class="grid">
@@ -233,25 +254,6 @@
                     </div>
                 </label>
             </fieldset>
-
-            <fieldset class="grid">
-                <label>
-                    <div id="clearPathDistContainer" class="conditional-field" {{ if .Config.Character.UseTeleport }}style="display: none;"{{ end }}>
-                        <div class="walking-radius-container">
-                            <label for="clearPathDist">Clear Path Radius</label>
-                            <div class="walking-radius-slider">
-                                <input type="range" id="clearPathDist" name="clearPathDist" min="0" max="30" step="1" value="{{ if .Config.Character.ClearPathDist }}{{ .Config.Character.ClearPathDist }}{{ else }}12{{ end }}">
-                                <span class="walking-radius-value" id="clearPathDistValue">{{ if .Config.Character.ClearPathDist }}{{ .Config.Character.ClearPathDist }}{{ else }}12{{ end }}</span>
-                            </div>
-                            <div class="input-info">Distance (in game units) to clear enemies while walking through areas</div>
-                        </div>
-                    </div>
-                </label>
-            </fieldset>
-            <label>
-                Minimum Gold (will pick up Magic+ to sell for gold if below)
-                <input min="0" type="number" name="gameMinGoldPickupThreshold" placeholder="{{ .Config.Game.MinGoldPickupThreshold }}" value="{{ .Config.Game.MinGoldPickupThreshold }}"/>
-            </label>
             <h3>Client Settings</h3><br>
             <fieldset class="grid">
                 <label>

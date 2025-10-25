@@ -81,9 +81,9 @@
 
 .walking-radius-value {
     position: absolute;
-    right: var(--spacing-sm);
-    top: 50%;
-    transform: translateY(-50%);
+    left: 50%;
+    bottom: calc(100% + 8px);
+    transform: translateX(-50%);
     background: var(--bg-tertiary);
     padding: 4px 12px;
     border-radius: var(--radius-full);
@@ -92,6 +92,25 @@
     font-weight: 700;
     border: 1px solid var(--primary);
     box-shadow: 0 2px 8px rgba(0, 137, 235, 0.3);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 100;
+}
+
+/* Triangle pointer below the tooltip */
+.walking-radius-value::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--primary);
 }
 
 /* ========================================
@@ -186,12 +205,12 @@
 
 .run-list li summary span {
     flex-grow: 1;
-    padding-left: 0; 
+    padding-left: 0;
     font-weight: 600;
     color: var(--text-primary);
     text-transform: capitalize;
     display: flex;
-    align-items: center; 
+    align-items: center;
 }
 
 .run-list li summary button {
@@ -208,7 +227,7 @@
     justify-content: center;
     outline: none;
     font-weight: 600;
-    flex-shrink: 0; 
+    flex-shrink: 0;
 }
 
 .run-list li summary button.remove-run {
@@ -555,19 +574,19 @@
     #scheduler-settings {
         grid-template-columns: 1fr;
     }
-    
+
     .recipe-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .time-range {
         flex-wrap: wrap;
     }
-    
+
     .time-range input[type="time"] {
         width: 100%;
     }
-    
+
     .inline-label {
         flex-direction: column;
         align-items: flex-start;
