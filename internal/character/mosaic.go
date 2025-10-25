@@ -83,7 +83,7 @@ func (s MosaicSin) KillMonsterSequence(
 
 		// Initial move to monster if we're too far
 		if ctx.PathFinder.DistanceFromMe(monster.Position) > 3 {
-			if err := step.MoveTo(monster.Position); err != nil {
+			if err := step.MoveTo(monster.Position, step.WithIgnoreMonsters()); err != nil {
 				s.Logger.Debug("Failed to move to monster position", slog.String("error", err.Error()))
 				continue
 			}

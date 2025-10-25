@@ -80,7 +80,7 @@ func (s *Berserker) KillMonsterSequence(
 
 		distance := s.PathFinder.DistanceFromMe(monster.Position)
 		if distance > meleeRange {
-			err := step.MoveTo(monster.Position)
+			err := step.MoveTo(monster.Position, step.WithIgnoreMonsters())
 			if err != nil {
 				s.Logger.Warn("Failed to move to monster", slog.String("error", err.Error()))
 				continue
@@ -128,7 +128,7 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 	s.Logger.Debug("Horkable corpses found", slog.Int("count", len(corpses)))
 
 	for _, corpse := range corpses {
-		err := step.MoveTo(corpse.Position)
+		err := step.MoveTo(corpse.Position, step.WithIgnoreMonsters())
 		if err != nil {
 			s.Logger.Warn("Failed to move to corpse", slog.String("error", err.Error()))
 			continue

@@ -650,7 +650,7 @@ func (s DruidLeveling) KillAncients() error {
 		if !found {
 			continue
 		}
-		step.MoveTo(data.Position{X: 10062, Y: 12639})
+		step.MoveTo(data.Position{X: 10062, Y: 12639}, step.WithIgnoreMonsters())
 
 		s.killMonster(foundMonster.Name, data.MonsterTypeSuperUnique)
 

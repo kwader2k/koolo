@@ -249,7 +249,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 				s.andarielMoves++
 				s.Logger.Debug(fmt.Sprintf("Andariel is too close, moving away to fixed coordinate. Move %d of %d.", s.andarielMoves, len(s.andarielSafePositions)))
 
-				step.MoveTo(targetPos)
+				step.MoveTo(targetPos, step.WithIgnoreMonsters())
 				time.Sleep(time.Millisecond * 200)
 				continue // Re-evaluate in the next loop
 			}
@@ -332,7 +332,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 								s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 								return nil
 							}
-							step.MoveTo(safePos)
+							step.MoveTo(safePos, step.WithIgnoreMonsters())
 							time.Sleep(time.Millisecond * 200)
 							continue
 						} else {
@@ -393,7 +393,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 								slog.Int("distance", distanceToMonster),
 								slog.Int("requiredRange", StaticFieldEffectiveRange),
 							)
-							step.MoveTo(monster.Position)
+							step.MoveTo(monster.Position, step.WithIgnoreMonsters())
 							time.Sleep(time.Millisecond * 100)
 							continue
 						}
@@ -463,7 +463,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 						slog.String("target", fmt.Sprintf("%v", monster.Name)),
 						slog.Int("distance", distanceToMonster),
 					)
-					step.MoveTo(monster.Position)
+					step.MoveTo(monster.Position, step.WithIgnoreMonsters())
 					time.Sleep(time.Millisecond * 100)
 					continue
 				}
@@ -803,7 +803,7 @@ func (s SorceressLeveling) KillMephisto() error {
 		var attackOption step.AttackOption = step.Distance(SorceressLevelingMinDistance, SorceressLevelingMaxDistance)
 
 		staticFieldRange := step.Distance(0, StaticFieldEffectiveRange)
-		err := step.MoveTo(data.Position{X: 17565, Y: 8065})
+		err := step.MoveTo(data.Position{X: 17565, Y: 8065}, step.WithIgnoreMonsters())
 
 		monster, found := s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
 		if !found {
@@ -853,7 +853,7 @@ func (s SorceressLeveling) KillMephisto() error {
 				if distanceToMonster > StaticFieldEffectiveRange && s.Data.PlayerUnit.Skills[skill.Teleport].Level > 0 {
 					s.Logger.Debug("Mephisto too far for Static Field, repositioning closer.")
 
-					step.MoveTo(monster.Position)
+					step.MoveTo(monster.Position, step.WithIgnoreMonsters())
 					utils.Sleep(150)
 					continue
 				}
@@ -871,7 +871,7 @@ func (s SorceressLeveling) KillMephisto() error {
 			s.Logger.Info("Static Field not available or bound, skipping Static Phase.")
 		}
 
-		err = step.MoveTo(data.Position{X: 17563, Y: 8072})
+		err = step.MoveTo(data.Position{X: 17563, Y: 8072}, step.WithIgnoreMonsters())
 		if err != nil {
 			return err
 		}
@@ -900,7 +900,7 @@ func (s SorceressLeveling) KillMephisto() error {
 
 		// Move to initial position
 		utils.Sleep(350)
-		err := step.MoveTo(data.Position{X: 17563, Y: 8072})
+		err := step.MoveTo(data.Position{X: 17563, Y: 8072}, step.WithIgnoreMonsters())
 		if err != nil {
 			return err
 		}
@@ -914,7 +914,7 @@ func (s SorceressLeveling) KillMephisto() error {
 		}
 
 		for _, pos := range initialPositions {
-			err := step.MoveTo(data.Position{X: pos.x, Y: pos.y})
+			err := step.MoveTo(data.Position{X: pos.x, Y: pos.y}, step.WithIgnoreMonsters())
 			if err != nil {
 				return err
 			}
@@ -927,7 +927,7 @@ func (s SorceressLeveling) KillMephisto() error {
 			return err
 		}
 
-		err = step.MoveTo(data.Position{X: 17609, Y: 8090})
+		err = step.MoveTo(data.Position{X: 17609, Y: 8090}, step.WithIgnoreMonsters())
 		if err != nil {
 			return err
 		}
@@ -1021,7 +1021,7 @@ func (s SorceressLeveling) KillAncients() error {
 		if !found {
 			continue
 		}
-		step.MoveTo(data.Position{X: 10062, Y: 12639})
+		step.MoveTo(data.Position{X: 10062, Y: 12639}, step.WithIgnoreMonsters())
 
 		s.killMonsterByName(foundMonster.Name, data.MonsterTypeSuperUnique, nil)
 

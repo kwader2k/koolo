@@ -557,7 +557,7 @@ func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.
 				safePos, found := n.findSafeBossPosition(boss, distanceToBoss)
 				if found {
 					n.Logger.Debug("Moving to safe position")
-					step.MoveTo(safePos)
+					step.MoveTo(safePos, step.WithIgnoreMonsters())
 					lastRepositionTime = time.Now()
 					utils.Sleep(150)
 					continue
@@ -771,7 +771,7 @@ func (n *NecromancerLeveling) KillAncients() error {
 
 		// Move to safe position near platform center for better positioning
 		if minDistance > 15 {
-			step.MoveTo(data.Position{X: 10062, Y: 12639})
+			step.MoveTo(data.Position{X: 10062, Y: 12639}, step.WithIgnoreMonsters())
 			utils.Sleep(200)
 		}
 
