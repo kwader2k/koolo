@@ -3,8 +3,6 @@ package run
 import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
-	"github.com/hectorgimenez/d2go/pkg/data/npc"
-	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
@@ -47,23 +45,18 @@ func (c Countess) Run() error {
 		}
 	}
 
-	// Try to move around Countess area
-	action.MoveTo(func() (data.Position, bool) {
-		if areaData, ok := context.Get().GameReader.GetData().Areas[area.TowerCellarLevel5]; ok {
-			for _, o := range areaData.Objects {
-				if o.Name == object.GoodChest {
-					return o.Position, true
-				} // Countess Chest position from 1.13c fetch
-			}
+	err = action.MoveTo(func() (data.Position, bool) {
+		areaData := c.ctx.Data.Areas[area.TowerCellarLevel5]
+		countessNPC, found := areaData.NPCs.FindOne(740)
+		if !found {
+			return data.Position{}, false
 		}
 
-		// Try to teleport over Countess in case we are not able to find the chest position, a bit more risky
-		if countess, found := c.ctx.Data.Monsters.FindOne(npc.DarkStalker, data.MonsterTypeSuperUnique); found {
-			return countess.Position, true
-		}
-
-		return data.Position{}, false
+		return countessNPC.Positions[0], true
 	})
+	if err != nil {
+		return err
+	}
 
 	// Kill Countess
 	return c.ctx.Char.KillCountess()
