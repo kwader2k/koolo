@@ -194,24 +194,23 @@ func (s *Berserker) getOptimalClickPosition(corpse data.Monster) data.Position {
 	return data.Position{X: corpse.Position.X, Y: corpse.Position.Y + 1}
 }
 
-// slot 0 means lowest Gold Find, slot 1 means highest Gold Find
-// Presuming attack items will be on slot 0 and Goldfind items on slot 1
-// TODO find a way to get active inventory slot from memory.
+// slot 0 = primary weapon, slot 1 = secondary weapon
 func (s *Berserker) SwapToSlot(slot int) {
 	ctx := context.Get()
 	if !ctx.CharacterCfg.Character.BerserkerBarb.FindItemSwitch {
-		return // Do nothing if FindItemSwitch is disabled
+		return
 	}
 
-	initialGF, _ := s.Data.PlayerUnit.FindStat(stat.GoldFind, 0)
-	ctx.HID.PressKey('W')
-	time.Sleep(100 * time.Millisecond)
-	ctx.RefreshGameData()
-	swappedGF, _ := s.Data.PlayerUnit.FindStat(stat.GoldFind, 0)
-
-	if (slot == 0 && swappedGF.Value > initialGF.Value) ||
-		(slot == 1 && swappedGF.Value < initialGF.Value) {
-		ctx.HID.PressKey('W') // Swap back if not in desired slot
+	const maxAttempts = 3
+	const retryDelay = 150 * time.Millisecond
+	if ctx.Data.ActiveWeaponSlot != slot {
+		for attempt := 1; attempt <= maxAttempts; attempt++ {
+			if ctx.Data.ActiveWeaponSlot != slot {
+				ctx.HID.PressKey('W')
+				time.Sleep(retryDelay)
+				ctx.RefreshGameData()
+			}
+		}
 	}
 }
 
@@ -263,6 +262,7 @@ func (s *Berserker) KillDuriel() error {
 func (s *Berserker) KillMephisto() error {
 	return s.killMonster(npc.Mephisto, data.MonsterTypeUnique)
 }
+
 func (s *Berserker) KillDiablo() error {
 	timeout := time.Second * 20
 	startTime := time.Now()

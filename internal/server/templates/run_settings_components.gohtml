@@ -203,3 +203,18 @@
         {{ end }}
     </fieldset>
 {{ end }}
+
+{{ define "utility" }}
+    <fieldset>
+        <label>
+            Parking Act
+            <select name="gameUtilityParkingAct">
+                <option value="1" {{ if eq .Config.Game.Utility.ParkingAct 1 }}selected{{ end }}>Act 1 - Rogue Encampment</option>
+                <option value="2" {{ if eq .Config.Game.Utility.ParkingAct 2 }}selected{{ end }}>Act 2 - Lut Gholein</option>
+                <option value="3" {{ if eq .Config.Game.Utility.ParkingAct 3 }}selected{{ end }}>Act 3 - Kurast Docks</option>
+                <option value="4" {{ if eq .Config.Game.Utility.ParkingAct 4 }}selected{{ end }}>Act 4 - Pandemonium Fortress</option>
+                <option value="5" {{ if eq .Config.Game.Utility.ParkingAct 5 }}selected{{ end }}>Act 5 - Harrogath</option>
+            </select>
+        </label>
+    </fieldset>
+{{ end }}

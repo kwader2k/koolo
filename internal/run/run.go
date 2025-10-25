@@ -87,6 +87,8 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 			builtRuns = append(builtRuns, NewDriverCavern())
 		case string(config.EnduguRun):
 			builtRuns = append(builtRuns, NewEndugu())
+		case string(config.UtilityRun):
+			builtRuns = append(builtRuns, NewUtility())
 		case string(config.FireEyeRun):
 			builtRuns = append(builtRuns, NewFireEye())
 		}

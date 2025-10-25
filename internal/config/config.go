@@ -276,6 +276,9 @@ type CharacterCfg struct {
 			RescueAnya     bool `yaml:"rescueAnya"`
 			KillAncients   bool `yaml:"killAncients"`
 		} `yaml:"quests"`
+		Utility struct {
+			ParkingAct int `yaml:"parkingAct"`
+		} `yaml:"utility"`
 	} `yaml:"game"`
 	Companion struct {
 		Enabled               bool   `yaml:"enabled"`
