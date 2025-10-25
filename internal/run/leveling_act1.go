@@ -235,6 +235,9 @@ func (a Leveling) setupLevelOneConfig() {
 		{1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
 	}
 	a.ctx.CharacterCfg.Game.InteractWithShrines = true
+	a.ctx.CharacterCfg.Character.BuffOnNewArea = true
+	a.ctx.CharacterCfg.Character.BuffAfterWP = true
+	a.ctx.CharacterCfg.Character.UseExtraBuffs = true
 	a.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 2000
 	a.ctx.CharacterCfg.Inventory.HealingPotionCount = 4
 	a.ctx.CharacterCfg.Inventory.ManaPotionCount = 8
