@@ -171,7 +171,10 @@ func (s *WebSocketServer) readPump(client *Client) {
 }
 
 func (s *HttpServer) BroadcastStatus() {
-	for {
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	for range ticker.C {
 		data := s.getStatusData()
 		jsonData, err := json.Marshal(data)
 		if err != nil {
@@ -179,9 +182,19 @@ func (s *HttpServer) BroadcastStatus() {
 			continue
 		}
 
-		s.wsServer.broadcast <- jsonData
-		time.Sleep(1 * time.Second)
+		select {
+		case s.wsServer.broadcast <- jsonData:
+		default:
+			// Channel full, skip this update
+			slog.Debug("Broadcast channel full, skipping update")
+		}
 	}
+}
+
+// Optimize JSON response
+func (s *HttpServer) writeJSON(w http.ResponseWriter, data interface{}) error {
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(data)
 }
 
 func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, error) {
@@ -214,9 +227,19 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 			return result
 		},
 	}
+
+	// Parse templates once at startup
 	templates, err := template.New("").Funcs(helperFuncs).ParseFS(templatesFS, "templates/*.gohtml")
 	if err != nil {
 		return nil, err
+	}
+
+	// Pre-execute templates to cache them (optional but faster)
+	for _, tmpl := range templates.Templates() {
+		if tmpl.Name() != "" {
+			var buf bytes.Buffer
+			_ = tmpl.Execute(&buf, nil) // Warm up the cache
+		}
 	}
 
 	// Debug: List all loaded templates
@@ -395,7 +418,7 @@ func containss(slice []string, item string) bool {
 func (s *HttpServer) initialData(w http.ResponseWriter, r *http.Request) {
 	data := s.getStatusData()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(data)
+	s.writeJSON(w, data)
 }
 
 func (s *HttpServer) getStatusData() IndexData {
@@ -443,9 +466,7 @@ func (s *HttpServer) getStatusData() IndexData {
 			if v, ok := data.PlayerUnit.FindStat(stat.GoldFind, 0); ok {
 				gf = v.Value
 			}
-
 			gold = data.PlayerUnit.TotalPlayerGold()
-
 			if v, ok := data.PlayerUnit.FindStat(stat.FireResist, 0); ok {
 				fr = v.Value
 			}
@@ -617,7 +638,11 @@ func (s *HttpServer) Listen(port int) error {
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
 
 	s.server = &http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+		Addr:           fmt.Sprintf(":%d", port),
+		ReadTimeout:    15 * time.Second,
+		WriteTimeout:   15 * time.Second,
+		IdleTimeout:    60 * time.Second,
+		MaxHeaderBytes: 1 << 20, // 1 MB
 	}
 
 	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -1016,6 +1041,18 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		newConfig.Telegram.ChatID = telegramChatId
+
+		// Parse window dimensions
+		if widthStr := r.Form.Get("window_width"); widthStr != "" {
+			if width, err := strconv.Atoi(widthStr); err == nil && width >= 0 {
+				newConfig.WindowWidth = width
+			}
+		}
+		if heightStr := r.Form.Get("window_height"); heightStr != "" {
+			if height, err := strconv.Atoi(heightStr); err == nil && height >= 0 {
+				newConfig.WindowHeight = height
+			}
+		}
 
 		err = config.ValidateAndSaveConfig(newConfig)
 		if err != nil {
