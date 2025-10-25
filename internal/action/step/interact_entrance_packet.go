@@ -7,6 +7,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/pather"
 )
 
 const (
@@ -17,7 +18,10 @@ const (
 	entranceTransitionTimeout = 3 * time.Second
 
 	// Distance threshold for packet interaction
-	packetEntranceDistance = 8
+	packetEntranceDistance = 7
+
+	// Fuzzy position matching threshold to handle map data vs memory position variance
+	positionMatchThreshold = 10
 )
 
 // InteractEntrancePacket attempts to interact with an entrance using D2GS packets
@@ -50,19 +54,33 @@ func InteractEntrancePacket(targetArea area.ID) error {
 		return fmt.Errorf("target area %s not found in adjacent levels", targetArea.Area().Name)
 	}
 
-	// Find the corresponding entrance from the Entrances list
-	// We match by position since entrance might not have area info
+	// Find the corresponding entrance from the Entrances list using fuzzy matching
+	// Map data positions may differ from memory object positions by several units
+	var nearestEntrance data.Entrance
+	minDistance := positionMatchThreshold + 1
+
 	for _, ent := range ctx.Data.Entrances {
-		if ent.Position == targetLevel.Position {
-			targetEntrance = ent
-			found = true
-			break
+		distance := pather.DistanceFromPoint(targetLevel.Position, ent.Position)
+		if distance < minDistance && distance <= positionMatchThreshold {
+			nearestEntrance = ent
+			minDistance = distance
 		}
 	}
 
-	if !found {
-		return fmt.Errorf("entrance to %s not found in entrance list", targetArea.Area().Name)
+	if minDistance > positionMatchThreshold {
+		return fmt.Errorf("entrance to %s not found within %d units (nearest: %d units)",
+			targetArea.Area().Name, positionMatchThreshold, minDistance)
 	}
+
+	targetEntrance = nearestEntrance
+	found = true
+
+	ctx.Logger.Debug("Found entrance via fuzzy matching",
+		"positionOffset", minDistance,
+		"mapX", targetLevel.Position.X,
+		"mapY", targetLevel.Position.Y,
+		"memoryX", targetEntrance.Position.X,
+		"memoryY", targetEntrance.Position.Y)
 
 	// Check distance first - must be within range
 	distance := ctx.PathFinder.DistanceFromMe(targetEntrance.Position)
@@ -71,8 +89,8 @@ func InteractEntrancePacket(targetArea area.ID) error {
 			"currentDistance", distance,
 			"maxDistance", packetEntranceDistance)
 
-		// Move closer to entrance
-		if err := MoveTo(targetEntrance.Position, WithDistanceToFinish(4)); err != nil {
+		// Move closer to entrance - stop 2 units away to ensure we're within interaction range
+		if err := MoveTo(targetEntrance.Position, WithDistanceToFinish(2)); err != nil {
 			return fmt.Errorf("failed to move to entrance: %w", err)
 		}
 
@@ -83,13 +101,16 @@ func InteractEntrancePacket(targetArea area.ID) error {
 			return fmt.Errorf("still too far from entrance after move (distance: %d)", distance)
 		}
 
-		// Re-find the entrance after moving (Selectable flag may have changed)
+		// Re-find the entrance after moving using fuzzy matching
 		found = false
+		minDistance = positionMatchThreshold + 1
+
 		for _, ent := range ctx.Data.Entrances {
-			if ent.Position == targetLevel.Position {
+			distance := pather.DistanceFromPoint(targetLevel.Position, ent.Position)
+			if distance < minDistance && distance <= positionMatchThreshold {
 				targetEntrance = ent
+				minDistance = distance
 				found = true
-				break
 			}
 		}
 
@@ -98,18 +119,20 @@ func InteractEntrancePacket(targetArea area.ID) error {
 		}
 	}
 
+	// Final distance validation before packet send
+	finalDistance := ctx.PathFinder.DistanceFromMe(targetEntrance.Position)
+	if finalDistance > packetEntranceDistance {
+		return fmt.Errorf("entrance out of range before packet send (distance: %d, max: %d)",
+			finalDistance, packetEntranceDistance)
+	}
+
 	// Log entrance details for debugging
 	ctx.Logger.Debug("Found entrance for packet interaction",
 		"targetArea", targetArea.Area().Name,
 		"entranceID", targetEntrance.ID,
 		"entranceName", targetEntrance.Name,
 		"position", fmt.Sprintf("X:%d Y:%d", targetEntrance.Position.X, targetEntrance.Position.Y),
-		"selectable", targetEntrance.Selectable,
-		"distance", distance)
-
-	// NOTE: We don't check Selectable flag for packet interaction
-	// Packets work at a lower level than UI and can interact with "non-selectable" entrances
-
+		"distance", finalDistance)
 	ctx.Logger.Info("Sending entrance interaction packet",
 		"targetArea", targetArea.Area().Name,
 		"entranceID", targetEntrance.ID,
@@ -158,6 +181,9 @@ func InteractEntrancePacket(targetArea area.ID) error {
 // waitForAreaTransition polls the game data waiting for area transition to complete
 // Returns true if transition succeeded within timeout, false otherwise
 func waitForAreaTransition(ctx *context.Status, targetArea area.ID, timeout time.Duration) bool {
+	// Wait 300ms before checking to allow server to process the transition
+	time.Sleep(300 * time.Millisecond)
+
 	deadline := time.Now().Add(timeout)
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
