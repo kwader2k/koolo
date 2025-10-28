@@ -241,6 +241,26 @@
                     />
                 </label>
                 <label>
+                    Window Width (pixels, leave 0 for default)
+                    <input
+                        type="number"
+                        name="window_width"
+                        placeholder="1280"
+                        value="{{.WindowWidth}}"
+                        min="0"
+                    />
+                </label>
+                <label>
+                    Window Height (pixels, leave 0 for default)
+                    <input
+                        type="number"
+                        name="window_height"
+                        placeholder="720"
+                        value="{{.WindowHeight}}"
+                        min="0"
+                    />
+                </label>
+                <label>
                     <input
                             {{ if .UseCustomSettings }}
                                 checked="checked"
