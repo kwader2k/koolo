@@ -85,19 +85,29 @@ function createCharacterCard(key) {
                   <div class="character-info">
                     <span>${key}</span>
                      <div class="status-indicator"></div>
-                     <div class="co-line">
-                      <span class="co-classlevel">Class/Level (Exp)</span>
-                      <span class="co-dot"> • </span>
-                      <div class="co-xp" title="">
-                          <div class="xp-bar" style="height:6px;background:#2b2f36;border-radius:4px;overflow:hidden;width:50px;display:inline-block;vertical-align:middle;">
-                              <div class="xp-bar-fill" style="height:100%;width:0;background:linear-gradient(90deg,#6aa0ff,#3a7bff);"></div>
-                          </div>
-                          <span class="xp-percent" style="margin-left:-4px;font-size:0.85em;color:#9bb3d3;">0%</span>
+                     <div class="co-line co-line-with-stats">
+                      <div class="co-info-left">
+                        <span class="co-classlevel">Class/Level (Exp)</span>
+                        <span class="co-dot"> • </span>
+                        <div class="co-xp" title="">
+                            <div class="xp-bar" style="height:6px;background:#2b2f36;border-radius:4px;overflow:hidden;width:50px;display:inline-block;vertical-align:middle;">
+                                <div class="xp-bar-fill" style="height:100%;width:0;background:linear-gradient(90deg,#6aa0ff,#3a7bff);"></div>
+                            </div>
+                            <span class="xp-percent" style="margin-left:-4px;font-size:0.85em;color:#9bb3d3;">0%</span>
+                        </div>
+                          <span class="co-dot"> • </span>
+                          <span class="co-difficulty">Difficulty</span>
+                          <span class="co-dot"> • </span>
+                          <span class="co-area">Area</span>
                       </div>
-                        <span class="co-dot"> • </span>
-                        <span class="co-difficulty">Difficulty</span>
-                        <span class="co-dot"> • </span>
-                        <span class="co-area">Area</span>
+                      <div class="character-stats-inline">
+                          <button class="btn btn-outline btn-games">
+                              <i class="bi bi-controller btn-icon"></i><span class="games-count">0</span>
+                          </button>
+                          <button class="btn btn-outline btn-drops">
+                              <i class="bi bi-gem btn-icon"></i><span class="drops-count">0</span>
+                          </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -393,6 +403,20 @@ function updateStats(card, key, games, dropCount) {
   card.querySelector(".chickens").textContent = stats.totalChickens;
   card.querySelector(".deaths").textContent = stats.totalDeaths;
   card.querySelector(".errors").textContent = stats.totalErrors;
+  
+  // Update inline stats
+  const gamesCountEl = card.querySelector(".games-count");
+  const dropsCountEl = card.querySelector(".drops-count");
+  const dropsBtn = card.querySelector(".btn-drops");
+  
+  if (gamesCountEl) gamesCountEl.textContent = stats.totalGames;
+  if (dropsCountEl && dropCount !== undefined) dropsCountEl.textContent = dropCount;
+  if (dropsBtn) {
+    dropsBtn.onclick = (e) => {
+      e.stopPropagation();
+      window.location.href = `/drops?supervisor=${key}`;
+    };
+  }
 }
 
 function updateCharacterOverview(card, ui, status) {
