@@ -36,12 +36,11 @@
         .container thead th { position: sticky; top: 0; background: rgba(31,41,55,1); z-index: 2; }
 
         /* Column widths for balance (tweak if needed) */
-        .container thead th:nth-child(1), .container tbody td:nth-child(1){ width: 12.5rem; } /* Time */
-        .container thead th:nth-child(2), .container tbody td:nth-child(2){ width: 9.5rem; }  /* Supervisor */
-        .container thead th:nth-child(3), .container tbody td:nth-child(3){ width: 9rem; }    /* Character */
-        .container thead th:nth-child(4), .container tbody td:nth-child(4){ width: 18rem; }   /* Item */
-        .container thead th:nth-child(5), .container tbody td:nth-child(5){ width: 12rem; }   /* Location */
-        .container thead th:nth-child(6), .container tbody td:nth-child(6){ width: 18rem; }   /* Rule */
+        .container thead th:nth-child(1), .container tbody td:nth-child(1){ width: 9.5rem; } /* Time */
+        .container thead th:nth-child(2), .container tbody td:nth-child(2){ width: 7rem; }  /* Supervisor */
+        .container thead th:nth-child(3), .container tbody td:nth-child(3){ width: 7rem; }    /* Character */
+        .container thead th:nth-child(5), .container tbody td:nth-child(5){ width: 9rem; }   /* Location */
+        .container thead th:nth-child(6), .container tbody td:nth-child(6){ width: 9rem; }   /* Rule */
 
         /* Clamp the Rule column to a single line; expand on row hover */
         .container tbody td:nth-child(6){
@@ -50,9 +49,10 @@
           overflow: hidden;
           text-overflow: ellipsis;
         }
-        .container tbody tr:hover td:nth-child(6){
+        .container tbody tr td:nth-child(6):hover{
           white-space: normal;
           overflow: visible;
+          overflow-wrap: break-word;
         }
 
         /* Subtle row hover */
@@ -73,7 +73,7 @@
 </head>
 <body class="bg-gray-900 text-white min-h-screen">
 <div class="container mx-auto px-4 py-8">
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-6 flex items-center justify-between flex-wrap">
         <a href="/" class="bg-gray-800 hover:bg-gray-700 text-white px-5 py-2 rounded-lg">← Home</a>
         <div class="text-center flex-1">
             <h1 class="text-2xl font-bold">All Drops</h1>
@@ -104,19 +104,23 @@
             <thead>
             <tr class="bg-gray-800">
                 <th class="px-3 py-2 text-left text-sm font-semibold">Time</th>
-                <th class="px-3 py-2 text-left text-sm font-semibold">Supervisor</th>
-                <th class="px-3 py-2 text-left text-sm font-semibold">Character</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold hidden sm:table-cell">Supervisor</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold hidden sm:table-cell">Character</th>
                 <th class="px-3 py-2 text-left text-sm font-semibold">Item</th>
-                <th class="px-3 py-2 text-left text-sm font-semibold">Location</th>
-                <th class="px-3 py-2 text-left text-sm font-semibold">Rule</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold hidden lg:table-cell">Location</th>
+                <th class="px-3 py-2 text-left text-sm font-semibold hidden lg:table-cell">Rule</th>
             </tr>
             </thead>
             <tbody class="divide-y divide-gray-800">
             {{ range .Records }}
             <tr class="hover:bg-gray-800/40">
-                <td class="px-3 py-2 text-sm whitespace-nowrap">{{ .Time }}</td>
-                <td class="px-3 py-2 text-sm whitespace-nowrap">{{ .Supervisor }}</td>
-                <td class="px-3 py-2 text-sm whitespace-nowrap">{{ .Character }}</td>
+                <td class="px-3 py-2 text-sm whitespace-nowrap">
+                    <div>{{ .Time }}</div>
+                    <div class="sm:hidden">- {{ .Supervisor }}</div>
+                    <div class="sm:hidden">- {{ .Character }}</div>
+                </td>
+                <td class="px-3 py-2 text-sm whitespace-nowrap hidden sm:table-cell">{{ .Supervisor }}</td>
+                <td class="px-3 py-2 text-sm whitespace-nowrap hidden sm:table-cell">{{ .Character }}</td>
                 <td class="px-3 py-2 text-sm">
                     <div class="{{ .Drop.Item.Quality.ToString | qualityClass }} font-medium">
                         {{ if .Drop.Item.IdentifiedName }}
@@ -133,8 +137,20 @@
                     </div>
                     {{ end }}
                 </td>
-                <td class="px-3 py-2 text-sm">{{ if .Drop.DropLocation }}{{ .Drop.DropLocation }}{{ end }}</td>
-                <td class="px-3 py-2 text-xs text-gray-400">{{ if .Drop.Rule }}{{ .Drop.Rule }} ({{ .Drop.RuleFile }}){{ end }}</td>
+                <td class="px-3 py-2 text-sm hidden lg:table-cell">{{ if .Drop.DropLocation }}{{ .Drop.DropLocation }}{{ end }}</td>
+                <td class="px-3 py-2 text-xs text-gray-400 hidden lg:table-cell">{{ if .Drop.Rule }}{{ .Drop.Rule }} ({{ .Drop.RuleFile }}){{ end }}</td>
+            </tr>
+            <tr class="sm:hidden">
+                <td colspan="2" class="p-3 break-all text-gray-500">
+                    <div><span class="text-gray-400">Location:</span> {{ if .Drop.DropLocation }}{{ .Drop.DropLocation }}{{ end }}</div>
+                    <div><span class="text-gray-400">Rule:</span> {{ if .Drop.Rule }}{{ .Drop.Rule }} ({{ .Drop.RuleFile }}){{ end }}</div>
+                </td>
+            </tr>
+            <tr class="hidden sm:table-row md:hidden">
+                <td colspan="4" class="p-3 break-all text-gray-500">
+                    <div><span class="text-gray-400">Location:</span> {{ if .Drop.DropLocation }}{{ .Drop.DropLocation }}{{ end }}</div>
+                    <div><span class="text-gray-400">Rule:</span> {{ if .Drop.Rule }}{{ .Drop.Rule }} ({{ .Drop.RuleFile }}){{ end }}</div>
+                </td>
             </tr>
             {{ end }}
             </tbody>
