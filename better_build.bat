@@ -1,4 +1,13 @@
 @echo off
+
+:: Auto-fix line endings
+if not defined FIXED_LINE_ENDINGS (
+    set FIXED_LINE_ENDINGS=1
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "$bytes=[IO.File]::ReadAllBytes('%~f0');$content=[Text.Encoding]::ASCII.GetString($bytes);$fixed=$content.Replace(\"`n\",\"`r`n\").Replace(\"`r`r`n\",\"`r`n\");[IO.File]::WriteAllText('%~f0',$fixed,[Text.Encoding]::ASCII)"
+    "%~f0" %*
+    exit /b !errorlevel!
+)
+
 setlocal enabledelayedexpansion
 
 :: Preserve UI and critical packages
