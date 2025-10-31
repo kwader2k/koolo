@@ -168,7 +168,9 @@ type CharacterCfg struct {
 		CreateLobbyGames       bool                  `yaml:"createLobbyGames"`
 		PublicGameCounter      int                   `yaml:"-"`
 		MaxFailedMenuAttempts  int                   `yaml:"maxFailedMenuAttempts"`
-		Pindleskin             struct {
+		HideCharNamesInLogs    bool                  `yaml:"hideCharNamesInLogs"`
+
+		Pindleskin struct {
 			SkipOnImmunities []stat.Resist `yaml:"skipOnImmunities"`
 		} `yaml:"pindleskin"`
 		Cows struct {
