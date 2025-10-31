@@ -51,8 +51,8 @@ type SorceressLeveling struct {
 
 // fireSkillSequence defines the skill allocation for levels < 32
 var fireSkillSequence = []skill.ID{
-	skill.FrozenArmor, // Lvl 2 (1st point)
-	skill.FireBolt,    // Lvl 2 (+1 from Den of Evil, 2nd point)
+	skill.FireBolt,    // Lvl 2 (1st point)
+	skill.FrozenArmor, // Lvl 2 (+1 from Den of Evil, 2nd point)
 	skill.FireBolt,    // Lvl 3 (3rd point)
 	skill.FireBolt,    // Lvl 4 (4th point)
 	skill.FireBolt,    // Lvl 5 (1st point)
@@ -547,7 +547,9 @@ func (s SorceressLeveling) KillMonsterSequence(
 					currentAttackSkillUsed = skill.FireBall
 				}
 			} else if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.FireBolt); found {
-				currentAttackSkillUsed = skill.FireBolt
+				if action.GetSkillTotalLevel(skill.FireBolt) > 0 {
+					currentAttackSkillUsed = skill.FireBolt
+				}
 			}
 
 			if currentAttackSkillUsed != skill.AttackSkill {
@@ -1049,13 +1051,8 @@ func (s SorceressLeveling) InitialCharacterConfigSetup() {
 
 func (s SorceressLeveling) AdjustCharacterConfig() {
 	ctx := context.Get()
-	lvl, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
-
 	ctx.CharacterCfg.Character.UseTeleport = true
 
-	if lvl.Value >= 4 && lvl.Value < 24 {
-		ctx.CharacterCfg.Character.ClearPathDist = 7
-	}
 	if ctx.CharacterCfg.Game.Difficulty == difficulty.Hell {
 		// don't engage when teleing and running oom
 		ctx.CharacterCfg.Character.ClearPathDist = 0

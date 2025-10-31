@@ -555,3 +555,15 @@ func GetCastersCommonRunewords() []string {
 	castersRunewords := []string{"Stealth", "Spirit", "Heart of the Oak"}
 	return castersRunewords
 }
+
+func TryConsumeStaminaPot() {
+	ctx := context.Get()
+	if ctx.HealthManager.IsLowStamina() {
+		if staminaPotion, found := ctx.Data.Inventory.Find("StaminaPotion", item.LocationInventory); found {
+			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
+			screenPos := ui.GetScreenCoordsForItem(staminaPotion)
+			ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
+			step.CloseAllMenus()
+		}
+	}
+}

@@ -322,7 +322,11 @@ func onSafeNavigation() {
 			EnsureSkillBindings()
 			ctx.EnableItemPickup()
 		}
+		if ctx.HealthManager.IsLowStamina() {
+			TryConsumeStaminaPot()
+		}
 	}
+
 }
 
 func getPathOffsets(to data.Position) (int, int) {

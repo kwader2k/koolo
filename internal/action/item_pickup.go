@@ -10,7 +10,6 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
-	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/nip"
 	"github.com/hectorgimenez/koolo/internal/action/step"
@@ -52,6 +51,10 @@ func HasTPsAvailable() bool {
 	// Check for Tome of Town Portal
 	portalTome, found := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
 	if !found {
+		_, foundScroll := ctx.Data.Inventory.Find(item.ScrollOfTownPortal)
+		if foundScroll {
+			return true
+		}
 		return false // No portal tome found at all
 	}
 
@@ -87,17 +90,11 @@ func ItemPickup(maxDistance int) error {
 		if itemToPickup.UnitID == 0 {
 			ctx.Logger.Debug("No fitting items found for pickup after filtering.")
 			if HasTPsAvailable() {
-				_, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal)
-				if found {
-					ctx.Logger.Debug("TPs available and keybinding found, returning to town to sell junk and stash items.")
-					if err := InRunReturnTownRoutine(); err != nil {
-						ctx.Logger.Warn("Failed returning to town from ItemPickup", "error", err)
-					}
-					continue
-				} else {
-					ctx.Logger.Warn("TPs available but no keybinding found for TomeOfTownPortal. Skipping return to town.")
-					return nil
+				ctx.Logger.Debug("TPs available and keybinding found, returning to town to sell junk and stash items.")
+				if err := InRunReturnTownRoutine(); err != nil {
+					ctx.Logger.Warn("Failed returning to town from ItemPickup", "error", err)
 				}
+				continue
 			} else {
 				ctx.Logger.Warn("Inventory is full and NO Town Portals found. Skipping return to town and continuing current run (no more item pickups this cycle).")
 				return nil
@@ -367,6 +364,12 @@ func shouldBePickedUp(i data.Item) bool {
 	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 	if isLevelingChar && IsLowGold() && i.Name != "Gold" {
 		return true
+	}
+
+	if isLevelingChar && i.Name == "StaminaPotion" {
+		if ctx.HealthManager.ShouldPickStaminaPot() {
+			return true
+		}
 	}
 
 	// Pickup all magic or superior items if total gold is low, filter will not pass and items will be sold to vendor

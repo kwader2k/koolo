@@ -342,6 +342,10 @@ func GetSkillTotalLevel(skill skill.ID) uint {
 	ctx := context.Get()
 	skillLevel := ctx.Data.PlayerUnit.Skills[skill].Level
 
+	if singleSkill, skillFound := ctx.Data.PlayerUnit.Stats.FindStat(stat.SingleSkill, int(skill)); skillFound {
+		skillLevel += uint(singleSkill.Value)
+	}
+
 	if skillLevel > 0 {
 		if allSkill, allFound := ctx.Data.PlayerUnit.Stats.FindStat(stat.AllSkills, 0); allFound {
 			skillLevel += uint(allSkill.Value)
@@ -353,8 +357,6 @@ func GetSkillTotalLevel(skill skill.ID) uint {
 		}
 
 		//Todo Tabs + skills
-
-		//Todo individual + skills
 	}
 
 	return skillLevel

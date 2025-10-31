@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
-	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
@@ -32,14 +31,7 @@ type Bot struct {
 }
 
 func (b *Bot) NeedsTPsToContinue() bool {
-	portalTome, found := b.ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
-	if !found {
-		return true // No portal tome found, effectively 0 TPs. Need to go back.
-	}
-
-	qty, found := portalTome.FindStat(stat.Quantity, 0)
-
-	return qty.Value == 0 || !found
+	return !action.HasTPsAvailable()
 }
 
 func NewBot(ctx *botCtx.Context, mm MuleManager) *Bot {

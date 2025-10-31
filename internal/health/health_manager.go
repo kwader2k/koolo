@@ -6,6 +6,10 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
@@ -14,10 +18,11 @@ var ErrChicken = errors.New("chicken")
 var ErrMercChicken = errors.New("mercenary chicken")
 
 const (
-	healingInterval     = time.Second * 4
-	healingMercInterval = time.Second * 3
-	manaInterval        = time.Second * 4
-	rejuvInterval       = time.Second * 1
+	healingInterval       = time.Second * 4
+	healingMercInterval   = time.Second * 3
+	manaInterval          = time.Second * 4
+	rejuvInterval         = time.Second * 1
+	useStaminaPotMaxLevel = 10
 )
 
 // Manager responsibility is to keep our character and mercenary alive, monitoring life and giving potions when needed
@@ -106,4 +111,57 @@ func (hm *Manager) HandleHealthAndMana() error {
 	}
 
 	return nil
+}
+
+func (hm *Manager) ShouldPickStaminaPot() bool {
+	if hm.data.CharacterCfg.Game.Difficulty == difficulty.Normal {
+		if lvl, found := hm.data.PlayerUnit.FindStat(stat.Level, 0); found {
+			if lvl.Value <= useStaminaPotMaxLevel {
+				count := hm.GetStaminaPotionsCount()
+				if count < 2 {
+					return true
+				} else {
+					return false
+				}
+			}
+		}
+		return hm.IsLowStamina()
+	}
+	return false
+}
+
+func (hm *Manager) ShouldKeepStaminaPot() bool {
+	if hm.data.CharacterCfg.Game.Difficulty == difficulty.Normal {
+		if lvl, found := hm.data.PlayerUnit.FindStat(stat.Level, 0); found {
+			if lvl.Value <= useStaminaPotMaxLevel {
+				count := hm.GetStaminaPotionsCount()
+				if count <= 2 {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+func (hm *Manager) GetStaminaPotionsCount() int {
+	count := 0
+	for _, itm := range hm.data.Inventory.ByLocation(item.LocationInventory) {
+		if itm.Name == "StaminaPotion" {
+			count++
+		}
+	}
+	return count
+}
+
+func (hm *Manager) IsLowStamina() bool {
+	if !hm.data.PlayerUnit.States.HasState(state.ShrineStamina) && !hm.data.PlayerUnit.States.HasState(state.Staminapot) {
+		stamina, _ := hm.data.PlayerUnit.FindStat(stat.Stamina, 0)
+		maxStamina, _ := hm.data.PlayerUnit.FindStat(stat.MaxStamina, 0)
+		staminaRatio := float32(stamina.Value) / float32(maxStamina.Value)
+		if staminaRatio < 0.25 {
+			return true
+		}
+	}
+	return false
 }

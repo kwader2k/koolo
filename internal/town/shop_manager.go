@@ -37,6 +37,15 @@ func BuyConsumables(forceRefill bool) {
 
 	ctx.Logger.Debug(fmt.Sprintf("Buying: %d Healing potions and %d Mana potions for belt", missingHealingPotionInBelt, missingManaPotiontInBelt))
 
+	if ShouldBuyTPs() || forceRefill {
+		if _, found := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory); !found && ctx.Data.PlayerUnit.TotalPlayerGold() > 450 {
+			ctx.Logger.Info("TP Tome not found, buying one...")
+			if itm, itmFound := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationVendor); itmFound {
+				BuyItem(itm, 1)
+			}
+		}
+	}
+
 	// buy for belt first
 	if healingPotfound && missingHealingPotionInBelt > 0 {
 		BuyItem(healingPot, missingHealingPotionInBelt)
@@ -62,12 +71,6 @@ func BuyConsumables(forceRefill bool) {
 	}
 
 	if ShouldBuyTPs() || forceRefill {
-		if _, found := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory); !found && ctx.Data.PlayerUnit.TotalPlayerGold() > 450 {
-			ctx.Logger.Info("TP Tome not found, buying one...")
-			if itm, itmFound := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationVendor); itmFound {
-				BuyItem(itm, 1)
-			}
-		}
 		ctx.Logger.Debug("Filling TP Tome...")
 		if itm, found := ctx.Data.Inventory.Find(item.ScrollOfTownPortal, item.LocationVendor); found {
 			if ctx.Data.PlayerUnit.TotalPlayerGold() > 6000 {
@@ -348,6 +351,7 @@ func buyFullStack(i data.Item, currentKeysInInventory int) {
 
 func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	ctx := context.Get()
+	_, portalTomeFound := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
 	healingPotionCountToKeep := ctx.Data.ConfiguredInventoryPotionCount(data.HealingPotion)
 	manaPotionCountToKeep := ctx.Data.ConfiguredInventoryPotionCount(data.ManaPotion)
 	rejuvPotionCountToKeep := ctx.Data.ConfiguredInventoryPotionCount(data.RejuvenationPotion)
@@ -373,6 +377,11 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 		}
 
 		if itm.Name == item.TomeOfTownPortal || itm.Name == item.TomeOfIdentify || itm.Name == item.Key || itm.Name == "WirtsLeg" {
+			continue
+		}
+
+		//Don't sell scroll of town portal if tome isn't found
+		if !portalTomeFound && itm.Name == item.ScrollOfTownPortal {
 			continue
 		}
 
@@ -403,6 +412,10 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 				rejuvPotionCountToKeep--
 				continue
 			}
+		}
+
+		if itm.Name == "StaminaPotion" && ctx.HealthManager.ShouldKeepStaminaPot() {
+			continue
 		}
 
 		items = append(items, itm)
