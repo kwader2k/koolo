@@ -427,6 +427,10 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 			continue
 		}
 
+		if !itm.Identified && itm.Quality >= item.QualityMagic {
+			continue
+		}
+
 		bodyLocScores := scoreFunc(itm)
 
 		if len(bodyLocScores) > 0 {
