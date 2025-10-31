@@ -16,6 +16,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 func itemFitsInventory(i data.Item) bool {
@@ -194,7 +195,8 @@ func ItemPickup(maxDistance int) error {
 					break // Exit the inner loop to blacklist the item
 				}
 				// Pause to let the game state update from 'walking' to 'idle'
-				time.Sleep(100 * time.Millisecond)
+				// Use adaptive delay based on ping
+				time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 100)))
 				continue
 			}
 			if errors.Is(err, step.ErrMonsterAroundItem) {
@@ -242,8 +244,8 @@ func ItemPickup(maxDistance int) error {
 
 			// Screenshot with show items on
 			ctx.HID.KeyDown(ctx.Data.KeyBindings.ShowItems)
-			// Small delay to ensure items are shown before screenshot
-			time.Sleep(200 * time.Millisecond)
+			// Adaptive delay to ensure items are shown before screenshot
+			time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 200)))
 			screenshot := ctx.GameReader.Screenshot()
 			event.Send(event.ItemBlackListed(event.WithScreenshot(ctx.Name, fmt.Sprintf("Item %s [%s] BlackListed in Area:%s", itemToPickup.Name, itemToPickup.Quality.ToString(), ctx.Data.PlayerUnit.Area.Area().Name), screenshot), data.Drop{Item: itemToPickup}))
 			ctx.HID.KeyUp(ctx.Data.KeyBindings.ShowItems)
@@ -375,6 +377,7 @@ func shouldBePickedUp(i data.Item) bool {
 		return true
 	}
 
+	// Evaluate item based on NIP rules
 	playerRule, mercRule := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateTiers(i, ctx.Data.CharacterCfg.Runtime.TierRules)
 	if playerRule.Tier() > 0.0 || mercRule.MercTier() > 0.0 {
 		if i.Quality <= item.QualitySuperior {

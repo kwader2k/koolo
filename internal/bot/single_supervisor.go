@@ -249,6 +249,35 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 		defer runCancel()
 
+		// Initialize ping monitor for this game session
+		// Configuration from koolo.yaml (default: quit after 30s of ping > 500ms)
+		pingThreshold := 500
+		sustainedDuration := 30 * time.Second
+		pingEnabled := false
+		
+		if config.Koolo.PingMonitor.Enabled {
+			pingEnabled = true
+			if config.Koolo.PingMonitor.HighPingThreshold > 0 {
+				pingThreshold = config.Koolo.PingMonitor.HighPingThreshold
+			}
+			if config.Koolo.PingMonitor.SustainedDuration > 0 {
+				sustainedDuration = time.Duration(config.Koolo.PingMonitor.SustainedDuration) * time.Second
+			}
+		}
+		
+		pingMonitor := health.NewPingMonitor(
+			s.bot.ctx.Logger,
+			pingThreshold,
+			sustainedDuration,
+		)
+		pingMonitor.Enabled = pingEnabled
+		pingMonitor.SetCallback(func() {
+			s.bot.ctx.Logger.Error("Sustained high ping detected. Forcing game exit.",
+				slog.Int("threshold", pingThreshold),
+				slog.Duration("duration", sustainedDuration))
+			runCancel()
+		})
+
 		// In-Game Activity Monitor
 		go func() {
 			ticker := time.NewTicker(activityCheckInterval)
@@ -274,6 +303,13 @@ func (s *SinglePlayerSupervisor) Start() error {
 					if !s.bot.ctx.GameReader.InGame() || s.bot.ctx.Data.PlayerUnit.ID == 0 {
 						continue
 					}
+
+					// Check for sustained high ping
+					if pingMonitor.CheckPing(s.bot.ctx.Data.Game.Ping) {
+						s.bot.ctx.Logger.Error("Ping monitor triggered game exit.")
+						return
+					}
+
 					currentPos := s.bot.ctx.Data.PlayerUnit.Position
 					if currentPos.X == lastPosition.X && currentPos.Y == lastPosition.Y {
 						if stuckSince.IsZero() {

@@ -358,6 +358,46 @@
                         placeholder="Chat ID"
                         value="{{ .Telegram.ChatID }}"
                 />
+                <h4>Ping Monitor</h4>
+                <label>
+                    <input
+                            {{ if .PingMonitor.Enabled }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="ping_monitor_enabled"
+                            value="true"
+                    />
+                    Enable ping monitoring (auto-stop bot on sustained high ping)
+                </label>
+                <fieldset class="grid">
+                    <label>
+                        Threshold (ms)
+                        <input
+                                name="ping_monitor_threshold"
+                                type="number"
+                                min="100"
+                                max="2000"
+                                step="50"
+                                placeholder="500"
+                                value="{{ if .PingMonitor.HighPingThreshold }}{{ .PingMonitor.HighPingThreshold }}{{ else }}500{{ end }}"
+                        />
+                        <small>Stop if ping exceeds (default: 500ms)</small>
+                    </label>
+                    <label>
+                        Duration (seconds)
+                        <input
+                                name="ping_monitor_duration"
+                                type="number"
+                                min="5"
+                                max="120"
+                                step="5"
+                                placeholder="30"
+                                value="{{ if .PingMonitor.SustainedDuration }}{{ .PingMonitor.SustainedDuration }}{{ else }}30{{ end }}"
+                        />
+                        <small>How long to persist (default: 30s)</small>
+                    </label>
+                </fieldset>
             </fieldset>
             <fieldset class="grid">
                 {{ if not .FirstRun }}

@@ -129,11 +129,19 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 	const roundTripThreshold = 10 * time.Second
 	const roundTripMaxRadius = 5
 
+	// Adaptive movement refresh intervals based on ping
+	// Adjust polling frequency based on network latency
 	var walkDuration time.Duration
 	if !ctx.Data.AreaData.Area.IsTown() {
-		walkDuration = utils.RandomDurationMs(300, 350)
+		// In dungeons: faster refresh for combat
+		baseMin, baseMax := 300, 350
+		pingAdjustment := int(float64(ctx.Data.Game.Ping) * 0.5) // Add half ping to base
+		walkDuration = utils.RandomDurationMs(baseMin+pingAdjustment, baseMax+pingAdjustment)
 	} else {
-		walkDuration = utils.RandomDurationMs(500, 800)
+		// In town: slower refresh is acceptable
+		baseMin, baseMax := 500, 800
+		pingAdjustment := int(float64(ctx.Data.Game.Ping) * 0.5)
+		walkDuration = utils.RandomDurationMs(baseMin+pingAdjustment, baseMax+pingAdjustment)
 	}
 
 	lastRun := time.Time{}
@@ -256,7 +264,8 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 				x, y := ui.GameCoordsToScreenCords(obj.Position.X, obj.Position.Y)
 				ctx.HID.Click(game.LeftButton, x, y)
 
-				time.Sleep(time.Millisecond * 100)
+				// Adaptive delay for obstacle interaction based on ping
+				time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 100)))
 			} else if door, found := ctx.PathFinder.GetClosestDoor(ctx.Data.PlayerUnit.Position); found {
 				//There's a door really close, try to open it
 				doorToOpen := *door

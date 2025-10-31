@@ -26,3 +26,8 @@ telegram:
   enabled: false
   chatId: 0
   token: ''
+# Ping Monitor - Automatically stop bot on sustained high ping
+pingMonitor:
+  enabled: false             # Set to true to enable ping monitoring
+  highPingThreshold: 500     # Stop bot if ping exceeds this value in ms (default: 500)
+  sustainedDuration: 30      # How long high ping must persist before stopping in seconds (default: 30)

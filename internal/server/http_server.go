@@ -524,6 +524,7 @@ func (s *HttpServer) getStatusData() IndexData {
 				NextExp:         nextExp,
 				Difficulty:      diffStr,
 				Area:            areaStr,
+				Ping:            data.Game.Ping,
 				Life:            life,
 				MaxLife:         maxLife,
 				Mana:            mana,
@@ -1017,6 +1018,20 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		newConfig.Telegram.ChatID = telegramChatId
+
+		// Ping Monitor
+		newConfig.PingMonitor.Enabled = r.Form.Get("ping_monitor_enabled") == "true"
+		pingThreshold, err := strconv.Atoi(r.Form.Get("ping_monitor_threshold"))
+		if err != nil || pingThreshold < 100 {
+			pingThreshold = 500 // Default to 500ms
+		}
+		newConfig.PingMonitor.HighPingThreshold = pingThreshold
+		
+		pingDuration, err := strconv.Atoi(r.Form.Get("ping_monitor_duration"))
+		if err != nil || pingDuration < 5 {
+			pingDuration = 30 // Default to 30 seconds
+		}
+		newConfig.PingMonitor.SustainedDuration = pingDuration
 
 		err = config.ValidateAndSaveConfig(newConfig)
 		if err != nil {

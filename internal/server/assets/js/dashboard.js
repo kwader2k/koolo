@@ -89,6 +89,9 @@ function createCharacterCard(key) {
                       <div class="co-info-left">
                         <span class="co-classlevel">Class/Level (Exp)</span>
                         <span class="co-dot"> • </span>
+                        <span class="co-area">Area</span>
+                        <span class="co-dot"> • </span>
+                        <span class="co-ping">Ping: —</span>
                         <div class="co-xp" title="">
                             <div class="xp-bar" style="height:6px;background:#2b2f36;border-radius:4px;overflow:hidden;width:50px;display:inline-block;vertical-align:middle;">
                                 <div class="xp-bar-fill" style="height:100%;width:0;background:linear-gradient(90deg,#6aa0ff,#3a7bff);"></div>
@@ -230,8 +233,8 @@ function setupEventListeners(card, key) {
       const currentStatus = this.className.includes("btn-start")
         ? "Not Started"
         : this.className.includes("btn-pause")
-        ? "In game"
-        : "Paused";
+          ? "In game"
+          : "Paused";
       let action;
       if (currentStatus === "Not Started") {
         action = "start";
@@ -398,8 +401,8 @@ function updateStats(card, key, games, dropCount) {
     dropCount === undefined
       ? "None"
       : dropCount === 0
-      ? "None"
-      : `<a href="/drops?supervisor=${key}">${dropCount}</a>`;
+        ? "None"
+        : `<a href="/drops?supervisor=${key}">${dropCount}</a>`;
   card.querySelector(".chickens").textContent = stats.totalChickens;
   card.querySelector(".deaths").textContent = stats.totalDeaths;
   card.querySelector(".errors").textContent = stats.totalErrors;
@@ -423,6 +426,7 @@ function updateCharacterOverview(card, ui, status) {
   const classLevelEl = card.querySelector(".co-classlevel");
   const diffEl = card.querySelector(".co-difficulty");
   const areaEl = card.querySelector(".co-area");
+  const pingEl = card.querySelector(".co-ping");
   const lifeEl = card.querySelector(".co-life");
   const manaEl = card.querySelector(".co-mana");
   const mfEl = card.querySelector(".co-mf");
@@ -437,6 +441,7 @@ function updateCharacterOverview(card, ui, status) {
     if (classLevelEl) classLevelEl.textContent = "—";
     if (diffEl) diffEl.textContent = "—";
     if (areaEl) areaEl.textContent = "—";
+    if (pingEl) pingEl.textContent = "Ping: —";
     if (lifeEl) lifeEl.textContent = "Life: —";
     if (manaEl) manaEl.textContent = "Mana: —";
     if (mfEl) mfEl.textContent = "MF: —";
@@ -631,6 +636,7 @@ function updateCharacterOverview(card, ui, status) {
   }
   const diff = titleCase(ui.Difficulty || "");
   const area = ui.Area || "";
+  const ping = ui.Ping ?? 0;
   const life = ui.Life ?? 0;
   const maxLife = ui.MaxLife ?? 0;
   const mana = ui.Mana ?? 0;
@@ -661,6 +667,7 @@ function updateCharacterOverview(card, ui, status) {
   if (xpPct) xpPct.textContent = pctText;
   if (diffEl) diffEl.textContent = `${diff}`;
   if (areaEl) areaEl.textContent = `${area}`;
+  if (pingEl) pingEl.textContent = `Ping: ${ping}ms`;
   if (lifeEl) lifeEl.textContent = `Life: ${life}/${maxLife}`;
   if (manaEl) manaEl.textContent = `Mana: ${mana}/${maxMana}`;
   if (mfEl) mfEl.textContent = `MF: ${mf}%`;
@@ -734,26 +741,25 @@ function updateRunStats(card, games) {
       runElement.classList.add("current-run");
     }
     runElement.innerHTML = `
-            <h4>${runName}${
-      stats.isCurrentRun
+            <h4>${runName}${stats.isCurrentRun
         ? ' <span class="current-run-indicator">Current</span>'
         : ""
-    }</h4>
+      }</h4>
             <div class="run-stat-content">
                 <div class="run-stat-item" title="Fastest Run">
                     <span class="stat-label">Fastest:</span> ${formatDuration(
-                      stats.shortestTime
-                    )}
+        stats.shortestTime
+      )}
                 </div>
                 <div class="run-stat-item" title="Slowest Run">
                     <span class="stat-label">Slowest:</span> ${formatDuration(
-                      stats.longestTime
-                    )}
+        stats.longestTime
+      )}
                 </div>
                 <div class="run-stat-item" title="Average Run">
                     <span class="stat-label">Average:</span> ${formatDuration(
-                      stats.averageTime
-                    )}
+        stats.averageTime
+      )}
                 </div>
                 <div class="run-stat-item" title="Total Runs">
                     <span class="stat-label">Total:</span> ${stats.runCount}
@@ -762,9 +768,8 @@ function updateRunStats(card, games) {
                     <span class="stat-label">Errors:</span> ${stats.errorCount}
                 </div>
                 <div class="run-stat-item" title="Chickens">
-                    <span class="stat-label">Chickens:</span> ${
-                      stats.runChickens
-                    }
+                    <span class="stat-label">Chickens:</span> ${stats.runChickens
+      }
                 </div>
                 <div class="run-stat-item" title="Deaths">
                     <span class="stat-label">Deaths:</span> ${stats.runDeaths}
@@ -1181,9 +1186,8 @@ function requestCompanionJoin(supervisor, gameName, password) {
         // Show error message
         popup.innerHTML = `
                     <h3>Error</h3>
-                    <p>Failed to send join request: ${
-                      data.error || "Unknown error"
-                    }</p>
+                    <p>Failed to send join request: ${data.error || "Unknown error"
+          }</p>
                     <button onclick="closeCompanionJoinPopup()" class="btn btn-primary">Close</button>
                 `;
       }

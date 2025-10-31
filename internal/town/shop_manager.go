@@ -3,7 +3,6 @@ package town
 import (
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -12,6 +11,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/ui"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 var questItems = []item.Name{
@@ -219,9 +219,9 @@ func SellJunk(lockConfig ...[][]int) {
 				ctx.Logger.Debug(fmt.Sprintf("Selling full stack of %d keys from %v", qtyInStack.Value, keyStack.Position))
 				SellItemFullStack(keyStack)
 				keysSold += qtyInStack.Value
-				totalKeys -= qtyInStack.Value      // Update total keys count
-				ctx.RefreshGameData()              // Refresh after selling a full stack
-				time.Sleep(200 * time.Millisecond) // Short delay for UI update
+				totalKeys -= qtyInStack.Value     // Update total keys count
+				ctx.RefreshGameData()             // Refresh after selling a full stack
+				utils.PingSleep(utils.Light, 200) // Light operation: Short delay for UI update
 			}
 		}
 
@@ -257,7 +257,7 @@ func SellJunk(lockConfig ...[][]int) {
 					SellItem(remainingKeyStack)
 					keysSold++
 					ctx.RefreshGameData()
-					time.Sleep(100 * time.Millisecond)
+					utils.PingSleep(utils.Light, 100) // Light operation: Individual sell delay
 				}
 			} else {
 				ctx.Logger.Warn("No remaining key stacks found to sell individual keys from, despite excess reported.")
@@ -283,9 +283,9 @@ func SellItem(i data.Item) {
 
 	ctx.Logger.Debug(fmt.Sprintf("Attempting to sell single item %s at screen coords X:%d Y:%d", i.Desc().Name, screenPos.X, screenPos.Y))
 
-	time.Sleep(200 * time.Millisecond)
+	utils.PingSleep(utils.Light, 200) // Light operation: Pre-click delay
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	time.Sleep(200 * time.Millisecond)
+	utils.PingSleep(utils.Light, 200) // Light operation: Post-click delay
 	ctx.Logger.Debug(fmt.Sprintf("Item %s [%s] sold", i.Desc().Name, i.Quality.ToString()))
 }
 
@@ -296,9 +296,9 @@ func SellItemFullStack(i data.Item) {
 
 	ctx.Logger.Debug(fmt.Sprintf("Attempting to sell full stack of item %s at screen coords X:%d Y:%d", i.Desc().Name, screenPos.X, screenPos.Y))
 
-	time.Sleep(200 * time.Millisecond)
+	utils.PingSleep(utils.Light, 200) // Light operation: Pre-click delay for stack sell
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	time.Sleep(500 * time.Millisecond)
+	utils.PingSleep(utils.Medium, 500) // Medium operation: Post-click delay for stack sell (longer for confirmation)
 	ctx.Logger.Debug(fmt.Sprintf("Full stack of %s [%s] sold", i.Desc().Name, i.Quality.ToString()))
 }
 
@@ -306,10 +306,10 @@ func BuyItem(i data.Item, quantity int) {
 	ctx := context.Get()
 	screenPos := ui.GetScreenCoordsForItem(i)
 
-	time.Sleep(250 * time.Millisecond)
+	utils.PingSleep(utils.Medium, 250) // Medium operation: Pre-buy delay
 	for k := 0; k < quantity; k++ {
 		ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-		time.Sleep(600 * time.Millisecond)
+		utils.PingSleep(utils.Medium, 600) // Medium operation: Wait for purchase to process
 		ctx.Logger.Debug(fmt.Sprintf("Purchased %s [X:%d Y:%d]", i.Desc().Name, i.Position.X, i.Position.Y))
 	}
 }
@@ -327,7 +327,7 @@ func buyFullStack(i data.Item, currentKeysInInventory int) {
 	// - If 0 keys: this buys 1 key.
 	// - If >0 keys: this fills the current stack.
 	ctx.HID.ClickWithModifier(game.RightButton, screenPos.X, screenPos.Y, game.ShiftKey)
-	time.Sleep(200 * time.Millisecond)
+	utils.PingSleep(utils.Light, 200) // Light operation: Wait for first purchase
 
 	// Special handling for keys: only perform a second click if starting from 0 keys.
 	if i.Name == item.Key {
@@ -335,7 +335,7 @@ func buyFullStack(i data.Item, currentKeysInInventory int) {
 			// As per user: if 0 keys, first click buys 1, second click fills the stack.
 			ctx.Logger.Debug("Initial keys were 0. Performing second Shift+Right Click to fill key stack.")
 			ctx.HID.ClickWithModifier(game.RightButton, screenPos.X, screenPos.Y, game.ShiftKey)
-			time.Sleep(200 * time.Millisecond) // Add another delay for the second click
+			utils.PingSleep(utils.Light, 200) // Light operation: Wait for second purchase
 		} else {
 			// As per user: if > 0 keys, the first click should have already filled the stack.
 			// No second click is needed to avoid buying an unnecessary extra key/stack.

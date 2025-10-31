@@ -132,6 +132,7 @@ type CharacterOverview struct {
 	NextExp         int
 	Difficulty      string
 	Area            string
+	Ping            int
 	Life            int
 	MaxLife         int
 	Mana            int

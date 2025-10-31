@@ -48,7 +48,7 @@ func IdentifyAll(skipIdentify bool) error {
 		ctx.Logger.Debug("Identifying all item with Cain...")
 		// Close any open menus first
 		step.CloseAllMenus()
-		utils.Sleep(500)
+		utils.PingSleep(utils.Medium, 500) // Medium operation: Close menus before Cain
 
 		err := CainIdentify()
 		// if identifying with cain fails then we should continue to identify using tome
@@ -77,7 +77,7 @@ func IdentifyAll(skipIdentify bool) error {
 	step.CloseAllMenus()
 	for !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(1000) // Add small delay to allow the game to open the inventory
+		utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for inventory to open
 	}
 
 	for _, i := range items {
@@ -96,7 +96,7 @@ func CainIdentify() error {
 
 	// Close any open menus first
 	step.CloseAllMenus()
-	utils.Sleep(200)
+	utils.PingSleep(utils.Light, 200) // Light operation: Close menus before NPC interaction
 
 	err := InteractNPC(stayAwhileAndListen)
 	if err != nil {
@@ -111,7 +111,7 @@ func CainIdentify() error {
 		if ctx.Data.OpenMenus.NPCInteract {
 			break
 		}
-		utils.Sleep(100)
+		utils.PingSleep(utils.Light, 100) // Light operation: Polling for menu state
 	}
 
 	if !ctx.Data.OpenMenus.NPCInteract {
@@ -120,7 +120,7 @@ func CainIdentify() error {
 
 	// Select identify option
 	ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(800)
+	utils.PingSleep(utils.Medium, 800) // Medium operation: Wait for key sequence to register
 
 	// Close menu if still open
 	if ctx.Data.OpenMenus.NPCInteract {
@@ -181,12 +181,12 @@ func identifyItem(idTome data.Item, i data.Item) {
 	ctx := context.Get()
 	screenPos := ui.GetScreenCoordsForItem(idTome)
 
-	utils.Sleep(500)
+	utils.PingSleep(utils.Medium, 500) // Medium operation: Prepare for right-click on tome
 	ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-	utils.Sleep(1000)
+	utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for tome activation
 
 	screenPos = ui.GetScreenCoordsForItem(i)
 
 	ctx.HID.Click(game.LeftButton, screenPos.X, screenPos.Y)
-	utils.Sleep(350)
+	utils.PingSleep(utils.Critical, 350) // Critical operation: Wait for item identification
 }

@@ -48,7 +48,16 @@ func WayPoint(dest area.ID) error {
 				actTabX := ui.WpTabStartX + (wpCoords.Tab-1)*ui.WpTabSizeX + (ui.WpTabSizeX / 2)
 				ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartY)
 			}
-			utils.Sleep(200)
+			ping := utils.GetCurrentPing()
+			delay := utils.PingMultiplier(utils.Medium, 250)
+			ctx.Logger.Debug("Waypoint tab clicked - adaptive sleep",
+				slog.String("destination", area.Areas[dest].Name),
+				slog.Int("ping_ms", ping),
+				slog.Int("min_delay_ms", 250),
+				slog.Int("actual_delay_ms", delay),
+				slog.String("formula", fmt.Sprintf("%d + (%.1f * %d) = %d", 250, float64(utils.Medium), ping, delay)),
+			)
+			utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for waypoint tab to load
 			// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
 			ClearMessages()
 		}
@@ -105,6 +114,16 @@ func useWP(dest area.ID) error {
 	currentWP = area.WPAddresses[dest]
 
 	// First use the previous available waypoint that we have discovered
+	ping := utils.GetCurrentPing()
+	delay := utils.PingMultiplier(utils.Critical, 1000)
+	ctx.Logger.Debug("Waypoint destination clicked - adaptive sleep",
+		slog.String("destination", area.Areas[dest].Name),
+		slog.Int("ping_ms", ping),
+		slog.Int("min_delay_ms", 1000),
+		slog.Int("actual_delay_ms", delay),
+		slog.String("formula", fmt.Sprintf("%d + (%.1f * %d) = %d", 1000, float64(utils.Critical), ping, delay)),
+	)
+
 	if ctx.Data.LegacyGraphics {
 		areaBtnY := ui.WpListStartYClassic + (currentWP.Row-1)*ui.WpAreaBtnHeightClassic + (ui.WpAreaBtnHeightClassic / 2)
 		ctx.HID.Click(game.LeftButton, ui.WpListPositionXClassic, areaBtnY)
@@ -112,7 +131,7 @@ func useWP(dest area.ID) error {
 		areaBtnY := ui.WpListStartY + (currentWP.Row-1)*ui.WpAreaBtnHeight + (ui.WpAreaBtnHeight / 2)
 		ctx.HID.Click(game.LeftButton, ui.WpListPositionX, areaBtnY)
 	}
-	utils.Sleep(1000)
+	utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for waypoint travel to complete
 
 	// We have the WP discovered, just use it
 	if len(traverseAreas) == 0 {
