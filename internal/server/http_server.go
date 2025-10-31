@@ -1320,7 +1320,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Leveling.AutoEquip = r.Form.Has("gameLevelingAutoEquip")
 		cfg.Game.Leveling.AutoEquipFromSharedStash = r.Form.Has("gameLevelingAutoEquipFromSharedStash")
 		cfg.Game.Leveling.NightmareRequiredLevel = s.getIntFromForm(r, "gameLevelingNightmareRequiredLevel", 1, 99, 41)
-		cfg.Game.Leveling.HellRequiredLevel = s.getIntFromForm(r, "gameLevelingNightmareRequiredLevel", 1, 99, 70)
+		cfg.Game.Leveling.HellRequiredLevel = s.getIntFromForm(r, "gameLevelingHellRequiredLevel", 1, 99, 70)
 		cfg.Game.Leveling.HellRequiredFireRes = s.getIntFromForm(r, "gameLevelingHellRequiredFireRes", -100, 75, 15)
 		cfg.Game.Leveling.HellRequiredLightRes = s.getIntFromForm(r, "gameLevelingHellRequiredLightRes", -100, 75, -10)
 
