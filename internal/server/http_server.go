@@ -1160,6 +1160,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		if cfg.Character.Class == "berserker" {
 			cfg.Character.BerserkerBarb.SkipPotionPickupInTravincal = r.Form.Has("barbSkipPotionPickupInTravincal")
 			cfg.Character.BerserkerBarb.FindItemSwitch = r.Form.Has("characterFindItemSwitch")
+			cfg.Character.BerserkerBarb.UseHowl = r.Form.Has("barbUseHowl")
 		}
 
 		// Nova Sorceress specific options

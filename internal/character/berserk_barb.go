@@ -37,6 +37,11 @@ func (s *Berserker) CheckKeyBindings() []skill.ID {
 	requireKeybindings := []skill.ID{skill.BattleCommand, skill.BattleOrders, skill.Shout, skill.FindItem, skill.Berserk}
 	missingKeybindings := []skill.ID{}
 
+	// add Howl if enabled
+	if s.CharacterCfg.Character.BerserkerBarb.UseHowl {
+		requireKeybindings = append(requireKeybindings, skill.Howl)
+	}
+
 	for _, cskill := range requireKeybindings {
 		if _, found := s.Data.KeyBindings.KeyBindingForSkill(cskill); !found {
 			missingKeybindings = append(missingKeybindings, cskill)
@@ -94,6 +99,11 @@ func (s *Berserker) KillMonsterSequence(
 				s.Logger.Warn("Failed to move to monster", slog.String("error", err.Error()))
 				continue
 			}
+
+			if s.CharacterCfg.Character.BerserkerBarb.UseHowl {
+				s.PerformHowl()
+				time.Sleep(50 * time.Millisecond)
+			}
 		}
 
 		s.PerformBerserkAttack(monster.UnitID)
@@ -121,6 +131,22 @@ func (s *Berserker) PerformBerserkAttack(monsterID data.UnitID) {
 
 	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(monster.Position.X, monster.Position.Y)
 	ctx.HID.Click(game.LeftButton, screenX, screenY)
+}
+
+func (s *Berserker) PerformHowl() {
+	ctx := context.Get()
+	ctx.PauseIfNotPriority()
+
+	// Ensure Howl skill is active
+	howlKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Howl)
+	if found && s.Data.PlayerUnit.RightSkill != skill.Howl {
+		ctx.HID.PressKeyBinding(howlKey)
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	// Cast Howl at character's position
+	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(s.Data.PlayerUnit.Position.X, s.Data.PlayerUnit.Position.Y)
+	ctx.HID.Click(game.RightButton, screenX, screenY)
 }
 
 func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
