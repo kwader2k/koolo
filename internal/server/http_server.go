@@ -1058,7 +1058,8 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		cfg.MaxGameLength, _ = strconv.Atoi(r.Form.Get("maxGameLength"))
-		cfg.CharacterName = r.Form.Get("characterName")
+		// Don't overwrite CharacterName - it's not an editable field in the UI
+		// cfg.CharacterName = r.Form.Get("characterName")
 		cfg.CommandLineArgs = r.Form.Get("commandLineArgs")
 		cfg.KillD2OnStop = r.Form.Has("kill_d2_process")
 		cfg.ClassicMode = r.Form.Has("classic_mode")
@@ -1134,6 +1135,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Character config section
 		cfg.Character.Class = r.Form.Get("characterClass")
+		cfg.CharacterName = r.Form.Get("characterName")
 		cfg.Character.StashToShared = r.Form.Has("characterStashToShared")
 		cfg.Character.UseTeleport = r.Form.Has("characterUseTeleport")
 		cfg.Character.UseExtraBuffs = r.Form.Has("characterUseExtraBuffs")
@@ -1379,9 +1381,21 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.CubeRecipes.SkipPerfectRubies = r.Form.Has("skipPerfectRubies")
 
 		// Companion config
-		cfg.Companion.Enabled = r.Form.Has("companionEnabled")
-		cfg.Companion.Leader = r.Form.Has("companionLeader")
-		cfg.Companion.LeaderName = r.Form.Get("companionLeaderName")
+		companionRole := r.Form.Get("companionRole")
+		switch companionRole {
+		case "leader":
+			cfg.Companion.Enabled = true
+			cfg.Companion.Leader = true
+			cfg.Companion.LeaderName = ""
+		case "companion":
+			cfg.Companion.Enabled = true
+			cfg.Companion.Leader = false
+			cfg.Companion.LeaderName = r.Form.Get("companionLeaderName")
+		default: // "neither"
+			cfg.Companion.Enabled = false
+			cfg.Companion.Leader = false
+			cfg.Companion.LeaderName = ""
+		}
 		cfg.Companion.GameNameTemplate = r.Form.Get("companionGameNameTemplate")
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
 
@@ -1440,12 +1454,18 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	// and farmer profiles (for mule's return character dropdown)
 	muleProfiles := []string{}
 	farmerProfiles := []string{}
+	leaderCharacters := make(map[string]string) // characterName -> profileName
 	allCharacters := config.GetCharacters()
 	for profileName, profileCfg := range allCharacters {
 		if strings.ToLower(profileCfg.Character.Class) == "mule" {
 			muleProfiles = append(muleProfiles, profileName)
 		} else {
 			farmerProfiles = append(farmerProfiles, profileName)
+			// Build map of character names to profile names for leader dropdown
+			// Include ALL farmer characters (not just configured leaders) so users can set up companions first
+			if profileCfg.CharacterName != "" {
+				leaderCharacters[profileCfg.CharacterName] = profileName
+			}
 		}
 	}
 	sort.Strings(muleProfiles)
@@ -1462,6 +1482,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		RunewordRecipeList: config.AvailableRunewordRecipes,
 		AvailableProfiles:  muleProfiles,
 		FarmerProfiles:     farmerProfiles,
+		LeaderCharacters:   leaderCharacters,
 	})
 }
 

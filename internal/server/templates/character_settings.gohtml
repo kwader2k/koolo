@@ -62,8 +62,21 @@
                     <input name="characterName" placeholder="{{ .Config.CharacterName }}" value="{{ .Config.CharacterName }}"/>
                 </label>
                 <label>
-                    <input type="checkbox" name="isNonLadderChar" {{ if .Config.Game.IsNonLadderChar }}checked{{ end }}/>
-                    Non-Ladder
+                    Companion Role
+                    <select name="companionRole" id="companionRole">
+                        <option value="neither" {{ if and (not .Config.Companion.Enabled) }}selected{{ end }}>Neither (Solo)</option>
+                        <option value="leader" {{ if and .Config.Companion.Enabled .Config.Companion.Leader }}selected{{ end }}>Leader</option>
+                        <option value="companion" {{ if and .Config.Companion.Enabled (not .Config.Companion.Leader) }}selected{{ end }}>Companion</option>
+                    </select>
+                </label>
+                <label id="leaderNameLabel" style="{{ if not (and .Config.Companion.Enabled (not .Config.Companion.Leader)) }}display: none;{{ end }}">
+                    Leader Character
+                    <select name="companionLeaderName" id="companionLeaderName">
+                        <option value="">Select Leader</option>
+                        {{ range $charName, $profileName := .LeaderCharacters }}
+                        <option value="{{ $charName }}" {{ if eq $.Config.Companion.LeaderName $charName }}selected{{ end }}>{{ $charName }} ({{ $profileName }})</option>
+                        {{ end }}
+                    </select>
                 </label>
             </fieldset>
             <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">
@@ -578,6 +591,21 @@
                     const classSelect = document.querySelector('select[name="characterClass"]');
                     const farmerMuleSettings = document.getElementById('farmer-mule-settings');
                     const muleCharacterSettings = document.getElementById('mule-character-settings');
+
+                    // Companion role dropdown handler
+                    const companionRoleSelect = document.getElementById('companionRole');
+                    const leaderNameLabel = document.getElementById('leaderNameLabel');
+                    if (companionRoleSelect && leaderNameLabel) {
+                        companionRoleSelect.addEventListener('change', function() {
+                            // Show leader dropdown only when companion is selected
+                            if (this.value === 'companion') {
+                                leaderNameLabel.style.display = 'block';
+                            } else {
+                                leaderNameLabel.style.display = 'none';
+                            }
+                        });
+                    }
+
                     // Toggle mule settings visibility based on enabled checkbox
                     if (mulingEnabledCheckbox) {
                         mulingEnabledCheckbox.addEventListener('change', function() {

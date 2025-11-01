@@ -24,6 +24,7 @@ import (
 
 type Bot struct {
 	ctx                   *botCtx.Context
+	companionHandler      *CompanionEventHandler
 	lastActivityTimeMux   sync.Mutex
 	lastActivityTime      time.Time
 	lastKnownPosition     data.Position
@@ -50,6 +51,10 @@ func NewBot(ctx *botCtx.Context, mm MuleManager) *Bot {
 		lastPositionCheckTime: time.Now(),      // Initialize
 		MuleManager:           mm,
 	}
+}
+
+func (b *Bot) SetCompanionHandler(handler *CompanionEventHandler) {
+	b.companionHandler = handler
 }
 
 func (b *Bot) updateActivityAndPosition() {
@@ -424,6 +429,73 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 			}
 		}
+
+		// If this is a companion (not a leader), wait here until leader exits
+		// This prevents the companion from exiting the game when runs complete
+		if b.ctx.CharacterCfg.Companion.Enabled && !b.ctx.CharacterCfg.Companion.Leader {
+			currentGame := b.ctx.CharacterCfg.Companion.CompanionGameName
+			b.ctx.Logger.Info("[Companion] All runs completed, waiting for leader to exit...",
+				slog.String("companionGameName", currentGame),
+				slog.String("leaderName", b.ctx.CharacterCfg.Companion.LeaderName))
+
+			// Poll every 200ms for instant synchronization with leader
+			ticker := time.NewTicker(200 * time.Millisecond)
+			defer ticker.Stop()
+
+			maxWaitTime := 5 * time.Minute
+			waitStart := time.Now()
+			pollCount := 0
+
+			for {
+				select {
+				case <-ctx.Done():
+					b.ctx.Logger.Info("[Companion] Context cancelled, companion will now exit")
+					return nil
+				case <-ticker.C:
+					pollCount++
+
+					// Timeout check - prevent infinite waiting if leader crashes
+					if time.Since(waitStart) > maxWaitTime {
+						b.ctx.Logger.Warn("[Companion] Waited too long for leader (5 minutes), exiting game",
+							slog.Int("totalPolls", pollCount))
+						return nil
+					}
+
+					// Check if leader is still in the SAME game
+					if b.companionHandler != nil {
+						leaderGame := b.companionHandler.GetCurrentGameName()
+						leaderInGame := b.companionHandler.IsLeaderInGame()
+
+						// Log detailed sync status every 5 seconds (every 25 polls at 200ms interval)
+						if pollCount%25 == 0 {
+							b.ctx.Logger.Info("[Companion] Synchronization check",
+								slog.Bool("leaderInGame", leaderInGame),
+								slog.String("companionCurrentGame", currentGame),
+								slog.String("leaderCurrentGame", leaderGame),
+								slog.Duration("waitDuration", time.Since(waitStart)),
+								slog.Int("pollCount", pollCount))
+						}
+
+						// If leader is no longer in game or in a different game, exit immediately
+						if !leaderInGame || leaderGame != currentGame {
+							b.ctx.Logger.Info("[Companion] Leader exited, companion exiting immediately",
+								slog.Bool("leaderInGame", leaderInGame),
+								slog.String("companionGameName", currentGame),
+								slog.String("leaderGameName", leaderGame),
+								slog.Int("totalPolls", pollCount),
+								slog.Duration("totalWaitTime", time.Since(waitStart)))
+							return nil
+						}
+
+						b.ctx.Logger.Debug("[Companion] Leader still in game, continuing to wait...",
+							slog.Int("pollCount", pollCount))
+					} else {
+						b.ctx.Logger.Warn("[Companion] companionHandler is nil, cannot check leader state")
+					}
+				}
+			}
+		}
+
 		return nil
 	})
 

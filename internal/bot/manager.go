@@ -1,6 +1,7 @@
 package bot
 
 import (
+	stdcontext "context"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -271,9 +272,21 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	muleManager := mule.NewManager(logger)
 	bot := NewBot(ctx.Context, muleManager)
 
+	// Create companion event handler
+	companionHandler := NewCompanionEventHandler(supervisorName, logger, cfg)
+
+	// Register with event listener
+	mng.eventListener.Register(companionHandler.Handle)
+
+	// Start heartbeat monitor
+	companionHandler.StartHeartbeatMonitor(stdcontext.Background())
+
+	// Set companion handler on bot
+	bot.SetCompanionHandler(companionHandler)
+
 	statsHandler := NewStatsHandler(supervisorName, logger)
 	mng.eventListener.Register(statsHandler.Handle)
-	supervisor, err := NewSinglePlayerSupervisor(supervisorName, bot, statsHandler)
+	supervisor, err := NewSinglePlayerSupervisor(supervisorName, bot, statsHandler, companionHandler)
 
 	if err != nil {
 		return nil, nil, err

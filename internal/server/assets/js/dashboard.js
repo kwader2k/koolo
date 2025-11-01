@@ -112,9 +112,6 @@ function createCharacterCard(key) {
                   </div>
                 </div>
                 <div class="character-controls">
-                      <button class="btn btn-outline companion-join-btn" onclick="showCompanionJoinPopup('${key}')" style="display:none;">
-                          <i class="bi bi-door-open btn-icon"></i>Join Game
-                      </button>
                       <button class="btn btn-outline" onclick="location.href='/debug?characterName=${key}'" title="Open Debug Page">
                           <i class="bi bi-bug"></i>
                       </button>
