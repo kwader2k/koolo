@@ -401,7 +401,7 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 
 		if ctx.PathFinder.LineOfSight(dest, monster.Position) && !ctx.ForceAttack {
 			// This is also general movement to get into attack range, not a "repositioning attempt" for being stuck.
-			return MoveTo(dest)
+			return MoveTo(dest, WithIgnoreMonsters())
 		}
 	}
 
