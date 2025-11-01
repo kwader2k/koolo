@@ -334,3 +334,26 @@ func (pf *PathFinder) GetClosestChest(position data.Position, losCheck bool) (*d
 
 	return nil, false
 }
+
+func (pf *PathFinder) GetClosestShrine(position data.Position, radius float64) (*data.Object, bool) {
+	var closestObject *data.Object
+	minDistance := radius
+
+	for _, o := range pf.data.Objects {
+		if o.Selectable && o.IsShrine() {
+			distanceToObj := utils.CalculateDistance(position, o.Position)
+
+			if distanceToObj < minDistance {
+				closestObject = &o
+			}
+
+			break
+		}
+	}
+
+	if closestObject != nil {
+		return closestObject, true
+	}
+
+	return nil, false
+}

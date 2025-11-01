@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -245,8 +246,10 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		}
 
 		if blocked {
+			canTeleport := ctx.Data.CanTeleport()
+
 			//First check if there's a destructible nearby
-			if obj, found := ctx.PathFinder.GetClosestDestructible(ctx.Data.PlayerUnit.Position); found {
+			if obj, found := ctx.PathFinder.GetClosestDestructible(ctx.Data.PlayerUnit.Position); found && !canTeleport {
 				if !obj.Selectable {
 					// Already destroyed, move on
 					continue
@@ -257,13 +260,31 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 				ctx.HID.Click(game.LeftButton, x, y)
 
 				time.Sleep(time.Millisecond * 100)
-			} else if door, found := ctx.PathFinder.GetClosestDoor(ctx.Data.PlayerUnit.Position); found {
+			} else if door, found := ctx.PathFinder.GetClosestDoor(ctx.Data.PlayerUnit.Position); found && !canTeleport {
 				//There's a door really close, try to open it
 				doorToOpen := *door
 				InteractObject(doorToOpen, func() bool {
 					door, found := ctx.Data.Objects.FindByID(door.ID)
 					return found && !door.Selectable
 				})
+			} else if grave, found := ctx.Data.Objects.FindOne(object.HoleAnim); found {
+				if !interactIfCloseEnough(grave) {
+					continue
+				}
+			} else if chest, found := ctx.PathFinder.GetClosestChest(ctx.Data.PlayerUnit.Position, true); found {
+				if !interactIfCloseEnough(*chest) {
+					continue
+				}
+			} else if !opts.ignoreShrines {
+				shrine, found := ctx.PathFinder.GetClosestShrine(ctx.Data.PlayerUnit.Position, 10.0)
+
+				if !found {
+					continue
+				}
+
+				if !interactIfCloseEnough(*shrine) {
+					continue
+				}
 			}
 		}
 
@@ -298,4 +319,30 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		//Perform the movement
 		ctx.PathFinder.MoveThroughPath(path, walkDuration)
 	}
+}
+
+func interactIfCloseEnough(object data.Object) bool {
+	if !object.Selectable {
+		return false
+	}
+
+	ctx := context.Get()
+
+	distance := utils.CalculateDistance(ctx.Data.PlayerUnit.Position, object.Position)
+	if distance > 5.0 {
+		return false
+	}
+
+	if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, object.Position) {
+		return false
+	}
+
+	err := InteractObject(object, func() bool {
+		obj, found := ctx.Data.Objects.FindByID(object.ID)
+		return !found || !obj.Selectable
+	})
+
+	utils.Sleep(100)
+
+	return err == nil
 }
