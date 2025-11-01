@@ -785,7 +785,7 @@ var Runewords = []Runeword{
 	},
 	{
 		Name:          item.RunewordSteel,
-		BaseItemTypes: []string{item.TypeSword, item.TypeAxe, item.TypeMace},
+		BaseItemTypes: []string{item.TypeSword, item.TypeMace},
 		Runes:         []string{"TirRune", "ElRune"},
 	},
 	{
