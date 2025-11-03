@@ -53,6 +53,7 @@ func (s HydraFireballMeteorSorceress) KillMonsterSequence(
 ) error {
 	completedAttackLoops := 0
 	previousUnitID := 0
+	hydraCount := 0
 
 	for {
 		context.Get().PauseIfNotPriority()
@@ -81,16 +82,19 @@ func (s HydraFireballMeteorSorceress) KillMonsterSequence(
 
 		opts := step.Distance(hfm_sorceressMinDistance, hfm_sorceressMaxDistance)
 
+		step.SecondaryAttack(skill.Meteor, id, 1, opts)
+
 		// Cast Hydra for the first 6 attack loops to spawn max hydras
-		if completedAttackLoops < 6 {
+		if hydraCount < 6 {
+			hydraCount++
+			time.Sleep(50 * time.Millisecond)
 			step.SecondaryAttack(skill.Hydra, id, 1, opts)
 		}
 
 		if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+			time.Sleep(50 * time.Millisecond)
 			step.PrimaryAttack(id, 2, true, opts)
 		}
-
-		step.SecondaryAttack(skill.Meteor, id, 1, opts)
 
 		completedAttackLoops++
 		previousUnitID = int(id)
