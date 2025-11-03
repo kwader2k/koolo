@@ -86,6 +86,7 @@ game:
   # leveling: there is a "leveling" run, in combination with "sorceress or paladin" class will be able to start leveling character from level 1 (don't expect too much)
   # terror_zone: will detect current TZ and clear it
   runs: [ stony_tomb, pit, arachnid_lair ]
+  hideCharNamesInLogs: false # If true, character names will be hidden in logs (replaced with ConfigFolderName)
 
   # Specific runs settings
   pindleskin:

@@ -152,11 +152,15 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 		// Try to select a character up to 25 times then give up and kill the client
 		for i := 0; i < 25; i++ {
 			characterName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
+			printedName := s.bot.ctx.CharacterCfg.CharacterName
+			if s.bot.ctx.CharacterCfg.Game.HideCharNamesInLogs {
+				printedName = s.bot.ctx.CharacterCfg.ConfigFolderName
+			}
 
-			s.bot.ctx.Logger.Debug(fmt.Sprintf("Checking character: %s", characterName))
+			s.bot.ctx.Logger.Debug(fmt.Sprintf("Checking character: %s", printedName))
 
 			if strings.EqualFold(characterName, s.bot.ctx.CharacterCfg.CharacterName) {
-				s.bot.ctx.Logger.Info(fmt.Sprintf("Character %s found and selected.", s.bot.ctx.CharacterCfg.CharacterName))
+				s.bot.ctx.Logger.Info(fmt.Sprintf("Character %s found and selected.", printedName))
 				return nil
 			}
 
