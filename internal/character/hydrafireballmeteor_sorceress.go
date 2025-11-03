@@ -31,7 +31,7 @@ func (s HydraFireballMeteorSorceress) ShouldIgnoreMonster(m data.Monster) bool {
 }
 
 func (s HydraFireballMeteorSorceress) CheckKeyBindings() []skill.ID {
-	requireKeybindings := []skill.ID{skill.FireBall, skill.Meteor, skill.Hydra, skill.Teleport, skill.TomeOfTownPortal, skill.FrozenArmor, skill.StaticField}
+	requireKeybindings := []skill.ID{skill.Meteor, skill.Hydra, skill.Teleport, skill.TomeOfTownPortal, skill.FrozenArmor, skill.StaticField}
 	missingKeybindings := []skill.ID{}
 
 	for _, cskill := range requireKeybindings {
