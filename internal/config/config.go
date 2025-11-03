@@ -146,6 +146,9 @@ type CharacterCfg struct {
 		NovaSorceress struct {
 			BossStaticThreshold int `yaml:"boss_static_threshold"`
 		} `yaml:"nova_sorceress"`
+		HydraFireballMeteorSorceress struct {
+			UseMoatTrick bool `yaml:"use_moat_trick"`
+		} `yaml:"hydra_fireball_meteor_sorceress"`
 		MosaicSin struct {
 			UseTigerStrike    bool `yaml:"useTigerStrike"`
 			UseCobraStrike    bool `yaml:"useCobraStrike"`

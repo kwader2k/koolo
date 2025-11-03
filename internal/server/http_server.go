@@ -1211,6 +1211,11 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
 		}
 
+		// Hydra Fireball Meteor Sorceress specific options
+		if cfg.Character.Class == "hydra_fireball_meteor" {
+			cfg.Character.HydraFireballMeteorSorceress.UseMoatTrick = r.Form.Has("hfmUseMoatTrick")
+		}
+
 		for y, row := range cfg.Inventory.InventoryLock {
 			for x := range row {
 				if r.Form.Has(fmt.Sprintf("inventoryLock[%d][%d]", y, x)) {
