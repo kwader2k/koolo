@@ -1209,6 +1209,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		if cfg.Character.Class == "sorceress_leveling" {
 			cfg.Character.SorceressLeveling.UseMoatTrick = r.Form.Has("useMoatTrick")
 			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
+			cfg.Character.SorceressLeveling.UseSmartDiabloKill = r.Form.Has("useSmartDiabloKill")
 		}
 
 		for y, row := range cfg.Inventory.InventoryLock {

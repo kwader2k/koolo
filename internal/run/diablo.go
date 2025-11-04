@@ -133,6 +133,15 @@ func (d *Diablo) Run() error {
 				action.Buff()
 			}
 
+			// Smart Diablo Kill: Go to town before opening last seal (DiabloSeal2)
+			// This ensures potions are refilled BEFORE Diablo spawns
+			if sealID == object.DiabloSeal2 && isLevelingChar &&
+				d.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal &&
+				d.ctx.CharacterCfg.Character.SorceressLeveling.UseSmartDiabloKill {
+				d.ctx.Logger.Debug("Smart Diablo Kill: Going to town before opening last seal")
+				action.InRunReturnTownRoutine()
+			}
+
 			maxAttemptsToOpenSeal := 3
 			attempts := 0
 
@@ -192,7 +201,12 @@ func (d *Diablo) Run() error {
 
 		action.Buff()
 
-		if isLevelingChar && d.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
+		// Skip town visit if smart kill already handled it before last seal
+		shouldDoTownVisit := isLevelingChar &&
+			d.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal &&
+			!d.ctx.CharacterCfg.Character.SorceressLeveling.UseSmartDiabloKill
+
+		if shouldDoTownVisit {
 			action.MoveToCoords(diabloSpawnPosition)
 			action.InRunReturnTownRoutine()
 			step.MoveTo(diabloFightPosition, step.WithIgnoreMonsters())
