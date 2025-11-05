@@ -181,3 +181,43 @@ func ResetCompanionGameInfo(be BaseEvent, leader string) ResetCompanionGameInfoE
 		Leader:    leader,
 	}
 }
+
+// LeaderGameHeartbeatEvent is sent periodically by the leader to indicate game status
+type LeaderGameHeartbeatEvent struct {
+	BaseEvent
+	Leader       string
+	GameName     string
+	GamePassword string
+	InGame       bool // true if leader is in-game, false if leader exited
+}
+
+func LeaderGameHeartbeat(be BaseEvent, leader string, gameName string, gamePassword string, inGame bool) LeaderGameHeartbeatEvent {
+	return LeaderGameHeartbeatEvent{
+		BaseEvent:    be,
+		Leader:       leader,
+		GameName:     gameName,
+		GamePassword: gamePassword,
+		InGame:       inGame,
+	}
+}
+
+// CompanionFoundExpShrineEvent is sent when a companion finds an experience shrine
+type CompanionFoundExpShrineEvent struct {
+	BaseEvent
+	CompanionName string
+	AreaName      string
+	AreaID        int
+	X             int
+	Y             int
+}
+
+func CompanionFoundExpShrine(be BaseEvent, companionName string, areaName string, areaID int, x int, y int) CompanionFoundExpShrineEvent {
+	return CompanionFoundExpShrineEvent{
+		BaseEvent:     be,
+		CompanionName: companionName,
+		AreaName:      areaName,
+		AreaID:        areaID,
+		X:             x,
+		Y:             y,
+	}
+}
