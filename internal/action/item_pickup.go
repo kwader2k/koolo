@@ -1,6 +1,8 @@
 package action
 
 import (
+	"strings"
+
 	"errors"
 	"fmt"
 	"log/slog"
@@ -15,8 +17,8 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
-	"github.com/hectorgimenez/koolo/internal/utils"
-)
+	"github.com/hectorgimenez/koolo/internal/utils")
+
 
 func itemFitsInventory(i data.Item) bool {
 	invMatrix := context.Get().Data.Inventory.Matrix()
@@ -117,6 +119,9 @@ func ItemPickup(maxDistance int) error {
 		totalAttemptCounter := 0      // New counter for overall attempts
 		var consecutiveMoveErrors int // New variable to track consecutive ErrCastingMoving errors
 
+		clearCycles := 0
+		maxPickupClearCycles := 2
+		pickupClear := 2
 		for totalAttemptCounter < totalMaxAttempts { // Loop until totalMaxAttempts is reached
 			totalAttemptCounter++
 			ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Starting attempt %d (total: %d)", attempt, totalAttemptCounter))
@@ -161,12 +166,28 @@ func ItemPickup(maxDistance int) error {
 					distanceToFinish = 2
 				}
 				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Moving to coordinates X:%d Y:%d (distance: %d, distToFinish: %d). Attempt %d", pickupPosition.X, pickupPosition.Y, distance, distanceToFinish, attempt))
-				if err := step.MoveTo(pickupPosition, step.WithDistanceToFinish(distanceToFinish)); err != nil {
-					ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Failed moving to item on attempt %d: %v", attempt, err))
-					lastError = err
+				
+if err := step.MoveTo(pickupPosition, step.WithDistanceToFinish(distanceToFinish)); err != nil {
+    if isMonstersInPathErr(err) {
+        if clearCycles < maxPickupClearCycles {
+            clearCycles++
+            ctx.Logger.Debug(fmt.Sprintf("Item Pickup: monsters in path; micro-clearing (cycle %d/%d) on attempt %d", clearCycles, maxPickupClearCycles, attempt))
+            clearDist := ctx.CharacterCfg.Character.ClearPathDist
+            if clearDist < pickupClear+2 { clearDist = pickupClear+2 }
+            _ = ClearThroughPath(itemToPickup.Position, clearDist, data.MonsterAnyFilter())
+            continue
+        }
+        ctx.Logger.Debug(fmt.Sprintf("Item Pickup: micro-clear exhausted; escalating to attempt %d", attempt+1))
+        attempt++
+        clearCycles = 0
+        continue
+    }
+    ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Failed moving to item on attempt %d: %v", attempt, err))
+    lastError = err
+    attempt++
+    continue
+}
 
-					continue // Go to next total attempt
-				}
 				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Move completed in %v. Attempt %d", time.Since(pickupStartTime), attempt))
 			}
 
@@ -236,7 +257,17 @@ func ItemPickup(maxDistance int) error {
 		}
 
 		// If all attempts failed (totalAttemptCounter reached limit and lastError is not nil)
-		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
+		
+if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
+    // Defer instead of blacklist on transient path/LoS problems
+    if isMonstersInPathErr(lastError) || errors.Is(lastError, step.ErrNoLOSToItem) {
+        ctx.Logger.Info("Item Pickup: deferring due to path/LoS issues; will retry after combat flow",
+            slog.String("itemName", string(itemToPickup.Desc().Name)),
+            slog.Int("unitID", int(itemToPickup.UnitID)),
+        )
+        return nil
+    }
+
 			ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, itemToPickup)
 
 			// Screenshot with show items on
@@ -428,4 +459,13 @@ func IsBlacklisted(itm data.Item) bool {
 		}
 	}
 	return false
+}
+
+
+// isMonstersInPathErr treats both sentinel and string-form errors as "monsters in path".
+func isMonstersInPathErr(err error) bool {
+    if err == nil { return false }
+    if errors.Is(err, step.ErrMonstersInPath) { return true }
+    s := strings.ToLower(err.Error())
+    return strings.Contains(s, "monsters detected in movement path")
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
-var events = make(chan Event)
+var events = make(chan Event, 256)
 
 type Listener struct {
 	handlers         []Handler
@@ -93,5 +93,9 @@ func (l *Listener) WaitForEvent(ctx context.Context) Event {
 }
 
 func Send(e Event) {
-	events <- e
+	select {
+	case events <- e:
+	default:
+		// drop if shutting down or saturated
+	}
 }

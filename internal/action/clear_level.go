@@ -1,6 +1,8 @@
 package action
 
 import (
+	"sync"
+
 	"errors"
 	"fmt"
 	"log/slog"
@@ -11,8 +13,9 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
-	"github.com/hectorgimenez/koolo/internal/utils"
-)
+	"github.com/hectorgimenez/koolo/internal/utils")
+var clearRoomWarned sync.Map
+
 
 // interactableShrines is a list of shrine types that the bot should interact with.
 var interactableShrines = []object.ShrineType{
@@ -39,7 +42,7 @@ func ClearCurrentLevel(openChests bool, filter data.MonsterFilter) error {
 		// First, clear the room of monsters
 		err := clearRoom(r, filter)
 		if err != nil {
-			ctx.Logger.Warn("Failed to clear room: %v", err)
+			ctx.Logger.Warn("Failed to clear room", "error", err)
 		}
 
 		//ctx.Logger.Debug(fmt.Sprintf("Clearing room complete, attempting to pickup items in a radius of %d", pickupRadius))
