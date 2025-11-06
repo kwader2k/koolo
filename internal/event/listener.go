@@ -1,6 +1,8 @@
 package event
 
 import (
+	"sync/atomic"
+
 	"context"
 	"fmt"
 	"log/slog"
@@ -10,10 +12,11 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/koolo/internal/config"
-	"github.com/hectorgimenez/koolo/internal/utils"
-)
+	"github.com/hectorgimenez/koolo/internal/utils")
+
 
 var events = make(chan Event, 256)
+var shuttingDown atomic.Bool
 
 type Listener struct {
 	handlers         []Handler
@@ -92,10 +95,21 @@ func (l *Listener) WaitForEvent(ctx context.Context) Event {
 	}
 }
 
+
 func Send(e Event) {
-	select {
-	case events <- e:
-	default:
-		// drop if shutting down or saturated
-	}
+    if shuttingDown.Load() {
+        return
+    }
+    select {
+    case events <- e:
+    default:
+        // drop if saturated or shutting down
+    }
+}
+
+
+
+// BeginShutdown signals the event bus to stop accepting events immediately.
+func BeginShutdown() {
+    shuttingDown.Store(true)
 }

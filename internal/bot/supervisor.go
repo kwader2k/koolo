@@ -70,6 +70,8 @@ func (s *baseSupervisor) TogglePause() {
 }
 
 func (s *baseSupervisor) Stop() {
+	// signal event bus to stop accepting new events
+	event.BeginShutdown()
 	s.bot.ctx.Logger.Info("Stopping...", slog.String("configuration", s.name))
 	if s.cancelFn != nil {
 		s.cancelFn()

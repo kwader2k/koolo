@@ -118,10 +118,9 @@ func ItemPickup(maxDistance int) error {
 		itemTooFarRetryCount := 0     // Tracks retries specifically for "item too far"
 		totalAttemptCounter := 0      // New counter for overall attempts
 		var consecutiveMoveErrors int // New variable to track consecutive ErrCastingMoving errors
+		pathBlocks := 0
 
-		clearCycles := 0
-		maxPickupClearCycles := 2
-		pickupClear := 2
+
 		for totalAttemptCounter < totalMaxAttempts { // Loop until totalMaxAttempts is reached
 			totalAttemptCounter++
 			ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Starting attempt %d (total: %d)", attempt, totalAttemptCounter))
@@ -168,26 +167,36 @@ func ItemPickup(maxDistance int) error {
 				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Moving to coordinates X:%d Y:%d (distance: %d, distToFinish: %d). Attempt %d", pickupPosition.X, pickupPosition.Y, distance, distanceToFinish, attempt))
 				
 if err := step.MoveTo(pickupPosition, step.WithDistanceToFinish(distanceToFinish)); err != nil {
-    if isMonstersInPathErr(err) {
-        if clearCycles < maxPickupClearCycles {
-            clearCycles++
-            ctx.Logger.Debug(fmt.Sprintf("Item Pickup: monsters in path; micro-clearing (cycle %d/%d) on attempt %d", clearCycles, maxPickupClearCycles, attempt))
-            clearDist := ctx.CharacterCfg.Character.ClearPathDist
-            if clearDist < pickupClear+2 { clearDist = pickupClear+2 }
-            _ = ClearThroughPath(itemToPickup.Position, clearDist, data.MonsterAnyFilter())
-            continue
-        }
-        ctx.Logger.Debug(fmt.Sprintf("Item Pickup: micro-clear exhausted; escalating to attempt %d", attempt+1))
-        attempt++
-        clearCycles = 0
-        continue
-    }
-    ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Failed moving to item on attempt %d: %v", attempt, err))
-    lastError = err
-    attempt++
-    continue
-}
+					ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Failed moving to item on attempt %d: %v", attempt, err))
+			// Handle repeated 'monsters in path' by forcing a short reposition
+			if isMonstersInPathErr(err) {
+				pathBlocks++
+				if pathBlocks >= 2 {
+					// Try a few nearby tiles relative to the current player to unlock pathing
+					deltas := []data.Position{
+						{X: 2, Y: 0}, {X: -2, Y: 0}, {X: 0, Y: 2}, {X: 0, Y: -2},
+						{X: 3, Y: 0}, {X: -3, Y: 0}, {X: 0, Y: 3}, {X: 0, Y: -3},
+					}
+					moved := false
+					for _, d := range deltas {
+						alt := data.Position{X: ctx.Data.PlayerUnit.Position.X + d.X, Y: ctx.Data.PlayerUnit.Position.Y + d.Y}
+						if !ctx.Data.AreaData.IsWalkable(alt) { continue }
+						if err2 := step.MoveTo(alt, step.WithDistanceToFinish(1)); err2 == nil {
+							ctx.Logger.Debug("Item Pickup: forced reposition succeeded; escalating attempt", "altX", alt.X, "altY", alt.Y)
+							moved = true
+							break
+						}
+					}
+					// Escalate attempt either way to break the 'attempt 1' loop
+					attempt++
+					if moved { pathBlocks = 0 }
+					continue
+				}
+			}
+					lastError = err
 
+					continue // Go to next total attempt
+				}
 				ctx.Logger.Debug(fmt.Sprintf("Item Pickup: Move completed in %v. Attempt %d", time.Since(pickupStartTime), attempt))
 			}
 
@@ -257,17 +266,7 @@ if err := step.MoveTo(pickupPosition, step.WithDistanceToFinish(distanceToFinish
 		}
 
 		// If all attempts failed (totalAttemptCounter reached limit and lastError is not nil)
-		
-if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
-    // Defer instead of blacklist on transient path/LoS problems
-    if isMonstersInPathErr(lastError) || errors.Is(lastError, step.ErrNoLOSToItem) {
-        ctx.Logger.Info("Item Pickup: deferring due to path/LoS issues; will retry after combat flow",
-            slog.String("itemName", string(itemToPickup.Desc().Name)),
-            slog.Int("unitID", int(itemToPickup.UnitID)),
-        )
-        return nil
-    }
-
+		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
 			ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, itemToPickup)
 
 			// Screenshot with show items on
