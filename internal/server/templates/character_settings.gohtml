@@ -39,6 +39,7 @@
                         <option value="sorceress" {{ if eq .Config.Character.Class "sorceress" }}selected{{ end }}>Blizzard Sorceress</option>
                         <option value="nova" {{ if eq .Config.Character.Class "nova" }}selected{{ end }}>Nova Sorceress</option>
                         <option value="hydraorb" {{ if eq .Config.Character.Class "hydraorb" }}selected{{ end }}>Hydra Orb Sorceress</option>
+                        <option value="hydrafireballmeteor" {{ if eq .Config.Character.Class "hydrafireballmeteor" }}selected{{ end }}>Hydra Fireball Meteor Sorceress</option>
                         <option value="lightsorc" {{ if eq .Config.Character.Class "lightsorc" }}selected{{ end }}>Lightning Sorceress</option>
                         <option value="fireballsorc" {{ if eq .Config.Character.Class "fireballsorc" }}selected{{ end }}>Fireball Sorceress</option>
                         <option value="mule" {{ if eq .Config.Character.Class "mule" }}selected{{ end }}>Mule</option>
@@ -141,6 +142,14 @@
                         <label>
                             <input type="checkbox" name="mosaicUseFistsOfFire" {{ if .Config.Character.MosaicSin.UseFistsOfFire }}checked{{ end }}/>
                             Use Fists of Fire
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="hydra-fireball-meteor-sorceress-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            Use moat trick
+                            <input type="checkbox" id="hfmUseMoatTrick" name="hfmUseMoatTrick" {{ if .Config.Character.HydraFireballMeteorSorceress.UseMoatTrick }}checked{{ end }}/>
                         </label>
                     </fieldset>
                 </div>

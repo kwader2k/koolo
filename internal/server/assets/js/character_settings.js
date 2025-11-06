@@ -165,12 +165,14 @@ document.addEventListener('DOMContentLoaded', function () {
         const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
         const blizzardSorceressOptions = document.querySelector('.blizzard-sorceress-options');
         const sorceressLevelingOptions = document.querySelector('.sorceress_leveling-options');
+        const hydraFireballMeteorOptions = document.querySelector('.hydra-fireball-meteor-sorceress-options');
         // Hide all options first
         berserkerBarbOptions.style.display = 'none';
         novaSorceressOptions.style.display = 'none';
         mosaicAssassinOptions.style.display = 'none';
         blizzardSorceressOptions.style.display = 'none';
         sorceressLevelingOptions.style.display = 'none';
+        hydraFireballMeteorOptions.style.display = 'none';
         noSettingsMessage.style.display = 'none';
 
         // Show relevant options based on class
@@ -185,6 +187,8 @@ document.addEventListener('DOMContentLoaded', function () {
             blizzardSorceressOptions.style.display = 'block';
         } else if (selectedClass === 'sorceress_leveling') {
             sorceressLevelingOptions.style.display = 'block';
+        } else if (selectedClass === 'hydrafireballmeteor') {
+            hydraFireballMeteorOptions.style.display = 'block';
         } else {
             noSettingsMessage.style.display = 'block';
         }

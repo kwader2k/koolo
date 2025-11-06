@@ -45,6 +45,8 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 		return NovaSorceress{BaseCharacter: bc}, nil
 	case "hydraorb":
 		return HydraOrbSorceress{BaseCharacter: bc}, nil
+	case "hydrafireballmeteor":
+		return HydraFireballMeteorSorceress{BaseCharacter: bc}, nil
 	case "lightsorc":
 		return LightningSorceress{BaseCharacter: bc}, nil
 	case "hammerdin":
