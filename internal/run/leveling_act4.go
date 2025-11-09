@@ -43,6 +43,12 @@ func (a Leveling) act4() error {
 
 	running = true
 
+	// Ensure KillDiablo is enabled for leveling characters
+	if !a.ctx.CharacterCfg.Game.Diablo.KillDiablo {
+		a.ctx.CharacterCfg.Game.Diablo.KillDiablo = true
+		a.ctx.Logger.Debug("Enabled KillDiablo setting for leveling character")
+	}
+
 	action.VendorRefill(false, true)
 
 	rawFireRes, _ := a.ctx.Data.PlayerUnit.FindStat(stat.FireResist, 0)
@@ -142,6 +148,7 @@ func (a Leveling) act4() error {
 		if err != nil {
 			return err
 		}
+		return nil // Return after Diablo run to prevent duplicate execution
 	} else {
 		err := action.InteractNPC(npc.Tyrael2)
 		if err != nil {

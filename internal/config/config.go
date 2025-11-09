@@ -147,6 +147,7 @@ type CharacterCfg struct {
 		SorceressLeveling struct {
 			UseMoatTrick        bool `yaml:"use_moat_trick"`
 			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
+			UseSmartDiabloKill  bool `yaml:"use_smart_diablo_kill"`
 		} `yaml:"sorceress_leveling"`
 		NovaSorceress struct {
 			BossStaticThreshold int `yaml:"boss_static_threshold"`

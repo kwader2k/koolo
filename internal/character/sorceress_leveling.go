@@ -3,6 +3,7 @@ package character
 import (
 	"fmt"
 	"log/slog"
+	"math"
 	"sort"
 	"time"
 
@@ -37,6 +38,16 @@ const (
 	SorceressLevelingSafeDistance   = 6
 
 	StaticFieldEffectiveRange = 4 // Maximum distance for Static Field to reliably hit
+
+	// Diablo attack modes (using NpcMode constants)
+	DiabloModeLightningHose = mode.NpcCastingSpell // Mode 7: Deadly Lightning Hose beam attack
+	DiabloModeFirestorm     = mode.NpcUsingSkill3  // Mode 10: Ground fire Firestorm attack
+
+	// Smart Diablo kill settings
+	DiabloSmartMaxIterations = 500 // 25 seconds max (50ms per iteration)
+	DiabloEvasionDistance    = 15  // Distance to maintain during evasion (circle radius around Diablo)
+	DiabloMinMoveDistance    = 10  // Minimum distance to move during evasion (prevents micro-movements)
+	DiabloStaticCastCount    = 5   // Number of static field casts in reactive phase
 )
 
 type SorceressLeveling struct {
@@ -966,6 +977,13 @@ func (s SorceressLeveling) KillIzual() error {
 }
 
 func (s SorceressLeveling) KillDiablo() error {
+	// Use smart Diablo kill if enabled (Normal difficulty only)
+	if s.CharacterCfg.Character.SorceressLeveling.UseSmartDiabloKill &&
+		s.CharacterCfg.Game.Difficulty == difficulty.Normal {
+		return s.killDiabloSmart()
+	}
+
+	// Original Diablo kill logic
 	timeout := time.Second * 20
 	startTime := time.Now()
 	diabloFound := false
@@ -1001,6 +1019,165 @@ func (s SorceressLeveling) KillDiablo() error {
 
 		return s.killMonsterByName(npc.Diablo, data.MonsterTypeUnique, nil)
 	}
+}
+
+func (s SorceressLeveling) killDiabloSmart() error {
+	s.Logger.Info("Smart Diablo kill enabled - using advanced evasion tactics")
+
+	// Wait for Diablo to spawn (increased timeout for post-seal spawn delay)
+	timeout := time.Second * 30
+	startTime := time.Now()
+	diabloFound := false
+
+	s.Logger.Debug("Waiting for Diablo to spawn after seals cleared...")
+
+	for {
+		if time.Since(startTime) > timeout && !diabloFound {
+			s.Logger.Error("Diablo was not found within 30 seconds, timeout reached")
+			return nil // Return success like original - quest may already be complete
+		}
+
+		diablo, found := s.Data.Monsters.FindOne(npc.Diablo, data.MonsterTypeUnique)
+		if !found || diablo.Stats[stat.Life] <= 0 {
+			if diabloFound {
+				s.Logger.Info("Diablo defeated successfully")
+				return nil
+			}
+			time.Sleep(200 * time.Millisecond)
+			continue
+		}
+
+		diabloFound = true
+		s.Logger.Info(fmt.Sprintf("Diablo detected at position X:%d Y:%d - initiating reactive static phase", diablo.Position.X, diablo.Position.Y))
+		break
+	}
+
+	// Reactive static field phase - monitor for dangerous modes
+	staticCastsRemaining := DiabloStaticCastCount
+	for staticCastsRemaining > 0 {
+		diablo, found := s.Data.Monsters.FindOne(npc.Diablo, data.MonsterTypeUnique)
+		if !found || diablo.Stats[stat.Life] <= 0 {
+			s.Logger.Info("Diablo defeated during static phase")
+			return nil
+		}
+
+		// Check for dangerous attack modes
+		diabloMode := diablo.Mode
+		if diabloMode == DiabloModeLightningHose || diabloMode == DiabloModeFirestorm {
+			s.Logger.Info("Dangerous mode detected during static phase - aborting to evasion")
+			break
+		}
+
+		// Move close for static field
+		if pather.DistanceFromPoint(s.Data.PlayerUnit.Position, diablo.Position) > StaticFieldEffectiveRange {
+			step.MoveTo(data.Position{X: diablo.Position.X, Y: diablo.Position.Y - StaticFieldEffectiveRange})
+		}
+
+		// Cast static field
+		step.SecondaryAttack(skill.StaticField, diablo.UnitID, 1, step.Distance(0, StaticFieldEffectiveRange))
+		staticCastsRemaining--
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	s.Logger.Info("Static phase complete - beginning smart combat")
+
+	// Smart combat loop with mode-based evasion
+	for i := 0; i < DiabloSmartMaxIterations; i++ {
+		diablo, found := s.Data.Monsters.FindOne(npc.Diablo, data.MonsterTypeUnique)
+		if !found || diablo.Stats[stat.Life] <= 0 {
+			s.Logger.Info("Diablo defeated successfully - boss fight complete")
+			return nil
+		}
+
+		// Log progress every 50 iterations (2.5 seconds)
+		if i > 0 && i%50 == 0 {
+			hpPercent := float64(diablo.Stats[stat.Life]) / float64(diablo.Stats[stat.MaxLife]) * 100
+			s.Logger.Debug(fmt.Sprintf("Smart combat progress: iteration %d/%d, Diablo HP: %.1f%%", i, DiabloSmartMaxIterations, hpPercent))
+		}
+
+		diabloMode := diablo.Mode
+		playerPos := s.Data.PlayerUnit.Position
+		diabloPos := diablo.Position
+
+		// Mode-based evasion logic
+		if diabloMode == DiabloModeLightningHose {
+			// Lightning Hose: Move perpendicular to dodge beam
+			angle := math.Atan2(float64(playerPos.Y-diabloPos.Y), float64(playerPos.X-diabloPos.X))
+			perpAngle := angle + math.Pi/2 // 90 degrees perpendicular
+
+			evadeX := diabloPos.X + int(float64(DiabloEvasionDistance)*math.Cos(perpAngle))
+			evadeY := diabloPos.Y + int(float64(DiabloEvasionDistance)*math.Sin(perpAngle))
+			evadePos := data.Position{X: evadeX, Y: evadeY}
+
+			// Only move if distance is sufficient to avoid micro-movements
+			if pather.DistanceFromPoint(playerPos, evadePos) >= DiabloMinMoveDistance {
+				s.Logger.Debug("Lightning Hose detected - evading perpendicular")
+				step.MoveTo(evadePos)
+			}
+			time.Sleep(50 * time.Millisecond)
+			continue
+
+		} else if diabloMode == DiabloModeFirestorm {
+			// Firestorm: Move behind Diablo (180 degrees)
+			angle := math.Atan2(float64(diabloPos.Y-playerPos.Y), float64(diabloPos.X-playerPos.X))
+
+			behindX := diabloPos.X + int(float64(DiabloEvasionDistance)*math.Cos(angle))
+			behindY := diabloPos.Y + int(float64(DiabloEvasionDistance)*math.Sin(angle))
+			behindPos := data.Position{X: behindX, Y: behindY}
+
+			// Only move if distance is sufficient to avoid micro-movements
+			if pather.DistanceFromPoint(playerPos, behindPos) >= DiabloMinMoveDistance {
+				s.Logger.Debug("Firestorm detected - moving behind Diablo")
+				step.MoveTo(behindPos)
+			}
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		// Normal mode: Attack with proper skill rotation
+		dist := pather.DistanceFromPoint(playerPos, diabloPos)
+		if dist < SorceressLevelingMinDistance || dist > SorceressLevelingMaxDistance {
+			// Reposition to optimal distance
+			step.MoveTo(data.Position{
+				X: diabloPos.X,
+				Y: diabloPos.Y - (SorceressLevelingMinDistance+SorceressLevelingMaxDistance)/2,
+			})
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		// Use same skill rotation as KillMonsterSequence
+		attackOption := step.Distance(SorceressLevelingMinDistance, SorceressLevelingMaxDistance)
+
+		if s.Data.PlayerUnit.Skills[skill.Blizzard].Level > 0 {
+			if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Blizzard); found {
+				if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
+					// Blizzard on cooldown - use Glacial Spike (primary skill)
+					if s.Data.PlayerUnit.Skills[skill.GlacialSpike].Level > 0 {
+						if s.Data.PlayerUnit.Mode != mode.CastingSkill {
+							s.Logger.Debug("Blizzard on cooldown, using Glacial Spike")
+							step.PrimaryAttack(diablo.UnitID, 2, true, attackOption)
+						} else {
+							s.Logger.Debug("Player busy, waiting to cast Glacial Spike")
+						}
+					}
+				} else {
+					// Blizzard available - cast it
+					if s.Data.PlayerUnit.Mode != mode.CastingSkill {
+						s.Logger.Debug("Casting Blizzard on Diablo")
+						step.SecondaryAttack(skill.Blizzard, diablo.UnitID, 1, attackOption)
+					} else {
+						s.Logger.Debug("Player busy, waiting to cast Blizzard")
+					}
+				}
+			}
+		}
+
+		time.Sleep(50 * time.Millisecond)
+	}
+
+	s.Logger.Warn("Smart Diablo kill reached max iterations (25 seconds) without defeating Diablo")
+	return nil // Return success like original - avoid run restart, let quest system handle it
 }
 
 func (s SorceressLeveling) KillPindle() error {
