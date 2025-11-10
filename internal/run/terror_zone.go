@@ -229,10 +229,7 @@ func (tz TerrorZone) tzAreaGroups(firstTZ area.ID) [][]area.ID {
 
 	// Barracks / Jail
 	case area.Barracks, area.JailLevel1, area.JailLevel2, area.JailLevel3:
-		return [][]area.ID{
-			{area.OuterCloister, area.Barracks},
-			{area.OuterCloister, area.JailLevel1, area.JailLevel2, area.JailLevel3},
-		}
+		return [][]area.ID{{area.OuterCloister, area.Barracks, area.JailLevel1, area.JailLevel2, area.JailLevel3}}
 
 	// ============================================
 	// ACT 2
