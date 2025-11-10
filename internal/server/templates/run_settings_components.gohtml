@@ -214,8 +214,38 @@
             <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}> Poison</label>
         </fieldset>
         <label>Tracked areas <input type="checkbox" name="tzTrackAll" id="tzTrackAll"></label>
-        {{ range $id, $name := .AvailableTZs }}
-            <label><input type="checkbox" class="tzTrackCheckbox" name="gameTerrorZoneAreas[]" value="{{ $id }}" {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $id }}checked{{ end }}>{{ $name }}</label>
+       {{ $currentAct := 0 }}
+        {{ range $index, $group := .TerrorZoneGroups }}
+            {{ if ne $group.Act $currentAct }}
+                {{ $currentAct = $group.Act }}
+                <h6 style="margin-top: 15px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #444;">
+                    {{ if eq $currentAct 99 }}
+                        Other
+                    {{ else }}
+                        Act {{ $currentAct }}
+                    {{ end }}
+                </h6>
+            {{ end }}
+            <div class="tz-group" data-group-index="{{ $index }}">
+                <label>
+                    <input type="checkbox" 
+                           class="tz-group-checkbox" 
+                           data-group-id="tz-group-{{ $index }}">
+                    <strong>{{ $group.Name }}</strong>
+                </label>
+                <div class="tz-hidden-children" 
+                     id="tz-group-{{ $index }}" 
+                     style="display: none;">
+                    {{ range $areaID := $group.AreaIDs }}
+                        <input type="checkbox" 
+                               class="tz-child-checkbox" 
+                               name="gameTerrorZoneAreas[]" 
+                               value="{{ $areaID }}" 
+                               data-parent-group-id="tz-group-{{ $index }}"
+                               {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $areaID }}checked{{ end }}>
+                    {{ end }}
+                </div>
+            </div>
         {{ end }}
     </fieldset>
 {{ end }}
