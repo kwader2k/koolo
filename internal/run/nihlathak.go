@@ -2,6 +2,7 @@ package run
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -29,10 +30,41 @@ func (n Nihlathak) Name() string {
 }
 
 func (n Nihlathak) Run() error {
-	// Use the waypoint to HallsOfPain
+	
 	err := action.WayPoint(area.HallsOfPain)
 	if err != nil {
-		return err
+		n.ctx.Logger.Warn("Halls of Pain waypoint failed or not found, attempting to use Anya's portal as fallback.", slog.String("error", err.Error()))
+
+		if !n.ctx.Data.PlayerUnit.Area.IsTown() || n.ctx.Data.PlayerUnit.Area != area.Harrogath {
+			if errTown := action.ReturnTown(); errTown != nil {
+				return fmt.Errorf("WP failed and could not return to town: %v", errTown)
+			}
+		}
+
+		if errPortal := action.MoveToArea(area.NihlathaksTemple); errPortal != nil {
+			return fmt.Errorf("WP failed and Anya's portal (MoveToArea) also failed: %v", errPortal)
+		}
+
+		pindleSafePosition := data.Position{
+			X: 10058,
+			Y: 13236,
+		}
+
+		if err := action.MoveToCoords(pindleSafePosition); err != nil {
+			n.ctx.Logger.Warn("Failed to move to Pindle safe spot, attempting to kill anyway.", slog.String("error", err.Error()))
+		}
+
+		if errPindle := n.ctx.Char.KillPindle(); errPindle != nil {
+			return fmt.Errorf("failed to kill Pindleskin while clearing path to Nihlathak: %v", errPindle)
+		}
+
+		if errMove := action.MoveToArea(area.HallsOfAnguish); errMove != nil {
+			return fmt.Errorf("failed to move from Temple to Halls of Anguish: %v", errMove)
+		}
+		if errMove := action.MoveToArea(area.HallsOfPain); errMove != nil {
+			return errMove
+		}
+
 	}
 
 	// Move to Halls Of Vaught
