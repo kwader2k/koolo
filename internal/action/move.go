@@ -138,6 +138,47 @@ func MoveToArea(dst area.ID) error {
 		})
 	}
 
+   // Nihlathak's Temple (Anya's Portal)
+    if dst == area.NihlathaksTemple && ctx.Data.PlayerUnit.Area == area.Harrogath {
+        ctx.Logger.Debug("Nihlathak's Temple detected, finding Anya's Portal")
+
+        portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+        if !found {
+            return fmt.Errorf("Anya's portal (to Nihlathak) not found in Harrogath")
+        }
+
+        ctx.Logger.Debug("Found Anya's portal, moving to interact.")
+        if err := MoveToCoords(portal.Position); err != nil {
+            return err
+        }
+        return step.InteractObject(portal, func() bool {
+            return ctx.Data.PlayerUnit.Area == dst
+        })
+    }
+
+    // Act 5 Red Portals (Abaddon, Pit of Acheron, Infernal Pit)
+    if (dst == area.PitOfAcheron && ctx.Data.PlayerUnit.Area == area.ArreatPlateau) ||
+        (dst == area.Abaddon && ctx.Data.PlayerUnit.Area == area.FrigidHighlands) ||
+        (dst == area.InfernalPit && ctx.Data.PlayerUnit.Area == area.FrozenTundra) {
+
+        ctx.Logger.Debug(fmt.Sprintf("Act 5 Red Portal: Searching for portal to %s", dst.Area().Name))
+
+        portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+        if !found {
+            return fmt.Errorf("portal object to %s not found. Map may need exploration", dst.Area().Name)
+        }
+
+        ctx.Logger.Debug(fmt.Sprintf("Found portal to %s, moving to interact.", dst.Area().Name))
+        if err := MoveToCoords(portal.Position); err != nil {
+            return err
+        }
+
+        return step.InteractObject(portal, func() bool {
+            return ctx.Data.PlayerUnit.Area == dst
+        })
+    }
+
+
 	lvl := data.Level{}
 	for _, a := range ctx.Data.AdjacentLevels {
 		if a.Area == dst {
