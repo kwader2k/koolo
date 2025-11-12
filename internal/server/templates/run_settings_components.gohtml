@@ -11,6 +11,7 @@
     <fieldset>
         <label><input type="checkbox" name="gameAndarielClearRoom" {{ if .Config.Game.Andariel.ClearRoom }}checked{{ end }}> Clear room first</label>
         <label><input type="checkbox" name="gameAndarielUseAntidoes" {{ if .Config.Game.Andariel.UseAntidoes }}checked{{ end }}> Use antidoes</label>
+        <label><input type="checkbox" name="gameAndarielClearCatacombsOnTZ" {{ if .Config.Game.Andariel.ClearCatacombsOnTZ }}checked{{ end }}> Clear Catacombs Lvl 2 & 3 on TZ</label>
     </fieldset>
 {{ end }}
 
@@ -264,3 +265,4 @@
         </label>
     </fieldset>
 {{ end }}
+
