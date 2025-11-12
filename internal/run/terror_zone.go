@@ -59,7 +59,7 @@ func (tz TerrorZone) Run() error {
 
 	case area.Cathedral, area.InnerCloister, area.CatacombsLevel1,
 		area.CatacombsLevel2, area.CatacombsLevel3, area.CatacombsLevel4:
-		return NewAndariel().Run()
+		return NewAndariel(tz.customTZEnemyFilter()).Run()
 	case area.MooMooFarm:
 		return NewCows().Run()
 	case area.TalRashasTomb1, area.TalRashasTomb2, area.TalRashasTomb3,
