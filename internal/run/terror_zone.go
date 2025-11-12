@@ -273,7 +273,10 @@ func (tz TerrorZone) tzAreaGroups(firstTZ area.ID) [][]area.ID {
 
 	// Kurast Bazaar / Ruined Temple / Disused Fane
 	case area.KurastBazaar, area.RuinedTemple, area.DisusedFane:
-		return [][]area.ID{{area.KurastBazaar, area.RuinedTemple, area.DisusedFane}}
+		return [][]area.ID{
+			{area.KurastBazaar, area.RuinedTemple},
+			{area.KurastBazaar, area.DisusedFane},
+		}
 
 	// ============================================
 	// ACT 4
