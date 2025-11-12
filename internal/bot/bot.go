@@ -284,7 +284,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					(needHealingPotionsRefill || needManaPotionsRefill)) || shouldRefillRejuvPotions
 
 				if shouldRefillBelt && !isInTown {
-					action.ConsumeMisplacedPotionsInBelt()
+					action.ManageBelt()
 					action.RefillBeltFromInventory()
 					b.ctx.RefreshGameData()
 
@@ -364,17 +364,23 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 			case <-ctx.Done():
 				return nil
 			default:
+				skipTownRoutines := false
+				if skipper, ok := r.(run.TownRoutineSkipper); ok && skipper.SkipTownRoutines() {
+					skipTownRoutines = true
+				}
+
 				event.Send(event.RunStarted(event.Text(b.ctx.Name, fmt.Sprintf("Starting run: %s", r.Name())), r.Name()))
 
 				// Update activity here because a new run sequence is starting.
 				b.updateActivityAndPosition()
 
-				err = action.PreRun(firstRun)
-				if err != nil {
-					return err
+				if !skipTownRoutines {
+					err = action.PreRun(firstRun)
+					if err != nil {
+						return err
+					}
+					firstRun = false
 				}
-
-				firstRun = false
 
 				// Update activity before the main run logic is executed.
 				b.updateActivityAndPosition()
@@ -410,9 +416,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					return err
 				}
 
-				err = action.PostRun(r == runs[len(runs)-1])
-				if err != nil {
-					return err
+				if !skipTownRoutines {
+					err = action.PostRun(r == runs[len(runs)-1])
+					if err != nil {
+						return err
+					}
 				}
 			}
 		}
