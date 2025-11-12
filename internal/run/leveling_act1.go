@@ -186,7 +186,7 @@ func (a Leveling) act1() error {
 
 			}
 		}
-		return NewAndariel().Run()
+		return NewAndariel(nil).Run()
 	}
 }
 
@@ -407,3 +407,4 @@ func (a Leveling) shouldFarmCountessForRunes() bool {
 	a.ctx.Logger.Info("All required runes are present. Skipping Countess farm.")
 	return false
 }
+
