@@ -103,34 +103,18 @@ func (tz TerrorZone) Run() error {
 			continue
 		}
 
-for k, tzArea := range tzAreaGroup {
-    var err error
-	
-    if k == 0 {
-        isWpActive := isWaypointActive(tz.ctx, tzArea) 
-
-        if isWpActive {
-            tz.ctx.Logger.Info(fmt.Sprintf("Attempting to use activated Waypoint to %s.", tzArea.Area().Name))
-            err = action.WayPoint(tzArea)
-            
-            if err != nil {
-                tz.ctx.Logger.Error(fmt.Sprintf("CRITICAL: Activated Waypoint to %s failed. Aborting run.", tzArea.Area().Name))
-                return fmt.Errorf("activated Waypoint failed to %s: %w", tzArea.Area().Name, err)
-            }
-        } else {
-            tz.ctx.Logger.Warn(fmt.Sprintf("Waypoint to %s is not active, attempting to walk/teleport instead.", tzArea.Area().Name))
-            err = action.MoveToArea(tzArea)
-            
-            if err != nil {
-                return fmt.Errorf("failed to reach starting TZ area %s by walking: %w", tzArea.Area().Name, err)
-            }
-        }
-        } else {
-            err = action.MoveToArea(tzArea)
-            if err != nil {
-                return err
-            }
-        }
+		for k, tzArea := range tzAreaGroup {
+			if k == 0 {
+				err := action.WayPoint(tzArea)
+				if err != nil {
+					return err
+				}
+			} else {
+				err := action.MoveToArea(tzArea)
+				if err != nil {
+					return err
+				}
+			}
 			if slices.Contains(availableTzs, tzArea) {
 				action.ClearCurrentLevel(tz.ctx.CharacterCfg.Game.TerrorZone.OpenChests, tz.customTZEnemyFilter())
 			} else {
@@ -140,11 +124,6 @@ for k, tzArea := range tzAreaGroup {
 	}
 
 	return nil
-}
-
-// isWaypointActive checks if the destination WayPoint is discovered by the player.
-func isWaypointActive(ctx *context.Status, targetArea area.ID) bool {
-    return slices.Contains(ctx.Data.PlayerUnit.AvailableWaypoints, targetArea)
 }
 
 func (tz TerrorZone) AvailableTZs() []area.ID {
