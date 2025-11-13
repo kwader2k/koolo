@@ -52,7 +52,7 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 		case string(config.PindleskinRun):
 			builtRuns = append(builtRuns, NewPindleskin())
 		case string(config.NihlathakRun):
-			builtRuns = append(builtRuns, NewNihlathak())
+			builtRuns = append(builtRuns, NewNihlathak(nil))
 		case string(config.AncientTunnelsRun):
 			builtRuns = append(builtRuns, NewAncientTunnels())
 		case string(config.MausoleumRun):
