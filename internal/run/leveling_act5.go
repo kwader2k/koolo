@@ -80,7 +80,7 @@ func (a Leveling) act5() error {
 
 		//Still in Nightmare lvl 70, might need more runes
 		if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && lvl.Value >= 70 {
-			if err := NewCountess().Run(); err != nil {
+			if err := NewCountess(nil).Run(); err != nil {
 				return err
 			}
 			if err := action.ReturnTown(); err != nil {
@@ -262,3 +262,4 @@ func (a Leveling) act5() error {
 
 	return nil
 }
+
