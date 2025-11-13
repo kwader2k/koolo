@@ -62,6 +62,9 @@ func (tz TerrorZone) Run() error {
 		return NewAndariel(tz.customTZEnemyFilter()).Run()
 	case area.MooMooFarm:
 		return NewCows().Run()
+	case area.ForgottenTower, area.TowerCellarLevel1, area.TowerCellarLevel2,
+		area.TowerCellarLevel3, area.TowerCellarLevel4, area.TowerCellarLevel5:
+		return NewCountess(tz.customTZEnemyFilter()).Run()
 	case area.TalRashasTomb1, area.TalRashasTomb2, area.TalRashasTomb3,
 		area.TalRashasTomb4, area.TalRashasTomb5, area.TalRashasTomb6, area.TalRashasTomb7:
 		return NewTalRashaTombs().Run()
@@ -243,10 +246,6 @@ func (tz TerrorZone) tzAreaGroups(firstTZ area.ID) [][]area.ID {
 	// Black Marsh / The Hole
 	case area.BlackMarsh, area.HoleLevel1, area.HoleLevel2:
 		return [][]area.ID{{area.BlackMarsh, area.HoleLevel1, area.HoleLevel2}}
-
-	// Forgotten Tower
-	case area.ForgottenTower, area.TowerCellarLevel1, area.TowerCellarLevel2, area.TowerCellarLevel3, area.TowerCellarLevel4, area.TowerCellarLevel5:
-		return [][]area.ID{{area.BlackMarsh, area.ForgottenTower, area.TowerCellarLevel1, area.TowerCellarLevel2, area.TowerCellarLevel3, area.TowerCellarLevel4, area.TowerCellarLevel5}}
 
 	// Barracks / Jail
 	case area.Barracks, area.JailLevel1, area.JailLevel2, area.JailLevel3:
