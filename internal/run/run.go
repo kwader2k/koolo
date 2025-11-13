@@ -36,7 +36,7 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 		case string(config.AndarielRun):
 			builtRuns = append(builtRuns, NewAndariel(nil))
 		case string(config.SummonerRun):
-			builtRuns = append(builtRuns, NewSummoner())
+			builtRuns = append(builtRuns, NewSummoner(nil))
 		case string(config.DurielRun):
 			builtRuns = append(builtRuns, NewDuriel())
 		case string(config.MuleRun):
