@@ -81,7 +81,7 @@ func (tz TerrorZone) Run() error {
 	case area.ChaosSanctuary:
 		return NewDiablo().Run()
 	case area.NihlathaksTemple, area.HallsOfAnguish, area.HallsOfPain, area.HallsOfVaught:
-		return NewNihlathak().Run()
+		return NewNihlathak(tz.customTZEnemyFilter()).Run()
 	case area.TheWorldStoneKeepLevel1, area.TheWorldStoneKeepLevel2,
 		area.TheWorldStoneKeepLevel3, area.ThroneOfDestruction,
 		area.TheWorldstoneChamber:
