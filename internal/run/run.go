@@ -32,7 +32,7 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 	for _, run := range runs {
 		switch run {
 		case string(config.CountessRun):
-			builtRuns = append(builtRuns, NewCountess())
+			builtRuns = append(builtRuns, NewCountess(nil))
 		case string(config.AndarielRun):
 			builtRuns = append(builtRuns, NewAndariel(nil))
 		case string(config.SummonerRun):
