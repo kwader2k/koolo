@@ -9,6 +9,7 @@ import (
 type TZGroup struct {
 	Act     int
 	Name    string
+	Tier    string
 	AreaIDs []int
 }
 
