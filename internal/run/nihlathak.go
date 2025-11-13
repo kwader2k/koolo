@@ -16,12 +16,14 @@ import (
 )
 
 type Nihlathak struct {
-	ctx *context.Status
+	ctx                *context.Status
+	clearMonsterFilter data.MonsterFilter 
 }
 
-func NewNihlathak() *Nihlathak {
+func NewNihlathak(clearMonsterFilter data.MonsterFilter) *Nihlathak { 
 	return &Nihlathak{
-		ctx: context.Get(),
+		ctx:                context.Get(),
+		clearMonsterFilter: clearMonsterFilter,
 	}
 }
 
@@ -30,19 +32,26 @@ func (n Nihlathak) Name() string {
 }
 
 func (n Nihlathak) Run() error {
-	
-	err := action.WayPoint(area.HallsOfPain)
-	if err != nil {
-		n.ctx.Logger.Warn("Halls of Pain waypoint failed or not found, attempting to use Anya's portal as fallback.", slog.String("error", err.Error()))
+	isTZRun := n.clearMonsterFilter != nil
+	var err error
+
+	if !isTZRun {
+	// Non-TZ run: Attempt the efficient WP route first.
+	err = action.WayPoint(area.HallsOfPain)
+	}
+
+	// Fallback/Portal Execution Block (Runs if WP fails OR if TZ is active)
+	if isTZRun || err != nil {
+		n.ctx.Logger.Warn("Starting Anya's portal path (TZ forced or WP failed).", slog.String("is_tz", fmt.Sprintf("%t", isTZRun)))
 
 		if !n.ctx.Data.PlayerUnit.Area.IsTown() || n.ctx.Data.PlayerUnit.Area != area.Harrogath {
 			if errTown := action.ReturnTown(); errTown != nil {
-				return fmt.Errorf("WP failed and could not return to town: %v", errTown)
+				return fmt.Errorf("Failed to return to Harrogath: %v", errTown)
 			}
 		}
 
 		if errPortal := action.MoveToArea(area.NihlathaksTemple); errPortal != nil {
-			return fmt.Errorf("WP failed and Anya's portal (MoveToArea) also failed: %v", errPortal)
+			return fmt.Errorf("Anya's portal (MoveToArea) failed: %v", errPortal)
 		}
 
 		pindleSafePosition := data.Position{
@@ -67,9 +76,19 @@ func (n Nihlathak) Run() error {
 
 	}
 
+	if isTZRun {
+		n.ctx.Logger.Info("Clearing Halls of Pain (Terror Zone)")
+		action.ClearCurrentLevel(false, n.clearMonsterFilter) 
+	}
+
 	// Move to Halls Of Vaught
 	if err = action.MoveToArea(area.HallsOfVaught); err != nil {
 		return err
+	}
+
+	if isTZRun {
+		n.ctx.Logger.Info("Clearing Halls of Vaught (Terror Zone)")
+		action.ClearCurrentLevel(false, n.clearMonsterFilter)
 	}
 
 	var nihlaObject data.Object
