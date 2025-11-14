@@ -1503,8 +1503,34 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		{Act: 5, Name: "Worldstone Keep / Throne of Destruction", AreaIDs: []int{int(area.TheWorldStoneKeepLevel1), int(area.TheWorldStoneKeepLevel2), int(area.TheWorldStoneKeepLevel3), int(area.ThroneOfDestruction), int(area.TheWorldstoneChamber)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "22-29", Tier: "S"},
 	}
 
-	// Act sort
+	// Tier sort (S -> A -> B -> C -> D -> E -> F -> others), then Act, then Name
+	tierPriority := map[string]int{
+		"S": 0,
+		"A": 1,
+		"B": 2,
+		"C": 3,
+		"D": 4,
+		"E": 5,
+		"F": 6,
+	}
+
+	tierRank := func(t string) int {
+		normalized := strings.ToUpper(strings.TrimSpace(t))
+		if normalized == "" {
+			normalized = "F"
+		}
+		if rank, ok := tierPriority[normalized]; ok {
+			return rank
+		}
+		return len(tierPriority)
+	}
+
 	sort.SliceStable(tzGroups, func(i, j int) bool {
+		ti := tierRank(tzGroups[i].Tier)
+		tj := tierRank(tzGroups[j].Tier)
+		if ti != tj {
+			return ti < tj
+		}
 		if tzGroups[i].Act != tzGroups[j].Act {
 			return tzGroups[i].Act < tzGroups[j].Act
 		}
