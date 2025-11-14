@@ -787,14 +787,25 @@
     filter: grayscale(1);
 }
 
+.tz-act {
+    white-space: nowrap;
+    text-align: center;
+    font-size: 0.8rem;
+}
+
+.tz-hidden-checkbox {
+    display: none;
+}
+
 /* Tier styles */
 .tz-tier {
     font-weight: 700;
     white-space: nowrap;
     text-align: center;
 }
-/* Act Header Row */
-.tz-act-row td {
+
+/* Tier Header Row */
+.tz-tier-row td {
     font-weight: 600;
     font-size: 0.85rem;
     background: #1f2537;
@@ -803,7 +814,7 @@
 }
 
 /* Spacers */
-.tz-act-spacer td {
+.tz-tier-spacer td {
     padding: 0.3rem;
     background: transparent;
 }
