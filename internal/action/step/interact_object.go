@@ -66,6 +66,12 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 			expectedArea = area.NihlathaksTemple
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary:
 			expectedArea = area.CanyonOfTheMagi
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.FrigidHighlands:
+            expectedArea = area.Abaddon	
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.ArreatPlateau:
+        	expectedArea = area.PitOfAcheron
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.FrozenTundra:
+            expectedArea = area.InfernalPit
 		case obj.Name == object.BaalsPortal && ctx.Data.PlayerUnit.Area == area.ThroneOfDestruction:
 			expectedArea = area.TheWorldstoneChamber
 		case obj.Name == object.DurielsLairPortal && (ctx.Data.PlayerUnit.Area >= area.TalRashasTomb1 && ctx.Data.PlayerUnit.Area <= area.TalRashasTomb7):

@@ -1,6 +1,8 @@
 package run
 
 import (
+	"fmt"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/action"
@@ -10,11 +12,13 @@ import (
 
 type Countess struct {
 	ctx *context.Status
+	clearMonsterFilter data.MonsterFilter
 }
 
-func NewCountess() *Countess {
+func NewCountess(clearMonsterFilter data.MonsterFilter) *Countess {
 	return &Countess{
 		ctx: context.Get(),
+		clearMonsterFilter: clearMonsterFilter,
 	}
 }
 
@@ -23,6 +27,7 @@ func (c Countess) Name() string {
 }
 
 func (c Countess) Run() error {
+	isTZRun := c.clearMonsterFilter != nil
 	// Travel to boss level
 	err := action.WayPoint(area.BlackMarsh)
 	if err != nil {
@@ -43,6 +48,12 @@ func (c Countess) Run() error {
 		if err != nil {
 			return err
 		}
+
+		if isTZRun {
+				c.ctx.Logger.Info(fmt.Sprintf("Clearing Terror Zone: %s", a.Area().Name))
+				action.ClearCurrentLevel(c.ctx.CharacterCfg.Game.TerrorZone.OpenChests, c.clearMonsterFilter)
+		}		
+
 	}
 
 	err = action.MoveTo(func() (data.Position, bool) {
@@ -52,12 +63,16 @@ func (c Countess) Run() error {
 			return data.Position{}, false
 		}
 
-		return countessNPC.Positions[0], true
-	})
-	if err != nil {
+			return countessNPC.Positions[0], true
+		})
+
+		if err != nil {
+		c.ctx.Logger.Warn(fmt.Sprintf("Failed to move to Countess (already dead or not found): %v", err))
+		if isTZRun {
+			return nil
+		}
 		return err
 	}
-
-	// Kill Countess
+	c.ctx.Logger.Info("Killing Countess.")
 	return c.ctx.Char.KillCountess()
 }

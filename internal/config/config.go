@@ -192,6 +192,7 @@ type CharacterCfg struct {
 		Andariel struct {
 			ClearRoom   bool `yaml:"clearRoom"`
 			UseAntidoes bool `yaml:"useAntidoes"`
+			ClearCatacombsOnTZ bool `yaml:"clearCatacombsOnTZ"`
 		}
 		Duriel struct {
 			UseThawing bool `yaml:"useThawing"`
@@ -612,3 +613,4 @@ func (c *CharacterCfg) Validate() {
 		}
 	}
 }
+

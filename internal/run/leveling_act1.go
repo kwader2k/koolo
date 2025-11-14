@@ -161,12 +161,12 @@ func (a Leveling) act1() error {
 		if a.ctx.CharacterCfg.Character.Class == "sorceress_leveling" {
 			a.ctx.CharacterCfg.Character.ClearPathDist = 15
 		}
-		return NewCountess().Run()
+		return NewCountess(nil).Run()
 	}
 
 	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Nightmare && lvl.Value < 50 && a.ctx.Data.Quests[quest.Act1DenOfEvil].Completed() && a.shouldFarmCountessForRunes() {
 		a.ctx.Logger.Info("Farming Countess for required runes.")
-		return NewCountess().Run()
+		return NewCountess(nil).Run()
 	}
 
 	// Andariel or Act 2 transition
@@ -186,7 +186,7 @@ func (a Leveling) act1() error {
 
 			}
 		}
-		return NewAndariel().Run()
+		return NewAndariel(nil).Run()
 	}
 }
 
@@ -407,3 +407,5 @@ func (a Leveling) shouldFarmCountessForRunes() bool {
 	a.ctx.Logger.Info("All required runes are present. Skipping Countess farm.")
 	return false
 }
+
+

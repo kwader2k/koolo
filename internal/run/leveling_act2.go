@@ -272,7 +272,7 @@ func (a Leveling) act2() error {
 	if !a.ctx.Data.Quests[quest.Act2TheSummoner].Completed() && a.ctx.Data.Quests[quest.Act2TheSevenTombs].NotStarted() {
 		a.ctx.Logger.Info("Starting summoner quest (Summoner not yet completed).")
 		action.InteractNPC(npc.Drognan)
-		err := NewSummoner().Run()
+		err := NewSummoner(nil).Run()
 		if err != nil {
 			return err
 		}
@@ -701,3 +701,4 @@ func (a Leveling) DurielFilter() data.MonsterFilter {
 		return filteredMonsters
 	}
 }
+

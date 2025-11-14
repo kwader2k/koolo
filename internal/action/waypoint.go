@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -75,6 +76,7 @@ func WayPoint(dest area.ID) error {
 
 	return nil
 }
+
 func useWP(dest area.ID) error {
 	ctx := context.Get()
 	ctx.SetLastAction("useWP")
@@ -126,14 +128,31 @@ func useWP(dest area.ID) error {
 
 	for i, dst := range traverseAreas {
 		if i > 0 {
+
+			if ctx.Data.PlayerUnit.Area == area.NihlathaksTemple && dst == area.HallsOfAnguish {
+				ctx.Logger.Info("Waypoint traverse: Killing Pindleskin to clear path.")
+
+				pindleSafePosition := data.Position{X: 10058, Y: 13236}
+
+				if err := MoveToCoords(pindleSafePosition); err != nil {
+					ctx.Logger.Warn("Failed to move to Pindle safe spot, attempting to kill anyway.", slog.String("error", err.Error()))
+				}
+
+				if errPindle := ctx.Char.KillPindle(); errPindle != nil {
+					return fmt.Errorf("failed to kill Pindleskin while clearing path: %v", errPindle)
+				}
+			}
+
 			err := MoveToArea(dst)
 			if err != nil {
 				return err
 			}
 
-			err = DiscoverWaypoint()
-			if err != nil {
-				return err
+			if _, hasWP := area.WPAddresses[dst]; hasWP {
+				err = DiscoverWaypoint()
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}

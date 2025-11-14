@@ -148,6 +148,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const useExtraBuffsDistContainer = document.getElementById('useExtraBuffsDistContainer');
     const clearPathDistInput = document.getElementById('clearPathDist');
     const clearPathDistValue = document.getElementById('clearPathDistValue');
+    
+    initializeTZCheckboxes(); // Initialize Terror Zone checkbox logic
 
     if (bossStaticThresholdInput) {
         bossStaticThresholdInput.addEventListener('input', handleBossStaticThresholdChange);
@@ -332,11 +334,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.getElementById('tzTrackAll').addEventListener('change', function (e) {
-        document.querySelectorAll('.tzTrackCheckbox').forEach(checkbox => {
-            checkbox.checked = e.target.checked;
+    const tzTrackAllCheckbox = document.getElementById('tzTrackAll');
+    if (tzTrackAllCheckbox) {
+        tzTrackAllCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+
+            // Change the state of all 'parent group' checkboxes
+            document.querySelectorAll('.tz-group-checkbox').forEach(groupCheckbox => {
+                groupCheckbox.checked = isChecked;
+                groupCheckbox.indeterminate = false; // Remove indeterminate state
+
+                // Manually change the state of all 'hidden child' checkboxes
+                const groupId = groupCheckbox.dataset.groupId;
+                const children = document.querySelectorAll(`.tz-child-checkbox[data-parent-group-id="${groupId}"]`);
+                children.forEach(child => {
+                    child.checked = isChecked;
+                });
+            });
         });
-    });
+    }
 
     function filterRunewords(searchTerm = '') { // Default parameter to ensure previously checked runewords show before searching
         let listItems = document.querySelectorAll('.runeword-item');
@@ -397,4 +413,99 @@ function handleBossStaticThresholdChange() {
         value = 100;
     }
     input.value = value;
+}
+
+function updateTZAllCheckboxState() {
+    const tzTrackAll = document.getElementById('tzTrackAll');
+    if (!tzTrackAll) return;
+    
+    const allGroupCheckboxes = document.querySelectorAll('.tz-group-checkbox');
+    let allGroupsChecked = true;
+    allGroupCheckboxes.forEach(cb => {
+        // If the parent is checked, or if only some children are selected ('indeterminate' state)
+        if (!cb.checked && !cb.indeterminate) {
+            allGroupsChecked = false;
+        }
+    });
+    tzTrackAll.checked = allGroupsChecked;
+}
+
+// Main function to initialize the Terror Zone group checkbox logic
+function initializeTZCheckboxes() {
+    const allGroupCheckboxes = document.querySelectorAll('.tz-group-checkbox');
+    const allChildCheckboxes = document.querySelectorAll('.tz-child-checkbox');
+
+    // Logic for when a parent (group) checkbox is clicked
+    allGroupCheckboxes.forEach(groupCheckbox => {
+        groupCheckbox.addEventListener('change', (e) => {
+            const groupId = e.target.dataset.groupId;
+            const children = document.querySelectorAll(`.tz-child-checkbox[data-parent-group-id="${groupId}"]`);
+            children.forEach(child => {
+                child.checked = e.target.checked;
+            });
+            updateTZAllCheckboxState(); // Update "Select All" state
+        });
+    });
+
+    // On page load: Initialize parent state (checked/indeterminate) based on child states
+    allGroupCheckboxes.forEach(groupCheckbox => {
+        const groupId = groupCheckbox.dataset.groupId;
+        const children = document.querySelectorAll(`.tz-child-checkbox[data-parent-group-id="${groupId}"]`);
+        
+        if (children.length > 0) {
+            let allChecked = true;
+            let noneChecked = true;
+            
+            children.forEach(child => {
+                if (child.checked) {
+                    noneChecked = false;
+                } else {
+                    allChecked = false;
+                }
+            });
+
+            if (allChecked) {
+                groupCheckbox.checked = true;
+            } else if (!noneChecked) {
+                // If only some are checked: Display as "indeterminate" state
+                groupCheckbox.indeterminate = true; 
+            }
+        }
+    });
+
+    // On child (hidden) checkbox state change (also on load), update parent state
+    allChildCheckboxes.forEach(child => {
+        child.addEventListener('change', () => {
+            const parentGroupId = child.dataset.parentGroupId;
+            const parentCheckbox = document.querySelector(`.tz-group-checkbox[data-group-id="${parentGroupId}"]`);
+            if (!parentCheckbox) return;
+
+            const siblings = document.querySelectorAll(`.tz-child-checkbox[data-parent-group-id="${parentGroupId}"]`);
+            let allChecked = true;
+            let noneChecked = true;
+
+            siblings.forEach(sibling => {
+                if (sibling.checked) {
+                    noneChecked = false;
+                } else {
+                    allChecked = false;
+                }
+            });
+
+            if (allChecked) {
+                parentCheckbox.checked = true;
+                parentCheckbox.indeterminate = false;
+            } else if (noneChecked) {
+                parentCheckbox.checked = false;
+                parentCheckbox.indeterminate = false;
+            } else {
+                parentCheckbox.checked = false; 
+                parentCheckbox.indeterminate = true;
+            }
+            updateTZAllCheckboxState(); // Update "Select All" state
+        });
+    });
+
+    // Final synchronization of the "Select All" checkbox state on page load
+    updateTZAllCheckboxState();
 }

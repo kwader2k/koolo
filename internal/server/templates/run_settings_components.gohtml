@@ -207,16 +207,105 @@
         <label><input type="checkbox" name="gameTerrorZoneSkipOtherRuns" {{ if .Config.Game.TerrorZone.SkipOtherRuns }}checked{{ end }}> Skip all runs and only do TZ when available</label>
         <label><input type="checkbox" name="gameTerrorZoneOpenChests" {{ if .Config.Game.TerrorZone.OpenChests }}checked{{ end }}> Open chests</label>
         <label>Skip on immunities</label>
-        <fieldset class="grid">
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="cold" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "cold" }}checked{{ end }}> Cold</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "fire" }}checked{{ end }}> Fire</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "light" }}checked{{ end }}> Light</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}> Poison</label>
+        <fieldset class="grid tz-skip-icons">
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="cold" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "cold" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/c.png" width="16" height="16" alt="Cold"> Cold
+        </label>
+
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "fire" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/f.png" width="16" height="16" alt="Fire"> Fire
+        </label>
+
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "light" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/l.png" width="16" height="16" alt="Light"> Light
+        </label>
+
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/p.png" width="16" height="16" alt="Poison"> Poison
+        </label>
         </fieldset>
         <label>Tracked areas <input type="checkbox" name="tzTrackAll" id="tzTrackAll"></label>
-        {{ range $id, $name := .AvailableTZs }}
-            <label><input type="checkbox" class="tzTrackCheckbox" name="gameTerrorZoneAreas[]" value="{{ $id }}" {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $id }}checked{{ end }}>{{ $name }}</label>
-        {{ end }}
+        <div class="tz-card">
+            <div class="tz-card-header">
+                Terror Zone Selection
+            </div>
+
+            <table class="tz-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Act</th>
+                        <th>Immunities</th>
+                        <th>Boss Packs</th>
+                        <th>Tier</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ $currentTier := "" }}
+                    {{ range $i, $g := $topLevelContext.TerrorZoneGroups }}
+                        {{ $tier := or $g.Tier "F" }}
+
+                        {{ if ne $tier $currentTier }}
+                            {{ if ne $currentTier "" }}
+                                <tr class="tz-tier-spacer"><td colspan="6"></td></tr>
+                            {{ end }}
+                            <tr class="tz-tier-row">
+                                <td colspan="6">Tier {{ $tier }}</td>
+                            </tr>
+                            {{ $currentTier = $tier }}
+                        {{ end }}
+
+                        {{ $groupID := printf "group-%d" $i }}
+                        <tr class="tz-row">
+                            <td class="tz-checkbox-cell">
+                                <input type="checkbox"
+                                    class="tz-group-checkbox"
+                                    data-group-id="{{ $groupID }}"
+                                    aria-label="Track {{ $g.Name }}">
+                                {{ range $areaIndex, $areaID := $g.AreaIDs }}
+                                    <input type="checkbox"
+                                        class="tz-child-checkbox tz-hidden-checkbox"
+                                        data-parent-group-id="{{ $groupID }}"
+                                        name="gameTerrorZoneAreas[]"
+                                        value="{{ $areaID }}"
+                                        {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $areaID }}checked{{ end }}>
+                                {{ end }}
+                            </td>
+
+                            <td>{{ $g.Name }}</td>
+                            <td class="tz-act">Act {{ $g.Act }}</td>
+
+                            <td class="tz-immunities">
+                                {{ range $code := allImmunities }}
+                                    {{ if contains $g.Immunities $code }}
+                                        <img class="tz-icon" src="/assets/immunities/{{ $code }}.png" width="16" height="16" alt="">
+                                    {{ else }}
+                                        <img class="tz-icon tz-icon-disabled" src="/assets/immunities/{{ $code }}.png" width="16" height="16" alt="">
+                                    {{ end }}
+                                {{ end }}
+                            </td>
+
+                            <td class="tz-bosspacks">{{ $g.BossPacks }}</td>
+                            <td class="tz-tier" style="color: {{ if eq $tier "S" }}#fbbf24
+                                                    {{ else if eq $tier "A" }}#22c55e
+                                                    {{ else if eq $tier "B" }}#3b82f6
+                                                    {{ else if eq $tier "C" }}#a855f7
+                                                    {{ else if eq $tier "D" }}#60a5fa
+                                                    {{ else }}#ef4444{{ end }}">
+                                {{ $tier }}
+                            </td>
+
+                        </tr>
+
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
     </fieldset>
 {{ end }}
 

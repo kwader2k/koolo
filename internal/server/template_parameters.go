@@ -6,6 +6,15 @@ import (
 	"github.com/hectorgimenez/koolo/internal/config"
 )
 
+type TZGroup struct {
+	Act        int
+	Name       string
+	AreaIDs    []int
+	Immunities []string // e.g. []string{"f","c","l","p","ph","m"}
+	BossPacks  string   // e.g. "15-20"
+	Tier       string   // e.g. "S", "A", "B", "C", "F"
+}
+
 type IndexData struct {
 	ErrorMessage string
 	Version      string
@@ -42,7 +51,7 @@ type CharacterSettings struct {
 	DayNames           []string
 	EnabledRuns        []string
 	DisabledRuns       []string
-	AvailableTZs       map[int]string
+	TerrorZoneGroups   []TZGroup
 	RecipeList         []string
 	RunewordRecipeList []string
 	AvailableProfiles  []string

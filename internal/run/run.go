@@ -32,11 +32,11 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 	for _, run := range runs {
 		switch run {
 		case string(config.CountessRun):
-			builtRuns = append(builtRuns, NewCountess())
+			builtRuns = append(builtRuns, NewCountess(nil))
 		case string(config.AndarielRun):
-			builtRuns = append(builtRuns, NewAndariel())
+			builtRuns = append(builtRuns, NewAndariel(nil))
 		case string(config.SummonerRun):
-			builtRuns = append(builtRuns, NewSummoner())
+			builtRuns = append(builtRuns, NewSummoner(nil))
 		case string(config.DurielRun):
 			builtRuns = append(builtRuns, NewDuriel())
 		case string(config.MuleRun):
@@ -52,7 +52,7 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 		case string(config.PindleskinRun):
 			builtRuns = append(builtRuns, NewPindleskin())
 		case string(config.NihlathakRun):
-			builtRuns = append(builtRuns, NewNihlathak())
+			builtRuns = append(builtRuns, NewNihlathak(nil))
 		case string(config.AncientTunnelsRun):
 			builtRuns = append(builtRuns, NewAncientTunnels())
 		case string(config.MausoleumRun):

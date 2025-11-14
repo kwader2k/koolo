@@ -54,7 +54,7 @@ func (s *Baal) Run() error {
 		return err
 	}
 
-	if s.ctx.CharacterCfg.Game.Baal.ClearFloors || s.clearMonsterFilter != nil {
+	if s.ctx.CharacterCfg.Game.Baal.ClearFloors {
 		action.ClearCurrentLevel(false, filter)
 	}
 
@@ -63,7 +63,7 @@ func (s *Baal) Run() error {
 		return err
 	}
 
-	if s.ctx.CharacterCfg.Game.Baal.ClearFloors || s.clearMonsterFilter != nil {
+	if s.ctx.CharacterCfg.Game.Baal.ClearFloors {
 		action.ClearCurrentLevel(false, filter)
 	}
 

@@ -111,11 +111,13 @@ var simpleAndarielAttackPos1 = data.Position{
 
 type Andariel struct {
 	ctx *context.Status
+	clearMonsterFilter data.MonsterFilter
 }
 
-func NewAndariel() *Andariel {
+func NewAndariel(clearMonsterFilter data.MonsterFilter) *Andariel {
 	return &Andariel{
 		ctx: context.Get(),
+		clearMonsterFilter: clearMonsterFilter,
 	}
 }
 
@@ -126,34 +128,55 @@ func (a Andariel) Name() string {
 func (a Andariel) Run() error {
 	_, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)
 
+	filter := data.MonsterAnyFilter()
+	isTZRun := a.clearMonsterFilter != nil
+	if isTZRun {
+		filter = a.clearMonsterFilter
+	}
+
 	a.ctx.Logger.Info("Moving to Catacombs 4")
 	err := action.WayPoint(area.CatacombsLevel2)
 	if err != nil {
 		return err
 	}
 
+	if isTZRun { 
+		a.ctx.Logger.Info("Clearing Catacombs Level 2 (Terror Zone)")
+		action.ClearCurrentLevel(false, filter)
+	}
+	
 	err = action.MoveToArea(area.CatacombsLevel3)
-	action.MoveToArea(area.CatacombsLevel4)
+	if err != nil { 
+		return err
+	}
+	if isTZRun { 
+		a.ctx.Logger.Info("Clearing Catacombs Level 3 (Terror Zone)")
+		action.ClearCurrentLevel(false, filter)
+	}
+	
+	err = action.MoveToArea(area.CatacombsLevel4) 
 	if err != nil {
 		return err
 	}
 
+	shouldClearRoom := a.ctx.CharacterCfg.Game.Andariel.ClearRoom || isTZRun
+
 	if !isLevelingChar {
 
-		if a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
+		if shouldClearRoom {
 			a.ctx.Logger.Info("Clearing inside room (OLD/SIMPLE LOGIC)")
 			action.MoveToCoords(simpleAndarielClearPos1)
-			action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(10, filter)
 			action.MoveToCoords(simpleAndarielClearPos2)
-			action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(10, filter)
 			action.MoveToCoords(simpleAndarielClearPos3)
-			action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(10, filter)
 			action.MoveToCoords(simpleAndarielClearPos4)
-			action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(10, filter)
 			action.MoveToCoords(simpleAndarielClearPos5)
-			action.ClearAreaAroundPlayer(10, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(10, filter)
 			action.MoveToCoords(simpleAndarielAttackPos1)
-			action.ClearAreaAroundPlayer(20, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(20, filter)
 		} else {
 			action.MoveToCoords(simpleAndarielStartingPosition)
 		}
@@ -163,31 +186,31 @@ func (a Andariel) Run() error {
 
 	} else {
 
-		if a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
+		if shouldClearRoom {
 
 			a.ctx.Logger.Info("Clearing inside room (NEW/ROBUST LOGIC)")
 			action.MoveToCoords(andarielClearPos1)
-			action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(25, filter)
 			action.MoveToCoords(andarielClearPos2)
-			action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(25, filter)
 			action.MoveToCoords(andarielClearPos3)
-			action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(25, filter)
 			action.MoveToCoords(andarielClearPos4)
-			action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(25, filter)
 			action.MoveToCoords(andarielClearPos5)
-			action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(25, filter)
 			action.MoveToCoords(andarielClearPos6)
-			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(15, filter)
 			action.MoveToCoords(andarielClearPos7)
-			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(15, filter)
 			action.MoveToCoords(andarielClearPos8)
-			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(15, filter)
 			action.MoveToCoords(andarielClearPos9)
-			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(15, filter)
 			action.MoveToCoords(andarielClearPos10)
-			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(15, filter)
 			action.MoveToCoords(andarielClearPos11)
-			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
+			action.ClearAreaAroundPlayer(15, filter)
 
 			if a.ctx.CharacterCfg.Game.Andariel.UseAntidoes {
 				reHidePortraits := false
@@ -205,9 +228,9 @@ func (a Andariel) Run() error {
 
 				action.VendorRefill(true, true)
 				action.BuyAtVendor(npc.Akara, action.VendorItemRequest{
-					Item:     "AntidotePotion",
+					Item: 		"AntidotePotion",
 					Quantity: potsToBuy,
-					Tab:      4,
+					Tab: 		4,
 				})
 
 				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
@@ -260,7 +283,7 @@ func (a Andariel) Run() error {
 			}()
 		}
 
-		if !a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
+		if !shouldClearRoom {
 			action.MoveToCoords(andarielAttackPos1)
 		}
 	}
