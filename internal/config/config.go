@@ -612,4 +612,3 @@ func (c *CharacterCfg) Validate() {
 		}
 	}
 }
-
