@@ -239,35 +239,46 @@
                     <tr>
                         <th></th>
                         <th>Name</th>
+                        <th>Act</th>
                         <th>Immunities</th>
                         <th>Boss Packs</th>
                         <th>Tier</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {{ $currentAct := -1 }}
+                    {{ $currentTier := "" }}
                     {{ range $i, $g := $topLevelContext.TerrorZoneGroups }}
+                        {{ $tier := or $g.Tier "F" }}
 
-                        {{ if ne $g.Act $currentAct }}
-                            {{ if ne $currentAct -1 }}
-                                <tr class="tz-act-spacer"><td colspan="5"></td></tr>
+                        {{ if ne $tier $currentTier }}
+                            {{ if ne $currentTier "" }}
+                                <tr class="tz-tier-spacer"><td colspan="6"></td></tr>
                             {{ end }}
-                            <tr class="tz-act-row">
-                                <td colspan="5">Act {{ $g.Act }}</td>
+                            <tr class="tz-tier-row">
+                                <td colspan="6">Tier {{ $tier }}</td>
                             </tr>
-                            {{ $currentAct = $g.Act }}
+                            {{ $currentTier = $tier }}
                         {{ end }}
 
+                        {{ $groupID := printf "group-%d" $i }}
                         <tr class="tz-row">
                             <td class="tz-checkbox-cell">
                                 <input type="checkbox"
-                                    class="tz-child-checkbox"
-                                    name="gameTerrorZoneAreas[]"
-                                    value="{{ index $g.AreaIDs 0 }}"
-                                    {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas (index $g.AreaIDs 0) }}checked{{ end }}>
+                                    class="tz-group-checkbox"
+                                    data-group-id="{{ $groupID }}"
+                                    aria-label="Track {{ $g.Name }}">
+                                {{ range $areaIndex, $areaID := $g.AreaIDs }}
+                                    <input type="checkbox"
+                                        class="tz-child-checkbox tz-hidden-checkbox"
+                                        data-parent-group-id="{{ $groupID }}"
+                                        name="gameTerrorZoneAreas[]"
+                                        value="{{ $areaID }}"
+                                        {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $areaID }}checked{{ end }}>
+                                {{ end }}
                             </td>
 
                             <td>{{ $g.Name }}</td>
+                            <td class="tz-act">Act {{ $g.Act }}</td>
 
                             <td class="tz-immunities">
                                 {{ range $code := allImmunities }}
@@ -280,13 +291,13 @@
                             </td>
 
                             <td class="tz-bosspacks">{{ $g.BossPacks }}</td>
-                            <td class="tz-tier" style="color: {{ if eq $g.Tier "S" }}#fbbf24
-                                                    {{ else if eq $g.Tier "A" }}#22c55e
-                                                    {{ else if eq $g.Tier "B" }}#3b82f6
-                                                    {{ else if eq $g.Tier "C" }}#a855f7
-                                                    {{ else if eq $g.Tier "D" }}#60a5fa
+                            <td class="tz-tier" style="color: {{ if eq $tier "S" }}#fbbf24
+                                                    {{ else if eq $tier "A" }}#22c55e
+                                                    {{ else if eq $tier "B" }}#3b82f6
+                                                    {{ else if eq $tier "C" }}#a855f7
+                                                    {{ else if eq $tier "D" }}#60a5fa
                                                     {{ else }}#ef4444{{ end }}">
-                                {{ if $g.Tier }}{{ $g.Tier }}{{ else }}F{{ end }}
+                                {{ $tier }}
                             </td>
 
                         </tr>
@@ -297,7 +308,6 @@
         </div>
     </fieldset>
 {{ end }}
-
 
 {{ define "utility" }}
     <fieldset>
