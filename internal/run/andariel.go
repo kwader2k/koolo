@@ -130,6 +130,12 @@ func (a Andariel) CheckConditions(parameters *RunParameters) SequencerResult {
 	needLeaveTown := (a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusRewardGranted+quest.StatusLeaveTown+quest.StatusEnterArea) &&
 		!action.HasAnyQuestStartedOrCompleted(quest.Act2RadamentsLair, quest.Act2TheSevenTombs) &&
 		a.ctx.Data.PlayerUnit.Area.Act() == 1)
+
+	needToTalkToWarriv := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusCompletedBefore) && !a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusRewardGranted)
+	if needToTalkToWarriv {
+		return SequencerOk
+	}
+
 	questCompleted := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].Completed()
 	if (farmingRun && !questCompleted) || (!farmingRun && (questCompleted && !needLeaveTown)) {
 		return SequencerSkip
@@ -141,7 +147,7 @@ func (a Andariel) Run(parameters *RunParameters) error {
 	_, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)
 
 	if IsQuestRun(parameters) {
-		needLeaveTown := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusRewardGranted + quest.StatusLeaveTown + quest.StatusEnterArea)
+		needLeaveTown := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusRewardGranted+quest.StatusLeaveTown+quest.StatusEnterArea) || a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusCompletedBefore)
 		if needLeaveTown {
 			a.goToAct2()
 			return nil
