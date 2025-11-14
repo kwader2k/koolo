@@ -334,22 +334,25 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.getElementById('tzTrackAll').addEventListener('change', (e) => {
-        const isChecked = e.target.checked;
-        
-        // Change the state of all 'parent group' checkboxes
-        document.querySelectorAll('.tz-group-checkbox').forEach(groupCheckbox => {
-            groupCheckbox.checked = isChecked;
-            groupCheckbox.indeterminate = false; // Remove indeterminate state
-            
-            // Manually change the state of all 'hidden child' checkboxes
-            const groupId = groupCheckbox.dataset.groupId;
-            const children = document.querySelectorAll(`.tz-child-checkbox[data-parent-group-id="${groupId}"]`);
-            children.forEach(child => {
-                child.checked = isChecked;
+    const tzTrackAllCheckbox = document.getElementById('tzTrackAll');
+    if (tzTrackAllCheckbox) {
+        tzTrackAllCheckbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+
+            // Change the state of all 'parent group' checkboxes
+            document.querySelectorAll('.tz-group-checkbox').forEach(groupCheckbox => {
+                groupCheckbox.checked = isChecked;
+                groupCheckbox.indeterminate = false; // Remove indeterminate state
+
+                // Manually change the state of all 'hidden child' checkboxes
+                const groupId = groupCheckbox.dataset.groupId;
+                const children = document.querySelectorAll(`.tz-child-checkbox[data-parent-group-id="${groupId}"]`);
+                children.forEach(child => {
+                    child.checked = isChecked;
+                });
             });
         });
-    });
+    }
 
     function filterRunewords(searchTerm = '') { // Default parameter to ensure previously checked runewords show before searching
         let listItems = document.querySelectorAll('.runeword-item');
