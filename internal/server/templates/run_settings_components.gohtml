@@ -207,11 +207,26 @@
         <label><input type="checkbox" name="gameTerrorZoneSkipOtherRuns" {{ if .Config.Game.TerrorZone.SkipOtherRuns }}checked{{ end }}> Skip all runs and only do TZ when available</label>
         <label><input type="checkbox" name="gameTerrorZoneOpenChests" {{ if .Config.Game.TerrorZone.OpenChests }}checked{{ end }}> Open chests</label>
         <label>Skip on immunities</label>
-        <fieldset class="grid">
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="cold" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "cold" }}checked{{ end }}> Cold</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "fire" }}checked{{ end }}> Fire</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "light" }}checked{{ end }}> Light</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}> Poison</label>
+        <fieldset class="grid tz-skip-icons">
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="cold" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "cold" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/c.png" width="16" height="16" alt="Cold"> Cold
+        </label>
+
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "fire" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/f.png" width="16" height="16" alt="Fire"> Fire
+        </label>
+
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "light" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/l.png" width="16" height="16" alt="Light"> Light
+        </label>
+
+        <label>
+            <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}>
+            <img class="tz-icon" src="/assets/immunities/p.png" width="16" height="16" alt="Poison"> Poison
+        </label>
         </fieldset>
         <label>Tracked areas <input type="checkbox" name="tzTrackAll" id="tzTrackAll"></label>
         <div class="tz-card">
