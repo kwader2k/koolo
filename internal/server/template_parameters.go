@@ -7,10 +7,12 @@ import (
 )
 
 type TZGroup struct {
-	Act     int
-	Name    string
-	Tier    string
-	AreaIDs []int
+	Act        int
+	Name       string
+	AreaIDs    []int
+	Immunities []string // e.g. []string{"f","c","l","p","ph","m"}
+	BossPacks  string   // e.g. "15-20"
+	Tier       string   // e.g. "S", "A", "B", "C", "F"
 }
 
 type IndexData struct {

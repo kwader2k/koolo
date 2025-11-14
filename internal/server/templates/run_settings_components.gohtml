@@ -11,7 +11,6 @@
     <fieldset>
         <label><input type="checkbox" name="gameAndarielClearRoom" {{ if .Config.Game.Andariel.ClearRoom }}checked{{ end }}> Clear room first</label>
         <label><input type="checkbox" name="gameAndarielUseAntidoes" {{ if .Config.Game.Andariel.UseAntidoes }}checked{{ end }}> Use antidoes</label>
-        <label><input type="checkbox" name="gameAndarielClearCatacombsOnTZ" {{ if .Config.Game.Andariel.ClearCatacombsOnTZ }}checked{{ end }}> Clear Catacombs Lvl 2 & 3 on TZ</label>
     </fieldset>
 {{ end }}
 
@@ -200,6 +199,7 @@
         <label><input type="checkbox" name="gameQuestsKillAncients" {{ if .Config.Game.Quests.KillAncients }}checked{{ end }}> Kill Ancients</label>
     </fieldset>
 {{ end }}
+
 {{ define "terror_zone" }}
     {{$topLevelContext := .}}
     <fieldset>
@@ -214,38 +214,75 @@
             <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}> Poison</label>
         </fieldset>
         <label>Tracked areas <input type="checkbox" name="tzTrackAll" id="tzTrackAll"></label>
-        
-        {{ $currentTier := "" }}
-        {{ range $index, $group := .TerrorZoneGroups }}
-            {{ if ne $group.Tier $currentTier }}
-                {{ $currentTier = $group.Tier }}
-                <h6 style="margin-top: 15px; margin-bottom: 5px; padding-bottom: 5px; border-bottom: 1px solid #444;">
-                    {{ $currentTier }} TIER
-                </h6>
-            {{ end }}
-            <div class="tz-group" data-group-index="{{ $index }}">
-                <label>
-                    <input type="checkbox" 
-                            class="tz-group-checkbox" 
-                            data-group-id="tz-group-{{ $index }}">
-                    <strong>{{ $group.Name }}</strong> (Act {{ $group.Act }})
-                </label>
-                <div class="tz-hidden-children" 
-                     id="tz-group-{{ $index }}" 
-                     style="display: none;">
-                    {{ range $areaID := $group.AreaIDs }}
-                        <input type="checkbox" 
-                                class="tz-child-checkbox" 
-                                name="gameTerrorZoneAreas[]" 
-                                value="{{ $areaID }}" 
-                                data-parent-group-id="tz-group-{{ $index }}"
-                                {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $areaID }}checked{{ end }}>
-                    {{ end }}
-                </div>
+        <div class="tz-card">
+            <div class="tz-card-header">
+                Terror Zone Selection
             </div>
-        {{ end }}
+
+            <table class="tz-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Immunities</th>
+                        <th>Boss Packs</th>
+                        <th>Tier</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ $currentAct := -1 }}
+                    {{ range $i, $g := $topLevelContext.TerrorZoneGroups }}
+
+                        {{ if ne $g.Act $currentAct }}
+                            {{ if ne $currentAct -1 }}
+                                <tr class="tz-act-spacer"><td colspan="5"></td></tr>
+                            {{ end }}
+                            <tr class="tz-act-row">
+                                <td colspan="5">Act {{ $g.Act }}</td>
+                            </tr>
+                            {{ $currentAct = $g.Act }}
+                        {{ end }}
+
+                        <tr class="tz-row">
+                            <td class="tz-checkbox-cell">
+                                <input type="checkbox"
+                                    class="tz-child-checkbox"
+                                    name="gameTerrorZoneAreas[]"
+                                    value="{{ index $g.AreaIDs 0 }}"
+                                    {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas (index $g.AreaIDs 0) }}checked{{ end }}>
+                            </td>
+
+                            <td>{{ $g.Name }}</td>
+
+                            <td class="tz-immunities">
+                                {{ range $code := allImmunities }}
+                                    {{ if contains $g.Immunities $code }}
+                                        <img class="tz-icon" src="/assets/immunities/{{ $code }}.png" width="16" height="16" alt="">
+                                    {{ else }}
+                                        <img class="tz-icon tz-icon-disabled" src="/assets/immunities/{{ $code }}.png" width="16" height="16" alt="">
+                                    {{ end }}
+                                {{ end }}
+                            </td>
+
+                            <td class="tz-bosspacks">{{ $g.BossPacks }}</td>
+                            <td class="tz-tier" style="color: {{ if eq $g.Tier "S" }}#fbbf24
+                                                    {{ else if eq $g.Tier "A" }}#22c55e
+                                                    {{ else if eq $g.Tier "B" }}#3b82f6
+                                                    {{ else if eq $g.Tier "C" }}#a855f7
+                                                    {{ else if eq $g.Tier "D" }}#60a5fa
+                                                    {{ else }}#ef4444{{ end }}">
+                                {{ if $g.Tier }}{{ $g.Tier }}{{ else }}F{{ end }}
+                            </td>
+
+                        </tr>
+
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
     </fieldset>
 {{ end }}
+
 
 {{ define "utility" }}
     <fieldset>
@@ -261,4 +298,3 @@
         </label>
     </fieldset>
 {{ end }}
-

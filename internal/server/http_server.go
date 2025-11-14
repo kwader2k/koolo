@@ -214,6 +214,11 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 			}
 			return result
 		},
+		"allImmunities": func() []string {
+			return []string{"f", "c", "l", "p", "ph", "m"}
+		},
+		"upper": strings.ToUpper,
+		"trim":  strings.TrimSpace,
 	}
 	templates, err := template.New("").Funcs(helperFuncs).ParseFS(templatesFS, "templates/*.gohtml")
 	if err != nil {
@@ -1280,7 +1285,6 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		cfg.Game.Andariel.ClearRoom = r.Form.Has("gameAndarielClearRoom")
 		cfg.Game.Andariel.UseAntidoes = r.Form.Has("gameAndarielUseAntidoes")
-		cfg.Game.Andariel.ClearCatacombsOnTZ = r.Form.Has("gameAndarielClearCatacombsOnTZ")
 
 		cfg.Game.Countess.ClearFloors = r.Form.Has("gameCountessClearFloors")
 
@@ -1452,73 +1456,55 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	sort.Strings(disabledRuns)
 
 	tzGroups := []TZGroup{
-		// --- S TIER ---
-		{Act: 2, Name: "Tal Rasha's Tombs", Tier: "S", AreaIDs: []int{int(area.TalRashasTomb1), int(area.TalRashasTomb2), int(area.TalRashasTomb3), int(area.TalRashasTomb4), int(area.TalRashasTomb5), int(area.TalRashasTomb6), int(area.TalRashasTomb7)}},
-		{Act: 5, Name: "Worldstone Keep / Throne of Destruction", Tier: "S", AreaIDs: []int{int(area.TheWorldStoneKeepLevel1), int(area.TheWorldStoneKeepLevel2), int(area.TheWorldStoneKeepLevel3), int(area.ThroneOfDestruction), int(area.TheWorldstoneChamber)}},
-		{Act: 4, Name: "Chaos Sanctuary", Tier: "S", AreaIDs: []int{int(area.ChaosSanctuary)}},
-		{Act: 1, Name: "Cathedral / Catacombs", Tier: "S", AreaIDs: []int{int(area.Cathedral), int(area.InnerCloister), int(area.CatacombsLevel1), int(area.CatacombsLevel2), int(area.CatacombsLevel3), int(area.CatacombsLevel4)}},
-		{Act: 2, Name: "Rocky Waste / Stony Tomb", Tier: "S", AreaIDs: []int{int(area.RockyWaste), int(area.StonyTombLevel1), int(area.StonyTombLevel2)}},
-		{Act: 3, Name: "Flayer Jungle / Flayer Dungeon", Tier: "S", AreaIDs: []int{int(area.FlayerJungle), int(area.FlayerDungeonLevel1), int(area.FlayerDungeonLevel2), int(area.FlayerDungeonLevel3)}},
-		{Act: 2, Name: "Lut Gholein Sewers", Tier: "S", AreaIDs: []int{int(area.SewersLevel1Act2), int(area.SewersLevel2Act2), int(area.SewersLevel3Act2)}},
-		{Act: 2, Name: "Dry Hills / Halls of the Dead", Tier: "S", AreaIDs: []int{int(area.DryHills), int(area.HallsOfTheDeadLevel1), int(area.HallsOfTheDeadLevel2), int(area.HallsOfTheDeadLevel3)}},
-		{Act: 1, Name: "Pit", Tier: "S", AreaIDs: []int{int(area.PitLevel1), int(area.PitLevel2)}},
+		// Act 1
+		{Act: 1, Name: "Blood Moor / Den of Evil", AreaIDs: []int{int(area.BloodMoor), int(area.DenOfEvil)}, Immunities: []string{"f", "c"}, BossPacks: "7-9", Tier: "F"},
+		{Act: 1, Name: "Cold Plains / Cave", AreaIDs: []int{int(area.ColdPlains), int(area.CaveLevel1), int(area.CaveLevel2)}, Immunities: []string{"f", "c", "l"}, BossPacks: "13-16", Tier: "A"},
+		{Act: 1, Name: "Burial Grounds / Crypt / Mausoleum", AreaIDs: []int{int(area.BurialGrounds), int(area.Crypt), int(area.Mausoleum)}, Immunities: []string{"l"}, BossPacks: "8-10", Tier: "C"},
+		{Act: 1, Name: "Stony Field", AreaIDs: []int{int(area.StonyField)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "7-9", Tier: "C"},
+		{Act: 1, Name: "Dark Wood / Underground Passage", AreaIDs: []int{int(area.DarkWood), int(area.UndergroundPassageLevel1), int(area.UndergroundPassageLevel2)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "16-22", Tier: "B"},
+		{Act: 1, Name: "Black Marsh / The Hole", AreaIDs: []int{int(area.BlackMarsh), int(area.HoleLevel1), int(area.HoleLevel2)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "15-20", Tier: "A"},
+		{Act: 1, Name: "Forgotten Tower", AreaIDs: []int{int(area.ForgottenTower), int(area.TowerCellarLevel1), int(area.TowerCellarLevel2), int(area.TowerCellarLevel3), int(area.TowerCellarLevel4), int(area.TowerCellarLevel5)}, Immunities: []string{"f", "l", "ph"}, BossPacks: "15-20", Tier: "A"},
+		{Act: 1, Name: "Barracks / Jail", AreaIDs: []int{int(area.Barracks), int(area.JailLevel1), int(area.JailLevel2), int(area.JailLevel3)}, Immunities: []string{"f", "c", "p", "ph"}, BossPacks: "24-32", Tier: "A"},
+		{Act: 1, Name: "Cathedral / Catacombs", AreaIDs: []int{int(area.Cathedral), int(area.InnerCloister), int(area.CatacombsLevel1), int(area.CatacombsLevel2), int(area.CatacombsLevel3), int(area.CatacombsLevel4)}, Immunities: []string{"f", "c", "l", "ph"}, BossPacks: "27-35", Tier: "S"},
+		{Act: 1, Name: "Tristram", AreaIDs: []int{int(area.Tristram)}, Immunities: []string{"f", "l", "p"}, BossPacks: "5-6", Tier: "C"},
+		{Act: 1, Name: "Moo Moo Farm", AreaIDs: []int{int(area.MooMooFarm)}, Immunities: []string{}, BossPacks: "6-8", Tier: "C"},
+		{Act: 1, Name: "Pit", AreaIDs: []int{int(area.PitLevel1), int(area.PitLevel2)}, Immunities: []string{"f", "c", "l"}, BossPacks: "8-11", Tier: "S"},
 
-		// --- A TIER ---
-		{Act: 1, Name: "Barracks / Jail", Tier: "A", AreaIDs: []int{int(area.Barracks), int(area.JailLevel1), int(area.JailLevel2), int(area.JailLevel3)}},
-		{Act: 1, Name: "Black Marsh / The Hole", Tier: "A", AreaIDs: []int{int(area.BlackMarsh), int(area.HoleLevel1), int(area.HoleLevel2)}},
-		{Act: 4, Name: "City of the Damned / River of Flame", Tier: "A", AreaIDs: []int{int(area.CityOfTheDamned), int(area.RiverOfFlame)}},
-		{Act: 1, Name: "Cold Plains / Cave", Tier: "A", AreaIDs: []int{int(area.ColdPlains), int(area.CaveLevel1), int(area.CaveLevel2)}},
-		{Act: 5, Name: "Crystalline Passage / Frozen River", Tier: "A", AreaIDs: []int{int(area.CrystallinePassage), int(area.FrozenRiver)}},
-		{Act: 1, Name: "Forgotten Tower", Tier: "A", AreaIDs: []int{int(area.ForgottenTower), int(area.TowerCellarLevel1), int(area.TowerCellarLevel2), int(area.TowerCellarLevel3), int(area.TowerCellarLevel4), int(area.TowerCellarLevel5)}},
-		{Act: 5, Name: "Glacial Trail / Drifter Cavern", Tier: "A", AreaIDs: []int{int(area.GlacialTrail), int(area.DrifterCavern)}},
-		{Act: 3, Name: "Kurast Bazaar / Ruined Temple / Disused Fane", Tier: "A", AreaIDs: []int{int(area.KurastBazaar), int(area.RuinedTemple), int(area.DisusedFane)}},
-		{Act: 2, Name: "Lost City / Valley of Snakes / Claw Viper Temple", Tier: "A", AreaIDs: []int{int(area.LostCity), int(area.ValleyOfSnakes), int(area.ClawViperTempleLevel1), int(area.ClawViperTempleLevel2)}},
-		{Act: 5, Name: "Nihlathak's Temple / Temple Halls", Tier: "A", AreaIDs: []int{int(area.NihlathaksTemple), int(area.HallsOfAnguish), int(area.HallsOfPain), int(area.HallsOfVaught)}},
-		{Act: 4, Name: "Outer Steppes / Plains of Despair", Tier: "A", AreaIDs: []int{int(area.OuterSteppes), int(area.PlainsOfDespair)}},
+		// Act 2
+		{Act: 2, Name: "Lut Gholein Sewers", AreaIDs: []int{int(area.SewersLevel1Act2), int(area.SewersLevel2Act2), int(area.SewersLevel3Act2)}, Immunities: []string{"f", "c", "p", "m"}, BossPacks: "18-24", Tier: "S"},
+		{Act: 2, Name: "Rocky Waste / Stony Tomb", AreaIDs: []int{int(area.RockyWaste), int(area.StonyTombLevel1), int(area.StonyTombLevel2)}, Immunities: []string{"f", "c", "l", "p", "m"}, BossPacks: "17-23", Tier: "S"},
+		{Act: 2, Name: "Dry Hills / Halls of the Dead", AreaIDs: []int{int(area.DryHills), int(area.HallsOfTheDeadLevel1), int(area.HallsOfTheDeadLevel2), int(area.HallsOfTheDeadLevel3)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "20-27", Tier: "S"},
+		{Act: 2, Name: "Far Oasis", AreaIDs: []int{int(area.FarOasis)}, Immunities: []string{"l", "p", "ph"}, BossPacks: "7-9", Tier: "C"},
+		{Act: 2, Name: "Lost City / Valley of Snakes / Claw Viper Temple", AreaIDs: []int{int(area.LostCity), int(area.ValleyOfSnakes), int(area.ClawViperTempleLevel1), int(area.ClawViperTempleLevel2)}, Immunities: []string{"f", "c", "l", "p", "m"}, BossPacks: "21-28", Tier: "A"},
+		{Act: 2, Name: "Ancient Tunnels", AreaIDs: []int{int(area.AncientTunnels)}, Immunities: []string{"f", "l", "p", "m"}, BossPacks: "6-8", Tier: "B"},
+		{Act: 2, Name: "Arcane Sanctuary", AreaIDs: []int{int(area.ArcaneSanctuary)}, Immunities: []string{"f", "c", "l", "p", "ph"}, BossPacks: "7-9", Tier: "C"},
+		{Act: 2, Name: "Tal Rasha's Tombs", AreaIDs: []int{int(area.TalRashasTomb1), int(area.TalRashasTomb2), int(area.TalRashasTomb3), int(area.TalRashasTomb4), int(area.TalRashasTomb5), int(area.TalRashasTomb6), int(area.TalRashasTomb7)}, Immunities: []string{"f", "c", "l", "p", "m"}, BossPacks: "49-63", Tier: "S"},
 
-		// --- B TIER ---
-		{Act: 5, Name: "Ancient's Way / Icy Cellar", Tier: "B", AreaIDs: []int{int(area.TheAncientsWay), int(area.IcyCellar)}},
-		{Act: 2, Name: "Ancient Tunnels", Tier: "B", AreaIDs: []int{int(area.AncientTunnels)}},
-		{Act: 5, Name: "Bloody Foothills / Frigid Highlands / Abaddon", Tier: "B", AreaIDs: []int{int(area.BloodyFoothills), int(area.FrigidHighlands), int(area.Abaddon)}},
-		{Act: 1, Name: "Dark Wood / Underground Passage", Tier: "B", AreaIDs: []int{int(area.DarkWood), int(area.UndergroundPassageLevel1), int(area.UndergroundPassageLevel2)}},
-		{Act: 3, Name: "Great Marsh", Tier: "B", AreaIDs: []int{int(area.GreatMarsh)}},
-		{Act: 3, Name: "Spider Forest / Spider Cavern", Tier: "B", AreaIDs: []int{int(area.SpiderForest), int(area.SpiderCavern)}},
+		// Act 3
+		{Act: 3, Name: "Spider Forest / Spider Cavern", AreaIDs: []int{int(area.SpiderForest), int(area.SpiderCavern)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "14-20", Tier: "B"},
+		{Act: 3, Name: "Great Marsh", AreaIDs: []int{int(area.GreatMarsh)}, Immunities: []string{"f", "c", "l"}, BossPacks: "10-15", Tier: "B"},
+		{Act: 3, Name: "Flayer Jungle / Flayer Dungeon", AreaIDs: []int{int(area.FlayerJungle), int(area.FlayerDungeonLevel1), int(area.FlayerDungeonLevel2), int(area.FlayerDungeonLevel3)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "22-29", Tier: "S"},
+		{Act: 3, Name: "Kurast Bazaar / Ruined Temple / Disused Fane", AreaIDs: []int{int(area.KurastBazaar), int(area.RuinedTemple), int(area.DisusedFane)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "15-17", Tier: "A"},
+		{Act: 3, Name: "Travincal", AreaIDs: []int{int(area.Travincal)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "6-8", Tier: "C"},
+		{Act: 3, Name: "Durance of Hate", AreaIDs: []int{int(area.DuranceOfHateLevel1), int(area.DuranceOfHateLevel2), int(area.DuranceOfHateLevel3)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "15-21", Tier: "C"},
 
-		// --- C TIER ---
-		{Act: 2, Name: "Arcane Sanctuary", Tier: "C", AreaIDs: []int{int(area.ArcaneSanctuary)}},
-		{Act: 5, Name: "Arreat Plateau / Pit of Acheron", Tier: "C", AreaIDs: []int{int(area.ArreatPlateau), int(area.PitOfAcheron)}},
-		{Act: 1, Name: "Moo Moo Farm", Tier: "C", AreaIDs: []int{int(area.MooMooFarm)}},
-		{Act: 1, Name: "Stony Field", Tier: "C", AreaIDs: []int{int(area.StonyField)}},
-		{Act: 3, Name: "Travincal", Tier: "C", AreaIDs: []int{int(area.Travincal)}},
+		// Act 4
+		{Act: 4, Name: "Outer Steppes / Plains of Despair", AreaIDs: []int{int(area.OuterSteppes), int(area.PlainsOfDespair)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "16-20", Tier: "A"},
+		{Act: 4, Name: "City of the Damned / River of Flame", AreaIDs: []int{int(area.CityOfTheDamned), int(area.RiverOfFlame)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "14-17", Tier: "A"},
+		{Act: 4, Name: "Chaos Sanctuary", AreaIDs: []int{int(area.ChaosSanctuary)}, Immunities: []string{"f", "c", "l"}, BossPacks: "6-7", Tier: "S"},
 
-		// --- D TIER ---
-		{Act: 1, Name: "Burial Grounds / Crypt / Mausoleum", Tier: "D", AreaIDs: []int{int(area.BurialGrounds), int(area.Crypt), int(area.Mausoleum)}},
-		{Act: 3, Name: "Durance of Hate", Tier: "D", AreaIDs: []int{int(area.DuranceOfHateLevel1), int(area.DuranceOfHateLevel2), int(area.DuranceOfHateLevel3)}},
-		{Act: 2, Name: "Far Oasis", Tier: "D", AreaIDs: []int{int(area.FarOasis)}},
-		{Act: 1, Name: "Tristram", Tier: "D", AreaIDs: []int{int(area.Tristram)}},
-
-		// --- F TIER ---
-		{Act: 1, Name: "Blood Moor / Den of Evil", Tier: "F", AreaIDs: []int{int(area.BloodMoor), int(area.DenOfEvil)}},
+		// Act 5
+		{Act: 5, Name: "Bloody Foothills / Frigid Highlands / Abaddon", AreaIDs: []int{int(area.BloodyFoothills), int(area.FrigidHighlands), int(area.Abaddon)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "19-25", Tier: "B"},
+		{Act: 5, Name: "Arreat Plateau / Pit of Acheron", AreaIDs: []int{int(area.ArreatPlateau), int(area.PitOfAcheron)}, Immunities: []string{"f", "c", "l", "p"}, BossPacks: "15-19", Tier: "C"},
+		{Act: 5, Name: "Crystalline Passage / Frozen River", AreaIDs: []int{int(area.CrystallinePassage), int(area.FrozenRiver)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "13-17", Tier: "A"},
+		{Act: 5, Name: "Glacial Trail / Drifter Cavern", AreaIDs: []int{int(area.GlacialTrail), int(area.DrifterCavern)}, Immunities: []string{"f", "c", "l", "p", "ph"}, BossPacks: "13-17", Tier: "A"},
+		{Act: 5, Name: "Ancient's Way / Icy Cellar", AreaIDs: []int{int(area.TheAncientsWay), int(area.IcyCellar)}, Immunities: []string{"c", "l", "p", "ph"}, BossPacks: "6-8", Tier: "B"},
+		{Act: 5, Name: "Nihlathak's Temple / Temple Halls", AreaIDs: []int{int(area.NihlathaksTemple), int(area.HallsOfAnguish), int(area.HallsOfPain), int(area.HallsOfVaught)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "12-14", Tier: "A"},
+		{Act: 5, Name: "Worldstone Keep / Throne of Destruction", AreaIDs: []int{int(area.TheWorldStoneKeepLevel1), int(area.TheWorldStoneKeepLevel2), int(area.TheWorldStoneKeepLevel3), int(area.ThroneOfDestruction), int(area.TheWorldstoneChamber)}, Immunities: []string{"f", "c", "l", "p", "ph", "m"}, BossPacks: "22-29", Tier: "S"},
 	}
-	var tierOrder = map[string]int{
-		"S": 0, "A": 1, "B": 2, "C": 3, "D": 4, "F": 5,
-	}
-	const defaultTierValue = 99
-	// tier sort
+
+	// Act sort
 	sort.SliceStable(tzGroups, func(i, j int) bool {
-		tierIValue, okI := tierOrder[tzGroups[i].Tier]
-		if !okI {
-			tierIValue = defaultTierValue
-		}
-
-		tierJValue, okJ := tierOrder[tzGroups[j].Tier]
-		if !okJ {
-			tierJValue = defaultTierValue
-		}
-
-		if tierIValue != tierJValue {
-			return tierIValue < tierJValue
-		}
 		if tzGroups[i].Act != tzGroups[j].Act {
 			return tzGroups[i].Act < tzGroups[j].Act
 		}
