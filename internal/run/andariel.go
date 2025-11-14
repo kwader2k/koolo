@@ -140,25 +140,30 @@ func (a Andariel) Run() error {
 		return err
 	}
 
-	if isTZRun && a.ctx.CharacterCfg.Game.Andariel.ClearCatacombsOnTZ {
-	a.ctx.Logger.Info("Clearing Catacombs Level 2 (Terror Zone)")
-	action.ClearCurrentLevel(false, filter)
+	if isTZRun { 
+		a.ctx.Logger.Info("Clearing Catacombs Level 2 (Terror Zone)")
+		action.ClearCurrentLevel(false, filter)
 	}
 	
 	err = action.MoveToArea(area.CatacombsLevel3)
-	if isTZRun && a.ctx.CharacterCfg.Game.Andariel.ClearCatacombsOnTZ {
-	a.ctx.Logger.Info("Clearing Catacombs Level 3 (Terror Zone)")
-	action.ClearCurrentLevel(false, filter)
+	if err != nil { 
+		return err
+	}
+	if isTZRun { 
+		a.ctx.Logger.Info("Clearing Catacombs Level 3 (Terror Zone)")
+		action.ClearCurrentLevel(false, filter)
 	}
 	
-	action.MoveToArea(area.CatacombsLevel4)
+	err = action.MoveToArea(area.CatacombsLevel4) 
 	if err != nil {
 		return err
 	}
 
+	shouldClearRoom := a.ctx.CharacterCfg.Game.Andariel.ClearRoom || isTZRun
+
 	if !isLevelingChar {
 
-		if a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
+		if shouldClearRoom {
 			a.ctx.Logger.Info("Clearing inside room (OLD/SIMPLE LOGIC)")
 			action.MoveToCoords(simpleAndarielClearPos1)
 			action.ClearAreaAroundPlayer(10, filter)
@@ -181,7 +186,7 @@ func (a Andariel) Run() error {
 
 	} else {
 
-		if a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
+		if shouldClearRoom {
 
 			a.ctx.Logger.Info("Clearing inside room (NEW/ROBUST LOGIC)")
 			action.MoveToCoords(andarielClearPos1)
@@ -223,9 +228,9 @@ func (a Andariel) Run() error {
 
 				action.VendorRefill(true, true)
 				action.BuyAtVendor(npc.Akara, action.VendorItemRequest{
-					Item:     "AntidotePotion",
+					Item: 		"AntidotePotion",
 					Quantity: potsToBuy,
-					Tab:      4,
+					Tab: 		4,
 				})
 
 				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
@@ -278,7 +283,7 @@ func (a Andariel) Run() error {
 			}()
 		}
 
-		if !a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
+		if !shouldClearRoom {
 			action.MoveToCoords(andarielAttackPos1)
 		}
 	}
