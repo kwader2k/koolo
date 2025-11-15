@@ -1271,6 +1271,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		json.Unmarshal([]byte(r.FormValue("gameRuns")), &enabledRuns)
 		cfg.Game.Runs = enabledRuns
 
+		// Wire Shopping: parse shopping-specific fields (reflection-safe)
+		s.applyShoppingFromForm(r, cfg)
+
 		cfg.Game.Cows.OpenChests = r.Form.Has("gameCowsOpenChests")
 
 		cfg.Game.Pit.MoveThroughBlackMarsh = r.Form.Has("gamePitMoveThroughBlackMarsh")
@@ -1649,4 +1652,58 @@ func (s *HttpServer) getIntFromForm(r *http.Request, param string, min int, max 
 		result = int(math.Max(math.Min(float64(paramValue), float64(max)), float64(min)))
 	}
 	return result
+}
+
+// --- Shopping wiring (reflection-safe) ---
+// We only *add* code; no changes to existing structs are required.
+// This will set cfg.Shopping fields if they exist in your config struct.
+// Expected field names (if present):
+//
+//	Enabled (bool), RefreshesPerRun (int), MinGoldReserve (int),
+//	VendorAkara, VendorCharsi, VendorGheed, VendorFara, VendorDrognan, VendorElzix, VendorOrmus, VendorMalah, VendorAnya (bool),
+//	Types ([]string)
+//
+// Wire Shopping: parse shopping-specific fields (explicit field setting)
+func (s *HttpServer) applyShoppingFromForm(r *http.Request, cfg *config.CharacterCfg) {
+	// Enable/disable
+	cfg.Shopping.Enabled = r.Form.Has("shoppingEnabled")
+
+	// Numeric fields
+	if v, err := strconv.Atoi(r.Form.Get("shoppingMaxGoldToSpend")); err == nil {
+		cfg.Shopping.MaxGoldToSpend = v
+	}
+	if v, err := strconv.Atoi(r.Form.Get("shoppingMinGoldReserve")); err == nil {
+		cfg.Shopping.MinGoldReserve = v
+	}
+	if v, err := strconv.Atoi(r.Form.Get("shoppingRefreshesPerRun")); err == nil {
+		cfg.Shopping.RefreshesPerRun = v
+	}
+
+	// Rules file
+	cfg.Shopping.ShoppingRulesFile = r.Form.Get("shoppingRulesFile")
+
+	// Item types (comma-separated string to slice)
+	if raw := strings.TrimSpace(r.Form.Get("shoppingItemTypes")); raw != "" {
+		parts := strings.Split(raw, ",")
+		items := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if p = strings.TrimSpace(p); p != "" {
+				items = append(items, p)
+			}
+		}
+		cfg.Shopping.ItemTypes = items
+	} else {
+		cfg.Shopping.ItemTypes = []string{}
+	}
+
+	// Vendor checkboxes
+	cfg.Shopping.VendorAkara = r.Form.Has("shoppingVendorAkara")
+	cfg.Shopping.VendorCharsi = r.Form.Has("shoppingVendorCharsi")
+	cfg.Shopping.VendorGheed = r.Form.Has("shoppingVendorGheed")
+	cfg.Shopping.VendorFara = r.Form.Has("shoppingVendorFara")
+	cfg.Shopping.VendorDrognan = r.Form.Has("shoppingVendorDrognan")
+	cfg.Shopping.VendorElzix = r.Form.Has("shoppingVendorElzix")
+	cfg.Shopping.VendorOrmus = r.Form.Has("shoppingVendorOrmus")
+	cfg.Shopping.VendorMalah = r.Form.Has("shoppingVendorMalah")
+	cfg.Shopping.VendorAnya = r.Form.Has("shoppingVendorAnya")
 }

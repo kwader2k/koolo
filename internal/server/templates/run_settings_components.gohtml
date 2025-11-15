@@ -243,3 +243,183 @@
         </label>
     </fieldset>
 {{ end }}
+
+{{ define "run_settings_shopping" }}
+<div class="mt-4">
+  <h3 class="text-lg font-semibold">Shopping</h3>
+
+  <div class="grid grid-cols-2 gap-2 mt-2">
+    <label class="inline-flex items-center space-x-2">
+      <input type="checkbox" name="shopping.enabled" {{ if .Shopping.Enabled }}checked{{ end }}>
+      <span>Enable shopping run</span>
+    </label>
+
+    <label class="inline-flex items-center space-x-2">
+      <span>Refreshes per town</span>
+      <input type="number" name="shopping.refreshes_per_run" value="{{ .Shopping.RefreshesPerRun }}" class="input input-sm w-20">
+    </label>
+
+    <label class="inline-flex items-center space-x-2">
+      <span>Min gold reserve</span>
+      <input type="number" name="shopping.min_gold_reserve" value="{{ .Shopping.MinGoldReserve }}" class="input input-sm w-24">
+    </label>
+  </div>
+
+  <div class="mt-3">
+    <div class="font-medium mb-1">Vendors</div>
+    <div class="grid grid-cols-3 gap-2">
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Charsi"  {{ if (index .Shopping.VendorMap "Charsi") }}checked{{ end }}> <span class="ml-2">Charsi</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Gheed"   {{ if (index .Shopping.VendorMap "Gheed") }}checked{{ end }}> <span class="ml-2">Gheed</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Fara"    {{ if (index .Shopping.VendorMap "Fara") }}checked{{ end }}> <span class="ml-2">Fara</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Drognan" {{ if (index .Shopping.VendorMap "Drognan") }}checked{{ end }}> <span class="ml-2">Drognan</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Ormus"   {{ if (index .Shopping.VendorMap "Ormus") }}checked{{ end }}> <span class="ml-2">Ormus</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Halbu"   {{ if (index .Shopping.VendorMap "Halbu") }}checked{{ end }}> <span class="ml-2">Halbu</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Malah"   {{ if (index .Shopping.VendorMap "Malah") }}checked{{ end }}> <span class="ml-2">Malah</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Larzuk"  {{ if (index .Shopping.VendorMap "Larzuk") }}checked{{ end }}> <span class="ml-2">Larzuk</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Drehya"  {{ if (index .Shopping.VendorMap "Drehya") }}checked{{ end }}> <span class="ml-2">Anya (Drehya)</span></label>
+    </div>
+  </div>
+</div>
+{{ end }}
+
+
+{{ define "shopping" }}
+  <fieldset>
+    <legend>Shopping</legend>
+
+    <label>
+      <input type="checkbox" name="shoppingEnabled" {{ if .Config.Shopping.Enabled }}checked{{ end }}>
+      Enable Shopping
+    </label>
+
+    <label>
+      <span>Max gold to spend</span>
+      <input type="number" name="shoppingMaxGoldToSpend" min="0" step="1" value="{{ .Config.Shopping.MaxGoldToSpend }}">
+    </label>
+
+    <label>
+      <span>Min gold reserve</span>
+      <input type="number" name="shoppingMinGoldReserve" min="0" step="1" value="{{ .Config.Shopping.MinGoldReserve }}">
+    </label>
+
+    <label>
+      <span>Refreshes per run</span>
+      <input type="number" name="shoppingRefreshesPerRun" min="0" step="1" value="{{ .Config.Shopping.RefreshesPerRun }}">
+    </label>
+
+    <label>
+      <span>Shopping rules file (optional)</span>
+      <input type="text" name="shoppingRulesFile" value="{{ .Config.Shopping.ShoppingRulesFile }}" placeholder="e.g. shopping_rules.nip">
+    </label>
+
+    <label>
+      <span>Item types (comma-separated)</span>
+      <input type="text" name="shoppingItemTypes" value="{{ range $i, $v := .Config.Shopping.ItemTypes }}{{ if gt $i 0 }}, {{ end }}{{$v}}{{ end }}">
+    </label>
+
+    <div class="grid grid-cols-2 gap-2">
+      <label><input type="checkbox" name="shoppingVendorAkara"   {{ if .Config.Shopping.VendorAkara }}checked{{ end }}> Akara (A1)</label>
+      <label><input type="checkbox" name="shoppingVendorCharsi"  {{ if .Config.Shopping.VendorCharsi }}checked{{ end }}> Charsi (A1)</label>
+      <label><input type="checkbox" name="shoppingVendorGheed"   {{ if .Config.Shopping.VendorGheed }}checked{{ end }}> Gheed (A1)</label>
+
+      <label><input type="checkbox" name="shoppingVendorFara"    {{ if .Config.Shopping.VendorFara }}checked{{ end }}> Fara (A2)</label>
+      <label><input type="checkbox" name="shoppingVendorDrognan" {{ if .Config.Shopping.VendorDrognan }}checked{{ end }}> Drognan (A2)</label>
+      <label><input type="checkbox" name="shoppingVendorElzix"   {{ if .Config.Shopping.VendorElzix }}checked{{ end }}> Elzix (A2)</label>
+
+      <label><input type="checkbox" name="shoppingVendorOrmus"   {{ if .Config.Shopping.VendorOrmus }}checked{{ end }}> Ormus (A3)</label>
+
+      <label><input type="checkbox" name="shoppingVendorMalah"   {{ if .Config.Shopping.VendorMalah }}checked{{ end }}> Malah (A5)</label>
+      <label><input type="checkbox" name="shoppingVendorAnya"    {{ if .Config.Shopping.VendorAnya }}checked{{ end }}> Anya (A5)</label>
+    </div>
+  </fieldset>
+{{ end }}
+
+{{ define "run_settings_shopping" }}
+<div class="mt-4">
+  <h3 class="text-lg font-semibold">Shopping</h3>
+
+  <div class="grid grid-cols-2 gap-2 mt-2">
+    <label class="inline-flex items-center space-x-2">
+      <input type="checkbox" name="shopping.enabled" {{ if .Shopping.Enabled }}checked{{ end }}>
+      <span>Enable shopping run</span>
+    </label>
+
+    <label class="inline-flex items-center space-x-2">
+      <span>Refreshes per town</span>
+      <input type="number" name="shopping.refreshes_per_run" value="{{ .Shopping.RefreshesPerRun }}" class="input input-sm w-20">
+    </label>
+
+    <label class="inline-flex items-center space-x-2">
+      <span>Min gold reserve</span>
+      <input type="number" name="shopping.min_gold_reserve" value="{{ .Shopping.MinGoldReserve }}" class="input input-sm w-24">
+    </label>
+  </div>
+
+  <div class="mt-3">
+    <div class="font-medium mb-1">Vendors</div>
+    <div class="grid grid-cols-3 gap-2">
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Charsi"  {{ if (index .Shopping.VendorMap "Charsi") }}checked{{ end }}> <span class="ml-2">Charsi</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Gheed"   {{ if (index .Shopping.VendorMap "Gheed") }}checked{{ end }}> <span class="ml-2">Gheed</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Fara"    {{ if (index .Shopping.VendorMap "Fara") }}checked{{ end }}> <span class="ml-2">Fara</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Drognan" {{ if (index .Shopping.VendorMap "Drognan") }}checked{{ end }}> <span class="ml-2">Drognan</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Ormus"   {{ if (index .Shopping.VendorMap "Ormus") }}checked{{ end }}> <span class="ml-2">Ormus</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Halbu"   {{ if (index .Shopping.VendorMap "Halbu") }}checked{{ end }}> <span class="ml-2">Halbu</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Malah"   {{ if (index .Shopping.VendorMap "Malah") }}checked{{ end }}> <span class="ml-2">Malah</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Larzuk"  {{ if (index .Shopping.VendorMap "Larzuk") }}checked{{ end }}> <span class="ml-2">Larzuk</span></label>
+      <label class="inline-flex items-center"><input type="checkbox" name="shopping.vendors" value="Drehya"  {{ if (index .Shopping.VendorMap "Drehya") }}checked{{ end }}> <span class="ml-2">Anya (Drehya)</span></label>
+    </div>
+  </div>
+</div>
+{{ end }}
+
+
+{{ define "shopping" }}
+  <fieldset>
+    <legend>Shopping</legend>
+
+    <label>
+      <input type="checkbox" name="shoppingEnabled" {{ if .Config.Shopping.Enabled }}checked{{ end }}>
+      Enable Shopping
+    </label>
+
+    <label>
+      <span>Max gold to spend</span>
+      <input type="number" name="shoppingMaxGoldToSpend" min="0" step="1" value="{{ .Config.Shopping.MaxGoldToSpend }}">
+    </label>
+
+    <label>
+      <span>Min gold reserve</span>
+      <input type="number" name="shoppingMinGoldReserve" min="0" step="1" value="{{ .Config.Shopping.MinGoldReserve }}">
+    </label>
+
+    <label>
+      <span>Refreshes per run</span>
+      <input type="number" name="shoppingRefreshesPerRun" min="0" step="1" value="{{ .Config.Shopping.RefreshesPerRun }}">
+    </label>
+
+    <label>
+      <span>Shopping rules file (optional)</span>
+      <input type="text" name="shoppingRulesFile" value="{{ .Config.Shopping.ShoppingRulesFile }}" placeholder="e.g. shopping_rules.nip">
+    </label>
+
+    <label>
+      <span>Item types (comma-separated)</span>
+      <input type="text" name="shoppingItemTypes" value="{{ range $i, $v := .Config.Shopping.ItemTypes }}{{ if gt $i 0 }}, {{ end }}{{$v}}{{ end }}">
+    </label>
+
+    <div class="grid grid-cols-2 gap-2">
+      <label><input type="checkbox" name="shoppingVendorAkara"   {{ if .Config.Shopping.VendorAkara }}checked{{ end }}> Akara (A1)</label>
+      <label><input type="checkbox" name="shoppingVendorCharsi"  {{ if .Config.Shopping.VendorCharsi }}checked{{ end }}> Charsi (A1)</label>
+      <label><input type="checkbox" name="shoppingVendorGheed"   {{ if .Config.Shopping.VendorGheed }}checked{{ end }}> Gheed (A1)</label>
+
+      <label><input type="checkbox" name="shoppingVendorFara"    {{ if .Config.Shopping.VendorFara }}checked{{ end }}> Fara (A2)</label>
+      <label><input type="checkbox" name="shoppingVendorDrognan" {{ if .Config.Shopping.VendorDrognan }}checked{{ end }}> Drognan (A2)</label>
+      <label><input type="checkbox" name="shoppingVendorElzix"   {{ if .Config.Shopping.VendorElzix }}checked{{ end }}> Elzix (A2)</label>
+
+      <label><input type="checkbox" name="shoppingVendorOrmus"   {{ if .Config.Shopping.VendorOrmus }}checked{{ end }}> Ormus (A3)</label>
+
+      <label><input type="checkbox" name="shoppingVendorMalah"   {{ if .Config.Shopping.VendorMalah }}checked{{ end }}> Malah (A5)</label>
+      <label><input type="checkbox" name="shoppingVendorAnya"    {{ if .Config.Shopping.VendorAnya }}checked{{ end }}> Anya (A5)</label>
+    </div>
+  </fieldset>
+{{ end }}

@@ -15,6 +15,15 @@ const (
 
 	topCornerVendorWindowY        = 147
 	topCornerVendorWindowYClassic = 149
+	// Vendor tab coordinates
+	VendorTabStartXClassic = SwitchStashTabBtnXClassic
+	VendorTabStartYClassic = SwitchStashTabBtnYClassic
+	VendorTabSizeClassic   = SwitchStashTabBtnTabSizeClassic
+
+	VendorTabStartX = SwitchStashTabBtnX
+	VendorTabStartY = SwitchStashTabBtnY
+	VendorTabSize   = SwitchStashTabBtnTabSize
+
 
 	topCornerCubeWindowX        = 222
 	topCornerCubeWindowXClassic = 398
