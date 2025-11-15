@@ -154,6 +154,11 @@ const (
 	EquipBeltClassicX = 833
 	EquipBeltClassicY = 300
 
+	BeltOriginClassicX       = 684
+	BeltOriginClassicY       = 694
+	BeltClassicOffsetPerColX = 38
+	BeltClassicOffsetPerRowY = 41
+
 	EquipGlovClassicX = 700
 	EquipGlovClassicY = 315
 
@@ -183,6 +188,11 @@ const (
 
 	EquipBeltX = 1005
 	EquipBeltY = 340
+
+	BeltOriginX       = 742
+	BeltOriginY       = 694
+	BeltOffsetPerColX = 42
+	BeltOffsetPerRowY = 41
 
 	EquipGlovX = 885
 	EquipGlovY = 325

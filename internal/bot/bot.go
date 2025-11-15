@@ -284,7 +284,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					(needHealingPotionsRefill || needManaPotionsRefill)) || shouldRefillRejuvPotions
 
 				if shouldRefillBelt && !isInTown {
-					action.ConsumeMisplacedPotionsInBelt()
+					action.ManageBelt()
 					action.RefillBeltFromInventory()
 					b.ctx.RefreshGameData()
 
