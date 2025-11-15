@@ -42,6 +42,23 @@ func EnsureSkillPoints() error {
 		return nil
 	}
 
+	// Check if we should use packet mode for any leveling class
+	usePacketMode := false
+	switch ctx.CharacterCfg.Character.Class {
+	case "sorceress_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.SorceressLeveling.UsePacketLearning
+	case "assassin":
+		usePacketMode = ctx.CharacterCfg.Character.AssassinLeveling.UsePacketLearning
+	case "amazon_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.AmazonLeveling.UsePacketLearning
+	case "druid_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.DruidLeveling.UsePacketLearning
+	case "necromancer":
+		usePacketMode = ctx.CharacterCfg.Character.NecromancerLeveling.UsePacketLearning
+	case "paladin":
+		usePacketMode = ctx.CharacterCfg.Character.PaladinLeveling.UsePacketLearning
+	}
+
 	skillsBuild := char.SkillPoints()
 	targetLevels := make(map[skill.ID]int)
 
@@ -53,20 +70,38 @@ func EnsureSkillPoints() error {
 		}
 
 		if currentSkillLevel < targetLevels[sk] {
-			if spendSkillPoint(sk) {
+			var success bool
+			if usePacketMode {
+				// Use packet mode
+				err := LearnSkillPacket(sk)
+				success = err == nil
+				if !success {
+					ctx.Logger.Error(fmt.Sprintf("Failed to learn skill %v via packet: %v", sk, err))
+					break
+				}
+			} else {
+				// Use traditional UI mode
+				success = spendSkillPoint(sk)
+				if !success {
+					break
+				}
+			}
+
+			if success {
 				remainingPoints--
 				/*ctx.Logger.Debug(fmt.Sprintf("Increased skill %v to level %d (%d total points remaining)",
 				skill.SkillNames[sk], currentSkillLevel+1, remainingPoints))*/
 				if remainingPoints <= 0 {
 					break
 				}
-			} else {
-				break
 			}
 		}
 	}
 
-	return step.CloseAllMenus()
+	if !usePacketMode {
+		return step.CloseAllMenus()
+	}
+	return nil
 }
 
 func spendSkillPoint(skillID skill.ID) bool {

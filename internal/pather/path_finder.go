@@ -13,10 +13,11 @@ import (
 )
 
 type PathFinder struct {
-	gr   *game.MemoryReader
-	data *game.Data
-	hid  *game.HID
-	cfg  *config.CharacterCfg
+	gr           *game.MemoryReader
+	data         *game.Data
+	hid          *game.HID
+	cfg          *config.CharacterCfg
+	packetSender *game.PacketSender
 }
 
 func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *config.CharacterCfg) *PathFinder {
@@ -26,6 +27,10 @@ func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *c
 		hid:  hid,
 		cfg:  cfg,
 	}
+}
+
+func (pf *PathFinder) SetPacketSender(ps *game.PacketSender) {
+	pf.packetSender = ps
 }
 
 func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {

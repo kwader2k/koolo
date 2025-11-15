@@ -94,17 +94,37 @@
                             Boss Static HP (%)
                             <input type="number" id="novaBossStaticThreshold" name="novaBossStaticThreshold" min="1" max="100" step="1" value="{{ .Config.Character.NovaSorceress.BossStaticThreshold }}">
                         </label>
+                        <label>
+                            <input type="checkbox" id="novaUseTelekinesis" name="useTelekinesis" {{ if .Config.Character.NovaSorceress.UseTelekinesis }}checked{{ end }}/>
+                            Use Telekinesis (Waypoints/Chests)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="novaUseTelekinesisPackets" name="useTelekinesisPackets" {{ if .Config.Character.NovaSorceress.UseTelekinesisPackets }}checked{{ end }}/>
+                            Use Telekinesis Packets (faster)
+                        </label>
                     </fieldset>
                 </div>
                 <div class="blizzard-sorceress-options" style="display: none;">
                     <fieldset class="grid">
                         <label>
                             Use moat trick
-                            <input type="checkbox" id="blizzardUseMoatTrick" name="useMoatTrick" {{ if .Config.Character.BlizzardSorceress.UseMoatTrick }}checked{{ end }}/>
+                            <input type="checkbox" id="blizzardUseMoatTrick" name="blizzardUseMoatTrick" {{ if .Config.Character.BlizzardSorceress.UseMoatTrick }}checked{{ end }}/>
                         </label>
                         <label>
                             Use static on Mephisto
-                            <input type="checkbox" id="blizzardUseStaticOnMephisto" name="useStaticOnMephisto" {{ if .Config.Character.BlizzardSorceress.UseStaticOnMephisto }}checked{{ end }}/>
+                            <input type="checkbox" id="blizzardUseStaticOnMephisto" name="blizzardUseStaticOnMephisto" {{ if .Config.Character.BlizzardSorceress.UseStaticOnMephisto }}checked{{ end }}/>
+                        </label>
+                        <label>
+                            <input type="checkbox" id="blizzardUseTelekinesis" name="blizzardUseTelekinesis" {{ if .Config.Character.BlizzardSorceress.UseTelekinesis }}checked{{ end }}/>
+                            Use Telekinesis (Waypoints/Chests)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="blizzardUseTelekinesisPackets" name="blizzardUseTelekinesisPackets" {{ if .Config.Character.BlizzardSorceress.UseTelekinesisPackets }}checked{{ end }}/>
+                            Use Telekinesis Packets (faster)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="blizzardUseBlizzardPackets" name="blizzardUseBlizzardPackets" {{ if .Config.Character.BlizzardSorceress.UseBlizzardPackets }}checked{{ end }}/>
+                            Use Blizzard Packets (faster casting)
                         </label>
                     </fieldset>
                 </div>
@@ -112,11 +132,63 @@
                     <fieldset class="grid">
                         <label>
                             Use moat trick
-                            <input type="checkbox" id="levelingUseMoatTrick" name="useMoatTrick" {{ if .Config.Character.SorceressLeveling.UseMoatTrick }}checked{{ end }}/>
+                            <input type="checkbox" id="levelingUseMoatTrick" name="levelingUseMoatTrick" {{ if .Config.Character.SorceressLeveling.UseMoatTrick }}checked{{ end }}/>
                         </label>
                         <label>
                             Use static on Mephisto
-                            <input type="checkbox" id="levelingUseStaticOnMephisto" name="useStaticOnMephisto" {{ if .Config.Character.SorceressLeveling.UseStaticOnMephisto }}checked{{ end }}/>
+                            <input type="checkbox" id="levelingUseStaticOnMephisto" name="levelingUseStaticOnMephisto" {{ if .Config.Character.SorceressLeveling.UseStaticOnMephisto }}checked{{ end }}/>
+                        </label>
+                        <label>
+                            <input type="checkbox" id="levelingUseTelekinesis" name="levelingUseTelekinesis" {{ if .Config.Character.SorceressLeveling.UseTelekinesis }}checked{{ end }}/>
+                            Use Telekinesis (Waypoints/Chests)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="levelingUseTelekinesisPackets" name="levelingUseTelekinesisPackets" {{ if .Config.Character.SorceressLeveling.UseTelekinesisPackets }}checked{{ end }}/>
+                            Use Telekinesis Packets (faster)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="levelingUseBlizzardPackets" name="levelingUseBlizzardPackets" {{ if .Config.Character.SorceressLeveling.UseBlizzardPackets }}checked{{ end }}/>
+                            Use Blizzard Packets (faster casting)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="levelingUsePacketLearning" name="levelingUsePacketLearning" {{ if .Config.Character.SorceressLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="lightsorc-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" id="lightningUseTelekinesis" name="useTelekinesis" {{ if .Config.Character.LightningSorceress.UseTelekinesis }}checked{{ end }}/>
+                            Use Telekinesis (Waypoints/Chests)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="lightningUseTelekinesisPackets" name="useTelekinesisPackets" {{ if .Config.Character.LightningSorceress.UseTelekinesisPackets }}checked{{ end }}/>
+                            Use Telekinesis Packets (faster)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="hydraorb-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" id="hydraorbUseTelekinesis" name="useTelekinesis" {{ if .Config.Character.HydraOrbSorceress.UseTelekinesis }}checked{{ end }}/>
+                            Use Telekinesis (Waypoints/Chests)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="hydraorbUseTelekinesisPackets" name="useTelekinesisPackets" {{ if .Config.Character.HydraOrbSorceress.UseTelekinesisPackets }}checked{{ end }}/>
+                            Use Telekinesis Packets (faster)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="fireballsorc-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" id="fireballUseTelekinesis" name="useTelekinesis" {{ if .Config.Character.FireballSorceress.UseTelekinesis }}checked{{ end }}/>
+                            Use Telekinesis (Waypoints/Chests)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="fireballUseTelekinesisPackets" name="useTelekinesisPackets" {{ if .Config.Character.FireballSorceress.UseTelekinesisPackets }}checked{{ end }}/>
+                            Use Telekinesis Packets (faster)
                         </label>
                     </fieldset>
                 </div>
@@ -141,6 +213,46 @@
                         <label>
                             <input type="checkbox" name="mosaicUseFistsOfFire" {{ if .Config.Character.MosaicSin.UseFistsOfFire }}checked{{ end }}/>
                             Use Fists of Fire
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="assassin-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="usePacketLearning" {{ if .Config.Character.AssassinLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="amazon_leveling-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="usePacketLearning" {{ if .Config.Character.AmazonLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="druid_leveling-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="usePacketLearning" {{ if .Config.Character.DruidLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="necromancer-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="usePacketLearning" {{ if .Config.Character.NecromancerLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="paladin-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="usePacketLearning" {{ if .Config.Character.PaladinLeveling.UsePacketLearning }}checked{{ end }}/>
+                            Use Packet Learning (faster skill/stat allocation)
                         </label>
                     </fieldset>
                 </div>
@@ -239,8 +351,9 @@
                         <input type="checkbox" name="packetCastingUseForEntranceInteraction" {{ if .Config.PacketCasting.UseForEntranceInteraction }}checked{{ end }}/>
                         Use packets for entrance interaction
                     </label>
-                    <label style="visibility: hidden;">
-                        <!-- Spacer for grid alignment -->
+                    <label>
+                        <input type="checkbox" name="packetCastingUseForTeleport" {{ if .Config.PacketCasting.UseForTeleport }}checked{{ end }}/>
+                        Use packets for teleport movement
                     </label>
                 </fieldset>
             </article>

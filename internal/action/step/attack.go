@@ -296,6 +296,39 @@ func performAttack(ctx *context.Status, settings attackSettings, x, y int) {
 		return // Skip attack if no line of sight
 	}
 
+	// Check if we should use packet casting for Blizzard
+	useBlizzardPacket := false
+	if settings.skill == skill.Blizzard {
+		switch ctx.CharacterCfg.Character.Class {
+		case "sorceress":
+			useBlizzardPacket = ctx.CharacterCfg.Character.BlizzardSorceress.UseBlizzardPackets
+		case "sorceress_leveling":
+			useBlizzardPacket = ctx.CharacterCfg.Character.SorceressLeveling.UseBlizzardPackets
+		}
+	}
+
+	// If using packet casting for Blizzard
+	if useBlizzardPacket {
+		// Ensure we have Blizzard selected on right-click
+		if ctx.Data.PlayerUnit.RightSkill != skill.Blizzard {
+			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.Blizzard))
+			time.Sleep(time.Millisecond * 10)
+		}
+
+		// Send packet to cast Blizzard at location
+		if err := ctx.PacketSender.CastSkillAtLocation(monsterPos); err != nil {
+			ctx.Logger.Warn("Failed to cast Blizzard via packet, falling back to mouse", "error", err)
+			// Fall back to regular mouse casting
+			performMouseAttack(ctx, settings, x, y)
+		}
+		return
+	}
+
+	// Regular mouse-based attack
+	performMouseAttack(ctx, settings, x, y)
+}
+
+func performMouseAttack(ctx *context.Status, settings attackSettings, x, y int) {
 	// Ensure we have the skill selected
 	if settings.skill != 0 && ctx.Data.PlayerUnit.RightSkill != settings.skill {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(settings.skill))
