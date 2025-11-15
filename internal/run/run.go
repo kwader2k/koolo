@@ -24,6 +24,11 @@ type Run interface {
 	CheckConditions(parameters *RunParameters) SequencerResult
 }
 
+// TownRoutineSkipper allows specific runs to suppress the automatic PreRun/PostRun sequences.
+type TownRoutineSkipper interface {
+	SkipTownRoutines() bool
+}
+
 func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 	//if cfg.Companion.Enabled && !cfg.Companion.Leader {
 	//	return []Run{Companion{baseRun: baseRun}}
@@ -162,6 +167,9 @@ func BuildRun(run string) Run {
 		return NewFrozenAuraMerc()
 	case string(config.TristramEarlyGoldfarmRun):
 		return NewTristramEarlyGoldfarm()
+	// Development / Utility runs
+	case string(config.DevelopmentRun):
+		return NewDevRun()
 	}
 
 	return nil

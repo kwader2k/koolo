@@ -26,7 +26,11 @@ type MemoryInjector struct {
 	getKeyStateAddr       uintptr
 	getKeyStateOrigBytes  [18]byte
 	setCursorPosAddr      uintptr
+	setCursorPosOrigBytes [6]byte
 	logger                *slog.Logger
+	cursorOverrideActive  bool
+	lastCursorX           int
+	lastCursorY           int
 }
 
 func InjectorInit(logger *slog.Logger, pid uint32) (*MemoryInjector, error) {
@@ -70,6 +74,11 @@ func (i *MemoryInjector) Load() error {
 				return err
 			}
 
+			err = windows.ReadProcessMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)), nil)
+			if err != nil {
+				return fmt.Errorf("error reading setcursor memory: %w", err)
+			}
+
 			err = i.OverrideSetCursorPos()
 			if err != nil {
 				return err
@@ -103,18 +112,50 @@ func (i *MemoryInjector) RestoreMemory() error {
 	}
 
 	i.isLoaded = false
-	err := i.RestoreGetCursorPosAddr()
-	if err != nil {
+	if err := i.RestoreGetCursorPosAddr(); err != nil {
 		return fmt.Errorf("error restoring memory: %v", err)
 	}
+	if err := i.RestoreSetCursorPosAddr(); err != nil {
+		return fmt.Errorf("error restoring cursor memory: %v", err)
+	}
+	i.cursorOverrideActive = false
 
 	return i.RestoreGetKeyState()
+}
+
+func (i *MemoryInjector) DisableCursorOverride() error {
+	if !i.isLoaded || !i.cursorOverrideActive {
+		return nil
+	}
+	if err := i.RestoreGetCursorPosAddr(); err != nil {
+		return err
+	}
+	if err := i.RestoreSetCursorPosAddr(); err != nil {
+		return err
+	}
+	i.cursorOverrideActive = false
+	return nil
+}
+
+func (i *MemoryInjector) EnableCursorOverride() error {
+	if !i.isLoaded || i.cursorOverrideActive {
+		return nil
+	}
+	if err := i.OverrideSetCursorPos(); err != nil {
+		return err
+	}
+	// Reapply GetCursorPos hook using the last known coordinates
+	return i.CursorPos(i.lastCursorX, i.lastCursorY)
 }
 
 func (i *MemoryInjector) CursorPos(x, y int) error {
 	if !i.isLoaded {
 		return nil
 	}
+
+	i.lastCursorX = x
+	i.lastCursorY = y
+	i.cursorOverrideActive = true
 
 	/*
 		push rax
@@ -161,7 +202,11 @@ func (i *MemoryInjector) OverrideSetCursorPos() error {
 	*/
 
 	blob := []byte{0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3}
-	return windows.WriteProcessMemory(i.handle, i.setCursorPosAddr, &blob[0], uintptr(len(blob)), nil)
+	err := windows.WriteProcessMemory(i.handle, i.setCursorPosAddr, &blob[0], uintptr(len(blob)), nil)
+	if err == nil {
+		i.cursorOverrideActive = true
+	}
+	return err
 }
 
 func (i *MemoryInjector) RestoreGetKeyState() error {
@@ -170,6 +215,17 @@ func (i *MemoryInjector) RestoreGetKeyState() error {
 
 func (i *MemoryInjector) RestoreGetCursorPosAddr() error {
 	return windows.WriteProcessMemory(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)), nil)
+}
+
+func (i *MemoryInjector) RestoreSetCursorPosAddr() error {
+	return windows.WriteProcessMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)), nil)
+}
+
+func (i *MemoryInjector) CursorOverrideActive() bool {
+	if i == nil {
+		return false
+	}
+	return i.isLoaded && i.cursorOverrideActive
 }
 
 // This is needed in order to let the game keep processing mouse events even if the mouse is not over the window

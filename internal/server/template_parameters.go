@@ -36,6 +36,7 @@ type AllDropRecord struct {
 }
 
 type CharacterSettings struct {
+	Version            string
 	ErrorMessage       string
 	Supervisor         string
 	Config             *config.CharacterCfg

@@ -18,6 +18,8 @@ const (
 type MouseButton uint
 type ModifierKey byte
 
+const pointerReleaseDelay = 150 * time.Millisecond
+
 // MovePointer moves the mouse to the requested position, x and y should be the final position based on
 // pixels shown in the screen. Top-left corner is 0,0
 func (hid *HID) MovePointer(x, y int) {

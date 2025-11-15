@@ -22,7 +22,7 @@ call :check_garble_installation
 if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
 
 :: Main script execution
-call :main
+call :main %*
 if !errorlevel! neq 0 (
     call :print_error "Build process failed with error code !errorlevel!"
     call :pause_and_exit !errorlevel!
@@ -154,7 +154,7 @@ if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
 :: Build Koolo binary with Garble
 call :print_header "Building Koolo Binary"
 if "%1"=="" (set VERSION=dev) else (set VERSION=%1)
-
+call :print_info "Building %VERSION%"
 :: Generate unique build identifiers
 for /f "delims=" %%a in ('powershell -Command "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
 for /f "delims=" %%b in ('powershell -Command "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"

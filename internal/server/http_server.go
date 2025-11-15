@@ -1055,6 +1055,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		err = r.ParseForm()
 		if err != nil {
 			s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+				Version:      config.Version,
 				ErrorMessage: err.Error(),
 			})
 
@@ -1067,6 +1068,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			err = config.CreateFromTemplate(supervisorName)
 			if err != nil {
 				s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+					Version:      config.Version,
 					ErrorMessage: err.Error(),
 					Supervisor:   supervisorName,
 				})
@@ -1105,6 +1107,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 				start, err := time.Parse("15:04", starts[i])
 				if err != nil {
 					s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+						Version:      config.Version,
 						ErrorMessage: fmt.Sprintf("Invalid start time format for day %d: %s", day, starts[i]),
 						// ... (other fields)
 					})
@@ -1114,6 +1117,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 				end, err := time.Parse("15:04", ends[i])
 				if err != nil {
 					s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+						Version:      config.Version,
 						ErrorMessage: fmt.Sprintf("Invalid end time format for day %d: %s", day, ends[i]),
 					})
 					return
@@ -1133,6 +1137,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		err := validateSchedulerData(cfg)
 		if err != nil {
 			s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+				Version:      config.Version,
 				ErrorMessage: err.Error(),
 				// ... (other fields)
 			})
@@ -1494,6 +1499,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	cfg.Muling.MuleProfiles = validConfigMuleProfiles
 
 	s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+		Version:            config.Version,
 		Supervisor:         supervisor,
 		Config:             cfg,
 		DayNames:           dayNames,
