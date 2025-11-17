@@ -111,37 +111,45 @@ func (t *DevRun) logPlayerState(reason string) {
 	)
 }
 
-func (t *DevRun) fixBeltFromHotkey() {
-	t.ctx.Logger.Info("Manual belt fix triggered")
-
+// make a runFuncWithOverride, that runs any given function with cursor override enabled, and restores previous state after
+func (t *DevRun) runFuncWithOverride(f func() error) error {
 	restoreCursorOverride := false
 	if !t.ctx.MemoryInjector.CursorOverrideActive() {
 		if err := t.ctx.MemoryInjector.EnableCursorOverride(); err != nil {
-			t.ctx.Logger.Error("Failed to re-enable cursor override for manual belt fix", slog.Any("error", err))
-			return
+			t.ctx.Logger.Error("Failed to enable cursor override", slog.Any("error", err))
+			return err
 		}
 		restoreCursorOverride = true
 	}
-
 	if restoreCursorOverride {
 		defer func() {
 			if err := t.ctx.MemoryInjector.DisableCursorOverride(); err != nil {
-				t.ctx.Logger.Warn("Failed to disable cursor override after manual belt fix", slog.Any("error", err))
-			} else {
-				t.ctx.Logger.Info("Cursor override disabled after manual belt fix to restore manual control")
+				t.ctx.Logger.Warn("Failed to disable cursor override", slog.Any("error", err))
 			}
 		}()
 	}
+	return f()
+}
 
+func (t *DevRun) fixBelt() error {
 	if err := action.ManageBelt(); err != nil {
-		t.ctx.Logger.Error("Manual belt fix failed", slog.Any("error", err))
-		return
+		t.ctx.Logger.Error("Failed to fix belt", slog.Any("error", err))
+		return err
 	}
+	return nil
+}
+
+func (t *DevRun) fixBeltFromHotkey() {
+	t.ctx.Logger.Info("Manual belt fix triggered")
+
+	t.runFuncWithOverride(t.fixBelt)
+
 	t.ctx.Logger.Info("Manual belt fix completed")
 }
 
 type DevRun struct {
-	ctx *context.Status
+	ctx              *context.Status
+	ctrlClickEngaged bool
 }
 
 type Hotkey struct {
@@ -231,6 +239,7 @@ func (t *DevRun) Run(parameters *RunParameters) error {
 
 	for {
 		t.processHotkeys(hotkeys)
+		t.handleCtrlClickNavigation()
 
 		if t.ctx.ExecutionPriority == context.PriorityStop {
 			t.ctx.Logger.Info("Development mode stopped by supervisor")
@@ -249,6 +258,7 @@ func (t *DevRun) Run(parameters *RunParameters) error {
 			}
 		default:
 			t.processHotkeys(hotkeys)
+			t.handleCtrlClickNavigation()
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
@@ -266,4 +276,48 @@ func (t *DevRun) processHotkeys(keys []*Hotkey) {
 			hk.pressed = false
 		}
 	}
+}
+
+func (t *DevRun) handleCtrlClickNavigation() {
+	if !(ctrlDown() && isKeyPressed(int(win.VK_LBUTTON))) {
+		t.ctrlClickEngaged = false
+		return
+	}
+
+	if t.ctrlClickEngaged {
+		return
+	}
+
+	t.ctrlClickEngaged = true
+	if err := t.clickToMove(); err != nil {
+		t.ctx.Logger.Error("Ctrl+Click navigation failed", slog.Any("error", err))
+	}
+}
+
+func (t *DevRun) clickToMove() error {
+	screenX, screenY, gameX, gameY := t.captureCursor()
+	destination, ok := t.ctx.PathFinder.ScreenCoordsToGameCoords(gameX, gameY)
+	if !ok {
+		t.ctx.Logger.Debug(
+			"Ignoring Ctrl+Click outside of game area",
+			slog.Int("screenX", screenX),
+			slog.Int("screenY", screenY),
+			slog.Int("gameX", gameX),
+			slog.Int("gameY", gameY),
+		)
+		return nil
+	}
+
+	t.ctx.Logger.Info(
+		"Ctrl+Click navigation request",
+		slog.Int("screenX", screenX),
+		slog.Int("screenY", screenY),
+		slog.Int("destX", destination.X),
+		slog.Int("destY", destination.Y),
+	)
+
+	return t.runFuncWithOverride(func() error {
+		return action.MoveToCoords(destination)
+	})
+
 }

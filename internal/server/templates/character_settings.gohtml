@@ -291,6 +291,12 @@
                     <input id="hide_portraits" type="checkbox" name="hide_portraits" {{ if .Config.HidePortraits }}checked{{ end }}/>
                     Hide Portraits
                 </label>
+                {{ if eq .Version "dev" }}
+                <label>
+                    <input id="debug_overlay" type="checkbox" name="enable_debug_overlay" {{ if .Config.EnableDebugOverlay }}checked{{ end }}/>
+                    Show debug overlay window
+                </label>
+                {{ end }}
             </fieldset>
             <h3>Battle.net settings</h3><br>
             <fieldset class="grid">

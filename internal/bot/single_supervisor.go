@@ -132,6 +132,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 		return fmt.Errorf("error preparing game: %w", err)
 	}
 
+	if s.bot.ctx.CharacterCfg.EnableDebugOverlay {
+		s.startDebugOverlay(ctx)
+	}
+
 	// MANUAL MODE: Early exit - handle before normal game loop
 	if s.bot.ctx.ManualModeActive {
 		s.bot.ctx.Logger.Info("Manual mode: reaching character selection...")
@@ -291,7 +295,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		pingThreshold := 500
 		sustainedDuration := 30 * time.Second
 		pingEnabled := false
-		
+
 		if config.Koolo.PingMonitor.Enabled {
 			pingEnabled = true
 			if config.Koolo.PingMonitor.HighPingThreshold > 0 {
@@ -301,7 +305,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 				sustainedDuration = time.Duration(config.Koolo.PingMonitor.SustainedDuration) * time.Second
 			}
 		}
-		
+
 		pingMonitor := health.NewPingMonitor(
 			s.bot.ctx.Logger,
 			pingThreshold,

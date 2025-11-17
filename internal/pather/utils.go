@@ -180,6 +180,26 @@ func (pf *PathFinder) gameCoordsToScreenCords(playerX, playerY, destinationX, de
 	return screenX, screenY
 }
 
+func (pf *PathFinder) ScreenCoordsToGameCoords(screenX, screenY int) (data.Position, bool) {
+	if screenX < 0 || screenY < 0 || screenX > pf.gr.GameAreaSizeX || screenY > pf.gr.GameAreaSizeY {
+		return data.Position{}, false
+	}
+
+	halfWidth := float64(pf.gr.GameAreaSizeX) / 2
+	halfHeight := float64(pf.gr.GameAreaSizeY) / 2
+
+	dx := float64(screenX) - halfWidth
+	dy := float64(screenY) - halfHeight
+
+	isoX := 0.5 * ((dx / 19.8) + (dy / 9.9))
+	isoY := 0.5 * ((dy / 9.9) - (dx / 19.8))
+
+	destX := pf.data.PlayerUnit.Position.X + int(math.Round(isoX))
+	destY := pf.data.PlayerUnit.Position.Y + int(math.Round(isoY))
+
+	return data.Position{X: destX, Y: destY}, true
+}
+
 func IsNarrowMap(a area.ID) bool {
 	switch a {
 	case area.MaggotLairLevel1, area.MaggotLairLevel2, area.MaggotLairLevel3, area.ArcaneSanctuary, area.ClawViperTempleLevel2, area.RiverOfFlame, area.ChaosSanctuary:

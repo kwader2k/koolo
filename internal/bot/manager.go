@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/character"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/debug/DebugOverlay"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -189,6 +190,37 @@ func (mng *SupervisorManager) TogglePause(supervisor string) {
 	if found {
 		s.TogglePause()
 	}
+}
+
+func (mng *SupervisorManager) ToggleDebugOverlay(supervisor string) error {
+	if config.Version != "dev" {
+		return fmt.Errorf("debug overlay is only available in development builds")
+	}
+
+	cfg, found := config.GetCharacter(supervisor)
+	if !found {
+		return fmt.Errorf("character %s not found", supervisor)
+	}
+	if !cfg.EnableDebugOverlay {
+		return fmt.Errorf("debug overlay is disabled for %s", supervisor)
+	}
+
+	ctx := mng.GetContext(supervisor)
+	if ctx == nil {
+		return fmt.Errorf("supervisor %s is not running", supervisor)
+	}
+
+	status := &context.Status{
+		Context:  ctx,
+		Priority: ctx.ExecutionPriority,
+	}
+
+	overlay := DebugOverlay.Instance(status)
+	if overlay == nil {
+		return fmt.Errorf("unable to access overlay instance")
+	}
+
+	return overlay.Toggle()
 }
 
 func (mng *SupervisorManager) Status(characterName string) Stats {

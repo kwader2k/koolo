@@ -33,6 +33,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/bot"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/debug/DebugOverlay"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/remote/droplog"
@@ -547,6 +548,20 @@ func (s *HttpServer) getStatusData() IndexData {
 		// Check if this is a companion follower
 		cfg, found := config.GetCharacter(supervisorName)
 		if found {
+			overlayEnabled := config.Version == "dev" && cfg.EnableDebugOverlay
+			stats.DebugOverlay.Enabled = overlayEnabled
+			if overlayEnabled {
+				if supCtx := s.manager.GetContext(supervisorName); supCtx != nil {
+					status := &ctx.Status{
+						Context:  supCtx,
+						Priority: supCtx.ExecutionPriority,
+					}
+					if overlay := DebugOverlay.Instance(status); overlay != nil {
+						stats.DebugOverlay.Running = overlay.IsRunning()
+					}
+				}
+			}
+
 			// Add companion information to the stats
 			if cfg.Companion.Enabled && !cfg.Companion.Leader {
 				// This is a companion follower
@@ -582,6 +597,7 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/start", s.startSupervisor)
 	http.HandleFunc("/stop", s.stopSupervisor)
 	http.HandleFunc("/togglePause", s.togglePause)
+	http.HandleFunc("/toggleOverlay", s.toggleOverlay)
 	http.HandleFunc("/debug", s.debugHandler)
 	http.HandleFunc("/debug-data", s.debugData)
 	http.HandleFunc("/drops", s.drops)
@@ -686,6 +702,10 @@ func (s *HttpServer) debugData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	context := s.manager.GetContext(characterName)
+	if context == nil {
+		http.Error(w, "Supervisor not running for requested character", http.StatusNotFound)
+		return
+	}
 
 	debugData := DebugData{
 		DebugData: context.ContextDebug,
@@ -780,6 +800,21 @@ func (s *HttpServer) stopSupervisor(w http.ResponseWriter, r *http.Request) {
 
 func (s *HttpServer) togglePause(w http.ResponseWriter, r *http.Request) {
 	s.manager.TogglePause(r.URL.Query().Get("characterName"))
+	s.initialData(w, r)
+}
+
+func (s *HttpServer) toggleOverlay(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("characterName")
+	if name == "" {
+		http.Error(w, "characterName is required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.manager.ToggleDebugOverlay(name); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	s.initialData(w, r)
 }
 
@@ -1107,6 +1142,11 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.ClassicMode = r.Form.Has("classic_mode")
 		cfg.CloseMiniPanel = r.Form.Has("close_mini_panel")
 		cfg.HidePortraits = r.Form.Has("hide_portraits")
+		if config.Version == "dev" {
+			cfg.EnableDebugOverlay = r.Form.Has("enable_debug_overlay")
+		} else {
+			cfg.EnableDebugOverlay = false
+		}
 
 		// Bnet config
 		cfg.Username = r.Form.Get("username")

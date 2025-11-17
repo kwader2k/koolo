@@ -98,6 +98,7 @@ type CharacterCfg struct {
 	CloseMiniPanel       bool   `yaml:"closeMiniPanel"`
 	UseCentralizedPickit bool   `yaml:"useCentralizedPickit"`
 	HidePortraits        bool   `yaml:"hidePortraits"`
+	EnableDebugOverlay   bool   `yaml:"enableDebugOverlay"`
 
 	ConfigFolderName string `yaml:"-"`
 
@@ -637,4 +638,3 @@ func getNipFilePath(charPath, templatePath, nipFile string) (string, error) {
 	}
 	return nipFile, errors.New("pickit not found")
 }
-

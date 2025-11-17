@@ -123,7 +123,10 @@ func updateNeighbors(grid *game.Grid, node *Node, neighbors *[]data.Position, ca
 			return true
 		}
 		collisionType := grid.CollisionGrid[py][px]
-		return collisionType == game.CollisionTypeNonWalkable || (!canTeleport && collisionType == game.CollisionTypeTeleportOver)
+		if collisionType == game.CollisionTypeNonWalkable || collisionType == game.CollisionTypeThickened {
+			return true
+		}
+		return !canTeleport && collisionType == game.CollisionTypeTeleportOver
 	}
 
 	for _, d := range directions {
@@ -156,10 +159,14 @@ func getCost(tileType game.CollisionType, canTeleport bool) int {
 		return 4 // Soft blocker
 	case game.CollisionTypeLowPriority:
 		return 20
+	case game.CollisionTypeDiagonalTile:
+		return 4
 	case game.CollisionTypeTeleportOver:
 		if canTeleport {
 			return 1
 		}
+		return math.MaxInt32
+	case game.CollisionTypeThickened:
 		return math.MaxInt32
 	default:
 		return math.MaxInt32
