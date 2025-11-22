@@ -332,12 +332,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    document.getElementById('tzTrackAll').addEventListener('change', function (e) {
-        document.querySelectorAll('.tzTrackCheckbox').forEach(checkbox => {
-            checkbox.checked = e.target.checked;
-        });
-    });
-
     function filterRunewords(searchTerm = '') { // Default parameter to ensure previously checked runewords show before searching
         let listItems = document.querySelectorAll('.runeword-item');
         searchTerm = searchTerm.toLowerCase();
