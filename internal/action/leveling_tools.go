@@ -171,6 +171,23 @@ func EnsureStatPoints() error {
 		return nil
 	}
 
+	// Check if we should use packet mode for any leveling class
+	usePacketMode := false
+	switch ctx.CharacterCfg.Character.Class {
+	case "sorceress_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.SorceressLeveling.UsePacketLearning
+	case "assassin":
+		usePacketMode = ctx.CharacterCfg.Character.AssassinLeveling.UsePacketLearning
+	case "amazon_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.AmazonLeveling.UsePacketLearning
+	case "druid_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.DruidLeveling.UsePacketLearning
+	case "necromancer":
+		usePacketMode = ctx.CharacterCfg.Character.NecromancerLeveling.UsePacketLearning
+	case "paladin":
+		usePacketMode = ctx.CharacterCfg.Character.PaladinLeveling.UsePacketLearning
+	}
+
 	remainingPoints := statPoints.Value
 	allocations := char.StatPoints()
 	for _, allocation := range allocations {
@@ -187,8 +204,23 @@ func EnsureStatPoints() error {
 		pointsToSpend := min(allocation.Points-currentValue.Value, remainingPoints)
 		for i := 0; i < pointsToSpend; i++ {
 
-			if !spendStatPoint(allocation.Stat) {
-				ctx.Logger.Error(fmt.Sprintf("Failed to spend point in %v", allocation.Stat))
+			var success bool
+			if usePacketMode {
+				// Use packet mode
+				err := AllocateStatPointPacket(allocation.Stat)
+				success = err == nil
+				if !success {
+					ctx.Logger.Error(fmt.Sprintf("Failed to spend point in %v via packet: %v", allocation.Stat, err))
+				}
+			} else {
+				// Use traditional UI mode
+				success = spendStatPoint(allocation.Stat)
+				if !success {
+					ctx.Logger.Error(fmt.Sprintf("Failed to spend point in %v", allocation.Stat))
+				}
+			}
+
+			if !success {
 				continue
 			}
 
@@ -201,8 +233,11 @@ func EnsureStatPoints() error {
 			}
 		}
 	}
-	return step.CloseAllMenus()
 
+	if !usePacketMode {
+		return step.CloseAllMenus()
+	}
+	return nil
 }
 
 func spendStatPoint(statID stat.ID) bool {

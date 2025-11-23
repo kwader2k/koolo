@@ -9,6 +9,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
+	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/town"
@@ -31,8 +32,373 @@ func InteractObject(obj data.Object, isCompletedFn func() bool) error {
 		return InteractObjectPacket(obj, isCompletedFn)
 	}
 
+	// Check if we should use telekinesis for this object (Sorceress only)
+	// Applies to: waypoints, chests, shrines, stashes
+	if shouldUseTelekinesisForObject(obj) {
+		return InteractObjectTelekinesis(obj, isCompletedFn)
+	}
+
 	// Default to mouse interaction
 	return InteractObjectMouse(obj, isCompletedFn)
+}
+
+// shouldUseTelekinesisForObject checks if telekinesis should be used
+func shouldUseTelekinesisForObject(obj data.Object) bool {
+	ctx := context.Get()
+
+	// Only for specific object types (waypoint, chest, shrine, stash)
+	isTargetObject := obj.IsWaypoint() || obj.IsChest() || obj.IsShrine() || obj.Name == object.Bank
+	if !isTargetObject {
+		return false
+	}
+
+	// Import action package check (will call action.ShouldUseTelekinesis)
+	// For now, inline the logic to avoid circular imports
+
+	// Check if telekinesis is enabled in config for this Sorceress build
+	tkEnabled := false
+	switch ctx.CharacterCfg.Character.Class {
+	case "sorceress":
+		tkEnabled = ctx.CharacterCfg.Character.BlizzardSorceress.UseTelekinesis
+	case "nova":
+		tkEnabled = ctx.CharacterCfg.Character.NovaSorceress.UseTelekinesis
+	case "lightsorc":
+		tkEnabled = ctx.CharacterCfg.Character.LightningSorceress.UseTelekinesis
+	case "hydraorb":
+		tkEnabled = ctx.CharacterCfg.Character.HydraOrbSorceress.UseTelekinesis
+	case "fireballsorc":
+		tkEnabled = ctx.CharacterCfg.Character.FireballSorceress.UseTelekinesis
+	case "sorceress_leveling":
+		tkEnabled = ctx.CharacterCfg.Character.SorceressLeveling.UseTelekinesis
+	}
+
+	if !tkEnabled {
+		ctx.Logger.Debug("Telekinesis not enabled in config",
+			slog.String("class", ctx.CharacterCfg.Character.Class),
+		)
+		return false
+	}
+
+	// Check if character has Telekinesis skill (skill ID 43)
+	tkSkill, found := ctx.Data.PlayerUnit.Skills[skill.Telekinesis]
+	if !found || tkSkill.Level < 1 {
+		ctx.Logger.Debug("Telekinesis skill not available",
+			slog.Bool("found", found),
+			slog.Uint64("level", uint64(tkSkill.Level)),
+		)
+		return false
+	}
+
+	// Check distance - only reject if more than 21 (will move closer in InteractObjectTelekinesis)
+	distance := ctx.PathFinder.DistanceFromMe(obj.Position)
+
+	// Distance 0-21 is acceptable, distance > 21 will be handled by moving closer
+	ctx.Logger.Debug("Telekinesis conditions met",
+		slog.Any("object_id", obj.Name),
+		slog.Int("distance", distance),
+		slog.Uint64("skill_level", uint64(tkSkill.Level)),
+	)
+
+	return true
+}
+
+// InteractObjectTelekinesis uses telekinesis packet to interact with objects
+func InteractObjectTelekinesis(obj data.Object, isCompletedFn func() bool) error {
+	ctx := context.Get()
+
+	// Check if we should use packet mode or keyboard/mouse mode based on class-specific config
+	usePacketMode := false
+	switch ctx.CharacterCfg.Character.Class {
+	case "sorceress":
+		usePacketMode = ctx.CharacterCfg.Character.BlizzardSorceress.UseTelekinesisPackets
+	case "nova":
+		usePacketMode = ctx.CharacterCfg.Character.NovaSorceress.UseTelekinesisPackets
+	case "lightsorc":
+		usePacketMode = ctx.CharacterCfg.Character.LightningSorceress.UseTelekinesisPackets
+	case "hydraorb":
+		usePacketMode = ctx.CharacterCfg.Character.HydraOrbSorceress.UseTelekinesisPackets
+	case "fireballsorc":
+		usePacketMode = ctx.CharacterCfg.Character.FireballSorceress.UseTelekinesisPackets
+	case "sorceress_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.SorceressLeveling.UseTelekinesisPackets
+	}
+
+	if usePacketMode {
+		return InteractObjectTelekinesisPacket(obj, isCompletedFn)
+	}
+	return InteractObjectTelekinesisKeyboard(obj, isCompletedFn)
+}
+
+// InteractObjectTelekinesisPacket uses telekinesis packet to interact with objects
+func InteractObjectTelekinesisPacket(obj data.Object, isCompletedFn func() bool) error {
+	interactionAttempts := 0
+	waitingForInteraction := false
+	lastRun := time.Time{}
+
+	ctx := context.Get()
+	ctx.SetLastStep("InteractObjectTelekinesis")
+
+	// Check if we should use packet mode for skill selection based on class-specific config
+	usePacketMode := false
+	switch ctx.CharacterCfg.Character.Class {
+	case "sorceress":
+		usePacketMode = ctx.CharacterCfg.Character.BlizzardSorceress.UseTelekinesisPackets
+	case "nova":
+		usePacketMode = ctx.CharacterCfg.Character.NovaSorceress.UseTelekinesisPackets
+	case "lightsorc":
+		usePacketMode = ctx.CharacterCfg.Character.LightningSorceress.UseTelekinesisPackets
+	case "hydraorb":
+		usePacketMode = ctx.CharacterCfg.Character.HydraOrbSorceress.UseTelekinesisPackets
+	case "fireballsorc":
+		usePacketMode = ctx.CharacterCfg.Character.FireballSorceress.UseTelekinesisPackets
+	case "sorceress_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.SorceressLeveling.UseTelekinesisPackets
+	}
+
+	// If there is no completion check, just assume the interaction is completed after sending packet
+	if isCompletedFn == nil {
+		isCompletedFn = func() bool {
+			return waitingForInteraction
+		}
+	}
+
+	for !isCompletedFn() {
+		ctx.PauseIfNotPriority()
+
+		if interactionAttempts >= maxInteractionAttempts {
+			return fmt.Errorf("[%s] failed interacting with object via telekinesis [%v] in Area: [%s]", ctx.Name, obj.Name, ctx.Data.PlayerUnit.Area.Area().Name)
+		}
+
+		ctx.RefreshGameData()
+
+		interactionCooldown := utils.PingMultiplier(utils.Light, 200)
+		if ctx.Data.PlayerUnit.Area.IsTown() {
+			interactionCooldown = utils.PingMultiplier(utils.Medium, 400)
+		}
+
+		// Give some time before retrying the interaction
+		if waitingForInteraction && time.Since(lastRun) < time.Duration(interactionCooldown)*time.Millisecond {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+
+		var o data.Object
+		var found bool
+		if obj.ID != 0 {
+			o, found = ctx.Data.Objects.FindByID(obj.ID)
+			if !found {
+				return fmt.Errorf("object %v not found", obj)
+			}
+		} else {
+			o, found = ctx.Data.Objects.FindOne(obj.Name)
+			if !found {
+				return fmt.Errorf("object %v not found", obj)
+			}
+		}
+
+		lastRun = time.Now()
+
+		// Verify distance is still in range (0-21 units)
+		distance := ctx.PathFinder.DistanceFromMe(o.Position)
+		if distance > 21 {
+			// Too far, move closer to optimal range (around 15 units)
+			ctx.Logger.Debug("Object too far for telekinesis, moving closer",
+				slog.Any("object_id", o.Name),
+				slog.Int("current_distance", distance),
+				slog.Int("target_distance", 15),
+			)
+			if err := MoveTo(o.Position, WithDistanceToFinish(15)); err != nil {
+				return fmt.Errorf("failed to move closer for telekinesis: %w", err)
+			}
+			// Refresh distance after moving
+			ctx.RefreshGameData()
+			distance = ctx.PathFinder.DistanceFromMe(o.Position)
+			ctx.Logger.Debug("Moved closer to object",
+				slog.Any("object_id", o.Name),
+				slog.Int("new_distance", distance),
+			)
+		}
+
+		// Switch to Telekinesis skill before interaction (only on first attempt)
+		if interactionAttempts == 0 {
+			ctx.Logger.Debug("Switching to Telekinesis skill")
+			// Use packet skill selection if telekinesis packets are enabled for this character
+			if usePacketMode && ctx.PacketSender != nil {
+				if ctx.Data.PlayerUnit.RightSkill != skill.Telekinesis {
+					if err := ctx.PacketSender.SelectRightSkill(skill.Telekinesis); err != nil {
+						ctx.Logger.Warn("Failed to switch to Telekinesis skill via packet", "error", err)
+					}
+					utils.Sleep(50)
+				}
+			} else if err := SelectRightSkill(skill.Telekinesis); err != nil {
+				ctx.Logger.Warn("Failed to switch to Telekinesis skill", "error", err)
+				// Don't fail here - continue with interaction attempt
+			}
+			// Small delay to let skill switch register
+			utils.Sleep(50)
+		}
+
+		// Send telekinesis packet
+		ctx.Logger.Debug("Attempting object interaction via telekinesis",
+			slog.Any("object_id", o.Name),
+			slog.Int("distance", distance),
+		)
+
+		if err := ctx.PacketSender.TelekinesisInteraction(o.ID); err != nil {
+			ctx.Logger.Error("Telekinesis interaction failed", "error", err)
+			return fmt.Errorf("failed to interact with object via telekinesis: %w", err)
+		}
+
+		waitingForInteraction = true
+		interactionAttempts++
+
+		// Wait a bit for interaction to register
+		utils.PingSleep(utils.Light, 200)
+	}
+
+	return nil
+}
+
+// InteractObjectTelekinesisKeyboard uses keyboard/mouse to cast telekinesis on objects
+func InteractObjectTelekinesisKeyboard(obj data.Object, isCompletedFn func() bool) error {
+	interactionAttempts := 0
+	waitingForInteraction := false
+	lastRun := time.Time{}
+
+	ctx := context.Get()
+	ctx.SetLastStep("InteractObjectTelekinesisKeyboard")
+
+	// Check if we should use packet mode for skill selection based on class-specific config
+	usePacketMode := false
+	switch ctx.CharacterCfg.Character.Class {
+	case "sorceress":
+		usePacketMode = ctx.CharacterCfg.Character.BlizzardSorceress.UseTelekinesisPackets
+	case "nova":
+		usePacketMode = ctx.CharacterCfg.Character.NovaSorceress.UseTelekinesisPackets
+	case "lightsorc":
+		usePacketMode = ctx.CharacterCfg.Character.LightningSorceress.UseTelekinesisPackets
+	case "hydraorb":
+		usePacketMode = ctx.CharacterCfg.Character.HydraOrbSorceress.UseTelekinesisPackets
+	case "fireballsorc":
+		usePacketMode = ctx.CharacterCfg.Character.FireballSorceress.UseTelekinesisPackets
+	case "sorceress_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.SorceressLeveling.UseTelekinesisPackets
+	}
+
+	// Check if Telekinesis is bound
+	tkBinding, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Telekinesis)
+	if !found {
+		ctx.Logger.Warn("Telekinesis skill not bound, falling back to mouse interaction")
+		return InteractObjectMouse(obj, isCompletedFn)
+	}
+
+	// If there is no completion check, just assume the interaction is completed after casting
+	if isCompletedFn == nil {
+		isCompletedFn = func() bool {
+			return waitingForInteraction
+		}
+	}
+
+	for !isCompletedFn() {
+		ctx.PauseIfNotPriority()
+
+		if interactionAttempts >= maxInteractionAttempts {
+			return fmt.Errorf("[%s] failed interacting with object via telekinesis keyboard [%v] in Area: [%s]", ctx.Name, obj.Name, ctx.Data.PlayerUnit.Area.Area().Name)
+		}
+
+		ctx.RefreshGameData()
+
+		interactionCooldown := utils.PingMultiplier(utils.Light, 200)
+		if ctx.Data.PlayerUnit.Area.IsTown() {
+			interactionCooldown = utils.PingMultiplier(utils.Medium, 400)
+		}
+
+		// Give some time before retrying the interaction
+		if waitingForInteraction && time.Since(lastRun) < time.Duration(interactionCooldown)*time.Millisecond {
+			time.Sleep(10 * time.Millisecond)
+			continue
+		}
+
+		var o data.Object
+		var found bool
+		if obj.ID != 0 {
+			o, found = ctx.Data.Objects.FindByID(obj.ID)
+			if !found {
+				return fmt.Errorf("object %v not found", obj)
+			}
+		} else {
+			o, found = ctx.Data.Objects.FindOne(obj.Name)
+			if !found {
+				return fmt.Errorf("object %v not found", obj)
+			}
+		}
+
+		lastRun = time.Now()
+
+		// Verify distance is still in range (0-21 units)
+		distance := ctx.PathFinder.DistanceFromMe(o.Position)
+		if distance > 21 {
+			// Too far, move closer to optimal range (around 15 units)
+			ctx.Logger.Debug("Object too far for telekinesis, moving closer",
+				slog.Any("object_id", o.Name),
+				slog.Int("current_distance", distance),
+				slog.Int("target_distance", 15),
+			)
+			if err := MoveTo(o.Position, WithDistanceToFinish(15)); err != nil {
+				return fmt.Errorf("failed to move closer for telekinesis: %w", err)
+			}
+			// Refresh distance after moving
+			ctx.RefreshGameData()
+			distance = ctx.PathFinder.DistanceFromMe(o.Position)
+			ctx.Logger.Debug("Moved closer to object",
+				slog.Any("object_id", o.Name),
+				slog.Int("new_distance", distance),
+			)
+		}
+
+		// Switch to Telekinesis skill on right-click
+		// Use packet skill selection if telekinesis packets are enabled for this character (regardless of UseForSkillSelection)
+		if usePacketMode && ctx.PacketSender != nil {
+			if ctx.Data.PlayerUnit.RightSkill != skill.Telekinesis {
+				if err := ctx.PacketSender.SelectRightSkill(skill.Telekinesis); err != nil {
+					ctx.Logger.Debug("Failed to switch to Telekinesis skill via packet, attempting HID fallback", "error", err)
+					if found {
+						ctx.HID.PressKeyBinding(tkBinding)
+					}
+				}
+				time.Sleep(50 * time.Millisecond)
+			}
+		} else if err := SelectRightSkill(skill.Telekinesis); err != nil {
+			ctx.Logger.Debug("Failed to switch to Telekinesis skill, attempting HID fallback", "error", err)
+			// If SelectRightSkill failed and we have a keybinding, try manual HID press
+			if found {
+				ctx.HID.PressKeyBinding(tkBinding)
+				time.Sleep(50 * time.Millisecond)
+			}
+		} else {
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		// Cast telekinesis on the object
+		ctx.Logger.Debug("Casting Telekinesis on object via keyboard/mouse",
+			slog.Any("object_id", o.Name),
+			slog.Int("distance", distance),
+		)
+
+		// Get screen coordinates of the object
+		x, y := ui.GameCoordsToScreenCords(o.Position.X, o.Position.Y)
+
+		// Right-click on the object to cast telekinesis
+		ctx.HID.Click(game.RightButton, x, y)
+
+		waitingForInteraction = true
+		interactionAttempts++
+
+		// Wait a bit for interaction to register
+		utils.PingSleep(utils.Light, 200)
+	}
+
+	return nil
 }
 
 // InteractObjectMouse is the original mouse-based object interaction

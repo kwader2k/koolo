@@ -272,6 +272,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	ctx.GameReader = gr
 	ctx.MemoryInjector = gi
 	ctx.PathFinder = pf
+	pf.SetPacketSender(ctx.PacketSender)
 	ctx.BeltManager = bm
 	ctx.HealthManager = hm
 	char, err := character.BuildCharacter(ctx.Context)
