@@ -47,15 +47,6 @@ func (c *Coordinator) SetFilters(supervisor string, filters Filters, mgr *Manage
 	mgr.UpdateFilters(filters)
 }
 
-// GetFilters returns the filter configuration for the given supervisor.
-func (c *Coordinator) GetFilters(supervisor string) (Filters, bool) {
-	c.filtersMu.RLock()
-	defer c.filtersMu.RUnlock()
-
-	f, ok := c.filters[supervisor]
-	return f, ok
-}
-
 // SetClearServerFilterCallback registers a callback to clear server-side filter state.
 func (c *Coordinator) SetClearServerFilterCallback(callback func(supervisor string)) {
 	c.clearServerFilter = callback
