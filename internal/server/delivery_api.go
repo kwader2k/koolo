@@ -207,7 +207,7 @@ func (s *HttpServer) getScheduledDeliveries() []scheduledDelivery {
 func (s *HttpServer) getDeliveryFilters(supervisor string) delivery.Filters {
 	s.deliveryMux.Lock()
 	defer s.deliveryMux.Unlock()
-	if filters, ok := s.deliveryFilters[supervisor]; ok {
+	if filters, ok := s.deliveryFilters[supervisor]; ok && filters.Enabled {
 		return filters.Normalize()
 	}
 
@@ -215,6 +215,7 @@ func (s *HttpServer) getDeliveryFilters(supervisor string) delivery.Filters {
 		return global.Normalize()
 	}
 
+	// If a supervisor entry exists but is disabled, fall back to defaults (unfiltered)
 	return delivery.Filters{DeliverOnlySelected: false}.Normalize()
 }
 
