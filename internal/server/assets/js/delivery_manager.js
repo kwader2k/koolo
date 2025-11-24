@@ -1009,13 +1009,11 @@ function disableFiltersOnExit() {
 
   if (deliveryState.globalFilters?.enabled) {
     supervisorsToDisable.push("global");
-    deliveryState.globalFilters.enabled = false;
   }
 
   Object.entries(deliveryState.individualFilters).forEach(([supervisor, filters]) => {
     if (filters?.enabled) {
       supervisorsToDisable.push(supervisor);
-      filters.enabled = false;
     }
   });
 
@@ -1023,15 +1021,20 @@ function disableFiltersOnExit() {
     return;
   }
 
-  const payload = {
-    enabled: false,
-    deliverOnlySelected: true,
-    selectedRunes: [],
-    selectedGems: [],
-    customItems: [],
-  };
-
   supervisorsToDisable.forEach((supervisor) => {
+    const current =
+      supervisor === "global"
+        ? deliveryState.globalFilters
+        : deliveryState.individualFilters[supervisor] || {};
+
+    const payload = {
+      enabled: false,
+      deliverOnlySelected: current.deliverOnlySelected ?? true,
+      selectedRunes: current.selectedRunes || [],
+      selectedGems: current.selectedGems || [],
+      customItems: current.customItems || [],
+    };
+
     const url = `/api/delivery/protection?supervisor=${encodeURIComponent(supervisor)}`;
     fetch(url, {
       method: "POST",

@@ -92,22 +92,25 @@ func (c *Coordinator) ApplyInitialFilters(supervisorName string, mgr *Manager) {
 	}
 }
 
-// ClearIndividualFilters clears per-supervisor filters and applies global ones if they exist.
+// ClearIndividualFilters disables per-supervisor filters and leaves selections intact.
 func (c *Coordinator) ClearIndividualFilters(supervisor string) {
 	if c.logger != nil {
-		c.logger.Info("Clearing individual delivery filters", "supervisor", supervisor)
+		c.logger.Info("Disabling individual delivery filters after completion", "supervisor", supervisor)
 	}
 
 	c.filtersMu.Lock()
 	defer c.filtersMu.Unlock()
 
-	// Remove individual filter for this supervisor
-	delete(c.filters, supervisor)
-	if c.logger != nil {
-		c.logger.Info("Individual filter removed from coordinator", "supervisor", supervisor)
+	// Disable (but keep) individual filter for this supervisor
+	if filters, ok := c.filters[supervisor]; ok {
+		filters.Enabled = false
+		c.filters[supervisor] = filters
+		if c.logger != nil {
+			c.logger.Info("Individual filter disabled (selections preserved)", "supervisor", supervisor)
+		}
 	}
 
-	// Notify server to clear its copy too
+	// Notify server to disable its copy too
 	if c.clearServerFilter != nil {
 		c.clearServerFilter(supervisor)
 	}

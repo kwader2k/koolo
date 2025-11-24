@@ -89,7 +89,10 @@ func (s *HttpServer) initDeliveryCallbacks() {
 // filters should be cleared on the server side.
 func (s *HttpServer) onDeliveryClearFilters(supervisor string) {
 	s.deliveryMux.Lock()
-	delete(s.deliveryFilters, supervisor)
+	if filters, ok := s.deliveryFilters[supervisor]; ok {
+		filters.Enabled = false
+		s.deliveryFilters[supervisor] = filters
+	}
 	s.deliveryMux.Unlock()
 }
 
