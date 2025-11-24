@@ -82,13 +82,6 @@ func (m *Manager) RequestDelivery(room, passwd string) *Request {
 	return m.pending
 }
 
-// HasPending reports whether there is a pending delivery request.
-func (m *Manager) HasPending() bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.pending != nil
-}
-
 // SetActive marks the given request as the currently active delivery.
 func (m *Manager) SetActive(req *Request) {
 	m.mu.Lock()
@@ -269,18 +262,4 @@ func (m *Manager) TriggerInterrupt() {
 		}
 		m.cancel()
 	}
-}
-
-// ResetContext creates a new delivery context after a run completes.
-func (m *Manager) ResetContext() {
-	if m == nil {
-		return
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	if m.cancel != nil {
-		m.cancel()
-	}
-	m.ctx, m.cancel = context.WithCancel(context.Background())
 }
