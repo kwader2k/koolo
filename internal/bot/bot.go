@@ -11,7 +11,9 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/delivery"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/run"
@@ -70,6 +72,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	gameStartedAt := time.Now()
 	b.ctx.SwitchPriority(botCtx.PriorityNormal) // Restore priority to normal, in case it was stopped in previous game
 	b.ctx.CurrentGame = botCtx.NewGameHelper()  // Reset current game helper structure
+	// DELIVERY: Initialize delivery manager and start watch context
+	if b.ctx.Delivery == nil {
+		b.ctx.Delivery = delivery.NewManager(b.ctx.Name, b.ctx.Logger)
+	}
+	b.ctx.Delivery.StartWatch()
 
 	err := b.ctx.GameReader.FetchMapData()
 	if err != nil {
@@ -126,6 +133,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				if b.ctx.ExecutionPriority == botCtx.PriorityPause {
 					continue
 				}
+				if b.ctx.Delivery != nil && (b.ctx.Delivery.Pending() != nil || b.ctx.Delivery.Active() != nil) {
+					// Skip health handling while delivery run takes over (character may be out of game)
+					continue
+				}
+
 				err = b.ctx.HealthManager.HandleHealthAndMana()
 				if err != nil {
 					b.ctx.Logger.Info("HealthManager: Detected critical error (chicken/death), stopping bot.", "error", err.Error())
@@ -375,6 +387,25 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				// Update activity before the main run logic is executed.
 				b.updateActivityAndPosition()
 				err = r.Run(nil)
+
+				// DELIVERY: Handle delivery interrupt from step functions
+				if errors.Is(err, delivery.ErrInterrupt) {
+					b.ctx.Logger.Info("Delivery request acknowledged, preparing to exit current game")
+					step.CleanupForDelivery()
+					_ = b.ctx.Manager.ExitGame()
+
+					d := run.NewDelivery()
+					if derr := d.Run(nil); derr != nil {
+						b.ctx.Logger.Error("Delivery run failed", "error", derr)
+					} else {
+						b.ctx.Logger.Info("Delivery run completed successfully")
+					}
+
+					// Note: ResetDeliveryContext() is called in delivery.go's defer
+					// to handle both success and failure cases consistently
+
+					return nil
+				}
 
 				var runFinishReason event.FinishReason
 				if err != nil {

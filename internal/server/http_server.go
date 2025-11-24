@@ -20,7 +20,8 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-
+	"sync"
+	
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,6 +34,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/bot"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/delivery"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/remote/droplog"
@@ -50,6 +52,9 @@ type HttpServer struct {
 	wsServer    *WebSocketServer
 	pickitAPI   *PickitAPI
 	sequenceAPI *SequenceAPI
+	deliveryHistory []DeliveryHistoryEntry
+	deliveryFilters map[string]delivery.Filters
+	deliveryMux     sync.Mutex
 }
 
 var (
@@ -227,13 +232,17 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 		logger.Info("  - " + t.Name())
 	}
 
-	return &HttpServer{
-		logger:      logger,
-		manager:     manager,
-		templates:   templates,
-		pickitAPI:   NewPickitAPI(),
-		sequenceAPI: NewSequenceAPI(logger),
-	}, nil
+	server := &HttpServer{
+		logger:          logger,
+		manager:         manager,
+		templates:       templates,
+		pickitAPI:       NewPickitAPI(),
+		sequenceAPI:     NewSequenceAPI(logger),
+		deliveryFilters: make(map[string]delivery.Filters),
+	}
+
+	server.initDeliveryCallbacks()
+	return server, nil
 }
 
 func (s *HttpServer) getProcessList(w http.ResponseWriter, r *http.Request) {
@@ -626,6 +635,9 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/sequence-editor/save", s.sequenceAPI.handleSaveSequence)
 	http.HandleFunc("/api/sequence-editor/delete", s.sequenceAPI.handleDeleteSequence)
 	http.HandleFunc("/api/sequence-editor/files", s.sequenceAPI.handleListSequenceFiles)
+	http.HandleFunc("/delivery-manager", s.deliveryManagerPage)
+
+	s.registerDeliveryRoutes()
 
 	assets, _ := fs.Sub(assetsFS, "assets")
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))

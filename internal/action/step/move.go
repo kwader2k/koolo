@@ -158,6 +158,13 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 
 	for {
 		ctx.PauseIfNotPriority()
+
+		// Check if a delivery request is pending and interrupt
+        // the current movement early so the delivery flow can take over
+
+		if err := interruptDeliveryIfRequested(); err != nil {
+			return err
+		}
 		ctx.RefreshGameData()
 		currentDest := dest
 

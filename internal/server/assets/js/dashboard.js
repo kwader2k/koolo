@@ -1244,6 +1244,13 @@ function openPickitEditor() {
   window.open(url, "_blank");
 }
 
+function openDeliveryManager() {
+  const url =
+    window.location.protocol + "//" + window.location.host + "/delivery-manager";
+
+  window.location.href = url;
+}
+
 document.addEventListener("DOMContentLoaded", function () {
   fetchInitialData();
   connectWebSocket();

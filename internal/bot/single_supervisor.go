@@ -13,6 +13,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
@@ -181,6 +182,26 @@ func (s *SinglePlayerSupervisor) Start() error {
 		default:
 		}
 
+		// Check for pending delivery via delivery manager
+		if s.bot.ctx.Delivery != nil && s.bot.ctx.Delivery.Pending() != nil {
+			// Skip if delivery is already in progress
+			if s.bot.ctx.Delivery.Active() != nil {
+				s.bot.ctx.Logger.Debug("Delivery already in progress, skipping check")
+				continue
+			}
+
+			// Immediately run the pending delivery before entering the normal menu flow
+			s.bot.ctx.Logger.Info("Pending delivery detected, launching delivery before menu flow")
+			s.bot.ctx.SwitchPriority(ct.PriorityNormal)
+			action.SwitchToLegacyMode()
+			action.SwitchToLegacyMode()
+			deliveryRun := run.NewDelivery()
+			if err := deliveryRun.Run(nil); err != nil {
+				s.bot.ctx.Logger.Error("Delivery run failed", "error", err)
+			}
+			continue
+		}
+
 		if firstRun {
 			if err = s.waitUntilCharacterSelectionScreen(); err != nil {
 				return fmt.Errorf("error waiting for character selection screen: %w", err)
@@ -291,7 +312,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		pingThreshold := 500
 		sustainedDuration := 30 * time.Second
 		pingEnabled := false
-		
+
 		if config.Koolo.PingMonitor.Enabled {
 			pingEnabled = true
 			if config.Koolo.PingMonitor.HighPingThreshold > 0 {
@@ -301,7 +322,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 				sustainedDuration = time.Duration(config.Koolo.PingMonitor.SustainedDuration) * time.Second
 			}
 		}
-		
+
 		pingMonitor := health.NewPingMonitor(
 			s.bot.ctx.Logger,
 			pingThreshold,

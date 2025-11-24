@@ -11,6 +11,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/config"
+	"github.com/hectorgimenez/koolo/internal/delivery"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -65,6 +66,7 @@ type Context struct {
 	IsLevelingCharacter  *bool
 	ManualModeActive     bool // Manual play mode: stops after character selection
 	LastPortalTick       time.Time // NEW FIELD: Tracks last portal creation for spam prevention
+	Delivery             *delivery.Manager // DELIVERY: Per-supervisor delivery manager
 }
 
 type Debug struct {
@@ -120,6 +122,7 @@ func NewContext(name string) *Status {
 		ForceAttack:      false,
 		ManualModeActive: false, // Explicitly initialize to false
 	}
+	ctx.Delivery = delivery.NewManager(name, ctx.Logger)
 	ctx.AttachRoutine(PriorityNormal)
 
 	// Initialize ping getter for adaptive delays (avoids import cycle)

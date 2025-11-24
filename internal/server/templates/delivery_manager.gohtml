@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../assets/css/pico.min.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
+    <title>Delivery Manager</title>
+    <style>
+        .delivery-manager-header {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .delivery-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .delivery-card {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 1rem;
+            background: rgba(16, 18, 23, 0.9);
+        }
+
+        .delivery-card h2 {
+            margin-top: 0;
+            margin-bottom: 0.3rem;
+            font-size: 1.3rem;
+        }
+
+        .card-title-with-icon {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .card-title-with-icon .info-icon {
+            color: rgba(255, 255, 255, 0.5);
+            cursor: default;
+        }
+
+        .delivery-card p {
+            margin-top: 0;
+            margin-bottom: 0.6rem;
+            color: rgba(255, 255, 255, 0.65);
+            font-size: 0.9rem;
+        }
+
+        .delivery-form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 0.7rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .supervisor-tags {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .supervisor-tag {
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 0.5rem 0.7rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: stretch;
+            gap: 0.6rem;
+        }
+
+        .supervisor-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .supervisor-row {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        .supervisor-meta {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .supervisor-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            align-items: center;
+            justify-content: center;
+            margin: auto 0;
+            height: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .supervisor-actions {
+                flex-direction: row;
+                align-items: center;
+                justify-content: center;
+            }
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            border-radius: 999px;
+            padding: 0.15rem 0.5rem;
+            font-size: 0.7rem;
+        }
+
+        .status-pill.idle {
+            background: rgba(88, 166, 255, 0.15);
+            color: #58a6ff;
+        }
+
+        .status-pill.pending {
+            background: rgba(255, 196, 77, 0.15);
+            color: #ffc44d;
+        }
+
+        .status-pill.paused {
+            background: rgba(255, 138, 76, 0.2);
+            color: #ff8a4c;
+        }
+
+        .status-pill.active {
+            background: rgba(46, 204, 113, 0.15);
+            color: #2ecc71;
+        }
+
+        .queue-inline-status {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-left: 0.5rem;
+            display: inline-flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .status-pill.error {
+            background: rgba(255, 99, 132, 0.2);
+            color: #ff6384;
+        }
+
+        .status-pill.offline {
+            background: rgba(128, 128, 128, 0.2);
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .action-row {
+            margin-top: 0.6rem;
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .supervisor-toolbar {
+            margin-top: 0.7rem;
+            margin-bottom: 0.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.7rem;
+            flex-wrap: wrap;
+        }
+
+        .mini-summary {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 0.7rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .filter-card {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            padding: 0.7rem;
+            background: rgba(255, 255, 255, 0.02);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-card label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-weight: 600;
+            margin-bottom: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        .filter-card textarea {
+            width: 100%;
+            min-height: 100px;
+            resize: vertical;
+            margin-top: 0.4rem;
+            font-size: 0.85rem;
+        }
+
+        .filter-card small {
+            display: block;
+            margin-top: 0.4rem;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.4;
+        }
+
+        .delivery-filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .filter-mode {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .filter-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-weight: 600;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .filter-mode label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0;
+            background: transparent;
+            border: none;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .filter-mode label:hover {
+            opacity: 0.8;
+        }
+
+        .filter-mode input[type="radio"]:checked + * {
+            font-weight: 500;
+        }
+
+        .filter-section {
+            margin-top: 1rem;
+        }
+
+        .filter-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 0.4rem;
+        }
+
+        .filter-checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.3rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            margin: 0;
+        }
+
+        .filter-checkbox-item label {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            margin: 0;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .filter-checkbox-item input[type="checkbox"] {
+            margin: 0;
+        }
+
+        .filter-checkbox-item input[type="number"] {
+            margin: 0;
+        }
+
+        .filter-checkbox-item input.quantity-value,
+        input.quantity-value {
+            display: none;
+            width: 36px !important;
+            height: 22px !important;
+            min-height: 22px !important;
+            text-align: center;
+            font-size: 0.75rem !important;
+            line-height: 1 !important;
+            padding: 2px 4px !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            background: rgba(0, 0, 0, 0.3) !important;
+            border-radius: 3px !important;
+            margin: 0 0 0 auto !important;
+            box-sizing: border-box !important;
+            -moz-appearance: textfield;
+        }
+
+        .filter-checkbox-item input.quantity-value::-webkit-outer-spin-button,
+        .filter-checkbox-item input.quantity-value::-webkit-inner-spin-button,
+        input.quantity-value::-webkit-outer-spin-button,
+        input.quantity-value::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .filter-checkbox-item input.quantity-value.active,
+        input.quantity-value.active {
+            display: block;
+        }
+
+        .filter-checkbox-item input.quantity-value:focus,
+        input.quantity-value:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.4) !important;
+            background: rgba(0, 0, 0, 0.4) !important;
+        }
+
+        .filter-section h3 {
+            margin-bottom: 0.6rem;
+            font-size: 1.1rem;
+        }
+
+        .filter-checkbox-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 0.4rem 0.8rem;
+        }
+
+        .filter-checkbox-grid label {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.9rem;
+        }
+
+        #dm-filter-fields:disabled {
+            opacity: 0.6;
+        }
+
+        /* Modal Styles */
+        .filter-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .filter-modal-content {
+            background: rgba(16, 18, 23, 0.98);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .filter-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .filter-modal-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+
+        .filter-modal-close {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 0;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .filter-modal-close:hover {
+            color: #fff;
+        }
+
+        .filter-modal-body {
+            padding: 1.5rem;
+        }
+
+        #dm-individual-filter-fields:disabled {
+            opacity: 0.6;
+        }
+
+        .btn-filter {
+            background: rgba(138, 43, 226, 0.15);
+            border: 1px solid rgba(138, 43, 226, 0.4);
+            color: #bb86fc;
+        }
+
+        .btn-filter:hover {
+            background: rgba(138, 43, 226, 0.25);
+            border-color: rgba(138, 43, 226, 0.6);
+        }
+
+        .btn-filter.active {
+            background: rgba(138, 43, 226, 0.3);
+            border-color: rgba(138, 43, 226, 0.8);
+            box-shadow: 0 0 8px rgba(138, 43, 226, 0.4);
+        }
+
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(30, 30, 30, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 0.8rem 1.2rem;
+            min-width: 250px;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+            pointer-events: auto;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .toast.success {
+            border-left: 3px solid #2ecc71;
+        }
+
+        .toast.error {
+            border-left: 3px solid #ff6384;
+        }
+
+        .toast.info {
+            border-left: 3px solid #58a6ff;
+        }
+
+    </style>
+</head>
+<body>
+<div class="toast-container" id="toast-container"></div>
+<main class="container">
+    <header class="delivery-manager-header">
+        <div style="display:flex; align-items:center; gap:1.5rem;">
+            <button class="btn btn-outline" onclick="window.location.href='/'" title="Back to Dashboard">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div>
+                <h1 style="margin:0;">Delivery Manager</h1>
+                <p class="lead" style="margin:0;">Manage item deliveries and configure filters for each character.</p>
+            </div>
+        </div>
+    </header>
+
+    <section class="delivery-stack">
+        <article class="delivery-card">
+            <h2>Delivery Room Options</h2>
+            <p>Configure target room and sequential delays before launching a batch.</p>
+            <div class="delivery-form-grid">
+                <label>
+                    Room Name
+                    <input type="text" id="dm-room" placeholder="Enter room">
+                </label>
+                <label>
+                    Password (optional)
+                    <input type="text" id="dm-password" placeholder="Password">
+                </label>
+                <label>
+                    Sequential Delay (sec)
+                    <input type="number" id="dm-delay" min="5" max="120" value="15">
+                </label>
+            </div>
+        </article>
+
+        <article class="delivery-card">
+            <h2>Supervisors</h2>
+            <p>You can request delivery only when the supervisor is online.
+If you use the Express button, delivery will be performed first even when offline, and then the configured Run will start.</p>
+            <div class="supervisor-toolbar">
+                <button id="dm-selection-toggle" type="button" class="btn btn-outline btn-small">
+                    <i class="bi bi-check2-all"></i>
+                    <span id="dm-selection-toggle-label">Select All</span>
+                </button>
+                <button id="dm-deliver-selected" type="button" class="btn btn-primary btn-small" disabled>
+                    <i class="bi bi-truck"></i> Delivery (0/0)
+                </button>
+            </div>
+            <div id="dm-supervisor-list" class="supervisor-tags"></div>
+        </article>
+
+        <article class="delivery-card">
+            <div class="delivery-filters-header">
+                <h2>Global Delivery Filters</h2>
+                <label class="filter-toggle">
+                    <input type="checkbox" id="dm-filter-enabled">
+                    Enable
+                </label>
+            </div>
+            <p style="margin-bottom: 0.3rem;">Global filters apply to all supervisors by default. You can override with individual supervisor filters. Turning filters off keeps your last selections, but they will not apply again until you re-enable. <span style="font-size: 0.85rem; color: rgba(255, 255, 255, 0.5); font-style: italic;">(*Normal flow: All stash items except crafting materials)</span></p>
+            <div id="dm-filter-body" hidden>
+                <fieldset id="dm-filter-fields" disabled>
+                    <div class="filter-mode">
+                        <label>
+                            <input type="radio" name="dm-filter-mode" value="exclusive">
+                            Deliver selected items only
+                        </label>
+                        <label>
+                            <input type="radio" name="dm-filter-mode" value="inclusive">
+                            Deliver selected items plus *normal flow
+                        </label>
+                    </div>
+                    <div class="filter-section">
+                        <h3>Runes (El ~ Zod)</h3>
+                        <div class="filter-checkbox-grid" id="dm-rune-checkboxes"></div>
+                    </div>
+                    <div class="filter-section">
+                        <h3>Perfect Gems</h3>
+                        <div class="filter-checkbox-grid" id="dm-gem-checkboxes"></div>
+                    </div>
+                    <div class="filter-section">
+                        <label>
+                            Custom items (one per line, only Base name)
+                            <textarea id="dm-custom-items" placeholder="Crystalsword"></textarea>
+                        </label>
+                        <small>Use the exact item code/name so it can be matched during delivery.</small>
+                    </div>
+                </fieldset>
+                <div class="action-row">
+                    <button id="dm-save-filters" class="btn btn-primary">
+                        <i class="bi bi-funnel-fill"></i> Save Filters
+                    </button>
+                    <button id="dm-reset-filters" class="btn btn-outline">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                </div>
+            </div>
+        </article>
+
+        <article class="delivery-card">
+            <h2>History</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:1rem; align-items:center; justify-content:space-between;">
+                <p>Recent delivery runs, success or failure, and how long each attempt took.</p>
+                <div class="mini-summary">
+                    <span><strong>Total:</strong> <span id="dm-summary-supervisors">0</span></span>
+                    <span><strong>Pending:</strong> <span id="dm-summary-queue">0</span></span>
+                    <span><strong>Active:</strong> <span id="dm-summary-active">0</span></span>
+                    <span><strong>Last:</strong> <span id="dm-summary-last">-</span></span>
+                </div>
+            </div>
+            <div class="queue-table-wrapper" style="max-height:300px; overflow-y:auto;">
+                <table class="delivery-table" id="dm-history-table">
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Supervisor</th>
+                        <th>Room</th>
+                        <th>Filter</th>
+                        <th>Result</th>
+                        <th>Items</th>
+                        <th>Duration</th>
+                        <th>Error/Notes</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <!-- Individual Filter Modal -->
+    <div id="dm-individual-filter-modal" class="filter-modal" style="display: none;">
+        <div class="filter-modal-content">
+            <div class="filter-modal-header">
+                <h2>Individual Filter: <span id="dm-modal-supervisor-name"></span></h2>
+                <button class="filter-modal-close" id="dm-modal-close">&times;</button>
+            </div>
+            <div class="filter-modal-body">
+                <p style="margin-bottom: 1rem; color: rgba(255, 255, 255, 0.7);">
+                    Individual filter overrides global filter for this supervisor.
+                </p>
+                <fieldset id="dm-individual-filter-fields">
+                    <div class="filter-mode">
+                            <label>
+                                <input type="radio" name="dm-individual-filter-mode" value="exclusive">
+                                Deliver selected items only
+                            </label>
+                            <label>
+                                <input type="radio" name="dm-individual-filter-mode" value="inclusive">
+                                Deliver selected items plus normal flow
+                            </label>
+                        </div>
+                        <div class="filter-section">
+                            <h3>Runes (El ~ Zod)</h3>
+                            <div class="filter-checkbox-grid" id="dm-individual-rune-checkboxes"></div>
+                        </div>
+                        <div class="filter-section">
+                            <h3>Perfect Gems</h3>
+                            <div class="filter-checkbox-grid" id="dm-individual-gem-checkboxes"></div>
+                        </div>
+                        <div class="filter-section">
+                            <label>
+                                Custom items (one per line, only Base name)
+                                <textarea id="dm-individual-custom-items" placeholder="Crystalsword"></textarea>
+                            </label>
+                            <small>Use the exact item code/name so it can be matched during delivery.</small>
+                        </div>
+                    </fieldset>
+                    <div class="action-row" style="margin-top: 1rem;">
+                        <button id="dm-save-individual-filters" class="btn btn-primary">
+                            <i class="bi bi-funnel-fill"></i> Save Individual Filter
+                        </button>
+                        <button id="dm-reset-individual-filters" class="btn btn-outline">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+                        <button id="dm-clear-individual-filters" class="btn btn-outline" style="margin-left: auto;">
+                            <i class="bi bi-x-circle"></i> Clear Filter
+                        </button>
+                    </div>
+            </div>
+        </div>
+    </div>
+</main>
+<script src="../assets/js/delivery_manager.js"></script>
+</body>
+</html>
+
