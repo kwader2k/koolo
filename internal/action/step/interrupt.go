@@ -7,8 +7,8 @@ import (
 )
 
 // DELIVERY: interruptDeliveryIfRequested checks if a delivery is pending and returns an error to interrupt the current operation
-// This function is injected into all major step functions (attack, move, pickup, interact) to enable
-// immediate response to delivery requests from the server API.
+// This function is injected into the moveTo function to enable response to delivery requests from the server API.
+
 func interruptDeliveryIfRequested() error {
 	ctx := context.Get()
 	if ctx == nil || ctx.Context == nil || ctx.Context.Delivery == nil {
