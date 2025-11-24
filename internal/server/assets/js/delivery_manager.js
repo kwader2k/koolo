@@ -236,7 +236,7 @@ function renderSupervisors() {
     const actions = document.createElement("div");
     actions.className = "supervisor-actions";
 
-    // Filter 버튼 추가
+
     const filterBtn = document.createElement("button");
     filterBtn.type = "button";
     const hasIndividualFilter = deliveryState.individualFilters[sup.name]?.enabled;
@@ -250,7 +250,6 @@ function renderSupervisors() {
     });
     actions.appendChild(filterBtn);
 
-    // Deliver 버튼은 pending/active 상태가 아닐 때만 표시
     if (!queueEntry) {
       const deliverBtn = document.createElement("button");
       deliverBtn.type = "button";
@@ -273,7 +272,7 @@ function renderSupervisors() {
     }
 
     if (queueEntry) {
-      // Cancel 버튼만 표시 (Retry 버튼 완전 제거)
+
       const cancelBtn = document.createElement("button");
       cancelBtn.className = "btn btn-outline btn-small";
       cancelBtn.type = "button";
@@ -834,8 +833,7 @@ function saveIndividualFilters(options = {}) {
   }
 
   const payload = collectIndividualFilterForm();
-  payload.enabled = true; // 항상 활성화
-  
+  payload.enabled = true; 
   postJson(`/api/delivery/protection?supervisor=${encodeURIComponent(supervisor)}`, payload)
     .then(() => {
       if (!options.silent) {
@@ -843,7 +841,6 @@ function saveIndividualFilters(options = {}) {
       }
       deliveryState.individualFilters[supervisor] = payload;
       
-      // 모달 닫고 supervisors 다시 렌더링하여 필터 활성화 표시 업데이트
       closeIndividualFilterModal();
       renderSupervisors();
     })
@@ -893,7 +890,7 @@ function collectIndividualFilterForm() {
     .filter((line) => line.length > 0);
 
   return {
-    enabled: true, // 항상 활성화
+    enabled: true, // always send enabled when saving individual filter
     deliverOnlySelected: selectedMode === "exclusive",
     selectedRunes: getCheckedValues("dm-individual-rune-checkboxes"),
     selectedGems: getCheckedValues("dm-individual-gem-checkboxes"),
