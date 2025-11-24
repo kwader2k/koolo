@@ -69,9 +69,6 @@ func (s *Service) StorePersistentRequest(supervisorName string, req *Request) {
 func (s *Service) ClearPersistentRequest(supervisorName string) {
 	delete(s.persistentRequests, supervisorName)
 }
-func (s *Service) GetFilters(supervisor string) (Filters, bool) {
-	return s.coord.GetFilters(supervisor)
-}
 
 // Register server filter clear callback
 func (s *Service) SetClearServerFilterCallback(callback func(supervisor string)) {
