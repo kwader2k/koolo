@@ -340,7 +340,9 @@ func shouldKeepRecipeItem(i data.Item) bool {
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
 		// Count how many magic-quality jewels we already have in stash
 		if string(it.Name) == "Jewel" && it.Quality == item.QualityMagic {
-			jewelCount++
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it); res != nip.RuleResultFullMatch {
+				jewelCount++
+			}
 		}
 		// Match on base name and require magic quality so only another magic item of the same base blocks us
 		if strings.EqualFold(string(it.Name), string(i.Name)) && it.Quality == item.QualityMagic {

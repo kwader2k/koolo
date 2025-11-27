@@ -728,3 +728,144 @@
   background-color: rgba(255, 255, 255, 0.02);
   border-radius: 8px;
 }
+
+/* Terror Zone Table Styles by: aC */
+
+.tz-card {
+    margin-top: 1rem;
+    border-radius: 0.75rem;
+    overflow-x: auto;
+    background: #141824;
+    border: 1px solid #2a3145;
+    max-width: 100%;
+}
+
+.tz-card-header {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-bottom: 1px solid #2a3145;
+    background: radial-gradient(circle at top left, #252b3b, #151824);
+    white-space: nowrap;
+}
+
+/* Table Layout */
+.tz-table {
+    width: 100%;
+    table-layout: auto;
+    border-collapse: collapse;
+    font-size: 0.83rem;
+}
+
+.tz-table thead th {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    font-weight: 500;
+    color: #a7b3d0;
+    background: #1a1f2e;
+    border-bottom: 1px solid #2a3145;
+    white-space: nowrap;
+}
+
+/* Specific Column Widths */
+.tz-table thead th:nth-child(1),
+.tz-table tbody td.tz-checkbox-cell {
+    width: 30px;
+}
+
+.tz-table thead th:nth-child(2) {
+    width: 140px;
+}
+
+.tz-table thead th:nth-child(3) {
+    width: auto;
+    /* let immunities expand */
+}
+
+/* Boss Packs header */
+.tz-table thead th:nth-child(4) {
+    width: 55px;
+    text-align: left;
+}
+
+/* Boss Packs data cells */
+.tz-table td:nth-child(4) {
+    text-align: left;
+}
+
+.tz-table thead th:nth-child(5) {
+    width: 38px;
+    text-align: left;
+}
+
+/* Data Cells */
+.tz-table tbody td {
+    padding: 0.35rem 0.5rem;
+    border-bottom: 1px solid #20263a;
+    color: #e3e8ff;
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Allow Name column to wrap */
+.tz-table td:nth-child(2) {
+    white-space: normal;
+    font-size: 0.8rem;
+    line-height: 1.2;
+}
+
+/* Immunities */
+.tz-immunities {
+    white-space: nowrap;
+    overflow: hidden;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.tz-immunities img,
+.tz-icon {
+    width: 14px;
+    height: 14px;
+    margin-right: 2px;
+    vertical-align: middle;
+}
+
+.tz-icon-disabled {
+    opacity: 0.25;
+    filter: grayscale(1);
+}
+
+/* Tier styles */
+.tz-tier {
+    font-weight: 700;
+    white-space: nowrap;
+    text-align: center;
+}
+
+/* Act Header Row */
+.tz-act-row td {
+    font-weight: 600;
+    font-size: 0.85rem;
+    background: #1f2537;
+    color: #cbd5e1;
+    padding: 0.4rem 0.6rem;
+}
+
+/* Spacers */
+.tz-act-spacer td {
+    padding: 0.3rem;
+    background: transparent;
+}
+
+.tz-row:nth-child(even) {
+    background: #171b29;
+}
+
+.tz-row:nth-child(odd) {
+    background: #141824;
+}
+
+.tz-row:hover {
+    background: #20263a;
+}

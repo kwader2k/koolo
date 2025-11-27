@@ -18,12 +18,20 @@ import (
 )
 
 type Nihlathak struct {
-	ctx *context.Status
+	ctx                *context.Status
+	clearMonsterFilter data.MonsterFilter // nil = normal MF/quest run, non-nil = TZ full clear
 }
 
 func NewNihlathak() *Nihlathak {
 	return &Nihlathak{
 		ctx: context.Get(),
+	}
+}
+
+func NewNihlathakTZ(filter data.MonsterFilter) *Nihlathak {
+	return &Nihlathak{
+		ctx:                context.Get(),
+		clearMonsterFilter: filter,
 	}
 }
 
@@ -48,6 +56,13 @@ func (n Nihlathak) CheckConditions(parameters *RunParameters) SequencerResult {
 }
 
 func (n Nihlathak) Run(parameters *RunParameters) error {
+	if n.clearMonsterFilter != nil {
+		return n.runTerrorZone(parameters)
+	}
+	return n.runStandard(parameters)
+}
+
+func (n Nihlathak) runStandard(parameters *RunParameters) error {
 	// Use the waypoint to HallsOfPain
 	err := action.WayPoint(area.HallsOfPain)
 	if err != nil {
@@ -164,27 +179,53 @@ func (n Nihlathak) findBestCorner(nihlathakPosition data.Position) data.Position
 }
 
 func (n Nihlathak) goToAnyaInTown() error {
+	// Always make sure we are in Harrogath first.
+	if n.ctx.Data.PlayerUnit.Area != area.Harrogath {
+		if err := action.WayPoint(area.Harrogath); err != nil {
+			return errors.New("could not move to Harrogath")
+		}
+	}
+
 	anyaTownPos, found := n.ctx.Data.Objects.FindOne(object.DrehyaTownStartPosition)
 	if !found {
-		return errors.New("couldn't find anya pos in town")
+		return errors.New("Anya town start position not found in Harrogath")
 	}
-	err := action.MoveToCoords(anyaTownPos.Position)
-	if err != nil {
+
+	return action.MoveToCoords(anyaTownPos.Position)
+}
+
+func (n Nihlathak) getHallOfPainWp() error {
+	// old goToAnya + portal logic is now in useAnyaTemplePortal
+	if err := n.useAnyaTemplePortal(); err != nil {
 		return err
 	}
+
+	if err := action.MoveToArea(area.HallsOfAnguish); err != nil {
+		return err
+	}
+
+	if err := action.MoveToArea(area.HallsOfPain); err != nil {
+		return err
+	}
+
+	if err := action.DiscoverWaypoint(); err != nil {
+		return err
+	}
+
 	return nil
 }
-func (n Nihlathak) getHallOfPainWp() error {
-	err := n.goToAnyaInTown()
-	if err != nil {
+
+// Uses Anya's permanent red portal to enter Nihlathak's Temple.
+func (n Nihlathak) useAnyaTemplePortal() error {
+	// Go to Anya in town
+	if err := n.goToAnyaInTown(); err != nil {
 		return err
 	}
 
 	templeTp, found := n.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 	if !found {
-		//Try to talk to anya to open portal
-		err = action.InteractNPC(npc.Drehya)
-		if err != nil {
+		// Try to talk to Anya to open the portal
+		if err := action.InteractNPC(npc.Drehya); err != nil {
 			return err
 		}
 		utils.Sleep(1000)
@@ -196,27 +237,61 @@ func (n Nihlathak) getHallOfPainWp() error {
 			return errors.New("couldn't find anya pos in town")
 		}
 	}
-	err = action.InteractObject(templeTp, func() bool {
+
+	// Take portal into Nihlathak's Temple (Pindle)
+	return action.InteractObject(templeTp, func() bool {
 		return n.ctx.Data.PlayerUnit.Area == area.NihlathaksTemple
 	})
-	if err != nil {
+}
+
+func (n Nihlathak) runTerrorZone(parameters *RunParameters) error {
+	_ = parameters // currently unused, but kept for symmetry
+
+	tzCfg := n.ctx.CharacterCfg.Game.TerrorZone
+
+	if err := n.useAnyaTemplePortal(); err != nil {
 		return err
 	}
 
-	err = action.MoveToArea(area.HallsOfAnguish)
-	if err != nil {
+	if err := n.killPindleFast(); err != nil {
+		n.ctx.Logger.Warn("[Nihl TZ] Failed to kill Pindle, continuing",
+			slog.Any("error", err))
+	}
+
+	// --- Halls of Anguish ---
+	if err := action.MoveToArea(area.HallsOfAnguish); err != nil {
+		return err
+	}
+	if err := action.ClearCurrentLevel(tzCfg.OpenChests, n.clearMonsterFilter); err != nil {
 		return err
 	}
 
-	err = action.MoveToArea(area.HallsOfPain)
-	if err != nil {
+	// --- Halls of Pain ---
+	if err := action.MoveToArea(area.HallsOfPain); err != nil {
+		return err
+	}
+	if err := action.ClearCurrentLevel(tzCfg.OpenChests, n.clearMonsterFilter); err != nil {
 		return err
 	}
 
-	err = action.DiscoverWaypoint()
-	if err != nil {
+	// --- Halls of Vaught (Nihlathak level) ---
+	if err := action.MoveToArea(area.HallsOfVaught); err != nil {
 		return err
 	}
+	if err := action.ClearCurrentLevel(tzCfg.OpenChests, n.clearMonsterFilter); err != nil {
+		return err
+	}
+
+	// ClearCurrentLevel will also kill Nihlathak as part of the level clear.
+	// If you want the special corner-position logic for Nihl here too, we can
+	// wire that in afterwards as an extra optimization.
 
 	return nil
+}
+
+func (n Nihlathak) killPindleFast() error {
+	// Reuse pindleSafePosition from pindleskin.go
+	_ = action.MoveToCoords(pindleSafePosition)
+
+	return n.ctx.Char.KillPindle()
 }

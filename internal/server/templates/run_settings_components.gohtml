@@ -236,17 +236,165 @@
         <label><input type="checkbox" name="gameTerrorZoneSkipOtherRuns" {{ if .Config.Game.TerrorZone.SkipOtherRuns }}checked{{ end }}> Skip all runs and only do TZ when available</label>
         <label><input type="checkbox" name="gameTerrorZoneOpenChests" {{ if .Config.Game.TerrorZone.OpenChests }}checked{{ end }}> Open chests</label>
         <label>Skip on immunities</label>
-        <fieldset class="grid">
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="cold" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "cold" }}checked{{ end }}> Cold</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "fire" }}checked{{ end }}> Fire</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "light" }}checked{{ end }}> Light</label>
-            <label><input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}> Poison</label>
-        </fieldset>
-        <label>Tracked areas <input type="checkbox" name="tzTrackAll" id="tzTrackAll"></label>
-        {{ range $id, $name := .AvailableTZs }}
-            <label><input type="checkbox" class="tzTrackCheckbox" name="gameTerrorZoneAreas[]" value="{{ $id }}" {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $id }}checked{{ end }}>{{ $name }}</label>
-        {{ end }}
+        <fieldset class="grid tz-skip-icons">
+            <label>
+                <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="cold" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "cold" }}checked{{ end }}>
+                <img class="tz-icon" src="/assets/immunities/c.png" width="16" height="16" alt="Cold"> Cold
+            </label>
+            <label>
+                <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="fire" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "fire" }}checked{{ end }}>
+                <img class="tz-icon" src="/assets/immunities/f.png" width="16" height="16" alt="Fire"> Fire
+            </label>
+            <label>
+                <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="light" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "light" }}checked{{ end }}>
+                <img class="tz-icon" src="/assets/immunities/l.png" width="16" height="16" alt="Light"> Light
+            </label>
+            <label>
+                <input type="checkbox" name="gameTerrorZoneSkipOnImmunities[]" value="poison" {{ if isInSlice .Config.Game.TerrorZone.SkipOnImmunities "poison" }}checked{{ end }}>
+                <img class="tz-icon" src="/assets/immunities/p.png" width="16" height="16" alt="Poison"> Poison
+            </label>
+        </fieldset> 
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem;">
+            <label style="margin:0;">
+                Tracked areas <input type="checkbox" name="tzTrackAll" id="tzTrackAll">
+            </label>
+            <select id="tz-sort-select"
+                onchange="updateTZSort()"
+                style="padding:2px; width:auto; min-width:160px;">
+                <option value="act">Sort by Act</option>
+                <option value="exp">Sort by Exp Tier</option>
+                <option value="loot">Sort by Loot Tier</option>
+            </select>
+        </div>
+        <div class="tz-card">
+            <div class="tz-card-header">
+                Terror Zone Selection
+            </div>
+            <table class="tz-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Immunities</th>
+                        <th>Boss Packs</th>
+                        <th class="tz-exp-header">Exp</th>
+                        <th class="tz-loot-header" style="display:none;">Loot</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{ $currentAct := -1 }}
+                    {{ range $i, $g := $topLevelContext.TerrorZoneGroups }}
+
+                        {{ if ne $g.Act $currentAct }}
+                            {{ if ne $currentAct -1 }}
+                                <tr class="tz-act-spacer"><td colspan="6"></td></tr>
+                            {{ end }}
+                            <tr class="tz-act-row">
+                                <td colspan="6">Act {{ $g.Act }}</td>
+                            </tr>
+                            {{ $currentAct = $g.Act }}
+                        {{ end }}
+                        <tr class="tz-row">
+                            <td class="tz-checkbox-cell">
+                                <input type="checkbox"
+                                    class="tz-child-checkbox"
+                                    name="gameTerrorZoneAreas[]"
+                                    value="{{ $g.PrimaryAreaID }}"
+                                    {{ if isTZSelected $topLevelContext.Config.Game.TerrorZone.Areas $g.PrimaryAreaID }}checked{{ end }}>
+                            </td>
+                            <td>{{ $g.Name }}</td>
+                            <td class="tz-immunities">
+                                {{ range $code := allImmunities }}
+                                    {{ if contains $g.Immunities $code }}
+                                        <img class="tz-icon" src="/assets/immunities/{{ $code }}.png" width="16" height="16" alt="">
+                                    {{ else }}
+                                        <img class="tz-icon tz-icon-disabled" src="/assets/immunities/{{ $code }}.png" width="16" height="16" alt="">
+                                    {{ end }}
+                                {{ end }}
+                            </td>
+                            <td class="tz-bosspacks">{{ $g.BossPacks }}</td>
+                            <!-- Exp tier column -->
+                            <td class="tz-tier tz-exp-header" style="color:
+                                {{ if eq $g.ExpTier "S" }}#fbbf24
+                                {{ else if eq $g.ExpTier "A" }}#22c55e
+                                {{ else if eq $g.ExpTier "B" }}#3b82f6
+                                {{ else if eq $g.ExpTier "C" }}#a855f7
+                                {{ else if eq $g.ExpTier "D" }}#60a5fa
+                                {{ else }}#ef4444{{ end }}">
+                                {{ if $g.ExpTier }}{{ $g.ExpTier }}{{ else }}F{{ end }}
+                            </td>
+                            <!-- Loot tier column (hidden unless Loot sort is selected) -->
+                            <td class="tz-tier tz-loot-header" style="display:none; color:
+                                {{ if eq $g.LootTier "S" }}#fbbf24
+                                {{ else if eq $g.LootTier "A" }}#22c55e
+                                {{ else if eq $g.LootTier "B" }}#3b82f6
+                                {{ else if eq $g.LootTier "C" }}#a855f7
+                                {{ else if eq $g.LootTier "D" }}#60a5fa
+                                {{ else }}#ef4444{{ end }}">
+                                {{ if $g.LootTier }}{{ $g.LootTier }}{{ else }}F{{ end }}
+                            </td>
+                        </tr>
+                    {{ end }}
+                </tbody>
+            </table>
+        </div>
     </fieldset>
+    <script>
+    let tzOriginalOrder = null;
+
+    function updateTZSort() {
+        const select = document.getElementById("tz-sort-select");
+        if (!select) return;
+        const value = select.value;
+        try {
+            localStorage.setItem("tzSort", value);
+        } catch (e) {}
+        const tbody = document.querySelector(".tz-table tbody");
+        if (!tbody) return;
+        if (!tzOriginalOrder) {
+            tzOriginalOrder = Array.from(tbody.children);
+        }
+        document.querySelectorAll(".tz-exp-header").forEach(el => {
+            el.style.display = (value === "exp" || value === "act") ? "" : "none";
+        });
+        document.querySelectorAll(".tz-loot-header").forEach(el => {
+            el.style.display = (value === "loot") ? "" : "none";
+        });
+        const actRows  = Array.from(tbody.querySelectorAll(".tz-act-row, .tz-act-spacer"));
+        const dataRows = Array.from(tbody.querySelectorAll(".tz-row"));
+        if (value === "act") {
+            // Put rows back in the exact original sequence
+            tzOriginalOrder.forEach(node => tbody.appendChild(node));
+            actRows.forEach(r => { r.style.display = ""; });
+            return;
+        }
+        actRows.forEach(r => { r.style.display = "none"; });
+        const tierIndex = (value === "exp") ? 4 : 5; // Exp col = 4, Loot col = 5
+        const getTierText = row => row.children[tierIndex].textContent.trim();
+        const rank = { S: 6, A: 5, B: 4, C: 3, D: 2, F: 1 };
+        dataRows.sort((a, b) => {
+            const ta = getTierText(a) || "F";
+            const tb = getTierText(b) || "F";
+            const ra = rank[ta] || 0;
+            const rb = rank[tb] || 0;
+            if (ra !== rb) return rb - ra; // higher rank first
+            const na = a.children[1].textContent.trim();
+            const nb = b.children[1].textContent.trim();
+            return na.localeCompare(nb);
+        });
+        dataRows.forEach(r => tbody.appendChild(r));
+    }
+    window.addEventListener("DOMContentLoaded", () => {
+        const select = document.getElementById("tz-sort-select");
+        if (!select) return;
+        let saved = "act";
+        try {
+            saved = localStorage.getItem("tzSort") || "act";
+        } catch (e) {}
+        select.value = saved;
+        updateTZSort();
+    });
+    </script>
 {{ end }}
 
 {{ define "utility" }}
@@ -314,3 +462,4 @@
     </div>
   </fieldset>
 {{ end }}
+
