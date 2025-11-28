@@ -81,9 +81,7 @@ func (f Foh) KillMonsterSequence(monsterSelector func(d game.Data) (data.UnitID,
 
 	// Ensure we always return to FoH when done
 	defer func() {
-		if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FistOfTheHeavens); found {
-			ctx.HID.PressKeyBinding(kb)
-		}
+		step.SelectLeftSkill(skill.FistOfTheHeavens)
 	}()
 
 	fohOpts := []step.AttackOption{
@@ -164,68 +162,58 @@ func (f Foh) KillMonsterSequence(monsterSelector func(d game.Data) (data.UnitID,
 
 		// Ensure Conviction is active
 		if !f.Data.PlayerUnit.States.HasState(state.Conviction) {
-			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Conviction); found {
-				ctx.HID.PressKeyBinding(kb)
-			}
+			step.SelectRightSkill(skill.Conviction)
 		}
 
 		// Cast appropriate skill
 		if useHolyBolt {
-			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.HolyBolt); found {
-				ctx.HID.PressKeyBinding(kb)
-				if err := step.PrimaryAttack(currentTargetID, 1, true, hbOpts...); err == nil {
-					if !f.waitForCastComplete() {
-						continue
-					}
-					f.lastCastTime = time.Now()
-					completedAttackLoops++
+			// Select Holy Bolt skill (uses packets if enabled, otherwise HID)
+			step.SelectLeftSkill(skill.HolyBolt)
+			if err := step.PrimaryAttack(currentTargetID, 1, true, hbOpts...); err == nil {
+				if !f.waitForCastComplete() {
+					continue
 				}
+				f.lastCastTime = time.Now()
+				completedAttackLoops++
 			}
 		} else {
-			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FistOfTheHeavens); found {
-				ctx.HID.PressKeyBinding(kb)
-				if err := step.PrimaryAttack(currentTargetID, 1, true, fohOpts...); err == nil {
-					if !f.waitForCastComplete() {
-						continue
-					}
-					f.lastCastTime = time.Now()
-					completedAttackLoops++
+			// Select Fist of the Heavens skill (uses packets if enabled, otherwise HID)
+			step.SelectLeftSkill(skill.FistOfTheHeavens)
+			if err := step.PrimaryAttack(currentTargetID, 1, true, fohOpts...); err == nil {
+				if !f.waitForCastComplete() {
+					continue
 				}
+				f.lastCastTime = time.Now()
+				completedAttackLoops++
 			}
 		}
 	}
 }
 func (f Foh) handleBoss(bossID data.UnitID, fohOpts, hbOpts []step.AttackOption, completedAttackLoops *int) error {
-	ctx := context.Get()
+	// Cast FoH - use packet skill selection if enabled
+	step.SelectLeftSkill(skill.FistOfTheHeavens)
 
-	// Cast FoH
-	if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FistOfTheHeavens); found {
-		ctx.HID.PressKeyBinding(kb)
+	if err := step.PrimaryAttack(bossID, 1, true, fohOpts...); err == nil {
+		// Wait for FoH cast to complete
+		if !f.waitForCastComplete() {
+			return fmt.Errorf("foh cast timed out")
+		}
+		f.lastCastTime = time.Now()
 
-		if err := step.PrimaryAttack(bossID, 1, true, fohOpts...); err == nil {
-			// Wait for FoH cast to complete
-			if !f.waitForCastComplete() {
-				return fmt.Errorf("foh cast timed out")
-			}
-			f.lastCastTime = time.Now()
+		// Switch to Holy Bolt - use packet skill selection if enabled
+		step.SelectLeftSkill(skill.HolyBolt)
 
-			// Switch to Holy Bolt
-			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.HolyBolt); found {
-				ctx.HID.PressKeyBinding(kb)
-
-				// Cast 3 Holy Bolts
-				for i := 0; i < 3; i++ {
-					if err := step.PrimaryAttack(bossID, 1, true, hbOpts...); err == nil {
-						if !f.waitForCastComplete() {
-							return fmt.Errorf("holy Bolt cast timed out")
-						}
-						f.lastCastTime = time.Now()
-					}
+		// Cast 3 Holy Bolts
+		for i := 0; i < 3; i++ {
+			if err := step.PrimaryAttack(bossID, 1, true, hbOpts...); err == nil {
+				if !f.waitForCastComplete() {
+					return fmt.Errorf("holy Bolt cast timed out")
 				}
-
-				(*completedAttackLoops)++
+				f.lastCastTime = time.Now()
 			}
 		}
+
+		(*completedAttackLoops)++
 	}
 	return nil
 }
@@ -236,9 +224,7 @@ func (f Foh) KillBossSequence(monsterSelector func(d game.Data) (data.UnitID, bo
 
 	// Ensure we always return to FoH when done
 	defer func() {
-		if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FistOfTheHeavens); found {
-			ctx.HID.PressKeyBinding(kb)
-		}
+		step.SelectLeftSkill(skill.FistOfTheHeavens)
 	}()
 
 	fohOpts := []step.AttackOption{
@@ -271,9 +257,7 @@ func (f Foh) KillBossSequence(monsterSelector func(d game.Data) (data.UnitID, bo
 			return nil
 		}
 		if !f.Data.PlayerUnit.States.HasState(state.Conviction) {
-			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Conviction); found {
-				ctx.HID.PressKeyBinding(kb)
-			}
+			step.SelectRightSkill(skill.Conviction)
 		}
 
 		if err := f.handleBoss(monster.UnitID, fohOpts, hbOpts, &completedAttackLoops); err == nil {

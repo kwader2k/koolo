@@ -1,6 +1,7 @@
 package pather
 
 import (
+	"log/slog"
 	"math"
 	"math/rand"
 	"time"
@@ -8,6 +9,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
+	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
@@ -118,14 +120,34 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 		pos := p[i]
 		screenX, screenY := pf.gameCoordsToScreenCords(fromX, fromY, pos.X, pos.Y)
 
-		// Prevent mouse overlap the HUD
 		if screenY > hudBoundary {
 			continue
 		}
 
-		// Check if coordinates are within screen bounds
 		if screenX >= 0 && screenY >= 0 && screenX <= pf.gr.GameAreaSizeX && screenY <= pf.gr.GameAreaSizeY {
-			pf.MoveCharacter(screenX, screenY)
+			worldPos := data.Position{
+				X: pos.X + pf.data.AreaOrigin.X,
+				Y: pos.Y + pf.data.AreaOrigin.Y,
+			}
+
+			usePacket := pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil
+
+			if usePacket {
+				nearBoundary := pf.isNearAreaBoundary(worldPos, 40)
+				if nearBoundary {
+					slog.Debug("Near area boundary detected, using mouse click instead of packet",
+						slog.Int("x", worldPos.X),
+						slog.Int("y", worldPos.Y),
+					)
+					usePacket = false
+				}
+			}
+
+			if usePacket {
+				pf.MoveCharacter(screenX, screenY, worldPos)
+			} else {
+				pf.MoveCharacter(screenX, screenY)
+			}
 			return
 		}
 	}
@@ -153,9 +175,51 @@ func (pf *PathFinder) GetLastPathIndexOnScreen(p Path) int {
 	return 0
 }
 
-func (pf *PathFinder) MoveCharacter(x, y int) {
+func (pf *PathFinder) isNearAreaBoundary(pos data.Position, threshold int) bool {
+	if pf.data.AreaData.Grid == nil {
+		return false
+	}
+
+	distToLeft := pos.X - pf.data.AreaData.OffsetX
+	distToRight := (pf.data.AreaData.OffsetX + pf.data.AreaData.Width) - pos.X
+	distToTop := pos.Y - pf.data.AreaData.OffsetY
+	distToBottom := (pf.data.AreaData.OffsetY + pf.data.AreaData.Height) - pos.Y
+
+	minDistance := distToLeft
+	if distToRight < minDistance {
+		minDistance = distToRight
+	}
+	if distToTop < minDistance {
+		minDistance = distToTop
+	}
+	if distToBottom < minDistance {
+		minDistance = distToBottom
+	}
+
+	return minDistance <= threshold
+}
+
+func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 	if pf.data.CanTeleport() {
-		pf.hid.Click(game.RightButton, x, y)
+		if pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil && len(gamePos) > 0 {
+			// Ensure Teleport skill is selected on right-click if using packet skill selection
+			if pf.cfg.PacketCasting.UseForSkillSelection && pf.packetSender != nil {
+				if pf.data.PlayerUnit.RightSkill != skill.Teleport {
+					if err := pf.packetSender.SelectRightSkill(skill.Teleport); err == nil {
+						utils.Sleep(50)
+					}
+				}
+			}
+
+			err := pf.packetSender.Teleport(gamePos[0])
+			if err != nil {
+				pf.hid.Click(game.RightButton, x, y)
+			} else {
+				utils.Sleep(int(pf.data.PlayerCastDuration().Milliseconds()))
+			}
+		} else {
+			pf.hid.Click(game.RightButton, x, y)
+		}
 	} else {
 		pf.hid.MovePointer(x, y)
 		pf.hid.PressKeyBinding(pf.data.KeyBindings.ForceMove)

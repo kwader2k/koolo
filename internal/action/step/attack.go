@@ -13,6 +13,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/utils"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/packet"
 )
 
 const attackCycleDuration = 120 * time.Millisecond
@@ -211,7 +212,7 @@ func attack(settings attackSettings) error {
 			continue
 		}
 
-		performAttack(ctx, settings, monster.Position.X, monster.Position.Y)
+		performAttack(ctx, settings, monster.UnitID, monster.Position.X, monster.Position.Y)
 
 		lastRunAt = time.Now()
 		numOfAttacksRemaining--
@@ -286,19 +287,87 @@ func burstAttack(settings attackSettings) error {
 			continue // Continue loop to re-evaluate conditions after a potential move
 		}
 
-		performAttack(ctx, settings, target.Position.X, target.Position.Y)
+		performAttack(ctx, settings, target.UnitID, target.Position.X, target.Position.Y)
 	}
 }
 
-func performAttack(ctx *context.Status, settings attackSettings, x, y int) {
+func performAttack(ctx *context.Status, settings attackSettings, targetID data.UnitID, x, y int) {
 	monsterPos := data.Position{X: x, Y: y}
 	if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, monsterPos) && !ctx.ForceAttack {
 		return // Skip attack if no line of sight
 	}
 
+	// Check if we should use packet casting for Blizzard (location-based)
+	useBlizzardPacket := false
+	if settings.skill == skill.Blizzard {
+		switch ctx.CharacterCfg.Character.Class {
+		case "sorceress":
+			useBlizzardPacket = ctx.CharacterCfg.Character.BlizzardSorceress.UseBlizzardPackets
+		case "sorceress_leveling":
+			useBlizzardPacket = ctx.CharacterCfg.Character.SorceressLeveling.UseBlizzardPackets
+		}
+	}
+
+	// If using packet casting for Blizzard (location-based skill)
+	if useBlizzardPacket {
+		// Ensure we have Blizzard selected on right-click
+		if ctx.Data.PlayerUnit.RightSkill != skill.Blizzard {
+			SelectRightSkill(skill.Blizzard)
+			time.Sleep(time.Millisecond * 10)
+		}
+
+		// Send packet to cast Blizzard at location
+		if err := ctx.PacketSender.CastSkillAtLocation(monsterPos); err != nil {
+			ctx.Logger.Warn("Failed to cast Blizzard via packet, falling back to mouse", "error", err)
+			// Fall back to regular mouse casting
+			performMouseAttack(ctx, settings, x, y)
+		}
+		return
+	}
+
+	// Check if we should use entity-targeted packet casting
+	if ctx.CharacterCfg.PacketCasting.UseForEntitySkills && ctx.PacketSender != nil && targetID != 0 {
+		// Ensure we have the skill selected
+		if settings.primaryAttack {
+			if settings.skill != 0 && ctx.Data.PlayerUnit.LeftSkill != settings.skill {
+				SelectLeftSkill(settings.skill)
+				time.Sleep(time.Millisecond * 10)
+			}
+			// Send left-click entity skill packet
+			castPacket := packet.NewCastSkillEntityLeft(targetID)
+			if err := ctx.PacketSender.SendPacket(castPacket.GetPayload()); err != nil {
+				ctx.Logger.Warn("Failed to cast entity skill via packet (left), falling back to mouse", "error", err)
+				performMouseAttack(ctx, settings, x, y)
+			} else {
+				// Respect cast duration to avoid spamming server
+				time.Sleep(ctx.Data.PlayerCastDuration())
+			}
+		} else {
+			if settings.skill != 0 && ctx.Data.PlayerUnit.RightSkill != settings.skill {
+				SelectRightSkill(settings.skill)
+				time.Sleep(time.Millisecond * 10)
+			}
+			// Send right-click entity skill packet
+			castPacket := packet.NewCastSkillEntityRight(targetID)
+			if err := ctx.PacketSender.SendPacket(castPacket.GetPayload()); err != nil {
+				ctx.Logger.Warn("Failed to cast entity skill via packet (right), falling back to mouse", "error", err)
+				performMouseAttack(ctx, settings, x, y)
+			} else {
+				// Respect cast duration to avoid spamming server
+				time.Sleep(ctx.Data.PlayerCastDuration())
+			}
+		}
+		return
+	}
+
+	// Regular mouse-based attack
+	performMouseAttack(ctx, settings, x, y)
+}
+
+func performMouseAttack(ctx *context.Status, settings attackSettings, x, y int) {
 	// Ensure we have the skill selected
 	if settings.skill != 0 && ctx.Data.PlayerUnit.RightSkill != settings.skill {
-		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(settings.skill))
+		SelectRightSkill(settings.skill)
 		time.Sleep(time.Millisecond * 10)
 	}
 

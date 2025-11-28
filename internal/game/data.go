@@ -106,11 +106,12 @@ func (d Data) CanTeleport() bool {
 		return false
 	}
 
-	// Check if the Teleport skill is bound to a key
+	// Check if the Teleport skill is bound to a key OR if packet skill selection is enabled
 	_, isTpBound := d.KeyBindings.KeyBindingForSkill(skill.Teleport)
+	canUsePacketSkillSelection := d.CharacterCfg.PacketCasting.UseForSkillSelection
 
-	// Ensure Teleport is bound and the current area is not a town
-	return isTpBound && !d.PlayerUnit.Area.IsTown()
+	// Ensure Teleport is bound (or packet skill selection is enabled) and the current area is not a town
+	return (isTpBound || canUsePacketSkillSelection) && !d.PlayerUnit.Area.IsTown()
 }
 
 func (d Data) PlayerCastDuration() time.Duration {

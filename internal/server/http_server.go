@@ -1255,14 +1255,70 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Blizzard Sorc specific options
 		if cfg.Character.Class == "sorceress" {
-			cfg.Character.BlizzardSorceress.UseMoatTrick = r.Form.Has("useMoatTrick")
-			cfg.Character.BlizzardSorceress.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
+			cfg.Character.BlizzardSorceress.UseMoatTrick = r.Form.Has("blizzardUseMoatTrick")
+			cfg.Character.BlizzardSorceress.UseStaticOnMephisto = r.Form.Has("blizzardUseStaticOnMephisto")
+			cfg.Character.BlizzardSorceress.UseTelekinesis = r.Form.Has("blizzardUseTelekinesis")
+			cfg.Character.BlizzardSorceress.UseTelekinesisPackets = r.Form.Has("blizzardUseTelekinesisPackets")
+			cfg.Character.BlizzardSorceress.UseBlizzardPackets = r.Form.Has("blizzardUseBlizzardPackets")
 		}
 
 		// Sorceress Leveling specific options
 		if cfg.Character.Class == "sorceress_leveling" {
-			cfg.Character.SorceressLeveling.UseMoatTrick = r.Form.Has("useMoatTrick")
-			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("useStaticOnMephisto")
+			cfg.Character.SorceressLeveling.UseMoatTrick = r.Form.Has("levelingUseMoatTrick")
+			cfg.Character.SorceressLeveling.UseStaticOnMephisto = r.Form.Has("levelingUseStaticOnMephisto")
+			cfg.Character.SorceressLeveling.UseTelekinesis = r.Form.Has("levelingUseTelekinesis")
+			cfg.Character.SorceressLeveling.UseTelekinesisPackets = r.Form.Has("levelingUseTelekinesisPackets")
+			cfg.Character.SorceressLeveling.UseBlizzardPackets = r.Form.Has("levelingUseBlizzardPackets")
+			cfg.Character.SorceressLeveling.UsePacketLearning = r.Form.Has("levelingUsePacketLearning")
+		}
+
+		// Assassin Leveling specific options
+		if cfg.Character.Class == "assassin" {
+			cfg.Character.AssassinLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
+		}
+
+		// Amazon Leveling specific options
+		if cfg.Character.Class == "amazon_leveling" {
+			cfg.Character.AmazonLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
+		}
+
+		// Druid Leveling specific options
+		if cfg.Character.Class == "druid_leveling" {
+			cfg.Character.DruidLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
+		}
+
+		// Necromancer Leveling specific options
+		if cfg.Character.Class == "necromancer" {
+			cfg.Character.NecromancerLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
+		}
+
+		// Paladin Leveling specific options
+		if cfg.Character.Class == "paladin" {
+			cfg.Character.PaladinLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
+		}
+
+		// Nova Sorceress specific options
+		if cfg.Character.Class == "nova" {
+			cfg.Character.NovaSorceress.UseTelekinesis = r.Form.Has("useTelekinesis")
+			cfg.Character.NovaSorceress.UseTelekinesisPackets = r.Form.Has("useTelekinesisPackets")
+		}
+
+		// Lightning Sorceress specific options
+		if cfg.Character.Class == "lightsorc" {
+			cfg.Character.LightningSorceress.UseTelekinesis = r.Form.Has("useTelekinesis")
+			cfg.Character.LightningSorceress.UseTelekinesisPackets = r.Form.Has("useTelekinesisPackets")
+		}
+
+		// Hydra Orb Sorceress specific options
+		if cfg.Character.Class == "hydraorb" {
+			cfg.Character.HydraOrbSorceress.UseTelekinesis = r.Form.Has("useTelekinesis")
+			cfg.Character.HydraOrbSorceress.UseTelekinesisPackets = r.Form.Has("useTelekinesisPackets")
+		}
+
+		// Fireball Sorceress specific options
+		if cfg.Character.Class == "fireballsorc" {
+			cfg.Character.FireballSorceress.UseTelekinesis = r.Form.Has("useTelekinesis")
+			cfg.Character.FireballSorceress.UseTelekinesisPackets = r.Form.Has("useTelekinesisPackets")
 		}
 
 		for y, row := range cfg.Inventory.InventoryLock {
@@ -1276,6 +1332,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		copy(cfg.Inventory.BeltColumns[:], r.Form["inventoryBeltColumns[]"])
+
 
 		cfg.Inventory.HealingPotionCount, _ = strconv.Atoi(r.Form.Get("healingPotionCount"))
 		cfg.Inventory.ManaPotionCount, _ = strconv.Atoi(r.Form.Get("manaPotionCount"))
@@ -1295,6 +1352,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.PacketCasting.UseForEntranceInteraction = r.Form.Has("packetCastingUseForEntranceInteraction")
 		cfg.PacketCasting.UseForItemPickup = r.Form.Has("packetCastingUseForItemPickup")
 		cfg.PacketCasting.UseForTpInteraction = r.Form.Has("packetCastingUseForTpInteraction")
+		cfg.PacketCasting.UseForTeleport = r.Form.Has("packetCastingUseForTeleport")
+		cfg.PacketCasting.UseForEntitySkills = r.Form.Has("packetCastingUseForEntitySkills")
+		cfg.PacketCasting.UseForSkillSelection = r.Form.Has("packetCastingUseForSkillSelection")
 		cfg.Game.Difficulty = difficulty.Difficulty(r.Form.Get("gameDifficulty"))
 		cfg.Game.RandomizeRuns = r.Form.Has("gameRandomizeRuns")
 
