@@ -436,6 +436,9 @@ func (ls LevelingSequence) AdjustDifficulty() (bool, error) {
 	//Check if we reached the level for current difficulty setting
 	difficulties := []difficulty.Difficulty{difficulty.Normal, difficulty.Nightmare}
 	for _, difficulty := range difficulties {
+		if ls.ctx.CharacterCfg.Game.Difficulty == difficulty {
+			break
+		}
 		diffSettings := ls.GetDifficultySettings(difficulty)
 		nextDiff := ls.GetNextDifficulty(difficulty)
 		//We don't meet level requirements, revert to this difficulty
