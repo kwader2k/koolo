@@ -79,7 +79,16 @@ func (b Bloodraven) Run(parameters *RunParameters) error {
 	}
 
 	if IsQuestRun(parameters) {
-		action.ReturnTown()
+		if err := action.ReturnTown(); err != nil {
+			err = action.MoveToArea(area.ColdPlains)
+			if err != nil {
+				return err
+			}
+			err = action.FieldWayPoint(area.RogueEncampment)
+			if err != nil {
+				return err
+			}
+		}
 		utils.Sleep(500)
 		action.InteractNPC(npc.Kashya)
 	}
