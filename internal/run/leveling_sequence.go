@@ -531,6 +531,10 @@ func (ls LevelingSequence) CheckDifficultyConditions(conditions *DifficultyCondi
 		return true
 	}
 
+	if !ls.ctx.Data.Quests[quest.Act5EveOfDestruction].Completed() {
+		return false
+	}
+
 	//Level check
 	if conditions.Level != nil {
 		if lvl, found := ls.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
