@@ -32,7 +32,7 @@
                 <span>Supervisor name</span>
                 <input name="name" placeholder="SuperSorc" value="{{ .Supervisor }}" required/>
             </label>
-            <fieldset class="grid">
+            <fieldset class="grid" style="margin-bottom: 0px;">
                 <label>
                     Class
                     <select name="characterClass">
@@ -64,13 +64,17 @@
                 </label>
                 <label>
                     Character name
-                    <input name="characterName" placeholder="{{ .Config.CharacterName }}" value="{{ .Config.CharacterName }}"/>
+                    <input name="characterName" placeholder="{{ .Config.CharacterName }}" value="{{ .Config.CharacterName }}" minlength="2" maxlength="16" oninput="if(this.value.length > 15) this.value = this.value.slice(0, 15);"/>
                 </label>
                 <label>
                     <input type="checkbox" name="isNonLadderChar" {{ if .Config.Game.IsNonLadderChar }}checked{{ end }}/>
                     Non-Ladder
                 </label>
             </fieldset>
+                <div style="margin-top: 0px; margin-bottom: 15px; display: {{ if ne .Supervisor "" }}none{{ else }}block{{ end }};">
+                     If no matching character exists, it will be created automatically using the selected class and ladder type.
+                     <br><small style="color: #ff9800;">⚠️ To use auto-creation: select a leveling class and select only leveling runs.</small>
+                </div>
             <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">
                 <h5>Class-Specific Settings</h5>
                 <div id="class-specific-settings">

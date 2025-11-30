@@ -169,11 +169,19 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			time.Sleep(250 * time.Millisecond)
 		}
 
-		s.bot.ctx.Logger.Info(fmt.Sprintf("Character %s not found after 25 attempts, terminating client ...", s.bot.ctx.CharacterCfg.CharacterName))
+		s.bot.ctx.Logger.Info(
+			fmt.Sprintf("Character %s not found after 25 attempts, attempting auto-create...", s.bot.ctx.CharacterCfg.CharacterName),
+			slog.String("class", s.bot.ctx.CharacterCfg.Character.Class),
+		)
 
-		if err := s.KillClient(); err != nil {
+		if err := AutoCreateCharacter(s.bot.ctx.CharacterCfg.Character.Class, s.bot.ctx.CharacterCfg.CharacterName); err != nil {
+			s.bot.ctx.Logger.Error("Auto-create failed, terminating client", slog.String("error", err.Error()))
+			if killErr := s.KillClient(); killErr != nil {
+				return killErr
+			}
 			return err
 		}
+		return nil
 	}
 
 	return nil
