@@ -454,10 +454,15 @@ func (s *WarcryBarb) FindItemOnNearbyCorpses(maxRange int) {
 	corpses := s.getHorkableCorpses(s.Data.Corpses, maxRange)
 
 	if len(corpses) > 0 {
-		s.SwapToSlot(1)
+		swapped := false
 		for _, corpse := range corpses {
 			if s.horkedCorpses[corpse.UnitID] {
 				continue
+			}
+
+			if !swapped {
+				s.SwapToSlot(1)
+				swapped = true
 			}
 
 			if s.Data.PlayerUnit.RightSkill != skill.FindItem {
@@ -473,7 +478,9 @@ func (s *WarcryBarb) FindItemOnNearbyCorpses(maxRange int) {
 			time.Sleep(time.Millisecond * 200)
 		}
 
-		s.SwapToSlot(0)
+		if swapped {
+			s.SwapToSlot(0)
+		}
 	}
 }
 
@@ -530,13 +537,18 @@ func (s *WarcryBarb) isHorkable(corpse data.Monster) bool {
 		}
 	}
 
-	if !s.CharacterCfg.Character.WarcryBarb.HorkNormalMonsters {
-		return corpse.Type == data.MonsterTypeChampion ||
-			corpse.Type == data.MonsterTypeUnique ||
-			corpse.Type == data.MonsterTypeSuperUnique
+	if corpse.Type == data.MonsterTypeMinion ||
+		corpse.Type == data.MonsterTypeChampion ||
+		corpse.Type == data.MonsterTypeUnique ||
+		corpse.Type == data.MonsterTypeSuperUnique {
+		return true
 	}
 
-	return true
+	if s.CharacterCfg.Character.WarcryBarb.HorkNormalMonsters {
+		return true
+	}
+
+	return false
 }
 
 func (s *WarcryBarb) SwapToSlot(slot int) {
