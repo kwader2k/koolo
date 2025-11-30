@@ -119,6 +119,16 @@
                             </label>
                         </div>
                     </fieldset>
+                    <fieldset style="margin-top: 15px;">
+                        <label>
+                            <input type="checkbox" name="berserkerBarbHorkNormalMonsters" {{ if .Config.Character.BerserkerBarb.HorkNormalMonsters }}checked{{ end }}/>
+                            Hork Normal Monsters Too
+                        </label>
+                        <label>
+                            Monster Check Range (yards)
+                            <input type="number" name="berserkerBarbHorkMonsterCheckRange" min="1" max="20" step="1" value="{{ if .Config.Character.BerserkerBarb.HorkMonsterCheckRange }}{{ .Config.Character.BerserkerBarb.HorkMonsterCheckRange }}{{ else }}7{{ end }}">
+                        </label>
+                    </fieldset>
                 </div>
                 <div class="barb-leveling-options" style="display: none;">
                     <fieldset>
@@ -200,7 +210,7 @@
                     <fieldset style="margin-top: 15px;">
                         <label>
                             <input type="checkbox" name="warcryBarbHorkNormalMonsters" {{ if .Config.Character.WarcryBarb.HorkNormalMonsters }}checked{{ end }}/>
-                            Hork Normal Monsters Too (unchecked: excludes normal and minions)
+                            Hork Normal Monsters Too
                         </label>
                         <label>
                             Monster Check Range (yards)

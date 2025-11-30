@@ -21,6 +21,7 @@ import (
 type Berserker struct {
 	BaseCharacter
 	isKillingCouncil atomic.Bool
+	horkedCorpses    map[data.UnitID]bool
 }
 
 const (
@@ -73,12 +74,17 @@ func (s *Berserker) KillMonsterSequence(
 	var lastHowlCast time.Time
 	var lastBattleCryCast time.Time
 
+	if s.horkedCorpses == nil {
+		s.horkedCorpses = make(map[data.UnitID]bool)
+	}
+
 	for attackAttempts := 0; attackAttempts < maxAttackAttempts; attackAttempts++ {
 		context.Get().PauseIfNotPriority()
 
 		id, found := monsterSelector(*s.Data)
 		if !found {
-			if !s.isKillingCouncil.Load() && monsterDetected {
+			monstersNearby := s.countInRange(s.horkRange())
+			if monstersNearby == 0 && !s.isKillingCouncil.Load() && monsterDetected {
 				s.FindItemOnNearbyCorpses(maxHorkRange)
 			}
 			return nil
@@ -120,6 +126,13 @@ func (s *Berserker) KillMonsterSequence(
 
 		s.PerformBerserkAttack(monster.UnitID)
 		time.Sleep(50 * time.Millisecond)
+
+		if !s.isKillingCouncil.Load() {
+			monstersNearby := s.countInRange(s.horkRange())
+			if monstersNearby <= 3 {
+				s.FindItemOnNearbyCorpses(maxHorkRange)
+			}
+		}
 	}
 
 	s.FindItemOnNearbyCorpses(maxHorkRange)
@@ -277,20 +290,21 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 
 	findItemKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.FindItem)
 	if !found {
-		s.Logger.Debug("Find Item skill not found in key bindings")
 		return
 	}
 
-	corpses := s.getSortedHorkableCorpses(s.Data.Corpses, maxRange)
+	corpses := s.getHorkableCorpses(s.Data.Corpses, maxRange)
 
 	if len(corpses) > 0 {
-		s.Logger.Debug("Horkable corpses found", slog.Int("count", len(corpses)))
-		s.SwapToSlot(1)
+		swapped := false
 		for _, corpse := range corpses {
-			err := step.MoveTo(corpse.Position, step.WithIgnoreMonsters())
-			if err != nil {
-				s.Logger.Warn("Failed to move to corpse", slog.String("error", err.Error()))
+			if s.horkedCorpses[corpse.UnitID] {
 				continue
+			}
+
+			if !swapped {
+				s.SwapToSlot(1)
+				swapped = true
 			}
 
 			if s.Data.PlayerUnit.RightSkill != skill.FindItem {
@@ -301,30 +315,51 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 			clickPos := s.getOptimalClickPosition(corpse)
 			screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(clickPos.X, clickPos.Y)
 			ctx.HID.Click(game.RightButton, screenX, screenY)
-			s.Logger.Debug("Find Item used on corpse", slog.Any("corpse_id", corpse.UnitID))
 
-			time.Sleep(time.Millisecond * 300)
+			s.horkedCorpses[corpse.UnitID] = true
+			time.Sleep(time.Millisecond * 200)
 		}
 
-		s.SwapToSlot(0)
+		if swapped {
+			s.SwapToSlot(0)
+		}
 	}
 }
 
-func (s *Berserker) getSortedHorkableCorpses(corpses data.Monsters, maxRange int) []data.Monster {
-	var horkableCorpses []data.Monster
-	for _, corpse := range corpses {
-		if s.isCorpseHorkable(corpse) && s.PathFinder.DistanceFromMe(corpse.Position) <= maxRange {
-			horkableCorpses = append(horkableCorpses, corpse)
+func (s *Berserker) getHorkableCorpses(corpses data.Monsters, maxRange int) []data.Monster {
+	type corpseWithDistance struct {
+		corpse   data.Monster
+		distance int
+	}
+	var horkableCorpses []corpseWithDistance
+	maxCorpsesToCheck := 30
+	corpsesToCheck := corpses
+	if len(corpsesToCheck) > maxCorpsesToCheck {
+		corpsesToCheck = corpsesToCheck[:maxCorpsesToCheck]
+	}
+
+	for _, corpse := range corpsesToCheck {
+		if !s.isCorpseHorkable(corpse) {
+			continue
+		}
+		distance := s.PathFinder.DistanceFromMe(corpse.Position)
+		if distance <= maxRange {
+			horkableCorpses = append(horkableCorpses, corpseWithDistance{corpse: corpse, distance: distance})
 		}
 	}
 
-	sort.Slice(horkableCorpses, func(i, j int) bool {
-		distI := s.PathFinder.DistanceFromMe(horkableCorpses[i].Position)
-		distJ := s.PathFinder.DistanceFromMe(horkableCorpses[j].Position)
-		return distI < distJ
-	})
+	if len(horkableCorpses) > 1 {
+		sort.Slice(horkableCorpses, func(i, j int) bool {
+			return horkableCorpses[i].distance < horkableCorpses[j].distance
+		})
+	}
 
-	return horkableCorpses
+	result := make([]data.Monster, len(horkableCorpses))
+	for i, cwd := range horkableCorpses {
+		result[i] = cwd.corpse
+	}
+
+	return result
 }
 
 func (s *Berserker) isCorpseHorkable(corpse data.Monster) bool {
@@ -344,14 +379,44 @@ func (s *Berserker) isCorpseHorkable(corpse data.Monster) bool {
 		}
 	}
 
-	return corpse.Type == data.MonsterTypeChampion ||
-		corpse.Type == data.MonsterTypeMinion ||
+	if corpse.Type == data.MonsterTypeMinion ||
+		corpse.Type == data.MonsterTypeChampion ||
 		corpse.Type == data.MonsterTypeUnique ||
-		corpse.Type == data.MonsterTypeSuperUnique
+		corpse.Type == data.MonsterTypeSuperUnique {
+		return true
+	}
+
+	if s.CharacterCfg.Character.BerserkerBarb.HorkNormalMonsters {
+		return true
+	}
+
+	return false
 }
 
 func (s *Berserker) getOptimalClickPosition(corpse data.Monster) data.Position {
 	return data.Position{X: corpse.Position.X, Y: corpse.Position.Y + 1}
+}
+
+func (s *Berserker) countInRange(rangeYards int) int {
+	count := 0
+	for _, m := range s.Data.Monsters.Enemies() {
+		if m.Stats[stat.Life] <= 0 {
+			continue
+		}
+		distance := s.PathFinder.DistanceFromMe(m.Position)
+		if distance <= rangeYards {
+			count++
+		}
+	}
+	return count
+}
+
+func (s *Berserker) horkRange() int {
+	r := s.CharacterCfg.Character.BerserkerBarb.HorkMonsterCheckRange
+	if r <= 0 {
+		return 7
+	}
+	return r
 }
 
 // slot 0 = primary weapon, slot 1 = secondary weapon

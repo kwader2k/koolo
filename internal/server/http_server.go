@@ -1244,6 +1244,13 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 					cfg.Character.BerserkerBarb.BattleCryMinMonsters = 4
 				}
 			}
+			cfg.Character.BerserkerBarb.HorkNormalMonsters = r.Form.Has("berserkerBarbHorkNormalMonsters")
+			horkRange, err := strconv.Atoi(r.Form.Get("berserkerBarbHorkMonsterCheckRange"))
+			if err == nil && horkRange > 0 {
+				cfg.Character.BerserkerBarb.HorkMonsterCheckRange = horkRange
+			} else {
+				cfg.Character.BerserkerBarb.HorkMonsterCheckRange = 7
+			}
 		}
 
 		// Barb Leveling specific options
