@@ -174,19 +174,27 @@ call :print_step "Compiling Obfuscated Koolo executable"
 (
     garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log
+set "GARBLE_EXIT_CODE=!errorlevel!"
 
-:: Capture and style seed information
-for /f "tokens=4" %%s in ('findstr /C:"-seed chosen at random:" garble.log') do (
-    call :print_step "Obfuscation seed: !BUILD_ID!"
+if !GARBLE_EXIT_CODE! neq 0 (
+    call :print_error "Garble build failed. These logs may be useful:"
+    for /f "usebackq delims=" %%l in (`type garble.log`) do (
+        call :print_error "%%l"
+    )
+) else (
+    :: Capture and style seed information
+    for /f "tokens=4" %%s in ('findstr /C:"-seed chosen at random:" garble.log') do (
+        call :print_step "Obfuscation seed: !BUILD_ID!"
+    )
 )
 del garble.log
+if exist "%STATIC_BUILD_DIR%" (
+    call :print_step "Cleaning up temporary build folder"
+    rmdir /s /q "%STATIC_BUILD_DIR%"
+)
 
 :: Check if the executable was actually created
 if exist "%OUTPUT_EXE%" (
-    if exist "%STATIC_BUILD_DIR%" (
-        call :print_step "Cleaning up temporary build folder"
-        rmdir /s /q "%STATIC_BUILD_DIR%"
-    )
     call :print_success "Successfully built obfuscated executable: %BUILD_ID%.exe"
 ) else (
     call :print_error "Failed to build Koolo binary - executable was not created"
