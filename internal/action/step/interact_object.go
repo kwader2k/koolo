@@ -58,12 +58,30 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 	if obj.IsRedPortal() {
 		// For red portals, we need to determine the expected destination
 		switch {
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.FrigidHighlands:
+			expectedArea = area.Abaddon
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.ArreatPlateau:
+			expectedArea = area.PitOfAcheron
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.FrozenTundra:
+			expectedArea = area.InfernalPit
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.Abaddon:
+			expectedArea = area.FrigidHighlands
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.PitOfAcheron:
+			expectedArea = area.ArreatPlateau
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.InfernalPit:
+			expectedArea = area.FrozenTundra
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.StonyField:
 			expectedArea = area.Tristram
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.Tristram:
+			expectedArea = area.StonyField
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.RogueEncampment:
 			expectedArea = area.MooMooFarm
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.MooMooFarm:
+			expectedArea = area.RogueEncampment
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.Harrogath:
 			expectedArea = area.NihlathaksTemple
+		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.NihlathaksTemple:
+			expectedArea = area.Harrogath
 		case obj.Name == object.PermanentTownPortal && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary:
 			expectedArea = area.CanyonOfTheMagi
 		case obj.Name == object.BaalsPortal && ctx.Data.PlayerUnit.Area == area.ThroneOfDestruction:
@@ -88,6 +106,7 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 
 	for !isCompletedFn() {
 		ctx.PauseIfNotPriority()
+		ctx.WaitForGameToLoad()
 
 		if interactionAttempts >= maxInteractionAttempts || mouseOverAttempts >= 20 {
 			return fmt.Errorf("[%s] failed interacting with object [%v] in Area: [%s]", ctx.Name, obj.Name, ctx.Data.PlayerUnit.Area.Area().Name)
@@ -181,14 +200,15 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 		} else {
 			objectX := o.Position.X - 2
 			objectY := o.Position.Y - 2
+
 			distance := ctx.PathFinder.DistanceFromMe(o.Position)
 			if distance > 15 {
-				return fmt.Errorf("object is too far away: %d. Current distance: %d", o.Name, distance)
+				return fmt.Errorf("object %v is too far away, current distance: %d", o.Name, distance)
 			}
 
 			mX, mY := ui.GameCoordsToScreenCords(objectX, objectY)
 			// In order to avoid the spiral (super slow and shitty) let's try to point the mouse to the top of the portal directly
-			if mouseOverAttempts == 2 && o.IsPortal() {
+			if mouseOverAttempts%2 == 0 && o.IsPortal() {
 				mX, mY = ui.GameCoordsToScreenCords(objectX-4, objectY-4)
 			}
 

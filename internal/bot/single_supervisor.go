@@ -132,6 +132,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 		return fmt.Errorf("error preparing game: %w", err)
 	}
 
+	if s.bot.ctx.CharacterCfg.EnableDebugOverlay {
+		s.startDebugOverlay(ctx)
+	}
+
 	// MANUAL MODE: Early exit - handle before normal game loop
 	if s.bot.ctx.ManualModeActive {
 		s.bot.ctx.Logger.Info("Manual mode: reaching character selection...")

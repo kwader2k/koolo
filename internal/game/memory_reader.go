@@ -67,11 +67,17 @@ func (gd *MemoryReader) FetchMapData() error {
 		return fmt.Errorf("error fetching map data: %w", err)
 	}
 
+	const maxConcurrent = 4
+	sem := make(chan struct{}, maxConcurrent)
 	areas := make(map[area.ID]AreaData)
 	var mu sync.Mutex
 	g := errgroup.Group{}
-	for _, lvl := range mapData {
+	for i := range mapData {
+		lvl := mapData[i]
 		g.Go(func() error {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
 			cg := lvl.CollisionGrid()
 			resultGrid := make([][]CollisionType, lvl.Size.Height)
 			for i := range resultGrid {
@@ -90,7 +96,7 @@ func (gd *MemoryReader) FetchMapData() error {
 
 			npcs, exits, objects, rooms := lvl.NPCsExitsAndObjects()
 			areaID := area.ID(lvl.ID)
-			grid := NewGrid(resultGrid, lvl.Offset.X, lvl.Offset.Y, false)
+			grid := NewGrid(resultGrid, lvl.Offset.X, lvl.Offset.Y, exits, areaID, objects)
 			if !areaID.IsTown() {
 				gd.TeleportPostProcess(&grid.CollisionGrid, lvl.Size.Width, lvl.Size.Height)
 			}
@@ -161,7 +167,7 @@ func (gd *MemoryReader) CheckAndAdjustForTeleport(grid *[][]CollisionType, xPos 
 func (gd *MemoryReader) CheckForWalkable(grid *[][]CollisionType, xStart int, yStart int, xEnd int, yEnd int) bool {
 	for x := xStart; x <= xEnd; x++ {
 		for y := yStart; y <= yEnd; y++ {
-			if (*grid)[y][x] == CollisionTypeWalkable {
+			if isWalkableType((*grid)[y][x]) {
 				return true
 			}
 		}
@@ -174,7 +180,7 @@ func (gd *MemoryReader) CheckForWalkableDiagonal(grid *[][]CollisionType, xStart
 	minY := min(yStart, yEnd)
 	maxY := max(yStart, yEnd)
 	for x := xStart; x <= xEnd && y >= minY && y <= maxY; {
-		if (*grid)[y][x] == CollisionTypeWalkable {
+		if isWalkableType((*grid)[y][x]) {
 			return true
 		}
 		x += 1

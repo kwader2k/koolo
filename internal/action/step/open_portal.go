@@ -7,6 +7,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/ui"
@@ -19,6 +20,14 @@ func OpenPortal() error {
 	ctx := context.Get()
 	ctx.SetLastStep("OpenPortal")
 	tpItem, tpItemFound := ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
+
+	if tpItemFound {
+		qty, found := tpItem.FindStat(stat.Quantity, 0)
+
+		if !(found && qty.Value > 0) {
+			tpItemFound = false
+		}
+	}
 
 	// Portal cooldown: Prevent rapid portal creation during lag
 	// Check last portal time to avoid spam during network delays

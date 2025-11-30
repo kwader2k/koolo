@@ -6,6 +6,7 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather"
@@ -17,6 +18,13 @@ const (
 	maxMoveRetries              = 3
 	mousePositionMatchThreshold = 10 // Handle map data vs memory position variance (same as packet method)
 )
+
+// This defines areas with tricky entrances that may require alternative interaction positions
+// For example, the A2 Sewers Level 3 entrance faces away from the direction the bot usually approaches from
+// so we try different sides of the entrance if interaction fails repeatedly.
+var alternativeEntranceAreas = map[area.ID]bool{
+	area.SewersLevel3Act2: true,
+}
 
 func InteractEntrance(targetArea area.ID) error {
 	ctx := context.Get()
@@ -56,11 +64,14 @@ func InteractEntranceMouse(targetArea area.ID) error {
 	waitingForInteraction := false
 	currentMouseCoords := data.Position{}
 	lastRun := time.Time{}
+	alternativeMoves := []data.Position{}
+	alternativeIndex := 0
 
 	// If we move the mouse to interact with an entrance, we will set this variable.
 	var lastEntranceLevel data.Level
 
 	ctx := context.Get()
+	attempts := 0
 
 	for {
 		ctx.PauseIfNotPriority()
@@ -79,16 +90,39 @@ func InteractEntranceMouse(targetArea area.ID) error {
 
 		lastRun = time.Now()
 
+		areaCombinations := func(a, b area.ID) bool {
+			return (a == targetArea && ctx.Data.PlayerUnit.Area == b) || (a == ctx.Data.PlayerUnit.Area && targetArea == b)
+		}
+
+		isOverride := areaCombinations(area.Abaddon, area.FrigidHighlands) || areaCombinations(area.PitOfAcheron, area.ArreatPlateau) || areaCombinations(area.FrozenTundra, area.InfernalPit)
+
 		// Find target level in adjacent levels
 		var targetLevel data.Level
-		for _, l := range ctx.Data.AdjacentLevels {
-			if l.Area == targetArea {
-				targetLevel = l
-				break
+		if isOverride {
+			// it's not mapped correctly, so we hardcode it here
+			ctx.RefreshGameData()
+			utils.Sleep(500)
+			portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+			if found {
+				targetLevel = data.Level{
+					Area:       targetArea,
+					Position:   portal.Position,
+					IsEntrance: true,
+				}
+			}
+		} else {
+			for _, l := range ctx.Data.AdjacentLevels {
+				if l.Area == targetArea {
+					targetLevel = l
+					break
+				}
 			}
 		}
 
 		if targetLevel.Area == 0 {
+			if attempts++; attempts > maxInteractionAttempts {
+				return fmt.Errorf("area %s [%d] not found in adjacent levels", targetArea.Area().Name, targetArea)
+			}
 			continue // Area not found in adjacent levels, try again
 		}
 
@@ -98,7 +132,13 @@ func InteractEntranceMouse(targetArea area.ID) error {
 		var found bool
 		minDistance := mousePositionMatchThreshold + 1
 
-		for _, l := range ctx.Data.AdjacentLevels {
+		entranceLevels := ctx.Data.AdjacentLevels
+
+		if isOverride {
+			entranceLevels = append(entranceLevels, targetLevel)
+		}
+
+		for _, l := range entranceLevels {
 			// It is possible to have multiple entrances to the same area (A2 sewers, A2 palace, etc)
 			// Once we "select" an area and start to move the mouse to hover with it, we don't want
 			// to change the area to the 2nd entrance in the same area on the next iteration.
@@ -125,6 +165,48 @@ func InteractEntranceMouse(targetArea area.ID) error {
 			ctx.Logger.Debug("Found entrance via fuzzy matching",
 				"positionOffset", minDistance,
 				"targetArea", targetArea.Area().Name)
+		}
+
+		// Prepare alternative approach positions to try different sides of the entrance if interaction keeps failing.
+		if len(alternativeMoves) == 0 && alternativeEntranceAreas[targetArea] {
+			sign := func(n int) int {
+				switch {
+				case n > 0:
+					return 1
+				case n < 0:
+					return -1
+				default:
+					return 0
+				}
+			}
+			dir := data.Position{
+				X: sign(l.Position.X - ctx.Data.PlayerUnit.Position.X),
+				Y: sign(l.Position.Y - ctx.Data.PlayerUnit.Position.Y),
+			}
+			if dir.X == 0 && dir.Y == 0 {
+				dir.Y = 1 // default up if we're exactly on the entrance
+			}
+			// Opposite side, then rotate around the entrance to sample different angles
+			alternativeMoves = []data.Position{
+				{X: l.Position.X + dir.X*3, Y: l.Position.Y + dir.Y*3}, // opposite side
+				{X: l.Position.X - dir.Y*3, Y: l.Position.Y + dir.X*3}, // 90 deg from new position
+				{X: l.Position.X - dir.X*3, Y: l.Position.Y - dir.Y*3}, // opposite of starting side
+				{X: l.Position.X + dir.Y*3, Y: l.Position.Y - dir.X*3}, // opposite of the 90 deg side
+			}
+		}
+
+		// Every few failed attempts, reposition to an alternative side of the entrance.
+		if alternativeEntranceAreas[targetArea] && alternativeIndex < len(alternativeMoves) && interactionAttempts%5 == 0 {
+			targetPos := alternativeMoves[alternativeIndex]
+			ctx.Logger.Debug("Repositioning for entrance interaction",
+				"targetArea", targetArea.Area().Name,
+				"attempt", interactionAttempts,
+				"targetPos", targetPos)
+			if err := MoveTo(targetPos, WithDistanceToFinish(2)); err != nil {
+				ctx.Logger.Warn("Failed repositioning for entrance interaction", "error", err)
+			}
+			alternativeIndex++
+
 		}
 
 		distance := ctx.PathFinder.DistanceFromMe(l.Position)

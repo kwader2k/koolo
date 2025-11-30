@@ -3,6 +3,8 @@ package pather
 import (
 	"fmt"
 	"math"
+	"sync/atomic"
+	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -13,10 +15,25 @@ import (
 )
 
 type PathFinder struct {
-	gr   *game.MemoryReader
-	data *game.Data
-	hid  *game.HID
-	cfg  *config.CharacterCfg
+	gr            *game.MemoryReader
+	data          *game.Data
+	hid           *game.HID
+	cfg           *config.CharacterCfg
+	lastDebugPath atomic.Pointer[pathDebugCacheEntry]
+}
+
+type pathDebugCacheEntry struct {
+	from      data.Position
+	to        data.Position
+	path      Path
+	timestamp time.Time
+}
+
+type PathDebugInfo struct {
+	From      data.Position
+	To        data.Position
+	Path      Path
+	Timestamp time.Time
 }
 
 func NewPathFinder(gr *game.MemoryReader, data *game.Data, hid *game.HID, cfg *config.CharacterCfg) *PathFinder {
@@ -50,61 +67,74 @@ func (pf *PathFinder) GetPath(to data.Position) (Path, int, bool) {
 func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 	a := pf.data.AreaData
 	canTeleport := pf.data.CanTeleport()
+	worldFrom := from
+	worldTo := to
 
 	// We don't want to modify the original grid
 	grid := a.Grid.Copy()
 
-	// Special handling for Arcane Sanctuary (to allow pathing with platforms)
-	if pf.data.PlayerUnit.Area == area.ArcaneSanctuary && pf.data.CanTeleport() {
-		// Make all non-walkable tiles into low priority tiles for teleport pathing
-		for y := 0; y < len(grid.CollisionGrid); y++ {
-			for x := 0; x < len(grid.CollisionGrid[y]); x++ {
-				if grid.CollisionGrid[y][x] == game.CollisionTypeNonWalkable {
-					grid.CollisionGrid[y][x] = game.CollisionTypeLowPriority
-				}
-			}
-		}
+	// Merge grids when either endpoint falls outside the current area snapshot.
+	mergePos := data.Position{}
+	switch {
+	case !a.IsInside(worldTo):
+		mergePos = worldTo
+	case !a.IsInside(worldFrom):
+		mergePos = worldFrom
 	}
-	// Lut Gholein map is a bit bugged, we should close this fake path to avoid pathing issues
-	if a.Area == area.LutGholein {
-		a.CollisionGrid[13][210] = game.CollisionTypeNonWalkable
-	}
-
-	if !a.IsInside(to) {
-		expandedGrid, err := pf.mergeGrids(to, canTeleport)
+	if mergePos != (data.Position{}) {
+		expandedGrid, err := pf.mergeGrids(mergePos, canTeleport)
 		if err != nil {
 			return nil, 0, false
 		}
 		grid = expandedGrid
 	}
 
-	if !grid.IsWalkable(to) {
-		if walkableTo, found := pf.findNearbyWalkablePositionInGrid(grid, to); found {
-			to = walkableTo
+	// Special handling for Arcane Sanctuary (to allow pathing with platforms)
+	if pf.data.PlayerUnit.Area == area.ArcaneSanctuary && pf.data.CanTeleport() {
+		// Make all non-walkable tiles into low priority tiles for teleport pathing
+		for y := 0; y < len(grid.CollisionGrid); y++ {
+			for x := 0; x < len(grid.CollisionGrid[y]); x++ {
+				if grid.CollisionGrid[y][x] == game.CollisionTypeNonWalkable || grid.CollisionGrid[y][x] == game.CollisionTypeThickened {
+					grid.CollisionGrid[y][x] = game.CollisionTypeLowPriority
+				}
+			}
 		}
 	}
-	from = grid.RelativePosition(from)
-	to = grid.RelativePosition(to)
 
-	// Add objects to the collision grid as obstacles
+	if !grid.IsWalkable(worldTo) {
+		if walkableTo, found := pf.findNearbyWalkablePositionInGrid(grid, worldTo); found {
+			worldTo = walkableTo
+		}
+	}
+	relativeFrom := grid.RelativePosition(worldFrom)
+	relativeTo := grid.RelativePosition(worldTo)
+
+	// Add objects to the collision grid as obstacles and discourage pathing too close to them.
+	avoidanceRadius := 2
+
 	for _, o := range pf.data.AreaData.Objects {
 		if !grid.IsWalkable(o.Position) {
 			continue
 		}
 		relativePos := grid.RelativePosition(o.Position)
 		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeObject
-		for i := -2; i <= 2; i++ {
-			for j := -2; j <= 2; j++ {
-				if i == 0 && j == 0 {
+		for dy := -avoidanceRadius; dy <= avoidanceRadius; dy++ {
+			for dx := -avoidanceRadius; dx <= avoidanceRadius; dx++ {
+				if dx == 0 && dy == 0 {
 					continue
 				}
-				if relativePos.Y+i < 0 || relativePos.Y+i >= len(grid.CollisionGrid) || relativePos.X+j < 0 || relativePos.X+j >= len(grid.CollisionGrid[relativePos.Y]) {
+				y := relativePos.Y + dy
+				x := relativePos.X + dx
+				if y < 0 || y >= len(grid.CollisionGrid) || x < 0 || x >= len(grid.CollisionGrid[y]) {
 					continue
 				}
-				if grid.CollisionGrid[relativePos.Y+i][relativePos.X+j] == game.CollisionTypeWalkable {
-					grid.CollisionGrid[relativePos.Y+i][relativePos.X+j] = game.CollisionTypeLowPriority
+				neighborType := grid.CollisionGrid[y][x]
+				if neighborType != game.CollisionTypeWalkable {
+					continue
+				}
 
-				}
+				grid.CollisionGrid[y][x] = game.CollisionTypeLowPriority
+
 			}
 		}
 	}
@@ -118,45 +148,81 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 		grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeMonster
 	}
 
-	// set barricade tower as non walkable in act 5
-	if a.Area == area.FrigidHighlands || a.Area == area.FrozenTundra || a.Area == area.ArreatPlateau {
-		towerCount := 0
-		for _, n := range pf.data.NPCs {
-			if n.ID != npc.BarricadeTower {
+	// Mark barricade NPCs as teleport-only obstacles so walking pathing won't try to go through them.
+	for _, n := range pf.data.NPCs {
+		if n.ID != npc.BarricadeTower {
+			continue
+		}
+		for _, pos := range n.Positions {
+			relativePos := grid.RelativePosition(pos)
+			if relativePos.X < 0 || relativePos.X >= grid.Width || relativePos.Y < 0 || relativePos.Y >= grid.Height {
 				continue
 			}
-			if len(n.Positions) == 0 {
-				continue
-			}
-			npcPos := n.Positions[0]
-			relativePos := grid.RelativePosition(npcPos)
-			towerCount++
-
-			// Set a 5x5 area around the barricade tower as non-walkable
-			blockedCells := 0
-			for dy := -2; dy <= 2; dy++ {
-				for dx := -2; dx <= 2; dx++ {
-					towerY := relativePos.Y + dy
-					towerX := relativePos.X + dx
-
-					// Bounds checking to prevent array index out of bounds
-					if towerY >= 0 && towerY < len(grid.CollisionGrid) &&
-						towerX >= 0 && towerX < len(grid.CollisionGrid[towerY]) {
-						grid.CollisionGrid[towerY][towerX] = game.CollisionTypeNonWalkable
-						blockedCells++
-					}
-				}
+			t := grid.CollisionGrid[relativePos.Y][relativePos.X]
+			if t == game.CollisionTypeWalkable || t == game.CollisionTypeLowPriority {
+				grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeTeleportOver
 			}
 		}
 	}
 
-	path, distance, found := astar.CalculatePath(grid, from, to, canTeleport)
+	path, distance, found := astar.CalculatePath(grid, relativeFrom, relativeTo, canTeleport)
 
 	if config.Koolo.Debug.RenderMap {
-		pf.renderMap(grid, from, to, path)
+		pf.renderMap(grid, relativeFrom, relativeTo, path)
+	}
+
+	if found {
+		pathCopy := make(Path, len(path))
+		copy(pathCopy, path)
+		for i := range pathCopy {
+			pathCopy[i].X += grid.OffsetX
+			pathCopy[i].Y += grid.OffsetY
+		}
+		pf.storeDebugPath(worldFrom, worldTo, pathCopy)
+	} else {
+		pf.lastDebugPath.Store(nil)
 	}
 
 	return path, distance, found
+}
+
+func (pf *PathFinder) storeDebugPath(from, to data.Position, path Path) {
+	if len(path) == 0 {
+		pf.lastDebugPath.Store(nil)
+		return
+	}
+
+	copyPath := make(Path, len(path))
+	copy(copyPath, path)
+
+	entry := &pathDebugCacheEntry{
+		from:      from,
+		to:        to,
+		path:      copyPath,
+		timestamp: time.Now(),
+	}
+	pf.lastDebugPath.Store(entry)
+}
+
+func (pf *PathFinder) LastPathDebug() (PathDebugInfo, bool) {
+	entry := pf.lastDebugPath.Load()
+	if entry == nil {
+		return PathDebugInfo{}, false
+	}
+
+	pathCopy := make(Path, len(entry.path))
+	copy(pathCopy, entry.path)
+
+	return PathDebugInfo{
+		From:      entry.from,
+		To:        entry.to,
+		Path:      pathCopy,
+		Timestamp: entry.timestamp,
+	}, true
+}
+
+func (pf *PathFinder) ClearDebugPath() {
+	pf.lastDebugPath.Store(nil)
 }
 
 func (pf *PathFinder) mergeGrids(to data.Position, canTeleport bool) (*game.Grid, error) {
@@ -187,7 +253,7 @@ func (pf *PathFinder) mergeGrids(to data.Position, canTeleport bool) (*game.Grid
 			copyGrid(resultGrid, origin.CollisionGrid, origin.OffsetX-minX, origin.OffsetY-minY)
 			copyGrid(resultGrid, destination.CollisionGrid, destination.OffsetX-minX, destination.OffsetY-minY)
 
-			grid := game.NewGrid(resultGrid, minX, minY, canTeleport)
+			grid := game.NewGridFromProcessed(resultGrid, minX, minY)
 
 			return grid, nil
 		}
@@ -227,11 +293,14 @@ func (pf *PathFinder) GetClosestWalkablePathFrom(from, dest data.Position) (Path
 				if math.Abs(float64(i)) >= math.Abs(float64(dst)) || math.Abs(float64(j)) >= math.Abs(float64(dst)) {
 					cgY := dest.Y - pf.data.AreaOrigin.Y + j
 					cgX := dest.X - pf.data.AreaOrigin.X + i
-					if cgX > 0 && cgY > 0 && a.Height > cgY && a.Width > cgX && a.CollisionGrid[cgY][cgX] == game.CollisionTypeWalkable {
-						return pf.GetPathFrom(from, data.Position{
-							X: dest.X + i,
-							Y: dest.Y + j,
-						})
+					if cgX > 0 && cgY > 0 && a.Height > cgY && a.Width > cgX {
+						tile := a.CollisionGrid[cgY][cgX]
+						if game.IsWalkableType(tile) {
+							return pf.GetPathFrom(from, data.Position{
+								X: dest.X + i,
+								Y: dest.Y + j,
+							})
+						}
 					}
 				}
 			}

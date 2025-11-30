@@ -7,6 +7,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/utils"
@@ -44,12 +45,33 @@ func InteractEntrancePacket(targetArea area.ID) error {
 	var targetLevel data.Level
 	var found bool
 
-	// First, find the level information from AdjacentLevels
-	for _, level := range ctx.Data.AdjacentLevels {
-		if level.Area == targetArea && level.IsEntrance {
-			targetLevel = level
-			break
+	areaCombinations := func(a, b area.ID) bool {
+		return (a == targetArea && ctx.Data.PlayerUnit.Area == b) || (a == ctx.Data.PlayerUnit.Area && targetArea == b)
+	}
+
+	isOverride := areaCombinations(area.Abaddon, area.FrigidHighlands) || areaCombinations(area.PitOfAcheron, area.ArreatPlateau) || areaCombinations(area.FrozenTundra, area.InfernalPit)
+
+	if isOverride {
+		// it's not mapped correctly, so we hardcode it here
+		ctx.RefreshGameData()
+		utils.Sleep(500)
+		portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if found {
+			targetLevel = data.Level{
+				Area:       targetArea,
+				Position:   portal.Position,
+				IsEntrance: true,
+			}
 		}
+	} else {
+		// First, find the level information from AdjacentLevels
+		for _, level := range ctx.Data.AdjacentLevels {
+			if level.Area == targetArea && level.IsEntrance {
+				targetLevel = level
+				break
+			}
+		}
+
 	}
 
 	if targetLevel.Area == 0 {

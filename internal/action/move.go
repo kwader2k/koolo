@@ -2,12 +2,14 @@
 package action
 
 import (
+	"container/heap"
 	"errors"
 	"fmt"
 	"log/slog"
 	"math"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/hectorgimenez/koolo/internal/pather"
@@ -16,7 +18,9 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
+	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/action/step"
@@ -32,6 +36,8 @@ const (
 	monsterHandleCooldown = 500 * time.Millisecond // Reduced cooldown for more immediate re-engagement
 	lootAfterCombatRadius = 25                     // Define a radius for looting after combat
 )
+
+var talTombs = []area.ID{area.TalRashasTomb1, area.TalRashasTomb2, area.TalRashasTomb3, area.TalRashasTomb4, area.TalRashasTomb5, area.TalRashasTomb6, area.TalRashasTomb7}
 
 var alwaysTakeShrines = []object.ShrineType{
 	object.RefillShrine,
@@ -60,6 +66,14 @@ var curseBreakingShrines = []object.ShrineType{
 	object.ResistFireShrine,
 	object.ResistColdShrine,
 	object.ResistPoisonShrine,
+}
+
+var actTownWaypoints = map[int]area.ID{
+	1: area.RogueEncampment,
+	2: area.LutGholein,
+	3: area.KurastDocks,
+	4: area.ThePandemoniumFortress,
+	5: area.Harrogath,
 }
 
 var (
@@ -103,10 +117,160 @@ func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
 	return fmt.Errorf("area sync timeout - expected: %v, current: %v", expectedArea, ctx.Data.PlayerUnit.Area)
 }
 
-func MoveToArea(dst area.ID) error {
+func findRealTomb(ctx *context.Status) (area.ID, error) {
+	var realTomb area.ID
+
+	for _, tomb := range talTombs {
+		for _, obj := range ctx.Data.Areas[tomb].Objects {
+			if obj.Name == object.HoradricOrifice {
+				realTomb = tomb
+				break
+			}
+		}
+	}
+
+	if realTomb == 0 {
+		return 0, errors.New("failed to find the real Tal Rasha tomb")
+	}
+
+	return realTomb, nil
+}
+
+func moveToNihlathakTempleFromHarrogath(ctx *context.Status) error {
+	if ctx.Data.PlayerUnit.Area != area.Harrogath {
+		if err := travelToActTown(ctx, 5); err != nil {
+			return err
+		}
+		ctx.RefreshGameData()
+		utils.Sleep(500)
+	}
+	anyaLocation, found := ctx.Data.Objects.FindOne(object.DrehyaTownStartPosition)
+	if !found {
+		return errors.New("anya location not found in town")
+	}
+
+	if err := MoveToCoords(anyaLocation.Position); err != nil {
+		return err
+	}
+
+	redPortal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+	if !found {
+		// Try to talk to Anya to open portal
+		if err := InteractNPC(npc.Drehya); err != nil {
+			return err
+		}
+		utils.Sleep(1000)
+		ctx.RefreshGameData()
+		utils.Sleep(200)
+		redPortal, found = ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if !found {
+			return errors.New("red portal not found in town after talking to Anya")
+		}
+	}
+
+	err := InteractObject(redPortal, func() bool {
+		return ctx.Data.AreaData.Area == area.NihlathaksTemple && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position)
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func moveToDurielsLair(ctx *context.Status) error {
+	realTomb, tombErr := findRealTomb(ctx)
+	if tombErr != nil {
+		return tombErr
+	}
+	if err := MoveToArea(realTomb); err != nil {
+		return err
+	}
+	orifice, found := ctx.Data.Objects.FindOne(object.HoradricOrifice)
+	if found {
+		if err := MoveToCoords(orifice.Position); err != nil {
+			return err
+		}
+		utils.Sleep(100)
+		ctx.RefreshGameData()
+		utils.Sleep(500)
+		durielslair, found := ctx.Data.Objects.FindOne(object.DurielsLairPortal)
+		if !found {
+			// try again, sometimes it takes a moment to load..
+			ctx.RefreshGameData()
+			utils.Sleep(500)
+			durielslair, found = ctx.Data.Objects.FindOne(object.DurielsLairPortal)
+			if !found {
+				return fmt.Errorf("failed to find Duriel's Lair portal")
+			}
+
+		}
+		if err := MoveToCoords(durielslair.Position); err != nil {
+			return err
+		}
+		if err := InteractObject(durielslair, func() bool {
+			return ctx.Data.PlayerUnit.Area == area.DurielsLair && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position)
+		}); err != nil {
+			return err
+		}
+		return nil
+
+	}
+	return fmt.Errorf("failed to move to Duriel's Lair in %s", realTomb.Area().Name)
+}
+
+func MoveToArea(dst area.ID) (err error) {
 	ctx := context.Get()
 	ctx.SetLastAction("MoveToArea")
 
+	// Special handling for Duriel's Lair, need to find the real tomb first
+	if dst == area.DurielsLair {
+		return moveToDurielsLair(ctx)
+	}
+
+	hops := 0
+	for {
+		if ctx.Data.PlayerUnit.Area == dst {
+			return nil
+		}
+
+		route, routeErr := buildAreaRoute(ctx, dst)
+
+		routeStrs := make([]string, len(route))
+		for i, id := range route {
+			routeStrs[i] = id.Area().Name
+		}
+		ctx.Logger.Debug("Area route", "from", ctx.Data.PlayerUnit.Area.Area().Name, "to", dst.Area().Name, "route", strings.Join(routeStrs, "-> "), "error", routeErr)
+		if routeErr != nil {
+			err := moveToAreaSingle(ctx, dst, true)
+			if err != nil {
+				if err := WayPoint(dst); err != nil {
+					return fmt.Errorf("failed to move to area %s: waypoint failed: %v", dst.Area().Name, err)
+				}
+			}
+
+		}
+
+		if len(route) <= 1 {
+			// Already in destination area
+			ctx.Logger.Debug("Arrived in destination area", "area", dst.Area().Name)
+			return nil
+		}
+
+		next := route[1]
+
+		if err := moveToAreaSingle(ctx, next, true); err != nil {
+			return err
+		}
+
+		ctx.RefreshGameData()
+		hops++
+		if hops > 50 {
+			return fmt.Errorf("failed to reach %s after %d hops", dst.Area().Name, hops)
+		}
+	}
+}
+
+func moveToAreaSingle(ctx *context.Status, dst area.ID, allowWaypoints bool) error {
 	// Proactive death check at the start of the action
 	if err := checkPlayerDeath(ctx); err != nil {
 		return err
@@ -117,46 +281,152 @@ func MoveToArea(dst area.ID) error {
 	}
 
 	// Exceptions for:
-	// Arcane Sanctuary
-	if dst == area.ArcaneSanctuary && ctx.Data.PlayerUnit.Area == area.PalaceCellarLevel3 {
-		ctx.Logger.Debug("Arcane Sanctuary detected, finding the Portal")
+	// Arcane Sanctuary <-> Palace Cellar Level 3
+	if (dst == area.ArcaneSanctuary && ctx.Data.PlayerUnit.Area == area.PalaceCellarLevel3) || (ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary && dst == area.PalaceCellarLevel3) {
 		portal, _ := ctx.Data.Objects.FindOne(object.ArcaneSanctuaryPortal)
 		MoveToCoords(portal.Position)
 
 		return step.InteractObject(portal, func() bool {
-			return ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary
+			return ctx.Data.PlayerUnit.Area == dst
 		})
 	}
-	// Canyon of the Magi
+	// Arcane Sanctuary -> Canyon of the Magi
 	if dst == area.CanyonOfTheMagi && ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary {
-		ctx.Logger.Debug("Canyon of the Magi detected, finding the Portal")
 		tome, _ := ctx.Data.Objects.FindOne(object.YetAnotherTome)
 		MoveToCoords(tome.Position)
 		InteractObject(tome, func() bool {
 			if _, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
-				ctx.Logger.Debug("Opening YetAnotherTome!")
 				return true
 			}
 			return false
 		})
-		ctx.Logger.Debug("Using Canyon of the Magi Portal")
 		portal, _ := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 		MoveToCoords(portal.Position)
-		return step.InteractObject(portal, func() bool {
+		return InteractObject(portal, func() bool {
 			return ctx.Data.PlayerUnit.Area == area.CanyonOfTheMagi
 		})
 	}
 
-	lvl := data.Level{}
-	for _, a := range ctx.Data.AdjacentLevels {
-		if a.Area == dst {
-			lvl = a
+	// Nihlathak's Temple -> Harrogath
+	if ctx.Data.PlayerUnit.Area == area.NihlathaksTemple && dst == area.Harrogath {
+		ctx.Logger.Debug("Leaving Nihlathak's Temple to Harrogath")
+		portalPosition := data.Position{X: 10068, Y: 13308}
+		MoveToCoords(portalPosition)
+		ctx.RefreshGameData()
+		utils.Sleep(500)
+		portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+		if !found {
+			// try again, sometimes it takes a moment to load..
+			ctx.RefreshGameData()
+			utils.Sleep(500)
+			portal, found = ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+			if !found {
+				return fmt.Errorf("failed to find Nihlathak's Temple portal to Harrogath")
+			}
+		}
+		MoveToCoords(portal.Position)
+		return InteractObject(portal, func() bool {
+			return ctx.Data.PlayerUnit.Area == area.Harrogath
+		})
+	}
+
+	// * -> Nihlathak's Temple
+	if dst == area.NihlathaksTemple {
+		// Nihlathak temple requires special handling due to the portal interaction
+		if ctx.Data.PlayerUnit.Area != area.Harrogath {
+			// check if we can go there directly, otherwise go to Harrogath first
+			if !slices.Contains(CanReachNihlathakTempleFrom, ctx.Data.PlayerUnit.Area) {
+				if err := travelToActTown(ctx, 5); err != nil {
+					return err
+				}
+			} else {
+				// move there directly
+				if err := moveToAreaSingle(ctx, dst, true); err != nil {
+					return err
+				}
+
+			}
+
+		}
+		// Now we should be in Harrogath, interact with the portal
+		return moveToNihlathakTempleFromHarrogath(ctx)
+	}
+
+	// Stony Field -> Tristram via permanent portal after quest completion
+	if dst == area.Tristram && ctx.Data.PlayerUnit.Area == area.StonyField &&
+		ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() {
+		return moveToTristramPortal(ctx)
+	}
+
+	areaCombinations := func(a, b area.ID) bool {
+		return (a == dst && ctx.Data.PlayerUnit.Area == b) || (a == ctx.Data.PlayerUnit.Area && dst == b)
+	}
+
+	findLevelData := func() data.Level {
+		if areaCombinations(area.Abaddon, area.FrigidHighlands) || areaCombinations(area.PitOfAcheron, area.ArreatPlateau) || areaCombinations(area.FrozenTundra, area.InfernalPit) {
+			// it's not mapped correctly, so we hardcode it here
+			ctx.RefreshGameData()
+			utils.Sleep(500)
+			portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
+			if found {
+				return data.Level{
+					Area:       dst,
+					Position:   portal.Position,
+					IsEntrance: true,
+				}
+			}
+		}
+
+		for _, a := range ctx.Data.AdjacentLevels {
+			if a.Area == dst {
+				return a
+			}
+		}
+		return data.Level{}
+	}
+
+	triedProxy := false
+	var lvl data.Level
+	for {
+		lvl = findLevelData()
+		if lvl.Position.X != 0 || lvl.Position.Y != 0 {
 			break
 		}
+
+		ctx.Logger.Debug("Destination area not in cache, refreshing data", "area", dst.Area().Name)
+		ctx.RefreshGameData()
+		lvl = findLevelData()
+
+		if lvl.Position.X != 0 || lvl.Position.Y != 0 {
+			break
+		}
+
+		if proxy, ok := findProxyArea(ctx, dst); ok && !triedProxy {
+			triedProxy = true
+			ctx.Logger.Debug("Routing via shared adjacency", "from", ctx.Data.PlayerUnit.Area.Area().Name, "via", proxy.Area().Name, "target", dst.Area().Name)
+			if err := MoveToArea(proxy); err != nil {
+				return err
+			}
+			// After moving to the proxy, try again to locate the destination entrance from the new area
+			ctx.RefreshGameData()
+			utils.Sleep(300)
+			continue
+		}
+
+		if !allowWaypoints {
+			return fmt.Errorf("failed to move to area %s: missing cached data", dst.Area().Name)
+		}
+
+		break
 	}
 
 	if lvl.Position.X == 0 && lvl.Position.Y == 0 {
-		return fmt.Errorf("destination area not found: %s", dst.Area().Name)
+		// this means it's not in an adjacent area on the shared grid, navigate there via waypoint
+		if allowWaypoints {
+			return WayPoint(dst)
+		}
+
+		return fmt.Errorf("failed to move to area %s from current area: %s", dst.Area().Name, ctx.Data.PlayerUnit.Area.Area().Name)
 	}
 
 	cachedPos := data.Position{}
@@ -238,13 +508,7 @@ func MoveToArea(dst area.ID) error {
 	}
 
 	if err != nil {
-		if errors.Is(err, health.ErrDied) { // Propagate death error
-			return err
-		}
-		if !lvl.IsEntrance {
-			return err
-		}
-		ctx.Logger.Warn("error moving to area, will try to continue", slog.String("error", err.Error()))
+		return err
 	}
 
 	if lvl.IsEntrance {
@@ -302,6 +566,286 @@ func MoveToArea(dst area.ID) error {
 
 	event.Send(event.InteractedTo(event.Text(ctx.Name, ""), int(dst), event.InteractionTypeEntrance))
 	return nil
+}
+
+func travelToActTown(ctx *context.Status, act int) error {
+	town, ok := actTownWaypoints[act]
+	if !ok {
+		return fmt.Errorf("unknown act %d", act)
+	}
+	if ctx.Data.PlayerUnit.Area == town {
+		return nil
+	}
+	return WayPoint(town)
+}
+
+const (
+	adjacencyCost             = 1.0
+	waypointTeleportPenalty   = 0.1
+	waypointNoTeleportPenalty = 1.0
+	townPortalPenalty         = 0.5
+)
+
+type areaNeighbor struct {
+	id   area.ID
+	cost float64
+}
+
+type areaQueueItem struct {
+	area     area.ID
+	priority float64
+}
+
+type areaQueue []*areaQueueItem
+
+func (pq areaQueue) Len() int { return len(pq) }
+func (pq areaQueue) Less(i, j int) bool {
+	return pq[i].priority < pq[j].priority
+}
+func (pq areaQueue) Swap(i, j int) { pq[i], pq[j] = pq[j], pq[i] }
+func (pq *areaQueue) Push(x interface{}) {
+	*pq = append(*pq, x.(*areaQueueItem))
+}
+func (pq *areaQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	*pq = old[:n-1]
+	return item
+}
+
+func buildAreaRoute(ctx *context.Status, dst area.ID) ([]area.ID, error) {
+	return buildAreaRouteWithWaypoints(ctx, dst, true)
+}
+
+func buildAreaRouteWithWaypoints(ctx *context.Status, dst area.ID, allowWaypoints bool) ([]area.ID, error) {
+	if ctx.Data.PlayerUnit.Area == dst {
+		return []area.ID{dst}, nil
+	}
+
+	start := ctx.Data.PlayerUnit.Area
+	path, ok := weightedAreaPath(ctx, start, dst, allowWaypoints)
+	if !ok {
+		return nil, fmt.Errorf("destination area not found: %s", dst.Area().Name)
+	}
+
+	return path, nil
+}
+
+func weightedAreaPath(ctx *context.Status, start, goal area.ID, allowWaypoints bool) ([]area.ID, bool) {
+	if start == goal {
+		return []area.ID{start}, true
+	}
+
+	wpMap := map[area.ID]struct{}{}
+	if allowWaypoints {
+		wpMap = availableWaypointMap(ctx)
+	}
+	dist := map[area.ID]float64{start: 0}
+	prev := make(map[area.ID]area.ID)
+	queue := &areaQueue{}
+	heap.Init(queue)
+	heap.Push(queue, &areaQueueItem{area: start, priority: 0})
+
+	for queue.Len() > 0 {
+		current := heap.Pop(queue).(*areaQueueItem)
+		if current.area == goal {
+			break
+		}
+		if current.priority > dist[current.area] {
+			continue
+		}
+
+		for _, neighbor := range areaNeighborsWithCosts(ctx, current.area, wpMap, allowWaypoints) {
+			alt := current.priority + neighbor.cost
+			if prevCost, ok := dist[neighbor.id]; !ok || alt < prevCost {
+				dist[neighbor.id] = alt
+				prev[neighbor.id] = current.area
+				heap.Push(queue, &areaQueueItem{area: neighbor.id, priority: alt})
+			}
+		}
+	}
+
+	if _, found := dist[goal]; !found {
+		return nil, false
+	}
+
+	return reconstructAreaPath(prev, start, goal), true
+}
+
+func areaNeighborsWithCosts(ctx *context.Status, id area.ID, wpMap map[area.ID]struct{}, allowWaypoints bool) []areaNeighbor {
+	dedup := make(map[area.ID]float64)
+
+	for _, neighbor := range collectNeighbors(ctx, id) {
+		dedup[neighbor] = adjacencyCost
+	}
+
+	if allowWaypoints {
+		for _, neighbor := range collectWaypointNeighbors(id, wpMap) {
+			cost := waypointTransitionCost(ctx.Data.CanTeleport(), neighbor == actTownWaypoints[id.Act()])
+			if existing, ok := dedup[neighbor]; !ok || cost < existing {
+				dedup[neighbor] = cost
+			}
+		}
+	}
+
+	out := make([]areaNeighbor, 0, len(dedup))
+	for areaID, cost := range dedup {
+		out = append(out, areaNeighbor{id: areaID, cost: cost})
+	}
+	return out
+}
+
+func moveToTristramPortal(ctx *context.Status) error {
+	if !ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() {
+		return fmt.Errorf("quest Search for Cain is not completed, unable to move to Tristram portal")
+	}
+
+	if portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
+		return enterTristramPortal(ctx, portal)
+	}
+
+	ctx.RefreshGameData()
+
+	var stone data.Object
+	var found bool
+	for _, candidate := range []object.Name{object.CairnStoneAlpha, object.InvisibleObject} {
+		stone, found = ctx.Data.Objects.FindOne(candidate)
+		if found {
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("failed to locate Tristram portal stone")
+	}
+
+	if err := MoveToCoords(stone.Position); err != nil {
+		return err
+	}
+
+	for attempt := 0; attempt < 3; attempt++ {
+		ctx.RefreshGameData()
+		if portal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
+			return enterTristramPortal(ctx, portal)
+		}
+		utils.Sleep(500)
+	}
+
+	return fmt.Errorf("permanent Tristram portal not found after visiting stone")
+}
+
+func enterTristramPortal(ctx *context.Status, portal data.Object) error {
+	if err := MoveToCoords(portal.Position); err != nil {
+		return err
+	}
+	return InteractObject(portal, func() bool {
+		return ctx.Data.PlayerUnit.Area == area.Tristram && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position)
+	})
+}
+
+func collectWaypointNeighbors(id area.ID, wpMap map[area.ID]struct{}) []area.ID {
+	destinations := make(map[area.ID]struct{})
+
+	if _, hasWP := wpMap[id]; hasWP {
+		for dest := range wpMap {
+			if dest == id {
+				continue
+			}
+			destinations[dest] = struct{}{}
+		}
+	}
+
+	if town, ok := actTownWaypoints[id.Act()]; ok && town != id {
+		destinations[town] = struct{}{}
+	}
+
+	out := make([]area.ID, 0, len(destinations))
+	for dest := range destinations {
+		out = append(out, dest)
+	}
+	return out
+}
+
+func availableWaypointMap(ctx *context.Status) map[area.ID]struct{} {
+	wpMap := make(map[area.ID]struct{}, len(ctx.Data.PlayerUnit.AvailableWaypoints))
+	for _, wp := range ctx.Data.PlayerUnit.AvailableWaypoints {
+		wpMap[wp] = struct{}{}
+	}
+	return wpMap
+}
+
+func waypointTransitionCost(canTeleport bool, toTown bool) float64 {
+	switch {
+	case toTown:
+		return adjacencyCost + townPortalPenalty
+	case canTeleport:
+		return adjacencyCost + waypointTeleportPenalty
+	default:
+		return adjacencyCost + waypointNoTeleportPenalty
+	}
+}
+func reconstructAreaPath(prev map[area.ID]area.ID, start, goal area.ID) []area.ID {
+	path := []area.ID{goal}
+	for current := goal; current != start; {
+		p, ok := prev[current]
+		if !ok {
+			break
+		}
+		path = append([]area.ID{p}, path...)
+		current = p
+	}
+	if path[0] != start {
+		path = append([]area.ID{start}, path...)
+	}
+	return path
+}
+
+func collectNeighbors(ctx *context.Status, id area.ID) []area.ID {
+	neighbors := make(map[area.ID]struct{})
+
+	if ctx.Data.AreaData.Area == id {
+		for _, adj := range ctx.Data.AreaData.AdjacentLevels {
+			neighbors[adj.Area] = struct{}{}
+		}
+	} else if ad, ok := ctx.Data.Areas[id]; ok {
+		for _, adj := range ad.AdjacentLevels {
+			neighbors[adj.Area] = struct{}{}
+		}
+	}
+
+	staticAdjacencyMu.RLock()
+	for _, adj := range staticAreaAdjacency[id] {
+		neighbors[adj] = struct{}{}
+	}
+	staticAdjacencyMu.RUnlock()
+
+	out := make([]area.ID, 0, len(neighbors))
+	for n := range neighbors {
+		out = append(out, n)
+	}
+
+	return out
+}
+
+func findProxyArea(ctx *context.Status, dst area.ID) (area.ID, bool) {
+	current := ctx.Data.PlayerUnit.Area
+	currNeighbors := collectNeighbors(ctx, current)
+	currSet := make(map[area.ID]struct{}, len(currNeighbors))
+	for _, n := range currNeighbors {
+		currSet[n] = struct{}{}
+	}
+
+	dstNeighbors := adjacencyList(dst)
+	for _, candidate := range dstNeighbors {
+		if candidate == dst || candidate == current {
+			continue
+		}
+		if _, ok := currSet[candidate]; ok {
+			return candidate, true
+		}
+	}
+	return 0, false
 }
 
 func MoveToCoords(to data.Position, options ...step.MoveOption) error {
@@ -407,7 +951,6 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 	var path pather.Path
 	var distanceToTarget int
 	var pathFound bool
-	var pathErrors int
 	var stuck bool
 	blacklistedInteractions := map[data.UnitID]bool{}
 	adjustMinDist := false
@@ -517,14 +1060,9 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 		}
 
 		distanceToTarget = ctx.PathFinder.DistanceFromMe(targetPosition)
-		//We didn't find a path, try to handle the case
 		if !pathFound {
-			//We're in town for some reason, use tp
-			if ctx.Data.PlayerUnit.Area.IsTown() && !ctx.Data.AreaData.IsInside(targetPosition) {
-				if err := UsePortalInTown(); err != nil {
-					return errors.New("path failed during moveto. player in town, target position outside of town and no tp")
-				}
-			} else if ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary {
+			//We didn't find a path, try to handle the case
+			if ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary {
 				//try to go to the end of the tp lane to find target position
 				tpPad, err := getArcaneNextTeleportPadPosition(blacklistedPads)
 				if err != nil {
@@ -532,20 +1070,8 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 				}
 				blacklistedPads = append(blacklistedPads, tpPad)
 				continue
-			} else {
-				pathErrors++
-				//Try some randome movements to help pathfinding (not sure that it helps)
-				if pathErrors < 5 {
-					ctx.Logger.Warn("No path found, trying random movement to fix")
-					ctx.PathFinder.RandomMovement()
-					utils.Sleep(200)
-					continue
-				} else {
-					return errors.New("path could not be calculated. Current area: [" + ctx.Data.PlayerUnit.Area.Area().Name + "]. Trying to path to Destination: [" + fmt.Sprintf("%d,%d", to.X, to.Y) + "]")
-				}
 			}
-		} else {
-			pathErrors = 0
+			return errors.New("path could not be calculated. Current area: [" + ctx.Data.PlayerUnit.Area.Area().Name + "]. Trying to path to Destination: [" + fmt.Sprintf("%d,%d", to.X, to.Y) + "]")
 		}
 
 		//Handle Distance to finish movement

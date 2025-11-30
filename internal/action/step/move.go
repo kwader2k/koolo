@@ -174,8 +174,10 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 			}
 		}
 
-		//Check for Doors on path & open them
-		if !ctx.Data.CanTeleport() {
+		destOutsideCurrentArea := !ctx.Data.AreaData.IsInside(currentDest)
+		// Check for Doors on path & open them. D2BS drills exits on level links so we also check doors
+		// when crossing into adjacent areas, even if we can normally teleport over regular doors.
+		if !ctx.Data.CanTeleport() || destOutsideCurrentArea {
 			if doorFound, doorObj := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, currentDest); doorFound {
 				doorToOpen := *doorObj
 				interactErr := error(nil)
@@ -295,8 +297,17 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 
 		//Handle skills for navigation
 		if ctx.Data.CanTeleport() {
-			if ctx.Data.PlayerUnit.RightSkill != skill.Teleport {
-				ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.Teleport))
+			for range 3 {
+				ctx.WaitForGameToLoad()
+
+				if ctx.Data.PlayerUnit.RightSkill != skill.Teleport {
+					ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.Teleport))
+				}
+				if ctx.Data.PlayerUnit.RightSkill == skill.Teleport {
+					break
+				}
+				ctx.RefreshGameData()
+				utils.Sleep(100)
 			}
 		} else if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Vigor); found {
 			if ctx.Data.PlayerUnit.RightSkill != skill.Vigor {

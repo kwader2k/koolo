@@ -57,6 +57,9 @@ func GetCurrentPing() int {
 // Returns the adjusted delay in milliseconds: minimum + (multiplier * ping)
 func PingMultiplier(multiplier PingMultiplierType, minimum int) int {
 	ping := GetCurrentPing()
+	if ping <= 0 {
+		ping = 1
+	}
 
 	// Calculate adjusted delay: base minimum + ping adjustment
 	adjusted := minimum + int(float64(ping)*float64(multiplier))

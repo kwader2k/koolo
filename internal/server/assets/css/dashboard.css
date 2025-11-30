@@ -665,6 +665,37 @@ body {
   margin-right: var(--spacing-xs);
 }
 
+.toggle-overlay-btn {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  min-width: 36px;
+  justify-content: center;
+  align-items: center;
+}
+
+.toggle-overlay-btn .btn-icon {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.toggle-overlay-btn.overlay-active {
+  color: var(--text-primary);
+  border-color: var(--primary-hover);
+}
+
+.toggle-overlay-btn.overlay-active .btn-icon {
+  color: #7afa8b;
+}
+
+.toggle-overlay-btn:not(.overlay-active):not(:disabled) .btn-icon {
+  color: #f84646;
+}
+
+.toggle-overlay-btn.is-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 /* ========================================
    RUN STATISTICS
    ======================================== */

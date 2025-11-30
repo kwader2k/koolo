@@ -98,6 +98,7 @@ type CharacterCfg struct {
 	CloseMiniPanel       bool   `yaml:"closeMiniPanel"`
 	UseCentralizedPickit bool   `yaml:"useCentralizedPickit"`
 	HidePortraits        bool   `yaml:"hidePortraits"`
+	EnableDebugOverlay   bool   `yaml:"enableDebugOverlay"`
 
 	ConfigFolderName string `yaml:"-"`
 

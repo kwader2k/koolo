@@ -242,6 +242,23 @@ func StartGame(username string, password string, authmethod string, authToken st
 	// Parse the provided additional arguments
 	additionalArguments := strings.Fields(arguments)
 
+	randSeedArg := "-randseed"
+	hasRandSeed := false
+	randSeedidx := -1
+	randSeedVal := fmt.Sprintf("%d", utils.RandRng(100000000, 999999999))
+	for i, arg := range additionalArguments {
+		if arg == randSeedArg {
+			hasRandSeed = true
+			randSeedidx = i
+			break
+		}
+	}
+
+	if hasRandSeed {
+		additionalArguments = append(additionalArguments[:randSeedidx], additionalArguments[randSeedidx+1:]...)
+		additionalArguments = append(additionalArguments, "-seed", randSeedVal)
+	}
+
 	// Let's use the mod directory for storing the settings, so we stop overwriting the default config
 	if useCustomSettings {
 		modName := "koolo"

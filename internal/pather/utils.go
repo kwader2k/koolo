@@ -13,8 +13,9 @@ import (
 )
 
 func (pf *PathFinder) RandomMovement() {
-	midGameX := pf.gr.GameAreaSizeX / 2
-	midGameY := pf.gr.GameAreaSizeY / 2
+	midGameX, midGameY := pf.gameAreaSize()
+	midGameX = midGameX / 2
+	midGameY = midGameY / 2
 	x := midGameX + rand.Intn(midGameX) - (midGameX / 2)
 	y := midGameY + rand.Intn(midGameY) - (midGameY / 2)
 	pf.hid.MovePointer(x, y)
@@ -87,6 +88,8 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 
 	// Let's try to calculate how close to the window border we can go
 	screenCords := data.Position{}
+	hudBoundary := pf.hudBoundary()
+	gameAreaX, gameAreaY := pf.gameAreaSize()
 	for distance, pos := range p {
 		screenX, screenY := pf.gameCoordsToScreenCords(p.From().X, p.From().Y, pos.X, pos.Y)
 
@@ -96,12 +99,12 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 		}
 
 		// Prevent mouse overlap the HUD
-		if screenY > int(float32(pf.gr.GameAreaSizeY)/1.19) {
+		if screenY > hudBoundary {
 			break
 		}
 
 		// We are getting out of the window, let's stop
-		if screenX < 0 || screenY < 0 || screenX > pf.gr.GameAreaSizeX || screenY > pf.gr.GameAreaSizeY {
+		if screenX < 0 || screenY < 0 || screenX > gameAreaX || screenY > gameAreaY {
 			break
 		}
 		screenCords = data.Position{X: screenX, Y: screenY}
@@ -111,7 +114,8 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 }
 
 func (pf *PathFinder) moveThroughPathTeleport(p Path) {
-	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.19)
+	hudBoundary := pf.hudBoundary()
+	gameAreaX, gameAreaY := pf.gameAreaSize()
 	fromX, fromY := p.From().X, p.From().Y
 
 	for i := len(p) - 1; i >= 0; i-- {
@@ -124,7 +128,7 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 		}
 
 		// Check if coordinates are within screen bounds
-		if screenX >= 0 && screenY >= 0 && screenX <= pf.gr.GameAreaSizeX && screenY <= pf.gr.GameAreaSizeY {
+		if screenX >= 0 && screenY >= 0 && screenX <= gameAreaX && screenY <= gameAreaY {
 			pf.MoveCharacter(screenX, screenY)
 			return
 		}
@@ -132,7 +136,8 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 }
 
 func (pf *PathFinder) GetLastPathIndexOnScreen(p Path) int {
-	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.19)
+	hudBoundary := pf.hudBoundary()
+	gameAreaX, gameAreaY := pf.gameAreaSize()
 	fromX, fromY := p.From().X, p.From().Y
 
 	for i := len(p) - 1; i >= 0; i-- {
@@ -145,7 +150,7 @@ func (pf *PathFinder) GetLastPathIndexOnScreen(p Path) int {
 		}
 
 		// Check if coordinates are within screen bounds
-		if screenX >= 0 && screenY >= 0 && screenX <= pf.gr.GameAreaSizeX && screenY <= pf.gr.GameAreaSizeY {
+		if screenX >= 0 && screenY >= 0 && screenX <= gameAreaX && screenY <= gameAreaY {
 			return i
 		}
 	}
@@ -168,16 +173,79 @@ func (pf *PathFinder) GameCoordsToScreenCords(destinationX, destinationY int) (i
 }
 
 func (pf *PathFinder) gameCoordsToScreenCords(playerX, playerY, destinationX, destinationY int) (int, int) {
+	gameAreaX, gameAreaY := pf.gameAreaSize()
+
 	// Calculate diff between current player position and destination
 	diffX := destinationX - playerX
 	diffY := destinationY - playerY
 
 	// Transform cartesian movement (World) to isometric (screen)
 	// Helpful documentation: https://clintbellanger.net/articles/isometric_math/
-	screenX := int((float32(diffX-diffY) * 19.8) + float32(pf.gr.GameAreaSizeX/2))
-	screenY := int((float32(diffX+diffY) * 9.9) + float32(pf.gr.GameAreaSizeY/2))
+	screenX := int((float32(diffX-diffY) * 19.8) + float32(gameAreaX/2))
+	screenY := int((float32(diffX+diffY) * 9.9) + float32(gameAreaY/2))
 
 	return screenX, screenY
+}
+
+func (pf *PathFinder) ScreenCoordsToGameCoords(screenX, screenY int) (data.Position, bool) {
+	gameAreaX, gameAreaY := pf.gameAreaSize()
+	if screenX < 0 || screenY < 0 || screenX > gameAreaX || screenY > gameAreaY {
+		return data.Position{}, false
+	}
+
+	halfWidth := float64(gameAreaX) / 2
+	halfHeight := float64(gameAreaY) / 2
+
+	dx := float64(screenX) - halfWidth
+	dy := float64(screenY) - halfHeight
+
+	isoX := 0.5 * ((dx / 19.8) + (dy / 9.9))
+	isoY := 0.5 * ((dy / 9.9) - (dx / 19.8))
+
+	destX := pf.data.PlayerUnit.Position.X + int(math.Round(isoX))
+	destY := pf.data.PlayerUnit.Position.Y + int(math.Round(isoY))
+
+	return data.Position{X: destX, Y: destY}, true
+}
+
+func (pf *PathFinder) gameAreaSize() (int, int) {
+	x := pf.gr.GameAreaSizeX
+	y := pf.gr.GameAreaSizeY
+
+	if x <= 0 {
+		if pf.data.LegacyGraphics {
+			// Default to classic 800px width if we failed to read the value
+			x = 800
+		} else {
+			x = 1280
+		}
+	}
+	if y <= 0 {
+		if pf.data.LegacyGraphics {
+			// Default to classic 600px height if we failed to read the value
+			y = 600
+		} else {
+			y = 720
+		}
+	}
+
+	return x, y
+}
+
+func (pf *PathFinder) hudBoundary() int {
+	_, gameAreaY := pf.gameAreaSize()
+
+	// Roughly match the height of the bottom HUD area in both D2R 16:9 and classic 4:3.
+	// Use a slightly smaller percentage to avoid over-clamping when looking “up” on the screen.
+	hudHeight := int(float32(gameAreaY) * 0.14)
+	if hudHeight < 70 {
+		hudHeight = 70
+	}
+	if hudHeight > gameAreaY/2 {
+		hudHeight = gameAreaY / 2
+	}
+
+	return gameAreaY - hudHeight
 }
 
 func IsNarrowMap(a area.ID) bool {

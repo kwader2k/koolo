@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	_ "net/http/pprof"
 	"path/filepath"
 	"runtime/debug"
@@ -41,6 +42,21 @@ func wrapWithRecover(logger *slog.Logger, f func() error) func() error {
 		}()
 		return f()
 	}
+}
+
+func getFreePort() (int, error) {
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+
+	addr, ok := l.Addr().(*net.TCPAddr)
+	if !ok {
+		return 0, fmt.Errorf("failed to determine TCP address from listener")
+	}
+
+	return addr.Port, nil
 }
 
 func main() {
@@ -95,11 +111,18 @@ func main() {
 		log.Fatalf("Error starting local server: %s", err.Error())
 	}
 
+	port, err := getFreePort()
+	if err != nil {
+		log.Fatalf("Error finding free port: %s", err.Error())
+	}
+
+	serverURL := fmt.Sprintf("http://localhost:%d", port)
+
 	// Use wrapWithRecover for all goroutines to handle panics
 	g.Go(wrapWithRecover(logger, func() error {
 		defer cancel()
 		displayScale := config.GetCurrentDisplayScale()
-		w, err := gowebview.New(&gowebview.Config{URL: "http://localhost:8087", WindowConfig: &gowebview.WindowConfig{
+		w, err := gowebview.New(&gowebview.Config{URL: serverURL, WindowConfig: &gowebview.WindowConfig{
 			Title: "Koolo",
 			Size: &gowebview.Point{
 				X: int64(1040 * displayScale),
@@ -152,7 +175,7 @@ func main() {
 
 	g.Go(wrapWithRecover(logger, func() error {
 		defer cancel()
-		return srv.Listen(8087)
+		return srv.Listen(port)
 	}))
 
 	g.Go(wrapWithRecover(logger, func() error {

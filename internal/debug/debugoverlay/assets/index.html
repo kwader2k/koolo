@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Debug Overlay</title>
+  <style>
+    body {
+      margin: 0;
+      font: 12px 'Segoe UI', Tahoma, sans-serif;
+      background: #050607;
+      color: #b0bec5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 0;
+    }
+    .panel {
+      width: 640px;
+      box-sizing: border-box;
+      background: #11151a;
+      border: 1px solid #1f242c;
+    }
+    #hud {
+      padding: 6px 10px;
+      border-bottom: none;
+      border-radius: 4px;
+    }
+    canvas {
+      display: block;
+      background: #050607;
+      border: 1px solid #1f242c;
+      box-sizing: border-box;
+      border-radius: 4px;
+    }
+    #legend {
+      width: 640px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 6px 8px;
+      border-radius: 4px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      background: rgba(17, 21, 26, 0.85);
+      padding: 4px 8px;
+      border: 1px solid #1f242c;
+      border-radius: 4px;
+    }
+    .legend-swatch {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      background: var(--legend-color, #b0bec5);
+    }
+    .legend-swatch.circle {
+      border-radius: 50%;
+    }
+    .legend-swatch.line {
+      width: 22px;
+      height: 2px;
+      border-radius: 0;
+      background: var(--legend-color, #b0bec5);
+    }
+  </style>
+</head>
+<body>
+  <div id="legend" class="panel"></div>
+  <div id="hud" class="panel"><span id="meta"></span></div>
+  <canvas id="map"></canvas>
+  <script src="/overlay.js"></script>
+</body>
+</html>

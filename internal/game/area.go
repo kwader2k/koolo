@@ -18,7 +18,7 @@ type AreaData struct {
 }
 
 func (ad AreaData) IsInside(pos data.Position) bool {
-	return pos.X > ad.OffsetX && pos.Y > ad.OffsetY && pos.X < ad.OffsetX+ad.Width && pos.Y < ad.OffsetY+ad.Height
+	return pos.X >= ad.OffsetX && pos.Y >= ad.OffsetY && pos.X < ad.OffsetX+ad.Width && pos.Y < ad.OffsetY+ad.Height
 }
 
 var _85Zones = []area.ID{

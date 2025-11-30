@@ -11,6 +11,7 @@ killD2OnStop: true # Terminate D2 process on bot stop
 classicMode: false # Set to true to use legacy graphics
 closeMiniPanel: false # Set to true to close the mini panel at start of game in legacy graphics
 hidePortraits: true  # Set to true to hide mercenary and other players portraits (avatar)
+enableDebugOverlay: false # Show the live debug overlay debug window (not available for release builds)
 enableCubeRecipes: true # Enable cubing of flawlesses and tokens
 stopLevelingAt: 0
 

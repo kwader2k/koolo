@@ -62,7 +62,7 @@ func ReturnTown() error {
 		if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
 			return errCheck
 		}
-		return errors.New("portal not found")
+		return errors.New("no town portal found, cannot return to town")
 	}
 
 	if err := step.MoveTo(portal.Position, step.WithIgnoreMonsters()); err != nil {
@@ -126,6 +126,8 @@ func ReturnTown() error {
 			// Verify area data exists and is loaded
 			if townData, ok := ctx.Data.Areas[ctx.Data.PlayerUnit.Area]; ok {
 				if townData.IsInside(ctx.Data.PlayerUnit.Position) {
+					// in town, go get a refill if we really need it
+					VendorRefill(false, false)
 					return nil
 				}
 			}

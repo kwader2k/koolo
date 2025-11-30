@@ -124,6 +124,10 @@ func (s LightningSorceress) KillMonsterSequence(
 }
 
 func (s LightningSorceress) shouldCastStaticField(monster data.Monster) bool {
+	if !(monster.Type == data.MonsterTypeSuperUnique || monster.Type == data.MonsterTypeUnique) {
+		// Only cast Static Field on Unique or Super Unique monsters
+		return false
+	}
 	// Only cast Static Field if monster HP is above threshold
 	maxLife := float64(monster.Stats[stat.MaxLife])
 	if maxLife == 0 {

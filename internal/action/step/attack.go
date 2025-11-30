@@ -296,10 +296,33 @@ func performAttack(ctx *context.Status, settings attackSettings, x, y int) {
 		return // Skip attack if no line of sight
 	}
 
-	// Ensure we have the skill selected
-	if settings.skill != 0 && ctx.Data.PlayerUnit.RightSkill != settings.skill {
-		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(settings.skill))
-		time.Sleep(time.Millisecond * 10)
+	attackButton := game.RightButton
+	if settings.primaryAttack {
+		attackButton = game.LeftButton
+	}
+
+	if settings.skill != 0 {
+		leftMatch := ctx.Data.PlayerUnit.LeftSkill == settings.skill
+		rightMatch := ctx.Data.PlayerUnit.RightSkill == settings.skill
+
+		// Prefer whichever button currently has the skill bound.
+		switch {
+		case leftMatch && !rightMatch:
+			attackButton = game.LeftButton
+		case rightMatch && !leftMatch:
+			attackButton = game.RightButton
+		}
+
+		// Ensure the correct button has the skill selected when using right-click.
+		if attackButton == game.RightButton && !rightMatch {
+			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(settings.skill))
+			time.Sleep(time.Millisecond * 10)
+		}
+		// If the configured attack expects left-click but the skill is only on right-click,
+		// fall back to right-click to avoid whiffing with the wrong button.
+		if attackButton == game.LeftButton && !leftMatch && rightMatch {
+			attackButton = game.RightButton
+		}
 	}
 
 	if settings.shouldStandStill {
@@ -307,11 +330,7 @@ func performAttack(ctx *context.Status, settings attackSettings, x, y int) {
 	}
 
 	x, y = ctx.PathFinder.GameCoordsToScreenCords(x, y)
-	if settings.primaryAttack {
-		ctx.HID.Click(game.LeftButton, x, y)
-	} else {
-		ctx.HID.Click(game.RightButton, x, y)
-	}
+	ctx.HID.Click(attackButton, x, y)
 
 	if settings.shouldStandStill {
 		ctx.HID.KeyUp(ctx.Data.KeyBindings.StandStill)

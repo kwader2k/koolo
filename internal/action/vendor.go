@@ -16,8 +16,11 @@ func VendorRefill(forceRefill bool, sellJunk bool, tempLock ...[][]int) (err err
 	ctx := botCtx.Get()
 	ctx.SetLastAction("VendorRefill")
 
+	if !forceRefill && !sellJunk && !shouldVisitVendor(false) {
+		return nil
+	}
 	// This is a special case, we want to sell junk, but we don't have enough space to unequip items
-	if !forceRefill && !shouldVisitVendor() && len(tempLock) == 0 {
+	if !forceRefill && !shouldVisitVendor(true) && len(tempLock) == 0 {
 		return nil
 	}
 
@@ -104,11 +107,11 @@ type VendorItemRequest struct {
 	Tab      int
 }
 
-func shouldVisitVendor() bool {
+func shouldVisitVendor(sell bool) bool {
 	ctx := botCtx.Get()
 	ctx.SetLastStep("shouldVisitVendor")
 
-	if len(town.ItemsToBeSold()) > 0 {
+	if sell && len(town.ItemsToBeSold()) > 0 {
 		return true
 	}
 
