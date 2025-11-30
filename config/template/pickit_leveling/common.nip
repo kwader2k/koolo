@@ -30,7 +30,7 @@
 
 //Shields
 [type] == shield && [flag] != ethereal # [sockets] == 2 && [fireresist] >= 25 && [lightresist] >= 25 # [maxquantity] == 1 && [tier] == 1000 //rhyme
-[type] == shield # [sockets] == 3  # [coldresist] >= 43 && [fireresist] >= 48 && [lightresist] >= 48 && [poisonresist] >= 48 # [tier] == 2000 //ancient's pledge
+[type] == shield && [flag] != ethereal # [sockets] == 3 && [coldresist] >= 43 && [fireresist] >= 48 && [lightresist] >= 48 && [poisonresist] >= 48 # [tier] == 2000 //ancient's pledge
 
 //Rings
 [type] == ring && [quality] == unique # [magicdamagereduction] >= 12 # [tier] == 5000 //dwarf
