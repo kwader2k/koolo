@@ -3,6 +3,7 @@ package action
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -11,6 +12,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/utils"
+	"github.com/lxn/win"
 )
 
 func StashFull() bool {
@@ -34,6 +36,46 @@ func StashFull() bool {
 
 	// 3 tabs, 100 spaces each = 300 total spaces. 80% of 300 is 240.
 	return totalUsedSpace > 240
+}
+
+// We want to prime waypoint data by opening the waypoint menu once in town, required for optimal pathing
+func primeWaypointData(ctx *context.Status) {
+	ctx.SetLastAction("PrimeWaypointData")
+	ctx.WaitForGameToLoad()
+	ctx.RefreshGameData()
+
+	if !ctx.Data.PlayerUnit.Area.IsTown() {
+		// if we're not in town, you do you..
+		ctx.Logger.Debug("Not in town, skipping waypoint data priming")
+		return
+	}
+
+	for _, o := range ctx.Data.Objects {
+		if !o.IsWaypoint() {
+			continue
+		}
+
+		ctx.Logger.Debug("Priming waypoint data by opening waypoint menu")
+		if err := MoveToCoords(o.Position); err != nil {
+			ctx.Logger.Warn("Failed to move to waypoint for priming", slog.String("err", err.Error()))
+			return
+		}
+		err := step.InteractObject(o, func() bool {
+			ctx.RefreshGameData()
+			return ctx.Data.OpenMenus.Waypoint
+		})
+		if err != nil {
+			ctx.Logger.Warn("Failed to open waypoint menu for priming", slog.String("err", err.Error()))
+			return
+		}
+
+		// Close the menu to leave UI clean
+		ctx.HID.PressKey(win.VK_ESCAPE)
+		ctx.RefreshGameData()
+		return
+	}
+
+	ctx.Logger.Debug("No waypoint found to prime waypoint data")
 }
 
 func PreRun(firstRun bool) error {
@@ -87,6 +129,9 @@ func PreRun(firstRun bool) error {
 	DropMouseItem()
 	step.SetSkill(skill.Vigor)
 	RecoverCorpse()
+	if firstRun {
+		primeWaypointData(ctx)
+	}
 	ManageBelt()
 	// Just to make sure messages like TZ change or public game spam arent on the way
 	ClearMessages()
