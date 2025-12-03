@@ -153,14 +153,24 @@ func (pf *PathFinder) GetPathFrom(from, to data.Position) (Path, int, bool) {
 		if n.ID != npc.BarricadeTower {
 			continue
 		}
-		for _, pos := range n.Positions {
-			relativePos := grid.RelativePosition(pos)
-			if relativePos.X < 0 || relativePos.X >= grid.Width || relativePos.Y < 0 || relativePos.Y >= grid.Height {
-				continue
-			}
-			t := grid.CollisionGrid[relativePos.Y][relativePos.X]
-			if t == game.CollisionTypeWalkable || t == game.CollisionTypeLowPriority {
-				grid.CollisionGrid[relativePos.Y][relativePos.X] = game.CollisionTypeTeleportOver
+		if len(n.Positions) == 0 {
+			continue
+		}
+		npcPos := n.Positions[0]
+		relativePos := grid.RelativePosition(npcPos)
+		// Set a 5x5 area around the barricade tower as non-walkable
+		blockedCells := 0
+		for dy := -2; dy <= 2; dy++ {
+			for dx := -2; dx <= 2; dx++ {
+				towerY := relativePos.Y + dy
+				towerX := relativePos.X + dx
+
+				// Bounds checking to prevent array index out of bounds
+				if towerY >= 0 && towerY < len(grid.CollisionGrid) &&
+					towerX >= 0 && towerX < len(grid.CollisionGrid[towerY]) {
+					grid.CollisionGrid[towerY][towerX] = game.CollisionTypeNonWalkable
+					blockedCells++
+				}
 			}
 		}
 	}
