@@ -1,6 +1,7 @@
 package action
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -107,10 +108,31 @@ func checkMisplacedPotions() []data.Item {
 			misplacedPotions = append(misplacedPotions, pot)
 		}
 	}
-	// the array should be iterated in reverse to avoid potions shifting and messing up positions when moving them
-	for i, j := 0, len(misplacedPotions)-1; i < j; i, j = i+1, j-1 {
-		misplacedPotions[i], misplacedPotions[j] = misplacedPotions[j], misplacedPotions[i]
-	}
+	// // the array should be iterated in reverse to avoid potions shifting and messing up positions when moving them
+	// for i, j := 0, len(misplacedPotions)-1; i < j; i, j = i+1, j-1 {
+	// 	misplacedPotions[i], misplacedPotions[j] = misplacedPotions[j], misplacedPotions[i]
+	// }
+
+	// 25.12.07 tt -
+	// need import "sort"
+	sort.Slice(misplacedPotions, func(i, j int) bool {
+		return misplacedPotions[i].Position.X > misplacedPotions[j].Position.X
+	})
+
+	// or A way to avoid the import "sort"
+	// n := len(misplacedPotions)
+	// for i := 0; i < n; i++ {
+	// 	for j := 0; j < n-i-1; j++ {
+	// 		if misplacedPotions[j].Position.X < misplacedPotions[j+1].Position.X {
+	// 			misplacedPotions[j], misplacedPotions[j+1] = misplacedPotions[j+1], misplacedPotions[j]
+	// 		}
+	// 	}
+	// }
+
+	//debug
+	// for i, pot := range misplacedPotions {
+	// 	ctx.Logger.Warn(fmt.Sprintf("Misplaced Potion #%d: %s at %v", i, pot.Name, pot.Position))
+	// }
 	return misplacedPotions
 }
 
