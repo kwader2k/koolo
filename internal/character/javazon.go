@@ -135,8 +135,18 @@ func (s Javazon) KillBossSequence(
 			return nil
 		}
 
-		if completedAttackLoops >= maxJavazonAttackLoops {
+		monster, found := s.Data.Monsters.FindByID(id)
+		if !found {
 			return nil
+		}
+
+		if monster.Stats[stat.Life] <= 0 {
+			return nil
+		}
+
+		if completedAttackLoops >= maxJavazonAttackLoops {
+			completedAttackLoops = 0
+			continue
 		}
 
 		if s.Data.PlayerUnit.Skills[skill.ChargedStrike].Level > 0 {
@@ -207,8 +217,30 @@ func (s Javazon) PreCTABuffSkills() []skill.ID {
 	return []skill.ID{}
 }
 
-func (s Javazon) BuffSkills() []skill.ID {
+func (s Javazon) shouldSummonValkyrie() bool {
+	if s.Data.PlayerUnit.Area.IsTown() {
+		return false
+	}
+
 	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Valkyrie); found {
+		needsValkyrie := true
+
+		for _, monster := range s.Data.Monsters {
+			if monster.IsPet() {
+				switch monster.Name {
+				case npc.Valkyrie:
+					needsValkyrie = false
+				}
+			}
+		}
+		return needsValkyrie
+	}
+
+	return false
+}
+
+func (s Javazon) BuffSkills() []skill.ID {
+	if s.shouldSummonValkyrie() {
 		return []skill.ID{skill.Valkyrie}
 	}
 	return []skill.ID{}
@@ -310,4 +342,28 @@ func (s Javazon) KillNihlathak() error {
 
 func (s Javazon) KillBaal() error {
 	return s.killBoss(npc.BaalCrab, data.MonsterTypeUnique)
+}
+
+func (f Javazon) KillUberDuriel() error {
+	return f.killBoss(npc.UberDuriel, data.MonsterTypeUnique)
+}
+
+func (f Javazon) KillUberIzual() error {
+	return f.killBoss(npc.UberIzual, data.MonsterTypeUnique)
+}
+
+func (f Javazon) KillLilith() error {
+	return f.killBoss(npc.Lilith, data.MonsterTypeUnique)
+}
+
+func (f Javazon) KillUberMephisto() error {
+	return f.killBoss(npc.UberMephisto, data.MonsterTypeUnique)
+}
+
+func (f Javazon) KillUberDiablo() error {
+	return f.killBoss(npc.UberDiablo, data.MonsterTypeUnique)
+}
+
+func (f Javazon) KillUberBaal() error {
+	return f.killBoss(npc.UberBaal, data.MonsterTypeUnique)
 }

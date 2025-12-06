@@ -155,6 +155,25 @@
 
 {{ end }}
 
+{{ define "organs" }}
+    <fieldset>
+        <p><strong>Note:</strong> ONLY for Smiter and Javazon!</p>
+        <p><strong>Note:</strong> You need 3x3 keys in stash/shared stash!</p>
+        <p><strong>Note:</strong> Enigma is required for this run!</p>
+        <p><strong>Note:</strong> You need at least 2 free inventory columns for 3x3 keys!</p>
+        <p><strong>Note:</strong> The Horadric Cube must be placed in a locked inventory slot!</p>
+    </fieldset>
+{{ end }}
+
+{{ define "uber_torch" }}
+    <fieldset>
+        <p><strong>Note:</strong> ONLY for Smiter and Javazon!</p>
+        <p><strong>Note:</strong> Requires 2 free inventory rows!</p>
+        <p><strong>Note:</strong> Requires Chains of Honor!</p>
+        <p><strong>Note:</strong> Make sure your character has enough Strength to equip Enigma even without the Torch. The Torch provides +10-20 Strength, so if you rely on it for Enigma requirements, you won't be able to teleport after stashing the Torch!</p>
+    </fieldset>
+{{ end }}
+
 {{ define "leveling" }}
     <fieldset>
         <label><input type="checkbox" name="gameLevelingEnsurePointsAllocation" {{ if .Config.Game.Leveling.EnsurePointsAllocation }}checked{{ end }}> Automatically allocate stats/skills</label>

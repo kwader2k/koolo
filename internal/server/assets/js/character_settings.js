@@ -168,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
         const blizzardSorceressOptions = document.querySelector('.blizzard-sorceress-options');
         const sorceressLevelingOptions = document.querySelector('.sorceress_leveling-options');
+        const smiterOptions = document.querySelector('.smiter-options');
         // Hide all options first
         berserkerBarbOptions.style.display = 'none';
         warcryBarbOptions.style.display = 'none';
@@ -176,6 +177,7 @@ document.addEventListener('DOMContentLoaded', function () {
         mosaicAssassinOptions.style.display = 'none';
         blizzardSorceressOptions.style.display = 'none';
         sorceressLevelingOptions.style.display = 'none';
+        smiterOptions.style.display = 'none';
         noSettingsMessage.style.display = 'none';
 
         // Show relevant options based on class
@@ -194,6 +196,8 @@ document.addEventListener('DOMContentLoaded', function () {
             blizzardSorceressOptions.style.display = 'block';
         } else if (selectedClass === 'sorceress_leveling') {
             sorceressLevelingOptions.style.display = 'block';
+        } else if (selectedClass === 'smiter') {
+            smiterOptions.style.display = 'block';
         } else {
             noSettingsMessage.style.display = 'block';
         }

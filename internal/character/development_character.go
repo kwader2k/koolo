@@ -28,6 +28,12 @@ func (DevelopmentCharacter) KillCouncil() error           { return nil }
 func (DevelopmentCharacter) KillDiablo() error            { return nil }
 func (DevelopmentCharacter) KillIzual() error             { return nil }
 func (DevelopmentCharacter) KillBaal() error              { return nil }
+func (DevelopmentCharacter) KillUberIzual() error         { return nil }
+func (DevelopmentCharacter) KillUberDuriel() error        { return nil }
+func (DevelopmentCharacter) KillLilith() error            { return nil }
+func (DevelopmentCharacter) KillUberMephisto() error      { return nil }
+func (DevelopmentCharacter) KillUberDiablo() error        { return nil }
+func (DevelopmentCharacter) KillUberBaal() error          { return nil }
 func (DevelopmentCharacter) KillMonsterSequence(func(game.Data) (data.UnitID, bool), []stat.Resist) error {
 	return nil
 }

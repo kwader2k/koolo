@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
@@ -307,7 +308,8 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 									b.ctx.Data.MercHPPercent() <= 0 &&
 									b.ctx.CharacterCfg.Character.UseMerc &&
 									b.ctx.Data.PlayerUnit.TotalPlayerGold() > 100000) &&
-								!b.ctx.Data.PlayerUnit.Area.IsTown() {
+								!b.ctx.Data.PlayerUnit.Area.IsTown() &&
+								b.ctx.Data.PlayerUnit.Area != area.UberTristram {
 
 								// Log the exact reason for going back to town
 								var reason string

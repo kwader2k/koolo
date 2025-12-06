@@ -207,6 +207,16 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 			tmpl.Execute(&buf, data)
 			return template.HTML(buf.String())
 		},
+		"runDisplayName": func(run string) string {
+			switch run {
+			case string(config.OrgansRun):
+				return "Uber (Organs)"
+			case string(config.PandemoniumRun):
+				return "Uber (Torch)"
+			default:
+				return run
+			}
+		},
 		"qualityClass": qualityClass,
 		"statIDToText": statIDToText,
 		"contains":     containss,
@@ -1210,6 +1220,14 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.ClearPathDist = 7
 		}
 
+		// Smiter specific options
+		if cfg.Character.Class == "smiter" {
+			cfg.Character.Smiter.UberMephAura = r.Form.Get("smiterUberMephAura")
+			if cfg.Character.Smiter.UberMephAura == "" {
+				cfg.Character.Smiter.UberMephAura = "resist_lightning"
+			}
+		}
+
 		// Berserker Barb specific options
 		if cfg.Character.Class == "berserker" {
 			cfg.Character.BerserkerBarb.SkipPotionPickupInTravincal = r.Form.Has("barbSkipPotionPickupInTravincal")
@@ -1599,10 +1617,16 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	enabledRuns := make([]string, 0)
 	// Let's iterate cfg.Game.Runs to preserve current order
 	for _, run := range cfg.Game.Runs {
+		if run == config.UberIzualRun || run == config.UberDurielRun || run == config.LilithRun {
+			continue
+		}
 		enabledRuns = append(enabledRuns, string(run))
 	}
 	disabledRuns := make([]string, 0)
 	for run := range config.AvailableRuns {
+		if run == config.UberIzualRun || run == config.UberDurielRun || run == config.LilithRun {
+			continue
+		}
 		if !slices.Contains(cfg.Game.Runs, run) {
 			disabledRuns = append(disabledRuns, string(run))
 		}

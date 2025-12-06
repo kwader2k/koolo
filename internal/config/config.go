@@ -175,6 +175,9 @@ type CharacterCfg struct {
 			UseBladesOfIce    bool `yaml:"useBladesOfIce"`
 			UseFistsOfFire    bool `yaml:"useFistsOfFire"`
 		} `yaml:"mosaic_sin"`
+		Smiter struct {
+			UberMephAura string `yaml:"uber_meph_aura"`
+		} `yaml:"smiter"`
 		WarcryBarb struct {
 			FindItemSwitch              bool `yaml:"find_item_switch"`
 			SkipPotionPickupInTravincal bool `yaml:"skip_potion_pickup_in_travincal"`

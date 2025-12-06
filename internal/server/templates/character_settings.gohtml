@@ -47,6 +47,7 @@
                         <option value="mule" {{ if eq .Config.Character.Class "mule" }}selected{{ end }}>Mule</option>
                         <option value="hammerdin" {{ if eq .Config.Character.Class "hammerdin" }}selected{{ end }}>Hammer Paladin</option>
                         <option value="foh" {{ if eq .Config.Character.Class "foh" }}selected{{ end }}>FOH Paladin</option>
+                        <option value="smiter" {{ if eq .Config.Character.Class "smiter" }}selected{{ end }}>Smiter (Ubers)</option>
                         <option value="paladin" {{ if eq .Config.Character.Class "paladin" }}selected{{ end }}>Paladin (Leveling)</option>
                         <option value="barb_leveling" {{ if eq .Config.Character.Class "barb_leveling" }}selected{{ end }}>Barbarian (Leveling)</option>
                         <option value="assassin" {{ if eq .Config.Character.Class "assassin" }}selected{{ end }}>Assassin (Leveling)</option>
@@ -246,6 +247,18 @@
                                 <input type="number" name="warcryBarbBattleCryMinMonsters" min="1" max="20" step="1" value="{{ if .Config.Character.WarcryBarb.BattleCryMinMonsters }}{{ .Config.Character.WarcryBarb.BattleCryMinMonsters }}{{ else }}1{{ end }}">
                             </label>
                         </div>
+                    </fieldset>
+                </div>
+                <div class="smiter-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            UberMeph Aura
+                            <select name="smiterUberMephAura" required>
+                                <option value="fanaticism" {{ if eq .Config.Character.Smiter.UberMephAura "fanaticism" }}selected{{ end }}>Fanaticism</option>
+                                <option value="resist_lightning" {{ if or (eq .Config.Character.Smiter.UberMephAura "resist_lightning") (eq .Config.Character.Smiter.UberMephAura "") }}selected{{ end }}>Resist Lightning</option>
+                                <option value="salvation" {{ if eq .Config.Character.Smiter.UberMephAura "salvation" }}selected{{ end }}>Salvation</option>
+                            </select>
+                        </label>
                     </fieldset>
                 </div>
                 <div class="nova-sorceress-options" style="display: none;">
@@ -651,7 +664,7 @@
                         <li value="{{ $run }}">
                             <details>
                                 <summary role="button" class="outline secondary">
-                                    <span>{{ $run }}</span>
+                                    <span>{{ runDisplayName $run }}</span>
                                     <button type="button" class="remove-run" title="Remove run"><i class="bi bi-dash"></i></button>
                                 </summary>
                                 {{ executeTemplateByName $run $topLevelContext }}
@@ -670,7 +683,7 @@
                         <li value="{{ $run }}">
                             <details>
                                 <summary role="button" class="outline secondary">
-                                    <span>{{ $run }}</span>
+                                    <span>{{ runDisplayName $run }}</span>
                                     <button type="button" class="add-run" title="Add run"><i class="bi bi-plus"></i></button>
                                 </summary>
                                 {{ executeTemplateByName $run $topLevelContext }}

@@ -53,6 +53,8 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 		return Hammerdin{BaseCharacter: bc}, nil
 	case "foh":
 		return Foh{BaseCharacter: bc}, nil
+	case "smiter":
+		return Smiter{BaseCharacter: bc}, nil
 	case "trapsin":
 		return Trapsin{BaseCharacter: bc}, nil
 	case "mosaic":
@@ -74,6 +76,30 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 
 type BaseCharacter struct {
 	*context.Context
+}
+
+func (bc BaseCharacter) KillUberIzual() error {
+	return fmt.Errorf("character class %s does not support KillUberIzual", bc.CharacterCfg.Character.Class)
+}
+
+func (bc BaseCharacter) KillUberDuriel() error {
+	return fmt.Errorf("character class %s does not support KillUberDuriel", bc.CharacterCfg.Character.Class)
+}
+
+func (bc BaseCharacter) KillLilith() error {
+	return fmt.Errorf("character class %s does not support KillLilith", bc.CharacterCfg.Character.Class)
+}
+
+func (bc BaseCharacter) KillUberMephisto() error {
+	return fmt.Errorf("character class %s does not support KillUberMephisto", bc.CharacterCfg.Character.Class)
+}
+
+func (bc BaseCharacter) KillUberDiablo() error {
+	return fmt.Errorf("character class %s does not support KillUberDiablo", bc.CharacterCfg.Character.Class)
+}
+
+func (bc BaseCharacter) KillUberBaal() error {
+	return fmt.Errorf("character class %s does not support KillUberBaal", bc.CharacterCfg.Character.Class)
 }
 
 func (bc BaseCharacter) preBattleChecks(id data.UnitID, skipOnImmunities []stat.Resist) bool {

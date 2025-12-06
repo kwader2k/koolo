@@ -171,9 +171,21 @@ func BuildRun(run string) Run {
 		return NewFrozenAuraMerc()
 	case string(config.TristramEarlyGoldfarmRun):
 		return NewTristramEarlyGoldfarm()
+	case string(config.OrgansRun):
+		return NewOrgans()
+	case string(config.PandemoniumRun):
+		return NewTorch()
+	case string(config.UberIzualRun):
+		return NewUberIzual()
+	case string(config.UberDurielRun):
+		return NewUberDuriel()
+	case string(config.LilithRun):
+		return NewLilith()
 	// Development / Utility runs
 	case string(config.DevelopmentRun):
 		return NewDevRun()
+	case string(config.IdleRun):
+		return NewIdle()
 	}
 
 	return nil

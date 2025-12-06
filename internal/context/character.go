@@ -22,6 +22,12 @@ type Character interface {
 	KillDiablo() error
 	KillIzual() error
 	KillBaal() error
+	KillUberIzual() error
+	KillUberDuriel() error
+	KillLilith() error
+	KillUberMephisto() error
+	KillUberDiablo() error
+	KillUberBaal() error
 	KillMonsterSequence(
 		monsterSelector func(d game.Data) (data.UnitID, bool),
 		skipOnImmunities []stat.Resist,
