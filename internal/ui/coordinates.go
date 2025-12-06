@@ -237,4 +237,49 @@ const (
 	VendorTabStartX = SwitchStashTabBtnX
 	VendorTabStartY = SwitchStashTabBtnY
 	VendorTabSize   = SwitchStashTabBtnTabSize
+
+	CharCreateBtnX = 1175
+	CharCreateBtnY = 675
+	CharBackBtnX   = 105
+	CharBackBtnY   = 675
+	CharToggleBtnX = 1165
+	CharToggleBtnY = 60
+
+	CharNameInputX  = 640
+	CharNameInputY  = 530
+	CharNameClickX1 = 460
+	CharNameClickX2 = 820
+	CharNameClickY1 = 560
+	CharNameClickY2 = 600
+
+	CharLadderBtnX    = 570
+	CharLadderBtnY    = 620
+	CharHardcoreBtnX  = 640
+	CharHardcoreBtnY  = 620
+	CharExpansionBtnX = 710
+	CharExpansionBtnY = 620
+
+	CharCreateNewBtnX = 1125
+	CharCreateNewBtnY = 640
+
+	CharAmazonX = 310
+	CharAmazonY = 470
+
+	CharAssassinX = 420
+	CharAssassinY = 470
+
+	CharNecroX = 530
+	CharNecroY = 470
+
+	CharBarbX = 640
+	CharBarbY = 470
+
+	CharPallyX = 750
+	CharPallyY = 470
+
+	CharSorcX = 860
+	CharSorcY = 470
+
+	CharDruidX = 970
+	CharDruidY = 470
 )

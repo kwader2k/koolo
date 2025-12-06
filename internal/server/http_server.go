@@ -1105,11 +1105,24 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 				return
 			}
+			// Reload the newly created configuration to get a non-nil pointer
+			cfg, found = config.GetCharacter(supervisorName)
+			if !found || cfg == nil {
+				s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+					Version:               config.Version,
+					ErrorMessage:          "failed to load newly created configuration",
+					Supervisor:            supervisorName,
+					LevelingSequenceFiles: sequenceFiles,
+				})
+
+				return
+			}
 		}
 
 		cfg.MaxGameLength, _ = strconv.Atoi(r.Form.Get("maxGameLength"))
 		cfg.CharacterName = r.Form.Get("characterName")
 		cfg.CommandLineArgs = r.Form.Get("commandLineArgs")
+		cfg.AutoCreateCharacter = r.Form.Has("autoCreateCharacter")
 		cfg.KillD2OnStop = r.Form.Has("kill_d2_process")
 		cfg.ClassicMode = r.Form.Has("classic_mode")
 		cfg.CloseMiniPanel = r.Form.Has("close_mini_panel")

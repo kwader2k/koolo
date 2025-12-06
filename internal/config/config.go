@@ -92,6 +92,7 @@ type CharacterCfg struct {
 	AuthToken            string `yaml:"authToken"`
 	Realm                string `yaml:"realm"`
 	CharacterName        string `yaml:"characterName"`
+	AutoCreateCharacter  bool   `yaml:"autoCreateCharacter"`
 	CommandLineArgs      string `yaml:"commandLineArgs"`
 	KillD2OnStop         bool   `yaml:"killD2OnStop"`
 	ClassicMode          bool   `yaml:"classicMode"`

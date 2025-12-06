@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -153,8 +154,81 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			time.Sleep(250 * time.Millisecond)
 			s.bot.ctx.HID.PressKey(win.VK_UP)
 		}
+		
+		// Auto-create: scan character list first, select if exists, create only if not found
+		
+		if s.bot.ctx.CharacterCfg.AutoCreateCharacter {
+			targetName := s.bot.ctx.CharacterCfg.CharacterName
+			currentName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
+			originalName := currentName
 
-		// Try to select a character up to 25 times then give up and kill the client
+			s.bot.ctx.Logger.Debug(fmt.Sprintf("Auto-create enabled, starting scan. Current selected character: %s", currentName))
+
+			// Check currently selected character first
+			if strings.EqualFold(currentName, targetName) {
+				s.bot.ctx.Logger.Info(fmt.Sprintf("Character %s already exists and is selected.", targetName))
+
+				s.bot.ctx.CharacterCfg.AutoCreateCharacter = false
+				if cfg, ok := config.GetCharacter(s.name); ok && cfg != nil {
+					cfg.AutoCreateCharacter = false
+					config.SaveSupervisorConfig(s.name, cfg)
+				}
+
+				return nil
+			}
+
+			// Scan down the list until we either find the character or loop back
+			for i := 0; i < 25; i++ {
+				s.bot.ctx.HID.PressKey(win.VK_DOWN)
+				time.Sleep(250 * time.Millisecond)
+
+				currentName = s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
+				s.bot.ctx.Logger.Debug(fmt.Sprintf("Auto-create scan, checking character: %s", currentName))
+
+				if strings.EqualFold(currentName, targetName) {
+					s.bot.ctx.Logger.Info(fmt.Sprintf("Character %s already exists in list, selected instead of creating.", targetName))
+
+					s.bot.ctx.CharacterCfg.AutoCreateCharacter = false
+					if cfg, ok := config.GetCharacter(s.name); ok && cfg != nil {
+						cfg.AutoCreateCharacter = false
+						config.SaveSupervisorConfig(s.name, cfg)
+					}
+
+					return nil
+				}
+				// If we came back to the original entry, we've scanned the full list.
+				if strings.EqualFold(currentName, originalName) {
+					break
+				}
+			}
+
+			// At this point the character wasn't found in the list, proceed with creation.
+			s.bot.ctx.Logger.Info(
+				fmt.Sprintf("Auto-create enabled for character %s, not found in list, proceeding to create.", targetName),
+				slog.String("class", s.bot.ctx.CharacterCfg.Character.Class),
+			)
+
+			if err := AutoCreateCharacter(s.bot.ctx.CharacterCfg.Character.Class, s.bot.ctx.CharacterCfg.CharacterName); err != nil {
+				s.bot.ctx.Logger.Error("Auto-create failed, terminating client", slog.String("error", err.Error()))
+				if killErr := s.KillClient(); killErr != nil {
+					return killErr
+				}
+				return err
+			}
+
+			// On successful auto-create, disable the flag so it is one-time only.
+			s.bot.ctx.CharacterCfg.AutoCreateCharacter = false
+			if cfg, ok := config.GetCharacter(s.name); ok && cfg != nil {
+				cfg.AutoCreateCharacter = false
+				if err := config.SaveSupervisorConfig(s.name, cfg); err != nil {
+					s.bot.ctx.Logger.Warn("Failed to persist AutoCreateCharacter=false", slog.String("error", err.Error()))
+				}
+			}
+
+			return nil
+		}
+
+		// Auto-create disabled: try to select the character up to 25 times.
 		for i := 0; i < 25; i++ {
 			characterName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
 
@@ -169,11 +243,16 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			time.Sleep(250 * time.Millisecond)
 		}
 
-		s.bot.ctx.Logger.Info(fmt.Sprintf("Character %s not found after 25 attempts, terminating client ...", s.bot.ctx.CharacterCfg.CharacterName))
+		s.bot.ctx.Logger.Error(
+			fmt.Sprintf("Character %s not found after 25 attempts and auto-create is disabled.", s.bot.ctx.CharacterCfg.CharacterName),
+			slog.String("class", s.bot.ctx.CharacterCfg.Character.Class),
+		)
 
-		if err := s.KillClient(); err != nil {
-			return err
+		if killErr := s.KillClient(); killErr != nil {
+			return killErr
 		}
+
+		return fmt.Errorf("character %s not found and auto-create disabled", s.bot.ctx.CharacterCfg.CharacterName)
 	}
 
 	return nil
