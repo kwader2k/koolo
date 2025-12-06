@@ -66,15 +66,17 @@ func PickupItemPacket(it data.Item, itemPickupAttempt int) error {
 		return fmt.Errorf("packet pickup failed: %w", err)
 	}
 
-	utils.Sleep(100)
-	ctx.RefreshInventory()
+	for i := 0; i < 5; i++ {
+		utils.PingSleep(utils.Light, 150)
+		ctx.RefreshInventory()
 
-	// Verify pickup
-	_, stillExists := findItemOnGround(targetItem.UnitID)
-	if !stillExists {
-		ctx.Logger.Info(fmt.Sprintf("Picked up (packet): %s [%s] | Item Pickup Attempt:%d", targetItem.Desc().Name, targetItem.Quality.ToString(), itemPickupAttempt))
-		ctx.CurrentGame.PickedUpItems[int(targetItem.UnitID)] = int(ctx.Data.PlayerUnit.Area.Area().ID)
-		return nil
+		// Verify pickup
+		_, stillExists := findItemOnGround(targetItem.UnitID)
+		if !stillExists {
+			ctx.Logger.Info(fmt.Sprintf("Picked up (packet): %s [%s] | Item Pickup Attempt:%d", targetItem.Desc().Name, targetItem.Quality.ToString(), itemPickupAttempt))
+			ctx.CurrentGame.PickedUpItems[int(targetItem.UnitID)] = int(ctx.Data.PlayerUnit.Area.Area().ID)
+			return nil
+		}
 	}
 
 	ctx.Logger.Warn("Packet sent but item still on ground")

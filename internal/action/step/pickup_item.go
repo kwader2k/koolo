@@ -144,7 +144,7 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 		// Click on item if mouse is hovering over
 		if currentItem.UnitID == ctx.GameReader.GameReader.GetData().HoverData.UnitID {
 			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
-			time.Sleep(clickDelay)
+			utils.PingSleep(utils.Light, 150)
 
 			if waitingForInteraction.IsZero() {
 				waitingForInteraction = time.Now()
