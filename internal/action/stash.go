@@ -323,12 +323,16 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 
 // shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
 // It now supports keeping multiple jewels for crafting via maxJewelsKept.
+// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
+// It now supports keeping multiple jewels for crafting via JewelsToKeep.
+// shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.
+// It now supports keeping multiple jewels (of any quality) for crafting via JewelsToKeep.
 func shouldKeepRecipeItem(i data.Item) bool {
 	ctx := context.Get()
 	ctx.SetLastStep("shouldKeepRecipeItem")
 
-	// No items with quality higher than magic can be part of a recipe,
-	// except jewels, which are used in crafting recipes at any quality.
+	// For non-jewel items: only normal/magic quality can be part of recipes
+	// For jewels: any quality (magic, rare, unique, etc.) can be used in crafting recipes
 	if string(i.Name) != "Jewel" && i.Quality > item.QualityMagic {
 		return false
 	}
@@ -336,21 +340,29 @@ func shouldKeepRecipeItem(i data.Item) bool {
 	itemInStashNotMatchingRule := false
 	jewelCount := 0
 
-	// Count existing magic jewels and detect if there is a magic item of the same base name already in stash
-	// that does not match a pickit rule.
+	// Count ALL non-NIP jewels in stash (regardless of quality: magic, rare, unique, etc.)
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
-		// Count how many magic or rare quality jewels we already have in stash
 		if string(it.Name) == "Jewel" {
 			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it); res != nip.RuleResultFullMatch {
 				jewelCount++
 			}
 		}
-		// Match on base name and require magic quality so only another magic item of the same base blocks us
-		if strings.EqualFold(string(it.Name), string(i.Name)) && it.Quality == item.QualityMagic {
+		// For OTHER recipe items (not jewels): match on base name and require magic quality
+		// so only another magic item of the same base blocks us
+		if string(it.Name) != "Jewel" && strings.EqualFold(string(it.Name), string(i.Name)) && it.Quality == item.QualityMagic {
 			_, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it)
 			if res != nip.RuleResultFullMatch {
 				itemInStashNotMatchingRule = true
-				break
+			}
+		}
+	}
+
+	// CRITICAL: Also count ALL non-NIP jewels currently in inventory (any quality, excluding the one we're evaluating)
+	// because they will also be stashed in the same run
+	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if string(it.Name) == "Jewel" && it.UnitID != i.UnitID {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it); res != nip.RuleResultFullMatch {
+				jewelCount++
 			}
 		}
 	}
@@ -358,7 +370,6 @@ func shouldKeepRecipeItem(i data.Item) bool {
 	recipeMatch := false
 
 	// Check if the item is part of an enabled recipe
-	// 'Recipes' is defined/imported from 'cube_recipes.go' or similar
 	for _, recipe := range Recipes {
 		if slices.Contains(recipe.Items, string(i.Name)) &&
 			slices.Contains(ctx.CharacterCfg.CubeRecipes.EnabledRecipes, recipe.Name) {
@@ -367,13 +378,15 @@ func shouldKeepRecipeItem(i data.Item) bool {
 		}
 	}
 
-	// Special-case: For jewels used in crafting recipes, stash up to maxJewelsKept copies.
-	// We treat jewels as recipe items and want to preserve multiple copies for cubing.
+	// Special-case: For jewels of ANY quality used in crafting recipes, stash up to JewelsToKeep copies.
 	if string(i.Name) == "Jewel" {
 		if recipeMatch && jewelCount < ctx.CharacterCfg.CubeRecipes.JewelsToKeep {
+			ctx.Logger.Debug(fmt.Sprintf("Keeping jewel (quality: %s) for recipe - current count: %d, limit: %d",
+				i.Quality.ToString(), jewelCount, ctx.CharacterCfg.CubeRecipes.JewelsToKeep))
 			return true
 		}
-		// If we've already reached our jewel quota or the recipe is not enabled, do not keep
+		ctx.Logger.Debug(fmt.Sprintf("NOT keeping jewel (quality: %s) - count: %d, limit: %d, recipeMatch: %v",
+			i.Quality.ToString(), jewelCount, ctx.CharacterCfg.CubeRecipes.JewelsToKeep, recipeMatch))
 		return false
 	}
 

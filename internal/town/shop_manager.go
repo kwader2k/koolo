@@ -363,16 +363,31 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	} else {
 		currentLockConfig = ctx.CharacterCfg.Inventory.InventoryLock
 	}
-	// Count non-NIP jewels already in stash
-	jewelCount := 0
+
+	// Count ALL non-NIP jewels (stash + inventory) to determine how many we can keep
+	totalNonNIPJewels := 0
+
+	// Count in stash
 	for _, stashed := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
 		if string(stashed.Name) == "Jewel" {
-			// Only count jewels that are not kept by a NIP rule
 			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(stashed); res != nip.RuleResultFullMatch {
-				jewelCount++
+				totalNonNIPJewels++
 			}
 		}
 	}
+
+	// Count in inventory
+	for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if string(invItem.Name) == "Jewel" {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(invItem); res != nip.RuleResultFullMatch {
+				totalNonNIPJewels++
+			}
+		}
+	}
+
+	ctx.Logger.Debug(fmt.Sprintf("Total non-NIP jewels (stash + inventory): %d, Configured limit: %d",
+		totalNonNIPJewels, ctx.CharacterCfg.CubeRecipes.JewelsToKeep))
+
 	// Determine whether any jewel-using recipes are enabled
 	maxJewelsToKeep := ctx.CharacterCfg.CubeRecipes.JewelsToKeep
 	craftingEnabled := false
@@ -383,6 +398,17 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 			strings.HasPrefix(r, "Hitpower ") {
 			craftingEnabled = true
 			break
+		}
+	}
+
+	// Track how many jewels we've decided to keep so far (starting with those in stash)
+	jewelsKeptCount := totalNonNIPJewels
+	// Now subtract inventory jewels as we'll re-evaluate them below
+	for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if string(invItem.Name) == "Jewel" {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(invItem); res != nip.RuleResultFullMatch {
+				jewelsKeptCount-- // We'll re-count them as we process
+			}
 		}
 	}
 
@@ -415,14 +441,18 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 		if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAllIgnoreTiers(itm); result == nip.RuleResultFullMatch && !itm.IsPotion() {
 			continue
 		}
-		// NEW: skip jewels needed for crafting (non-NIP jewels) until quota is met
+
+		// Handle jewels: keep up to the configured limit of non-NIP jewels
 		if craftingEnabled && string(itm.Name) == "Jewel" {
 			// Only consider jewels that are not covered by a NIP rule
 			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(itm); res != nip.RuleResultFullMatch {
-				if jewelCount < maxJewelsToKeep {
-					jewelCount++
-					// do not add this jewel to the sell list
+				if jewelsKeptCount < maxJewelsToKeep {
+					jewelsKeptCount++ // Keep this jewel
+					ctx.Logger.Debug(fmt.Sprintf("Keeping jewel #%d (under limit of %d)", jewelsKeptCount, maxJewelsToKeep))
 					continue
+				} else {
+					ctx.Logger.Debug(fmt.Sprintf("Selling jewel - already at limit (%d/%d)", jewelsKeptCount, maxJewelsToKeep))
+					// This jewel exceeds the limit, so it will be added to items to sell below
 				}
 			}
 		}
