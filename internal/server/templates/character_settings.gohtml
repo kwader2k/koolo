@@ -34,32 +34,22 @@
             </label>
             <fieldset class="grid">
                 <label>
-                    Class
-                    <select name="characterClass">
-                        {{ if eq .Version "dev" }}
-                        <option value="development" {{ if eq .Config.Character.Class "development" }}selected{{ end }}>Development</option>
-                        {{ end }}
-                        <option value="sorceress" {{ if eq .Config.Character.Class "sorceress" }}selected{{ end }}>Blizzard Sorceress</option>
-                        <option value="nova" {{ if eq .Config.Character.Class "nova" }}selected{{ end }}>Nova Sorceress</option>
-                        <option value="hydraorb" {{ if eq .Config.Character.Class "hydraorb" }}selected{{ end }}>Hydra Orb Sorceress</option>
-                        <option value="lightsorc" {{ if eq .Config.Character.Class "lightsorc" }}selected{{ end }}>Lightning Sorceress</option>
-                        <option value="fireballsorc" {{ if eq .Config.Character.Class "fireballsorc" }}selected{{ end }}>Fireball Sorceress</option>
-                        <option value="mule" {{ if eq .Config.Character.Class "mule" }}selected{{ end }}>Mule</option>
-                        <option value="hammerdin" {{ if eq .Config.Character.Class "hammerdin" }}selected{{ end }}>Hammer Paladin</option>
-                        <option value="foh" {{ if eq .Config.Character.Class "foh" }}selected{{ end }}>FOH Paladin</option>
-                        <option value="paladin" {{ if eq .Config.Character.Class "paladin" }}selected{{ end }}>Paladin (Leveling)</option>
-                        <option value="barb_leveling" {{ if eq .Config.Character.Class "barb_leveling" }}selected{{ end }}>Barbarian (Leveling)</option>
-                        <option value="assassin" {{ if eq .Config.Character.Class "assassin" }}selected{{ end }}>Assassin (Leveling)</option>
-                        <option value="necromancer" {{ if eq .Config.Character.Class "necromancer" }}selected{{ end }}>Necromancer (Leveling)</option>
-                        <option value="sorceress_leveling" {{ if eq .Config.Character.Class "sorceress_leveling" }}selected{{ end }}>Sorceress (Leveling)</option>
-                        <option value="trapsin" {{ if eq .Config.Character.Class "trapsin" }}selected{{ end }}>Lightning Trapsin</option>
-                        <option value="mosaic" {{ if eq .Config.Character.Class "mosaic" }}selected{{ end }}>Mosaic Assassin</option>
-                        <option value="winddruid" {{ if eq .Config.Character.Class "winddruid" }}selected{{ end }}>Tornado Druid</option>
-                        <option value="druid_leveling" {{ if eq .Config.Character.Class "druid_leveling" }}selected{{ end }}>Druid (Leveling)</option>
-                        <option value="javazon" {{ if eq .Config.Character.Class "javazon" }}selected{{ end }}>Javazon</option>
-                        <option value="amazon_leveling" {{ if eq .Config.Character.Class "amazon_leveling" }}selected{{ end }}>Amazon (Leveling)</option>
-                        <option value="berserker" {{ if eq .Config.Character.Class "berserker" }}selected{{ end }}>Berserk Barbarian</option>
-                        <option value="warcry_barb" {{ if eq .Config.Character.Class "warcry_barb" }}selected{{ end }}>Warcry Barbarian</option>
+                    Main Class
+                    <select id="mainCharacterClass" name="mainCharacterClass">
+                        <option value="">-- Select main class --</option>
+                        <option value="amazon">Amazon</option>
+                        <option value="assassin">Assassin</option>
+                        <option value="barbarian">Barbarian</option>
+                        <option value="druid">Druid</option>
+                        <option value="necromancer">Necromancer</option>
+                        <option value="paladin">Paladin</option>
+                        <option value="sorceress">Sorceress</option>
+                        <option value="other">Other</option>
+                    </select>
+                </label>
+                <label>
+                    Build
+                    <select name="characterClass" id="characterClass" data-current-build="{{ .Config.Character.Class }}">
                     </select>
                 </label>
                 <label>

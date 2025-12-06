@@ -136,6 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const schedulerEnabled = document.querySelector('input[name="schedulerEnabled"]');
     const schedulerSettings = document.getElementById('scheduler-settings');
     const characterClassSelect = document.querySelector('select[name="characterClass"]');
+    const mainCharacterClassSelect = document.getElementById('mainCharacterClass');
     const berserkerBarbOptions = document.querySelector('.berserker-barb-options');
     const novaSorceressOptions = document.querySelector('.nova-sorceress-options');
     const bossStaticThresholdInput = document.getElementById('novaBossStaticThreshold');
@@ -149,6 +150,96 @@ document.addEventListener('DOMContentLoaded', function () {
     const useExtraBuffsDistContainer = document.getElementById('useExtraBuffsDistContainer');
     const clearPathDistInput = document.getElementById('clearPathDist');
     const clearPathDistValue = document.getElementById('clearPathDistValue');
+
+    const classBuildMapping = {
+        amazon: [
+            { value: 'javazon', label: 'Javazon' },
+            { value: 'amazon_leveling', label: 'Amazon (Leveling)' },
+        ],
+        assassin: [
+            { value: 'assassin', label: 'Assassin (Leveling)' },
+            { value: 'trapsin', label: 'Lightning Trapsin' },
+            { value: 'mosaic', label: 'Mosaic Assassin' },
+        ],
+        barbarian: [
+            { value: 'barb_leveling', label: 'Barbarian (Leveling)' },
+            { value: 'berserker', label: 'Berserk Barbarian' },
+            { value: 'warcry_barb', label: 'Warcry Barbarian' },
+        ],
+        druid: [
+            { value: 'druid_leveling', label: 'Druid (Leveling)' },
+            { value: 'winddruid', label: 'Tornado Druid' },
+        ],
+        necromancer: [
+            { value: 'necromancer', label: 'Necromancer (Leveling)' },
+        ],
+        paladin: [
+            { value: 'paladin', label: 'Paladin (Leveling)' },
+            { value: 'hammerdin', label: 'Hammer Paladin' },
+            { value: 'foh', label: 'FOH Paladin' },
+        ],
+        sorceress: [
+            { value: 'sorceress', label: 'Blizzard Sorceress' },
+            { value: 'nova', label: 'Nova Sorceress' },
+            { value: 'hydraorb', label: 'Hydra Orb Sorceress' },
+            { value: 'lightsorc', label: 'Lightning Sorceress' },
+            { value: 'fireballsorc', label: 'Fireball Sorceress' },
+            { value: 'sorceress_leveling', label: 'Sorceress (Leveling)' },
+        ],
+        other: [
+            { value: 'mule', label: 'Mule' },
+            { value: 'development', label: 'Development' },
+        ],
+    };
+
+    function findMainClassForBuild(buildValue) {
+        if (!buildValue) return '';
+        for (const [mainClass, builds] of Object.entries(classBuildMapping)) {
+            if (builds.some(b => b.value === buildValue)) {
+                return mainClass;
+            }
+        }
+        return '';
+    }
+
+    function populateBuildSelect(mainClass, currentBuild) {
+        if (!characterClassSelect) return;
+        const builds = classBuildMapping[mainClass] || [];
+
+        characterClassSelect.innerHTML = '';
+
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = builds.length ? '-- Select build --' : '-- No build available --';
+        if (!currentBuild) {
+            placeholder.selected = true;
+        }
+        characterClassSelect.appendChild(placeholder);
+
+        if (!builds.length) {
+            return;
+        }
+
+        builds.forEach(build => {
+            const opt = document.createElement('option');
+            opt.value = build.value;
+            opt.textContent = build.label;
+            if (build.value === currentBuild) {
+                opt.selected = true;
+            }
+            characterClassSelect.appendChild(opt);
+        });
+    }
+
+    function initializeClassSelectors() {
+        if (!characterClassSelect || !mainCharacterClassSelect) return;
+
+        const initialBuildValue = characterClassSelect.dataset.currentBuild || '';
+        const detectedMainClass = findMainClassForBuild(initialBuildValue) || 'sorceress';
+
+        mainCharacterClassSelect.value = detectedMainClass;
+        populateBuildSelect(detectedMainClass, initialBuildValue || undefined);
+    }
 
     if (bossStaticThresholdInput) {
         bossStaticThresholdInput.addEventListener('input', handleBossStaticThresholdChange);
@@ -301,7 +392,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    characterClassSelect.addEventListener('change', updateCharacterOptions);
+    if (mainCharacterClassSelect && characterClassSelect) {
+        initializeClassSelectors();
+
+        mainCharacterClassSelect.addEventListener('change', function () {
+            const mainClass = mainCharacterClassSelect.value;
+            populateBuildSelect(mainClass, '');
+            updateCharacterOptions();
+        });
+    }
+
+    if (characterClassSelect) {
+        characterClassSelect.addEventListener('change', updateCharacterOptions);
+    }
     document.getElementById('gameDifficulty').addEventListener('change', function () {
         if (characterClassSelect.value === 'nova' || characterClassSelect.value === 'lightsorc') {
             updateNovaSorceressOptions();
