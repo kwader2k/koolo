@@ -130,7 +130,7 @@ const (
 	SwitchStashTabBtnY        = 128
 	SwitchStashTabBtnYClassic = 84
 
-	SwitchStashTabBtnTabSize        = 82
+	SwitchStashTabBtnTabSize        = 55
 	SwitchStashTabBtnTabSizeClassic = 96
 
 	CloseMiniPanelClassicX = 639
