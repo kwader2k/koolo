@@ -147,8 +147,8 @@ type CharacterCfg struct {
 			HowlCooldown                int  `yaml:"howl_cooldown"`
 			HowlMinMonsters             int  `yaml:"howl_min_monsters"`
 			UseBattleCry                bool `yaml:"use_battlecry"`
-			BattleCryCooldown            int  `yaml:"battlecry_cooldown"`
-			BattleCryMinMonsters         int  `yaml:"battlecry_min_monsters"`
+			BattleCryCooldown           int  `yaml:"battlecry_cooldown"`
+			BattleCryMinMonsters        int  `yaml:"battlecry_min_monsters"`
 			HorkNormalMonsters          bool `yaml:"hork_normal_monsters"`
 			HorkMonsterCheckRange       int  `yaml:"hork_monster_check_range"`
 		} `yaml:"berserker_barb"`
@@ -237,6 +237,7 @@ type CharacterCfg struct {
 	Game struct {
 		MinGoldPickupThreshold int                   `yaml:"minGoldPickupThreshold"`
 		UseCainIdentify        bool                  `yaml:"useCainIdentify"`
+		DisableIdentifyTome    bool                  `yaml:"disableIdentifyTome"`
 		InteractWithShrines    bool                  `yaml:"interactWithShrines"`
 		InteractWithChests     bool                  `yaml:"interactWithChests"`
 		StopLevelingAt         int                   `yaml:"stopLevelingAt"`

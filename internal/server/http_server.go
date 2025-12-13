@@ -1488,6 +1488,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.MinGoldPickupThreshold, _ = strconv.Atoi(r.Form.Get("gameMinGoldPickupThreshold"))
 		cfg.UseCentralizedPickit = r.Form.Has("useCentralizedPickit")
 		cfg.Game.UseCainIdentify = r.Form.Has("useCainIdentify")
+		cfg.Game.DisableIdentifyTome = r.PostFormValue("game.disableIdentifyTome") == "on"
 		cfg.Game.InteractWithShrines = r.Form.Has("interactWithShrines")
 		cfg.Game.InteractWithChests = r.Form.Has("interactWithChests")
 		cfg.Game.StopLevelingAt, _ = strconv.Atoi(r.Form.Get("stopLevelingAt"))

@@ -137,14 +137,23 @@ func ShouldBuyTPs() bool {
 }
 
 func ShouldBuyIDs() bool {
-	idTome, found := context.Get().Data.Inventory.Find(item.TomeOfIdentify, item.LocationInventory)
+	ctx := context.Get()
+
+	// Respect end-game setting: completely disable ID tome purchasing
+	if ctx.CharacterCfg.Game.DisableIdentifyTome {
+		// Do not buy Tome of Identify nor ID scrolls at all
+		ctx.Logger.Debug("DisableIdentifyTome enabled – skipping ID tome/scroll purchases.")
+		return false
+	}
+
+	// Original behaviour: keep at least 10 IDs in the tome
+	idTome, found := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationInventory)
 	if !found {
 		return true
 	}
 
 	qty, found := idTome.FindStat(stat.Quantity, 0)
-
-	return qty.Value < 10 || !found
+	return !found || qty.Value < 10
 }
 
 func ShouldBuyKeys() (int, bool) {
