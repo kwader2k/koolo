@@ -36,6 +36,19 @@ func direction(from, to data.Position) (dx, dy int) {
 const MaxConsecutiveTeleportOver = 12
 
 func CalculatePath(g *game.Grid, start, goal data.Position, canTeleport bool) ([]data.Position, int, bool) {
+	inBounds := func(p data.Position) bool {
+		return p.X >= 0 && p.Y >= 0 && p.X < g.Width && p.Y < g.Height
+	}
+
+	if g == nil || g.Width == 0 || g.Height == 0 || len(g.CollisionGrid) == 0 || len(g.CollisionGrid[0]) == 0 {
+		return nil, 0, false
+	}
+
+	// Bail out early if start or goal is outside the grid to prevent panics
+	if !inBounds(start) || !inBounds(goal) {
+		return nil, 0, false
+	}
+
 	pq := make(PriorityQueue, 0)
 	heap.Init(&pq)
 
@@ -123,7 +136,16 @@ func updateNeighbors(grid *game.Grid, node *Node, neighbors *[]data.Position, ca
 			return true
 		}
 		collisionType := grid.CollisionGrid[py][px]
-		return collisionType == game.CollisionTypeNonWalkable || (!canTeleport && collisionType == game.CollisionTypeTeleportOver)
+		switch collisionType {
+		case game.CollisionTypeNonWalkable:
+			return true
+		case game.CollisionTypeTeleportOver:
+			return !canTeleport
+		case game.CollisionTypeThickened:
+			return !canTeleport
+		default:
+			return false
+		}
 	}
 
 	for _, d := range directions {
@@ -157,6 +179,11 @@ func getCost(tileType game.CollisionType, canTeleport bool) int {
 	case game.CollisionTypeLowPriority:
 		return 20
 	case game.CollisionTypeTeleportOver:
+		if canTeleport {
+			return 1
+		}
+		return math.MaxInt32
+	case game.CollisionTypeThickened:
 		if canTeleport {
 			return 1
 		}

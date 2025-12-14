@@ -94,6 +94,17 @@ func (gd *MemoryReader) FetchMapData() error {
 			if !areaID.IsTown() {
 				gd.TeleportPostProcess(&grid.CollisionGrid, lvl.Size.Width, lvl.Size.Height)
 			}
+
+			// Apply collision thickening to all non-town areas
+			if !areaID.IsTown() {
+				thickenCollisions(grid)
+				// Re-open exits after thickening
+				drillExits(grid, extractExitPositions(exits))
+			} else {
+				// Apply thickening to towns but don't drill exits
+				thickenCollisions(grid)
+			}
+
 			mu.Lock()
 			areas[areaID] = AreaData{
 				Area:           area.ID(lvl.ID),
@@ -272,4 +283,15 @@ func (gd *MemoryReader) getMapSeed(playerUnit uintptr) (uint, error) {
 	}
 
 	return mapSeed, nil
+}
+
+// extractExitPositions extracts positions from exit level data for drill exit purposes
+func extractExitPositions(exits []data.Level) []data.Position {
+	positions := make([]data.Position, 0, len(exits))
+	for _, exit := range exits {
+		if exit.Position.X != 0 || exit.Position.Y != 0 {
+			positions = append(positions, exit.Position)
+		}
+	}
+	return positions
 }
