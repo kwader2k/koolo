@@ -16,17 +16,17 @@ import (
 var events = make(chan Event)
 
 type Listener struct {
-	handlers         []Handler
-	deliveryHandlers map[int]Handler
-	logger           *slog.Logger
+	handlers     []Handler
+	DropHandlers map[int]Handler
+	logger       *slog.Logger
 }
 
 type Handler func(ctx context.Context, e Event) error
 
 func NewListener(logger *slog.Logger) *Listener {
 	return &Listener{
-		logger:           logger,
-		deliveryHandlers: make(map[int]Handler),
+		logger:       logger,
+		DropHandlers: make(map[int]Handler),
 	}
 }
 
@@ -58,9 +58,9 @@ func (l *Listener) Listen(ctx context.Context) error {
 					l.logger.Error("error running event handler", slog.Any("error", err))
 				}
 			}
-			for _, h := range l.deliveryHandlers {
+			for _, h := range l.DropHandlers {
 				if err := h(ctx, e); err != nil {
-					l.logger.Error("error running event delivery handler", slog.Any("error", err))
+					l.logger.Error("error running event Drop handler", slog.Any("error", err))
 				}
 			}
 
@@ -73,13 +73,13 @@ func (l *Listener) Listen(ctx context.Context) error {
 func (l *Listener) WaitForEvent(ctx context.Context) Event {
 	evtChan := make(chan Event)
 	idx := rand.Intn(math.MaxInt64)
-	l.deliveryHandlers[idx] = func(ctx context.Context, e Event) error {
+	l.DropHandlers[idx] = func(ctx context.Context, e Event) error {
 		evtChan <- e
 		return nil
 	}
 	// Clean up the handler when we're done
 	defer func() {
-		delete(l.deliveryHandlers, idx)
+		delete(l.DropHandlers, idx)
 	}()
 
 	for {

@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/character"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -27,6 +28,7 @@ type SupervisorManager struct {
 	supervisors    map[string]Supervisor
 	crashDetectors map[string]*game.CrashDetector
 	eventListener  *event.Listener
+	Drop           *drop.Service // Drop: Service façade to manage Drop domain
 }
 
 func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *SupervisorManager {
@@ -36,6 +38,7 @@ func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *S
 		supervisors:    make(map[string]Supervisor),
 		crashDetectors: make(map[string]*game.CrashDetector),
 		eventListener:  eventListener,
+		Drop:           drop.NewService(logger),
 	}
 }
 
@@ -221,6 +224,13 @@ func (mng *SupervisorManager) GetContext(characterName string) *context.Context 
 	return nil
 }
 
+func (mng *SupervisorManager) GetSupervisor(supervisor string) Supervisor {
+	if sup, ok := mng.supervisors[supervisor]; ok {
+		return sup
+	}
+	return nil
+}
+
 func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slog.Logger, attach bool, optionalPID uint32, optionalHWND win.HWND) (Supervisor, *game.CrashDetector, error) {
 	cfg, found := config.GetCharacter(supervisorName)
 	if !found {
@@ -293,6 +303,14 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	}
 
 	supervisor.GetContext().StopSupervisorFn = supervisor.Stop
+
+	// Drop: Attach Drop manager to Drop service (filters, callbacks, queued requests)
+	if mng.Drop != nil {
+		if ctx.Drop == nil {
+			ctx.Drop = drop.NewManager(supervisorName, logger)
+		}
+		mng.Drop.AttachManager(supervisorName, ctx.Drop)
+	}
 
 	// This function will be used to restart the client - passed to the crashDetector
 	restartFunc := func() {
@@ -390,6 +408,11 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 	crashDetector := game.NewCrashDetector(supervisorName, int32(pid), uintptr(hwnd), mng.logger, restartFunc)
 
 	return supervisor, crashDetector, nil
+}
+
+// Drop: Expose Drop service for server wiring
+func (mng *SupervisorManager) DropService() *drop.Service {
+	return mng.Drop
 }
 
 func (mng *SupervisorManager) GetSupervisorStats(supervisor string) Stats {

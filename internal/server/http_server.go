@@ -18,6 +18,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -34,6 +35,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/bot"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/remote/droplog"
@@ -45,13 +47,17 @@ import (
 )
 
 type HttpServer struct {
-	logger      *slog.Logger
-	server      *http.Server
-	manager     *bot.SupervisorManager
-	templates   *template.Template
-	wsServer    *WebSocketServer
-	pickitAPI   *PickitAPI
-	sequenceAPI *SequenceAPI
+	logger       *slog.Logger
+	server       *http.Server
+	manager      *bot.SupervisorManager
+	templates    *template.Template
+	wsServer     *WebSocketServer
+	pickitAPI    *PickitAPI
+	sequenceAPI  *SequenceAPI
+	DropHistory  []DropHistoryEntry
+	DropFilters  map[string]drop.Filters
+	DropCardInfo map[string]dropCardInfo
+	DropMux      sync.Mutex
 }
 
 var (
@@ -92,6 +98,11 @@ type Process struct {
 	WindowTitle string `json:"windowTitle"`
 	ProcessName string `json:"processName"`
 	PID         uint32 `json:"pid"`
+}
+
+type dropCardInfo struct {
+	ID   int
+	Name string
 }
 
 func (s *WebSocketServer) Run() {
@@ -244,13 +255,18 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 		logger.Info("  - " + t.Name())
 	}
 
-	return &HttpServer{
-		logger:      logger,
-		manager:     manager,
-		templates:   templates,
-		pickitAPI:   NewPickitAPI(),
-		sequenceAPI: NewSequenceAPI(logger),
-	}, nil
+	server := &HttpServer{
+		logger:       logger,
+		manager:      manager,
+		templates:    templates,
+		pickitAPI:    NewPickitAPI(),
+		sequenceAPI:  NewSequenceAPI(logger),
+		DropFilters:  make(map[string]drop.Filters),
+		DropCardInfo: make(map[string]dropCardInfo),
+	}
+
+	server.initDropCallbacks()
+	return server, nil
 }
 
 func (s *HttpServer) getProcessList(w http.ResponseWriter, r *http.Request) {
@@ -643,6 +659,9 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/sequence-editor/save", s.sequenceAPI.handleSaveSequence)
 	http.HandleFunc("/api/sequence-editor/delete", s.sequenceAPI.handleDeleteSequence)
 	http.HandleFunc("/api/sequence-editor/files", s.sequenceAPI.handleListSequenceFiles)
+	http.HandleFunc("/Drop-manager", s.DropManagerPage)
+
+	s.registerDropRoutes()
 
 	assets, _ := fs.Sub(assetsFS, "assets")
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))

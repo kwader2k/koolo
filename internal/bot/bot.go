@@ -12,7 +12,9 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/run"
@@ -71,6 +73,10 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	gameStartedAt := time.Now()
 	b.ctx.SwitchPriority(botCtx.PriorityNormal) // Restore priority to normal, in case it was stopped in previous game
 	b.ctx.CurrentGame = botCtx.NewGameHelper()  // Reset current game helper structure
+	// Drop: Initialize Drop manager and start watch context
+	if b.ctx.Drop == nil {
+		b.ctx.Drop = drop.NewManager(b.ctx.Name, b.ctx.Logger)
+	}
 
 	err := b.ctx.GameReader.FetchMapData()
 	if err != nil {
@@ -127,6 +133,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				if b.ctx.ExecutionPriority == botCtx.PriorityPause {
 					continue
 				}
+				if b.ctx.Drop != nil && (b.ctx.Drop.Pending() != nil || b.ctx.Drop.Active() != nil) {
+					// Skip health handling while Drop run takes over (character may be out of game)
+					continue
+				}
+
 				err = b.ctx.HealthManager.HandleHealthAndMana()
 				if err != nil {
 					b.ctx.Logger.Info("HealthManager: Detected critical error (chicken/death), stopping bot.", "error", err.Error())
@@ -190,6 +201,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				return nil
 			case <-ticker.C:
 				if b.ctx.ExecutionPriority == botCtx.PriorityPause {
+					continue
+				}
+
+				if b.ctx.Drop != nil && (b.ctx.Drop.Pending() != nil || b.ctx.Drop.Active() != nil) {
+					// Drop is in progress, skip high-priority actions until handled
 					continue
 				}
 
@@ -377,6 +393,25 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				// Update activity before the main run logic is executed.
 				b.updateActivityAndPosition()
 				err = r.Run(nil)
+
+				// Drop: Handle Drop interrupt from step functions
+				if errors.Is(err, drop.ErrInterrupt) {
+					b.ctx.Logger.Info("Drop request acknowledged, switching to Drop routine")
+					step.CleanupForDrop()
+					_ = b.ctx.Manager.ExitGame()
+
+					d := run.NewDrop()
+					if derr := d.Run(nil); derr != nil {
+						b.ctx.Logger.Error("Drop run failed", "error", derr)
+					} else {
+						b.ctx.Logger.Info("Drop run completed successfully")
+					}
+
+					// Note: ResetDropContext() is called in Drop.go's defer
+					// to handle both success and failure cases consistently
+
+					return nil
+				}
 
 				var runFinishReason event.FinishReason
 				if err != nil {

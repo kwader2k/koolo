@@ -11,6 +11,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/config"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -63,9 +64,10 @@ type Context struct {
 	RestartWithCharacter  string
 	PacketSender          *game.PacketSender
 	IsLevelingCharacter   *bool
-	ManualModeActive      bool      // Manual play mode: stops after character selection
-	LastPortalTick        time.Time // NEW FIELD: Tracks last portal creation for spam prevention
-	IsBossEquipmentActive bool      // flag for barb leveling
+	ManualModeActive      bool          // Manual play mode: stops after character selection
+	LastPortalTick        time.Time     // NEW FIELD: Tracks last portal creation for spam prevention
+	IsBossEquipmentActive bool          // flag for barb leveling
+	Drop                  *drop.Manager // Drop: Per-supervisor Drop manager
 }
 
 type Debug struct {
@@ -121,6 +123,7 @@ func NewContext(name string) *Status {
 		ForceAttack:      false,
 		ManualModeActive: false, // Explicitly initialize to false
 	}
+	ctx.Drop = drop.NewManager(name, ctx.Logger)
 	ctx.AttachRoutine(PriorityNormal)
 
 	// Initialize ping getter for adaptive delays (avoids import cycle)

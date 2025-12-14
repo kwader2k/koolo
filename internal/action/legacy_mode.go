@@ -11,7 +11,14 @@ func SwitchToLegacyMode() {
 	ctx := context.Get()
 	ctx.SetLastAction("SwitchToLegacyMode")
 
+	// Prevent toggling legacy mode while in lobby or character selection
+	// so lobby-game joins are not affected by unintended legacy input.
+
 	if ctx.CharacterCfg.ClassicMode && !ctx.Data.LegacyGraphics {
+		if ctx.GameReader.IsInLobby() || ctx.GameReader.IsInCharacterSelectionScreen() {
+			return
+		}
+
 		ctx.Logger.Debug("Switching to legacy mode...")
 		ctx.HID.PressKey(ctx.Data.KeyBindings.LegacyToggle.Key1[0])
 		utils.Sleep(500) // Add small delay to allow the game to switch

@@ -13,6 +13,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
@@ -179,6 +180,26 @@ func (s *SinglePlayerSupervisor) Start() error {
 		case <-ctx.Done():
 			return nil
 		default:
+		}
+
+		// Check for pending Drop via Drop manager
+		if s.bot.ctx.Drop != nil && s.bot.ctx.Drop.Pending() != nil {
+			// Skip if Drop is already in progress
+			if s.bot.ctx.Drop.Active() != nil {
+				s.bot.ctx.Logger.Debug("Drop already in progress, skipping check")
+				continue
+			}
+
+			// Immediately run the pending Drop before entering the normal menu flow
+			s.bot.ctx.Logger.Info("Pending Drop detected, launching Drop before menu flow")
+			s.bot.ctx.SwitchPriority(ct.PriorityNormal)
+			action.SwitchToLegacyMode()
+			action.SwitchToLegacyMode()
+			DropRun := run.NewDrop()
+			if err := DropRun.Run(nil); err != nil {
+				s.bot.ctx.Logger.Error("Drop run failed", "error", err)
+			}
+			continue
 		}
 
 		if firstRun {
