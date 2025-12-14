@@ -138,6 +138,7 @@ type CharacterCfg struct {
 		ClearPathDist                int    `yaml:"clearPathDist"`
 		ShouldHireAct2MercFrozenAura bool   `yaml:"shouldHireAct2MercFrozenAura"`
 		UseExtraBuffs                bool   `yaml:"useExtraBuffs"`
+		UseSwapForBuffs              bool   `yaml:"use_swap_for_buffs"`
 		BuffOnNewArea                bool   `yaml:"buffOnNewArea"`
 		BuffAfterWP                  bool   `yaml:"buffAfterWP"`
 		BerserkerBarb                struct {
@@ -147,8 +148,8 @@ type CharacterCfg struct {
 			HowlCooldown                int  `yaml:"howl_cooldown"`
 			HowlMinMonsters             int  `yaml:"howl_min_monsters"`
 			UseBattleCry                bool `yaml:"use_battlecry"`
-			BattleCryCooldown            int  `yaml:"battlecry_cooldown"`
-			BattleCryMinMonsters         int  `yaml:"battlecry_min_monsters"`
+			BattleCryCooldown           int  `yaml:"battlecry_cooldown"`
+			BattleCryMinMonsters        int  `yaml:"battlecry_min_monsters"`
 			HorkNormalMonsters          bool `yaml:"hork_normal_monsters"`
 			HorkMonsterCheckRange       int  `yaml:"hork_monster_check_range"`
 		} `yaml:"berserker_barb"`
@@ -177,9 +178,10 @@ type CharacterCfg struct {
 			UsePacketLearning    bool `yaml:"use_packet_learning"`
 		} `yaml:"barb_leveling"`
 		NovaSorceress struct {
-			BossStaticThreshold   int  `yaml:"boss_static_threshold"`
-			UseTelekinesis        bool `yaml:"use_telekinesis"`
-			UseTelekinesisPackets bool `yaml:"use_telekinesis_packets"`
+			BossStaticThreshold       int  `yaml:"boss_static_threshold"`
+			UseTelekinesis            bool `yaml:"use_telekinesis"`
+			UseTelekinesisPackets     bool `yaml:"use_telekinesis_packets"`
+			AggressiveNovaPositioning bool `yaml:"aggressive_nova_positioning"`
 		} `yaml:"nova_sorceress"`
 		LightningSorceress struct {
 			UseTelekinesis        bool `yaml:"use_telekinesis"`

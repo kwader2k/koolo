@@ -285,22 +285,42 @@
                         </label>
                     </fieldset>
                 </div>
-                <div class="nova-sorceress-options" style="display: none;">
-                    <fieldset class="grid">
-                        <label>
-                            Boss Static HP (%)
-                            <input type="number" id="novaBossStaticThreshold" name="novaBossStaticThreshold" min="1" max="100" step="1" value="{{ .Config.Character.NovaSorceress.BossStaticThreshold }}">
-                        </label>
-                        <label>
-                            <input type="checkbox" id="novaUseTelekinesis" name="useTelekinesis" {{ if .Config.Character.NovaSorceress.UseTelekinesis }}checked{{ end }}/>
-                            Use Telekinesis (Waypoints/Chests)
-                        </label>
-                        <label>
-                            <input type="checkbox" id="novaUseTelekinesisPackets" name="useTelekinesisPackets" {{ if .Config.Character.NovaSorceress.UseTelekinesisPackets }}checked{{ end }}/>
-                            Use Telekinesis Packets (faster)
-                        </label>
-                    </fieldset>
-                </div>
+<div class="nova-sorceress-options" style="display: none;">
+    <fieldset class="grid">
+        <label>
+            Boss Static HP (%)
+            <input type="number"
+                   id="novaBossStaticThreshold"
+                   name="novaBossStaticThreshold"
+                   min="1"
+                   max="100"
+                   step="1"
+                   value="{{ .Config.Character.NovaSorceress.BossStaticThreshold }}">
+        </label>
+        <label>
+            <input type="checkbox"
+                   id="novaUseTelekinesis"
+                   name="useTelekinesis"
+                   {{ if .Config.Character.NovaSorceress.UseTelekinesis }}checked{{ end }}/>
+            Use Telekinesis (Waypoints/Chests)
+        </label>
+        <label>
+            <input type="checkbox"
+                   id="novaUseTelekinesisPackets"
+                   name="useTelekinesisPackets"
+                   {{ if .Config.Character.NovaSorceress.UseTelekinesisPackets }}checked{{ end }}/>
+            Use Telekinesis Packets (faster)
+        </label>
+        <!-- NEW: aggressive Nova toggle -->
+        <label>
+            <input type="checkbox"
+                   id="novaAggressiveNovaPositioning"
+                   name="aggressiveNovaPositioning"
+                   {{ if .Config.Character.NovaSorceress.AggressiveNovaPositioning }}checked{{ end }}/>
+            Aggressive Positioning (focus packs / skip leftovers)
+        </label>
+    </fieldset>
+</div>
                 <div class="blizzard-sorceress-options" style="display: none;">
                     <fieldset class="grid">
                         <label>
@@ -569,6 +589,9 @@
                             </label>
                             <label>
                                 <input type="checkbox" id="characterBuffAfterWP" name="characterBuffAfterWP" {{ if .Config.Character.BuffAfterWP }}checked{{ end }}/>Buff after taking WP
+                            </label>
+                            <label>
+                                <input type="checkbox" id="useSwapForBuffs" name="useSwapForBuffs" {{ if .Config.Character.UseSwapForBuffs }}checked{{ end }}>ClassBuffs from SwapHand
                             </label>
                             <hr/>
                             <div class="input-info">Enable additional buffing for all runs.</div>
