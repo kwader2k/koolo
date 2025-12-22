@@ -90,8 +90,8 @@ func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
 
 		if ctx.Data.PlayerUnit.Area == expectedArea {
 			// Area ID matches, now verify collision data is loaded
-			if ctx.Data.AreaData.Grid != nil && 
-				ctx.Data.AreaData.Grid.CollisionGrid != nil && 
+			if ctx.Data.AreaData.Grid != nil &&
+				ctx.Data.AreaData.Grid.CollisionGrid != nil &&
 				len(ctx.Data.AreaData.Grid.CollisionGrid) > 0 {
 				// Additional check: ensure we have adjacent level data if this is a cross-area operation
 				// Give it one more refresh cycle to ensure all data is populated
@@ -491,7 +491,14 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 			}
 
 			//Check chests nearby
-			if ctx.CharacterCfg.Game.InteractWithChests && shrine.ID == 0 && chest.ID == 0 {
+			// Skip chest interactions Tower
+			isInTower := ctx.Data.PlayerUnit.Area == area.ForgottenTower ||
+				ctx.Data.PlayerUnit.Area == area.TowerCellarLevel1 ||
+				ctx.Data.PlayerUnit.Area == area.TowerCellarLevel2 ||
+				ctx.Data.PlayerUnit.Area == area.TowerCellarLevel3 ||
+				ctx.Data.PlayerUnit.Area == area.TowerCellarLevel4 ||
+				ctx.Data.PlayerUnit.Area == area.TowerCellarLevel5
+			if ctx.CharacterCfg.Game.InteractWithChests && !isInTower && shrine.ID == 0 && chest.ID == 0 {
 				if closestChest, chestFound := ctx.PathFinder.GetClosestChest(ctx.Data.PlayerUnit.Position, true); chestFound {
 					blacklisted, exists := blacklistedInteractions[closestChest.ID]
 					if !exists || !blacklisted {
@@ -586,17 +593,26 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 				continue
 			} else if chest.ID != 0 && targetPosition == chest.Position {
 				//Handle chest if any
-				if err := InteractObject(chest, func() bool {
-					obj, found := ctx.Data.Objects.FindByID(chest.ID)
-					return found && !obj.Selectable
-				}); err != nil {
-					ctx.Logger.Warn("Failed to interact with chest", slog.Any("error", err))
-					blacklistedInteractions[chest.ID] = true
-				}
-				if !opts.IgnoreItems() {
-					lootErr := ItemPickup(lootAfterCombatRadius)
-					if lootErr != nil {
-						ctx.Logger.Warn("Error picking up items after chest opening", slog.String("error", lootErr.Error()))
+				// Skip chest interactions Tower
+				isInTower := ctx.Data.PlayerUnit.Area == area.ForgottenTower ||
+					ctx.Data.PlayerUnit.Area == area.TowerCellarLevel1 ||
+					ctx.Data.PlayerUnit.Area == area.TowerCellarLevel2 ||
+					ctx.Data.PlayerUnit.Area == area.TowerCellarLevel3 ||
+					ctx.Data.PlayerUnit.Area == area.TowerCellarLevel4 ||
+					ctx.Data.PlayerUnit.Area == area.TowerCellarLevel5
+				if !isInTower {
+					if err := InteractObject(chest, func() bool {
+						obj, found := ctx.Data.Objects.FindByID(chest.ID)
+						return found && !obj.Selectable
+					}); err != nil {
+						ctx.Logger.Warn("Failed to interact with chest", slog.Any("error", err))
+						blacklistedInteractions[chest.ID] = true
+					}
+					if !opts.IgnoreItems() {
+						lootErr := ItemPickup(lootAfterCombatRadius)
+						if lootErr != nil {
+							ctx.Logger.Warn("Error picking up items after chest opening", slog.String("error", lootErr.Error()))
+						}
 					}
 				}
 				chest = data.Object{}

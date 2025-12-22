@@ -220,9 +220,38 @@ func (s *Status) PauseIfNotPriority() {
 		time.Sleep(time.Millisecond * 5)
 	}
 
+	blockStartTime := time.Now()
+	iterations := 0
+	const maxBlockDuration = 5 * time.Second
+	const forceUnblockDuration = 10 * time.Second
+
 	for s.Priority != s.ExecutionPriority {
 		if s.ExecutionPriority == PriorityStop {
 			panic("Bot is stopped")
+		}
+
+		iterations++
+		blockDuration := time.Since(blockStartTime)
+		if blockDuration >= forceUnblockDuration {
+			s.Logger.Warn("PauseIfNotPriority: Force unblocking after maximum wait time",
+				"blockDuration", blockDuration,
+				"iterations", iterations,
+				"priority", s.Priority,
+				"executionPriority", s.ExecutionPriority,
+				"area", s.Data.PlayerUnit.Area.Area().Name,
+			)
+			s.ExecutionPriority = s.Priority
+			break
+		}
+
+		if blockDuration >= maxBlockDuration && iterations%100 == 0 {
+			s.Logger.Warn("PauseIfNotPriority: Blocking for extended period",
+				"blockDuration", blockDuration,
+				"iterations", iterations,
+				"priority", s.Priority,
+				"executionPriority", s.ExecutionPriority,
+				"area", s.Data.PlayerUnit.Area.Area().Name,
+			)
 		}
 
 		time.Sleep(time.Millisecond * 10)

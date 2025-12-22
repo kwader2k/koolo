@@ -234,10 +234,16 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					b.ctx.HID.PressKey(b.ctx.Data.KeyBindings.Chat.Key1[0])
 					time.Sleep(150 * time.Millisecond)
 				}
+				// temporarily raise execution priority
+				prevPriority := b.ctx.ExecutionPriority
 				b.ctx.SwitchPriority(botCtx.PriorityHigh)
 
+				// Tower5 - skip AreaCorrection to prevent Priority starvation
+				isTowerL5 := b.ctx.Data.PlayerUnit.Area == area.TowerCellarLevel5
+				skipHeavyOpsInTowerL5 := isTowerL5
+
 				// Area correction (only check if enabled)
-				if b.ctx.CurrentGame.AreaCorrection.Enabled {
+				if b.ctx.CurrentGame.AreaCorrection.Enabled && !skipHeavyOpsInTowerL5 {
 					if err = action.AreaCorrection(); err != nil {
 						b.ctx.Logger.Warn("Area correction failed", "error", err)
 					}
@@ -248,6 +254,9 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					action.ItemPickup(30)
 				}
 				action.BuffIfRequired()
+
+				// restore previous execution priority
+				b.ctx.SwitchPriority(prevPriority)
 
 				lvl, _ := b.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 
