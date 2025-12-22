@@ -46,6 +46,8 @@ type KooloCfg struct {
 	D2LoDPath             string `yaml:"D2LoDPath"`
 	D2RPath               string `yaml:"D2RPath"`
 	CentralizedPickitPath string `yaml:"centralizedPickitPath"`
+	WindowWidth           int    `yaml:"windowWidth"`
+	WindowHeight          int    `yaml:"windowHeight"`
 	Discord               struct {
 		Enabled                      bool     `yaml:"enabled"`
 		EnableGameCreatedMessages    bool     `yaml:"enableGameCreatedMessages"`
@@ -159,17 +161,17 @@ type CharacterCfg struct {
 			HorkMonsterCheckRange       int  `yaml:"hork_monster_check_range"`
 		} `yaml:"berserker_barb"`
 		BlizzardSorceress struct {
-			UseMoatTrick          bool `yaml:"use_moat_trick"`
-			UseStaticOnMephisto   bool `yaml:"use_static_on_mephisto"`
+			UseMoatTrick        bool `yaml:"use_moat_trick"`
+			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
 
-			UseBlizzardPackets    bool `yaml:"use_blizzard_packets"`
+			UseBlizzardPackets bool `yaml:"use_blizzard_packets"`
 		} `yaml:"blizzard_sorceress"`
 		SorceressLeveling struct {
-			UseMoatTrick          bool `yaml:"use_moat_trick"`
-			UseStaticOnMephisto   bool `yaml:"use_static_on_mephisto"`
+			UseMoatTrick        bool `yaml:"use_moat_trick"`
+			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
 
-			UseBlizzardPackets    bool `yaml:"use_blizzard_packets"`
-			UsePacketLearning     bool `yaml:"use_packet_learning"`
+			UseBlizzardPackets bool `yaml:"use_blizzard_packets"`
+			UsePacketLearning  bool `yaml:"use_packet_learning"`
 		} `yaml:"sorceress_leveling"`
 		BarbLeveling struct {
 			UseHowl              bool `yaml:"use_howl"`
@@ -181,18 +183,15 @@ type CharacterCfg struct {
 			UsePacketLearning    bool `yaml:"use_packet_learning"`
 		} `yaml:"barb_leveling"`
 		NovaSorceress struct {
-			BossStaticThreshold       int  `yaml:"boss_static_threshold"`
+			BossStaticThreshold int `yaml:"boss_static_threshold"`
 
 			AggressiveNovaPositioning bool `yaml:"aggressive_nova_positioning"`
 		} `yaml:"nova_sorceress"`
 		LightningSorceress struct {
-
 		} `yaml:"lightning_sorceress"`
 		HydraOrbSorceress struct {
-
 		} `yaml:"hydraorb_sorceress"`
 		FireballSorceress struct {
-
 		} `yaml:"fireball_sorceress"`
 		MosaicSin struct {
 			UseTigerStrike    bool `yaml:"useTigerStrike"`

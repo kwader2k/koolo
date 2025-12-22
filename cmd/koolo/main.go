@@ -8,6 +8,9 @@ import (
 	_ "net/http/pprof"
 	"path/filepath"
 	"runtime/debug"
+	"syscall"
+	"time"
+	"unsafe"
 
 	sloggger "github.com/hectorgimenez/koolo/cmd/koolo/log"
 	"github.com/hectorgimenez/koolo/internal/bot"
@@ -100,26 +103,72 @@ func main() {
 		log.Fatalf("Error starting local server: %s", err.Error())
 	}
 
-	// Use wrapWithRecover for all goroutines to handle panics
 	g.Go(wrapWithRecover(logger, func() error {
 		defer cancel()
 		displayScale := config.GetCurrentDisplayScale()
+
+		// 1. Load dimensions from config, or use defaults
+		width := config.Koolo.WindowWidth
+		if width <= 0 {
+			width = 1040
+		}
+		height := config.Koolo.WindowHeight
+		if height <= 0 {
+			height = 720
+		}
+
 		w, err := gowebview.New(&gowebview.Config{URL: "http://localhost:8087", WindowConfig: &gowebview.WindowConfig{
 			Title: "Koolo",
 			Size: &gowebview.Point{
-				X: int64(1040 * displayScale),
-				Y: int64(720 * displayScale),
+				X: int64(float64(width) * displayScale),
+				Y: int64(float64(height) * displayScale),
 			},
 		}})
 		if err != nil {
-			w.Destroy()
+			if w != nil {
+				w.Destroy()
+			}
 			return fmt.Errorf("error creating webview: %w", err)
 		}
 
+		// 2. Set HintNone to allow mouse resizing
 		w.SetSize(&gowebview.Point{
-			X: int64(1040 * displayScale),
-			Y: int64(720 * displayScale),
-		}, gowebview.HintFixed)
+			X: int64(float64(width) * displayScale),
+			Y: int64(float64(height) * displayScale),
+		}, gowebview.HintNone)
+
+		// 3. Start Auto-Save Polling
+		go func() {
+			handle := w.Window() // Get native Windows handle
+			user32 := syscall.NewLazyDLL("user32.dll")
+			getWindowRect := user32.NewProc("GetWindowRect")
+			type RECT struct{ Left, Top, Right, Bottom int32 }
+
+			ticker := time.NewTicker(5 * time.Second) // Check every 5 seconds
+			defer ticker.Stop()
+
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					var rect RECT
+					ret, _, _ := getWindowRect.Call(handle, uintptr(unsafe.Pointer(&rect)))
+					if ret != 0 {
+						// Calculate current logical dimensions
+						curW := int(float64(rect.Right-rect.Left) / displayScale)
+						curH := int(float64(rect.Bottom-rect.Top) / displayScale)
+
+						// Only save if the size has actually changed
+						if curW != config.Koolo.WindowWidth || curH != config.Koolo.WindowHeight {
+							config.Koolo.WindowWidth = curW
+							config.Koolo.WindowHeight = curH
+							config.ValidateAndSaveConfig(*config.Koolo) // Save to koolo.yaml
+						}
+					}
+				}
+			}
+		}()
 
 		defer w.Destroy()
 		w.Run()
