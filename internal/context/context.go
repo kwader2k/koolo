@@ -220,10 +220,26 @@ func (s *Status) PauseIfNotPriority() {
 		time.Sleep(time.Millisecond * 5)
 	}
 
+	isTowerL5 := s.Data.PlayerUnit.Area == area.TowerCellarLevel5
+
+	// Tower5 fix (isolated version)
+	if !isTowerL5 {
+		for s.Priority != s.ExecutionPriority {
+			if s.ExecutionPriority == PriorityStop {
+				panic("Bot is stopped")
+			}
+			time.Sleep(time.Millisecond * 10)
+		}
+		return
+	}
+
+	// Tower5-specific timeout logic (isolated)
+	willBlock := s.Priority != s.ExecutionPriority
+
 	blockStartTime := time.Now()
 	iterations := 0
-	const maxBlockDuration = 5 * time.Second
-	const forceUnblockDuration = 10 * time.Second
+	const maxBlockDuration = 2 * time.Second
+	const forceUnblockDuration = 3500 * time.Millisecond
 
 	for s.Priority != s.ExecutionPriority {
 		if s.ExecutionPriority == PriorityStop {
@@ -233,6 +249,16 @@ func (s *Status) PauseIfNotPriority() {
 		iterations++
 		blockDuration := time.Since(blockStartTime)
 		if blockDuration >= forceUnblockDuration {
+			if s.ExecutionPriority == PriorityPause {
+				s.Logger.Warn("PauseIfNotPriority: still pause, not force-unblocking in Tower5",
+					"blockDuration", blockDuration,
+					"iterations", iterations,
+					"priority", s.Priority,
+					"executionPriority", s.ExecutionPriority,
+					"area", s.Data.PlayerUnit.Area.Area().Name,
+				)
+				break
+			}
 			s.Logger.Warn("PauseIfNotPriority: Force unblocking after maximum wait time",
 				"blockDuration", blockDuration,
 				"iterations", iterations,
@@ -252,9 +278,31 @@ func (s *Status) PauseIfNotPriority() {
 				"executionPriority", s.ExecutionPriority,
 				"area", s.Data.PlayerUnit.Area.Area().Name,
 			)
+		} else if iterations%100 == 0 {
+			s.Logger.Debug("PauseIfNotPriority: Still blocking in Tower5",
+				"iterations", iterations,
+				"blockDuration", blockDuration,
+				"priority", s.Priority,
+				"executionPriority", s.ExecutionPriority,
+			)
 		}
 
 		time.Sleep(time.Millisecond * 10)
+	}
+
+	if willBlock {
+		blockDuration := time.Since(blockStartTime)
+		if blockDuration >= maxBlockDuration {
+			s.Logger.Warn("PauseIfNotPriority: Unblocked in Tower5 after extended wait",
+				"blockDuration", blockDuration,
+				"iterations", iterations,
+			)
+		} else {
+			s.Logger.Info("PauseIfNotPriority: Unblocked in Tower5",
+				"blockDuration", blockDuration,
+				"iterations", iterations,
+			)
+		}
 	}
 }
 func (ctx *Context) WaitForGameToLoad() {
