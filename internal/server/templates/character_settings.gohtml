@@ -452,10 +452,17 @@
                         <input type="checkbox" name="interactWithShrines" {{ if .Config.Game.InteractWithShrines }}checked{{ end }}/>
                         Interact with shrines
                     </label>
-                    <label>
-                        <input type="checkbox" name="interactWithChests" {{ if .Config.Game.InteractWithChests }}checked{{ end }}/>
-                        Interact with chests
-                    </label>
+                    <div class="chest-toggle-group">
+                        <div class="chest-toggle-title">Chests</div>
+                        <label class="chest-toggle-option">
+                            <input type="checkbox" id="interactWithChests" name="interactWithChests" {{ if .Config.Game.InteractWithChests }}checked{{ end }}/>
+                            All chests
+                        </label>
+                        <label class="chest-toggle-option">
+                            <input type="checkbox" id="interactWithSuperChests" name="interactWithSuperChests" {{ if .Config.Game.InteractWithSuperChests }}checked{{ end }}/>
+                            Super chests only
+                        </label>
+                    </div>
                 </fieldset>
                 <fieldset class="grid">
                     <label>

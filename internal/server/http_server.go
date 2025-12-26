@@ -1453,6 +1453,13 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 		cfg.Game.DisableIdentifyTome = values.Get("game.disableIdentifyTome") == "on"
 		cfg.Game.InteractWithShrines = values.Has("interactWithShrines")
 		cfg.Game.InteractWithChests = values.Has("interactWithChests")
+		cfg.Game.InteractWithSuperChests = values.Has("interactWithSuperChests")
+
+		// Ensure the two chest options are mutually exclusive. If both are enabled
+		// (e.g. due to manual edits), keep the legacy behavior (all chests).
+		if cfg.Game.InteractWithChests {
+			cfg.Game.InteractWithSuperChests = false
+		}
 		if v := values.Get("stopLevelingAt"); v != "" {
 			cfg.Game.StopLevelingAt, _ = strconv.Atoi(v)
 		}

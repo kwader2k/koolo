@@ -57,6 +57,23 @@ window.onload = function () {
             alert("This profile requires enabling the leveling run. Please add only the 'leveling' run to the enabled run list and remove the others.");
         }
     });
+
+    // --- Chest toggles ---
+    // Keep "All chests" and "Super chests only" mutually exclusive.
+    const interactWithChests = document.getElementById('interactWithChests');
+    const interactWithSuperChests = document.getElementById('interactWithSuperChests');
+    if (interactWithChests && interactWithSuperChests) {
+        interactWithChests.addEventListener('change', function () {
+            if (interactWithChests.checked) {
+                interactWithSuperChests.checked = false;
+            }
+        });
+        interactWithSuperChests.addEventListener('change', function () {
+            if (interactWithSuperChests.checked) {
+                interactWithChests.checked = false;
+            }
+        });
+    }
 }
 
 function updateEnabledRunsHiddenField() {

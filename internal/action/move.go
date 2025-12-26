@@ -490,13 +490,23 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 				}
 			}
 
-			//Check chests nearby
-			if ctx.CharacterCfg.Game.InteractWithChests && shrine.ID == 0 && chest.ID == 0 {
-				if closestChest, chestFound := ctx.PathFinder.GetClosestChest(ctx.Data.PlayerUnit.Position, true); chestFound {
-					blacklisted, exists := blacklistedInteractions[closestChest.ID]
-					if !exists || !blacklisted {
-						chest = *closestChest
-						//ctx.Logger.Debug(fmt.Sprintf("MoveTo: Found chest at %v, redirecting destination from %v", chest.Position, targetPosition))
+			// Check chests nearby
+			if shrine.ID == 0 && chest.ID == 0 {
+				// "Super chests only" has priority over the generic "all chests" mode.
+				if ctx.CharacterCfg.Game.InteractWithSuperChests && !ctx.CharacterCfg.Game.InteractWithChests {
+					if closestChest, chestFound := ctx.PathFinder.GetClosestSuperChest(ctx.Data.PlayerUnit.Position, true); chestFound {
+						blacklisted, exists := blacklistedInteractions[closestChest.ID]
+						if !exists || !blacklisted {
+							chest = *closestChest
+						}
+					}
+				} else if ctx.CharacterCfg.Game.InteractWithChests {
+					if closestChest, chestFound := ctx.PathFinder.GetClosestChest(ctx.Data.PlayerUnit.Position, true); chestFound {
+						blacklisted, exists := blacklistedInteractions[closestChest.ID]
+						if !exists || !blacklisted {
+							chest = *closestChest
+							//ctx.Logger.Debug(fmt.Sprintf("MoveTo: Found chest at %v, redirecting destination from %v", chest.Position, targetPosition))
+						}
 					}
 				}
 			}

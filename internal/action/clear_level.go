@@ -33,6 +33,9 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 	ctx := context.Get()
 	ctx.SetLastAction("ClearCurrentLevel")
 
+	openAllChests := ctx.CharacterCfg.Game.InteractWithChests
+	openSuperOnly := ctx.CharacterCfg.Game.InteractWithSuperChests && !openAllChests
+
 	// We can make this configurable later, but 20 is a good starting radius.
 	const pickupRadius = 20
 	rooms := ctx.PathFinder.OptimizeRoomsTraverseOrder()
@@ -60,8 +63,19 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 		// Iterate through objects in the current room
 		for _, o := range ctx.Data.Objects {
 			if r.IsInside(o.Position) {
-				// Interact with chests if openChests is true
-				if openChests && o.IsChest() && o.Selectable {
+				shouldOpen := false
+				if o.Selectable {
+					// Global settings override per-run openChests.
+					switch {
+                    switch {
+					case openSuperOnly:
+						shouldOpen = o.IsSuperChest()
+					case openAllChests,
+						openChests:
+						shouldOpen = o.IsChest()
+					}
+				}
+				if shouldOpen {
 					ctx.Logger.Debug(fmt.Sprintf("Found chest. attempting to interact. Name=%s. ID=%v UnitID=%v Pos=%v,%v Area='%s' InteractType=%v", o.Desc().Name, o.Name, o.ID, o.Position.X, o.Position.Y, ctx.Data.PlayerUnit.Area.Area().Name, o.InteractType))
 					err = MoveToCoords(o.Position)
 					if err != nil {
@@ -82,6 +96,15 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 	}
 
 	return nil
+}
+
+func isConfiguredSuperChest(name object.Name) bool {
+	switch int(name) {
+	case 387, 389, 390, 391, 397, 455, 580:
+		return true
+	default:
+		return false
+	}
 }
 
 func clearRoom(room data.Room, filter data.MonsterFilter) error {
