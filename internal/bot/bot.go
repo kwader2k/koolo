@@ -236,6 +236,10 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 				// Temporarily raise execution priority for this high-priority tick.
 				prevPriority := b.ctx.ExecutionPriority
+				// Don't override Pause if it's already active
+				if prevPriority == botCtx.PriorityPause {
+					continue
+				}
 				b.ctx.SwitchPriority(botCtx.PriorityHigh)
 
 				// In Tower5, skip AreaCorrection to prevent Priority starvation
@@ -255,7 +259,10 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 				action.BuffIfRequired()
 
-				// Restore previous execution priority so that movement and other
+				// normal-priority routines can continue.
+				if b.ctx.ExecutionPriority == botCtx.PriorityPause {
+					continue
+				}
 				b.ctx.SwitchPriority(prevPriority)
 
 				lvl, _ := b.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
@@ -362,7 +369,10 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 						}
 					}
 				} // This closing brace was misplaced. It should be here, closing the outer 'if'.
-				b.ctx.SwitchPriority(botCtx.PriorityNormal)
+				// Don't override Pause if it's active
+				if b.ctx.ExecutionPriority != botCtx.PriorityPause {
+					b.ctx.SwitchPriority(botCtx.PriorityNormal)
+				}
 			}
 		}
 	})

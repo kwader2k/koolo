@@ -249,6 +249,17 @@ func (s *Status) PauseIfNotPriority() {
 		iterations++
 		blockDuration := time.Since(blockStartTime)
 		if blockDuration >= forceUnblockDuration {
+			// Don't force unblock if Pause is active
+			if s.ExecutionPriority == PriorityPause {
+				s.Logger.Warn("PauseIfNotPriority: still pause, not force-unblocking in Tower5",
+					"blockDuration", blockDuration,
+					"iterations", iterations,
+					"priority", s.Priority,
+					"executionPriority", s.ExecutionPriority,
+					"area", s.Data.PlayerUnit.Area.Area().Name,
+				)
+				break
+			}
 			s.Logger.Warn("PauseIfNotPriority: Force unblocking after maximum wait time",
 				"blockDuration", blockDuration,
 				"iterations", iterations,
