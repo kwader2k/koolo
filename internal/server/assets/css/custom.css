@@ -11,6 +11,184 @@
   --pico-font-size: 100%;
 }
 
+.settings-layout {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.settings-page {
+  max-width: none;
+  padding-left: 0;
+  padding-right: 1rem;
+}
+
+.settings-nav {
+  position: sticky;
+  top: 1rem;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border-radius: var(--radius-lg);
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  height: calc(100vh - 2rem);
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 20;
+}
+
+.settings-nav a:last-of-type {
+  margin-bottom: 0.2rem;
+}
+
+.settings-nav.icon-only {
+  width: 52px;
+  transition: width var(--transition-fast);
+  z-index: 10;
+  border-right: none;
+}
+
+.settings-nav.hover-expand.icon-only:hover {
+  width: 180px;
+  background: var(--bg-secondary, #f5f6fb);
+  border-right-color: transparent;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+  border-radius: var(--radius-lg);
+}
+
+.settings-nav.icon-only h6 {
+  display: none;
+}
+
+.settings-nav h6 {
+  margin: 0 0 0.5rem 0;
+  color: var(--text-secondary);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.58rem;
+}
+
+.settings-nav a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  color: var(--text-secondary);
+  padding: 0.3rem 0;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+  font-size: 0.8rem;
+}
+
+.settings-nav.icon-only .nav-text {
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-left: 0;
+  transition: opacity var(--transition-fast), max-width var(--transition-fast), margin-left var(--transition-fast);
+}
+
+.settings-nav.icon-only i {
+  font-size: 1.05rem;
+  width: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-nav.icon-only a {
+  justify-content: flex-start;
+  padding-left: 0.45rem;
+}
+
+.settings-nav.hover-expand.icon-only:hover .nav-text {
+  opacity: 1;
+  max-width: 220px;
+  margin-left: 0.35rem;
+}
+
+.settings-nav-toggle {
+  margin-top: 0.1rem;
+  padding-top: 0;
+}
+
+.settings-nav-toggle label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.settings-nav-toggle label:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.settings-nav-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.settings-nav-toggle i {
+  font-size: 0.95rem;
+  width: 1.6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-nav-toggle .toggle-text {
+  position: absolute;
+  left: calc(100% + 0.35rem);
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font-size: 0.72rem;
+  transition: opacity var(--transition-fast);
+}
+
+.settings-nav.hover-expand:hover .settings-nav-toggle .toggle-text {
+  opacity: 1;
+}
+
+.settings-nav a:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+.settings-nav a.active {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+.settings-content {
+  min-width: 0;
+}
+
 .leveling-sequence-field {
   gap: 8px;
 }
@@ -208,6 +386,39 @@
 /* ========================================
    RUN LIST
    ======================================== */
+.run-filter-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0.35rem 0 0.75rem 0;
+}
+
+.run-filter-tab {
+  flex: 1 1 0;
+  min-width: 72px;
+  border: 1px solid var(--border-color, #d7dbe3);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-secondary, #6b7280);
+  padding: 0.2rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
+  text-align: center;
+}
+
+.run-filter-tab:hover {
+  color: var(--text-primary, #111827);
+  border-color: rgba(15, 23, 42, 0.2);
+}
+
+.run-filter-tab.active {
+  color: var(--text-primary, #111827);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(15, 23, 42, 0.25);
+}
+
 .run-list {
   padding: 0;
   list-style: none;
@@ -277,6 +488,27 @@
   outline: none;
   font-weight: 600;
   flex-shrink: 0;
+}
+
+.run-list li summary .run-fav-btn {
+  margin: 0;
+  padding: 4px 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #6b7280);
+  border-radius: 0;
+  font-size: 0.8rem;
+}
+
+.run-list li summary .run-fav-btn.active {
+  color: #f59e0b;
+  background: transparent;
+}
+
+.run-list li summary .run-fav-btn:hover {
+  transform: none;
+  box-shadow: none;
+  color: var(--text-primary, #111827);
 }
 
 .run-list li summary button.remove-run {
@@ -428,7 +660,7 @@
   padding: var(--spacing-md);
   border-top: 2px solid var(--primary);
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
-  z-index: 100;
+  z-index: 5;
 }
 
 /* ========================================
@@ -646,6 +878,19 @@
    RESPONSIVE DESIGN
    ======================================== */
 @media (max-width: 768px) {
+  .settings-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-nav {
+    position: static;
+    max-height: none;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    height: auto;
+  }
+
   #scheduler-settings {
     grid-template-columns: 1fr;
   }

@@ -14,21 +14,48 @@
     <title>Koolo Settings</title>
 </head>
 <body>
-<main class="container">
-    {{ if ne .ErrorMessage "" }}
-    <div class="container">
-        <div class="row">
-            <div class="col">
-                <div class="error-message">
-                    {{ .ErrorMessage }}
+<main class="container settings-page">
+    <div class="settings-layout">
+        <nav class="settings-nav icon-only hover-expand" aria-label="Character settings sections">
+            <h6>Sections</h6>
+            <a href="#general-settings" aria-label="General" title="General"><i class="bi bi-gear"></i><span class="nav-text">General</span></a>
+            <a href="#client-settings" aria-label="Client" title="Client"><i class="bi bi-window"></i><span class="nav-text">Client</span></a>
+            <a href="#battle-net-settings" aria-label="Battle.net" title="Battle.net"><i class="bi bi-globe2"></i><span class="nav-text">Battle.net</span></a>
+            <a href="#scheduler-section" aria-label="Scheduler" title="Scheduler"><i class="bi bi-calendar-week"></i><span class="nav-text">Scheduler</span></a>
+            <a href="#health-settings" aria-label="Health" title="Health"><i class="bi bi-heart"></i><span class="nav-text">Health</span></a>
+            <a href="#merc-settings" aria-label="Merc" title="Merc"><i class="bi bi-person-badge"></i><span class="nav-text">Merc</span></a>
+            <a href="#inventory-settings" aria-label="Inventory" title="Inventory"><i class="bi bi-grid-3x3-gap"></i><span class="nav-text">Inventory</span></a>
+            <a href="#game-settings" aria-label="Game" title="Game"><i class="bi bi-controller"></i><span class="nav-text">Game</span></a>
+            <a href="#companion-settings" aria-label="Companion" title="Companion"><i class="bi bi-people"></i><span class="nav-text">Companion</span></a>
+            <a href="#run-settings" aria-label="Runs" title="Runs"><i class="bi bi-play-circle"></i><span class="nav-text">Runs</span></a>
+            <a href="#gambling-settings" aria-label="Gambling" title="Gambling"><i class="bi bi-cash-coin"></i><span class="nav-text">Gambling</span></a>
+            <a href="#muling-settings" aria-label="Muling" title="Muling"><i class="bi bi-box-seam"></i><span class="nav-text">Muling</span></a>
+            <a href="#runeword-settings" aria-label="Runeword" title="Runeword"><i class="bi bi-gem"></i><span class="nav-text">Runeword</span></a>
+            <a href="#cube-recipes" aria-label="Cube" title="Cube"><i class="bi bi-box"></i><span class="nav-text">Cube</span></a>
+            <a href="#back-to-town-settings" aria-label="Back to town" title="Back to town"><i class="bi bi-house-door"></i><span class="nav-text">Back to town</span></a>
+            <div class="settings-nav-toggle">
+                <label title="Toggle hover expand">
+                    <input type="checkbox" id="navHoverToggle" aria-label="Toggle hover expand">
+                    <i id="navHoverToggleIcon" class="bi bi-arrows-angle-expand" aria-hidden="true"></i>
+                    <span id="navHoverToggleText" class="toggle-text">Hover expand on</span>
+                </label>
+            </div>
+        </nav>
+        <div class="settings-content">
+            {{ if ne .ErrorMessage "" }}
+            <div class="container">
+                <div class="row">
+                    <div class="col">
+                        <div class="error-message">
+                            {{ .ErrorMessage }}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    {{ end }}
-    <div class="notification">
-        <h3>General Settings</h3><br>
-        <form method="post" autocomplete="off" class="compact-form">
+            {{ end }}
+            <div class="notification">
+                <h3 id="general-settings">General Settings</h3><br>
+                <form method="post" autocomplete="off" class="compact-form">
             <input type="hidden" name="cloneSource" value="{{ .CloneSource }}"/>
             <div class="supervisor-input-row">
                 <label {{ if ne .Supervisor "" }}hidden="hidden"{{ end }}>
@@ -553,7 +580,7 @@
                     </div>
                 </label>
             </fieldset>
-            <h3>Client Settings</h3><br>
+            <h3 id="client-settings">Client Settings</h3><br>
             <fieldset class="grid">
                 <label>
                     Client launch options (arguments)
@@ -578,7 +605,7 @@
                     Hide Portraits
                 </label>
             </fieldset>
-            <h3>Battle.net settings</h3><br>
+            <h3 id="battle-net-settings">Battle.net settings</h3><br>
             <fieldset class="grid">
                 <label>
                     Username
@@ -611,7 +638,7 @@
                     <input type="password" name="AuthToken" placeholder="{{ .Config.AuthToken }}" value="{{ .Config.AuthToken }}"/>
                 </label>
             </fieldset>
-            <h3>Scheduler</h3><br>
+            <h3 id="scheduler-section">Scheduler</h3><br>
             <label>Set the time ranges when the bot should Start and Stop automatically. Multiple time ranges can be set for the same day if you want to simulate breaks. This will enforce killing of the game client on Stop.</label><br>
             <fieldset class="grid">
                 <label>
@@ -641,7 +668,7 @@
                 {{ end }}
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
-                <h3 style="margin:0">Health settings</h3>
+                <h3 id="health-settings" style="margin:0">Health settings</h3>
             </div>
             <br>
 
@@ -757,7 +784,7 @@
                     <input type="number" name="rejuvPotionCount" min="0" max="99" placeholder="{{ .Config.Inventory.RejuvPotionCount }}" value="{{ .Config.Inventory.RejuvPotionCount }}"/>
                 </label>
             </fieldset>
-            <h3>Merc Settings</h3><br>
+            <h3 id="merc-settings">Merc Settings</h3><br>
             <label>
                 <input id="use_merc" type="checkbox" name="useMerc" {{ if .Config.Character.UseMerc }}checked{{ end }}/>
                 Use merc
@@ -776,7 +803,7 @@
                     <input type="number" min="0" max="99" name="mercChickenAt" placeholder="{{ .Config.Health.MercChickenAt }}" value="{{ .Config.Health.MercChickenAt }}"/>
                 </label>
             </fieldset>
-            <h3>Inventory (Checked means locked)</h3>
+            <h3 id="inventory-settings">Inventory (Checked means locked)</h3>
             <table>
                 {{ range $rowIndex, $row := .Config.Inventory.InventoryLock }}
                 <tr>
@@ -788,7 +815,7 @@
                 </tr>
                 {{ end }}
             </table>
-            <h3>Game Settings</h3><br>
+            <h3 id="game-settings">Game Settings</h3><br>
             <label>
                 <input type="checkbox" name="createLobbyGames" {{ if .Config.Game.CreateLobbyGames }}checked{{ end }}/>
                 Create Lobby Games
@@ -817,15 +844,26 @@
                     <input name="maxGameLength" min="50" type="number" placeholder="{{ .Config.MaxGameLength }}" value="{{ .Config.MaxGameLength }}"/>
                 </label>
             </fieldset>
-            <h3>Companion System</h3><br>
+            <h3 id="companion-settings">Companion System</h3><br>
             <label>
                 <input type="checkbox" name="companionLeader" id="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
                 Open tp for manual player
             </label>
-            <h4>Run Settings</h4><br>
+            <h4 id="run-settings">Run Settings</h4><br>
             <label>
                 Choose the runs that you want the bot to run. You can either drag & drop runs below to enable or disable them, or use the + - buttons. Click on any of the runs to expand them and see more details and options.
             </label><br>
+            <div class="run-filter-tabs" role="tablist" aria-label="Run filters">
+                <button type="button" class="run-filter-tab active" data-run-filter="all">All</button>
+                <button type="button" class="run-filter-tab" data-run-filter="favorite">Favorites</button>
+                <button type="button" class="run-filter-tab" data-run-filter="leveling">Leveling</button>
+                <button type="button" class="run-filter-tab" data-run-filter="act-boss">Act Boss</button>
+                <button type="button" class="run-filter-tab" data-run-filter="super-unique">S.Unique</button>
+                <button type="button" class="run-filter-tab" data-run-filter="a85">A85</button>
+                <button type="button" class="run-filter-tab" data-run-filter="key">Key</button>
+                <button type="button" class="run-filter-tab" data-run-filter="special">Special</button>
+                <button type="button" class="run-filter-tab" data-run-filter="other">Utils</button>
+            </div>
             <label>
                 <input type="checkbox" name="gameRandomizeRuns" {{ if .Config.Game.RandomizeRuns }}checked{{ end }}/>
                 Randomize run order
@@ -837,9 +875,15 @@
                     <ul style="padding-top: 52px" class="run-list" id="enabled_runs">
                         {{ range $index, $run := .EnabledRuns }}
                         {{ if or (eq $topLevelContext.Version "dev") (ne $run "development") }}
-                        <li value="{{ $run }}">
+                        <li value="{{ $run }}" data-favorite="{{ if contains $topLevelContext.RunFavoriteRuns $run }}1{{ else }}0{{ end }}">
+                            {{ if contains $topLevelContext.RunFavoriteRuns $run }}
+                            <input type="hidden" class="run-fav-input" name="runFavoriteRuns" value="{{ $run }}" />
+                            {{ end }}
                             <details>
                                 <summary role="button" class="outline secondary">
+                                    <button type="button" class="run-fav-btn {{ if contains $topLevelContext.RunFavoriteRuns $run }}active{{ end }}" title="Favorite run" aria-label="Favorite run">
+                                        <i class="bi {{ if contains $topLevelContext.RunFavoriteRuns $run }}bi-star-fill{{ else }}bi-star{{ end }}"></i>
+                                    </button>
                                     <span>{{ runDisplayName $run }}</span>
                                     <button type="button" class="remove-run" title="Remove run"><i class="bi bi-dash"></i></button>
                                 </summary>
@@ -856,9 +900,15 @@
                     <ul class="run-list" id="disabled_runs">
                         {{ range $index, $run := .DisabledRuns }}
                         {{ if or (eq $topLevelContext.Version "dev") (ne $run "development") }}
-                        <li value="{{ $run }}">
+                        <li value="{{ $run }}" data-favorite="{{ if contains $topLevelContext.RunFavoriteRuns $run }}1{{ else }}0{{ end }}">
+                            {{ if contains $topLevelContext.RunFavoriteRuns $run }}
+                            <input type="hidden" class="run-fav-input" name="runFavoriteRuns" value="{{ $run }}" />
+                            {{ end }}
                             <details>
                                 <summary role="button" class="outline secondary">
+                                    <button type="button" class="run-fav-btn {{ if contains $topLevelContext.RunFavoriteRuns $run }}active{{ end }}" title="Favorite run" aria-label="Favorite run">
+                                        <i class="bi {{ if contains $topLevelContext.RunFavoriteRuns $run }}bi-star-fill{{ else }}bi-star{{ end }}"></i>
+                                    </button>
                                     <span>{{ runDisplayName $run }}</span>
                                     <button type="button" class="add-run" title="Add run"><i class="bi bi-plus"></i></button>
                                 </summary>
@@ -870,12 +920,12 @@
                     </ul>
                 </div>
             </div>
-            <h3>Gambling</h3>
+            <h3 id="gambling-settings">Gambling</h3>
             <label>
                 <input type="checkbox" name="gamblingEnabled" {{ if .Config.Gambling.Enabled }}checked{{ end }}/>
                 Enabled
             </label>
-            <h3>Muling</h3>
+            <h3 id="muling-settings">Muling</h3>
             <p>Configure automatic muling to transfer items from this character to mule characters. Items will be moved from shared stash tabs (2-4) to the mule's private stash (tab 1).</p>
             <label>
                 <input type="checkbox" name="mulingEnabled" id="mulingEnabled" {{ if .Config.Muling.Enabled }}checked{{ end }}/>
@@ -979,7 +1029,7 @@
                     });
                 });
             </script>
-            <h3>Runeword Maker</h3>
+            <h3 id="runeword-settings">Runeword Maker</h3>
             <div style="margin-left: 20px; margin-bottom: 20px;">
                 <p style="font-size: 0.9em; color: #aaa; margin-bottom: 10px;">
                     Configure runeword maker and reroll options on the dedicated Runeword Settings page.
@@ -1013,7 +1063,7 @@
                     });
                 })();
             </script>
-            <h3>Cube Recipes</h3>
+            <h3 id="cube-recipes">Cube Recipes</h3>
             <label>
                 <input type="checkbox" style="padding-right: 30px" name="enableCubeRecipes" {{ if .Config.CubeRecipes.Enabled }}checked{{ end }}/>
                 Enable the bot to automatically cube item recipes.
@@ -1041,7 +1091,7 @@
                     value="{{ .Config.CubeRecipes.JewelsToKeep }}" />
                 <small>Number of magic jewels to stash for crafting</small>
             </label>
-            <h3>Back to Town Settings:</h3>
+            <h3 id="back-to-town-settings">Back to Town Settings:</h3>
             <fieldset class="grid">
                 <label>
                     <input id="no_hp_potions" type="checkbox" name="noHpPotions" {{ if .Config.BackToTown.NoHpPotions }}checked{{ end }}/>
@@ -1072,6 +1122,8 @@
                 </button>
             </fieldset>
         </form>
+    </div>
+        </div>
     </div>
 </main>
 </body>
