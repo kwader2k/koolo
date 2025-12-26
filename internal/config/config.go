@@ -58,6 +58,8 @@ type KooloCfg struct {
 		BotAdmins                    []string `yaml:"botAdmins"`
 		ChannelID                    string   `yaml:"channelId"`
 		Token                        string   `yaml:"token"`
+		UseWebhook                   bool     `yaml:"useWebhook"`
+		WebhookURL                   string   `yaml:"webhookUrl"`
 	} `yaml:"discord"`
 	Telegram struct {
 		Enabled bool   `yaml:"enabled"`
@@ -73,11 +75,40 @@ type KooloCfg struct {
 		Enabled      bool `yaml:"enabled"`
 		DelaySeconds int  `yaml:"delaySeconds"`
 	} `yaml:"autoStart"`
+	RunewordFavoriteRecipes []string `yaml:"runewordFavoriteRecipes"`
 }
 
 type Day struct {
 	DayOfWeek  int         `yaml:"dayOfWeek"`
 	TimeRanges []TimeRange `yaml:"timeRange"`
+}
+
+// RunewordOverrideConfig stores a character's overrides keyed by the display name (e.g. "Enigma").
+type RunewordOverrideConfig struct {
+	EthMode       string                       `yaml:"ethMode,omitempty"`       // "any", "eth", "noneth"
+	QualityMode   string                       `yaml:"qualityMode,omitempty"`   // "any", "normal", "superior"
+	BaseType      string                       `yaml:"baseType,omitempty"`      // armor, bow, polearm, etc.
+	BaseTier      string                       `yaml:"baseTier,omitempty"`      // "", "normal", "exceptional", "elite"
+	BaseName      string                       `yaml:"baseName,omitempty"`      // optional specific base name
+}
+
+// RunewordTargetStatOverride captures the desired min/max for a stat (and optional layer) when rerolling.
+type RunewordTargetStatOverride struct {
+	StatID stat.ID  `yaml:"statId"`          // numeric stat ID from d2go
+	Layer  int      `yaml:"layer,omitempty"` // optional layer (e.g. skill/aura)
+	Min    float64  `yaml:"min"`             // desired minimum value for this stat
+	Max    *float64 `yaml:"max,omitempty"`   // optional maximum value for this stat
+	Group  string   `yaml:"group,omitempty" json:"group,omitempty"`
+}
+
+// RunewordRerollRule defines filters plus target stats that existing items must satisfy before we keep them.
+type RunewordRerollRule struct {
+	EthMode     string                       `yaml:"ethMode,omitempty"`     // "any", "eth", "noneth"
+	QualityMode string                       `yaml:"qualityMode,omitempty"` // "any", "normal", "superior"
+	BaseType    string                       `yaml:"baseType,omitempty"`    // armor, bow, polearm, etc.
+	BaseTier    string                       `yaml:"baseTier,omitempty"`    // "", "normal", "exceptional", "elite"
+	BaseName    string                       `yaml:"baseName,omitempty"`    // optional specific base (NIP code)
+	TargetStats []RunewordTargetStatOverride `yaml:"targetStats,omitempty"` // per-stat minimums for this rule
 }
 
 type Scheduler struct {
@@ -343,13 +374,17 @@ type CharacterCfg struct {
 			EnsureKeyBinding         bool     `yaml:"ensureKeyBinding"`
 			AutoEquip                bool     `yaml:"autoEquip"`
 			AutoEquipFromSharedStash bool     `yaml:"autoEquipFromSharedStash"`
-			EnableRunewordMaker      bool     `yaml:"enableRunewordMaker"`
-			NightmareRequiredLevel   int      `yaml:"nightmareRequiredLevel"`
-			HellRequiredLevel        int      `yaml:"hellRequiredLevel"`
-			HellRequiredFireRes      int      `yaml:"hellRequiredFireRes"`
-			HellRequiredLightRes     int      `yaml:"hellRequiredLightRes"`
-			EnabledRunewordRecipes   []string `yaml:"enabledRunewordRecipes"`
+			EnableRunewordMaker       bool     `yaml:"enableRunewordMaker"`
+			NightmareRequiredLevel    int      `yaml:"nightmareRequiredLevel"`
+			HellRequiredLevel         int      `yaml:"hellRequiredLevel"`
+			HellRequiredFireRes       int      `yaml:"hellRequiredFireRes"`
+			HellRequiredLightRes      int      `yaml:"hellRequiredLightRes"`
+			EnabledRunewordRecipes    []string `yaml:"enabledRunewordRecipes"`
 		} `yaml:"leveling"`
+		RunewordMaker struct {
+			Enabled        bool     `yaml:"enabled"`
+			EnabledRecipes []string `yaml:"enabledRunewordRecipes"`
+		} `yaml:"runewordMaker"`
 		LevelingSequence struct {
 			SequenceFile string `yaml:"sequenceFile"`
 		} `yaml:"leveling_sequence"`
@@ -368,6 +403,9 @@ type CharacterCfg struct {
 		Utility struct {
 			ParkingAct int `yaml:"parkingAct"`
 		} `yaml:"utility"`
+		// RunewordOverrides and RunewordRerollRules are keyed by the display name shown in the UI.
+		RunewordOverrides   map[string]RunewordOverrideConfig `yaml:"runewordOverrides,omitempty"`
+		RunewordRerollRules map[string][]RunewordRerollRule   `yaml:"runewordRerollRules,omitempty"`
 	} `yaml:"game"`
 	Companion struct {
 		Enabled               bool   `yaml:"enabled"`
@@ -397,6 +435,7 @@ type CharacterCfg struct {
 		SkipPerfectAmethysts bool     `yaml:"skipPerfectAmethysts"`
 		SkipPerfectRubies    bool     `yaml:"skipPerfectRubies"`
 		JewelsToKeep         int      `yaml:"jewelsToKeep"` // new field: number of magic jewels to keep
+		PrioritizeRunewords  bool     `yaml:"prioritizeRunewords"`
 	} `yaml:"cubing"`
 	BackToTown struct {
 		NoHpPotions     bool `yaml:"noHpPotions"`
@@ -619,6 +658,20 @@ func ValidateAndSaveConfig(config KooloCfg) error {
 	}
 
 	return Load()
+}
+
+func SaveKooloConfig(config *KooloCfg) error {
+	if config == nil {
+		return errors.New("koolo config is nil")
+	}
+	text, err := yaml.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("error parsing koolo config: %w", err)
+	}
+	if err := os.WriteFile("config/koolo.yaml", text, 0644); err != nil {
+		return fmt.Errorf("error writing koolo config: %w", err)
+	}
+	return nil
 }
 
 func SaveSupervisorConfig(supervisorName string, config *CharacterCfg) error {

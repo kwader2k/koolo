@@ -91,6 +91,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'sectionRuns',
         'sectionPacketCasting',
         'sectionCubeRecipes',
+        'sectionRunewordMaker',
         'sectionGeneral',
         'sectionClient',
         'sectionScheduler',
@@ -516,6 +517,10 @@ document.addEventListener('DOMContentLoaded', function () {
             + '    <span>Cube recipes</span>'
             + '  </label>'
             + '  <label>'
+            + '    <input type="checkbox" id="sectionRunewordMaker">'
+            + '    <span>Runeword settings</span>'
+            + '  </label>'
+            + '  <label>'
             + '    <input type="checkbox" id="sectionGeneral">'
             + '    <span>General settings</span>'
             + '  </label>'
@@ -891,6 +896,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const runsCheckbox = document.getElementById('sectionRuns');
         const packetCheckbox = document.getElementById('sectionPacketCasting');
         const cubeCheckbox = document.getElementById('sectionCubeRecipes');
+        const runewordCheckbox = document.getElementById('sectionRunewordMaker');
         const generalCheckbox = document.getElementById('sectionGeneral');
         const clientCheckbox = document.getElementById('sectionClient');
         const schedulerCheckbox = document.getElementById('sectionScheduler');
@@ -903,6 +909,7 @@ document.addEventListener('DOMContentLoaded', function () {
             runs: !!(runsCheckbox && runsCheckbox.checked),
             packetCasting: !!(packetCheckbox && packetCheckbox.checked),
             cubeRecipes: !!(cubeCheckbox && cubeCheckbox.checked),
+            runewordMaker: !!(runewordCheckbox && runewordCheckbox.checked),
             general: !!(generalCheckbox && generalCheckbox.checked),
             client: !!(clientCheckbox && clientCheckbox.checked),
             scheduler: !!(schedulerCheckbox && schedulerCheckbox.checked),

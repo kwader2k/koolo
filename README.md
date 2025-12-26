@@ -1,6 +1,30 @@
-We are completing the leveling feature and work on other improvements.
+This fork is dedicated to completing the leveling feature and improving the bot.
+We're happy to announce that all classes are now supported for leveling!
 
-Currently working classes: Sorceress, Paladin, Assassin, Druid and Necromancer
+While we're still ironing a few things out in the leveling feature, we have already made major changes to other parts of the bot like:
+
+* Optional usage of packets
+* Leveling sequencer + editor (customizable leveling)
+* Complete movement overhaul
+* Torch-System (Ubers)
+* Terror zones rework
+* Shopping bot
+* Dropper
+* Auto-Mule
+* Barb improvements
+* Improved Runeword maker (rerolling)
+* Pickit editor
+* Discord integration overhaul
+* Buff rework
+* Many qol features like mass-profile-management, improved class-selection, auto-char-creation, mass-auto-starting, etc.
+
+To name only a few!
+
+If you're interested in more features or want to give us your feedback, you can join our Discord server: https://discord.gg/5GCdFDbJnx
+
+Please know that this project is still in development, so you may encounter bugs. Please report them if you do. While we can't give you any direct support, we will eventually pick them up and resolve them. You are of course also very much invited to add possible fixes or new features via pull requests yourself. 
+
+Important information:
 
 As written more detailed below you need to install:
 
@@ -11,11 +35,9 @@ Make sure the game is set to English to prevent any language-related bugs.
 
 Use better_build.bat to build the application.
 
-- Use "Sorc (Leveling)", "Paladin (Leveling)", "Assassin (Leveling)", "Druid (Leveling)", "Necromancer (Leveling).
-- Choose "leveling" as enabled run under "Run Settings"
-- Start your char with lvl 1 as the autoconfig currently works at lvl 1 only. Alternatively you can check act1.go for detailed manual config. This handling will be enhanced later.
-
-Interested in more features? You can join the development or just give give us your feedback in the following discord server: https://discord.gg/5GCdFDbJnx
+- Choose your class and then pick the corresponding leveling build.
+- Choose "leveling" OR "leveling_sequence" as enabled run under "Run Settings". Don't enable them both at the same time as this will lead to faulty behaviour. We will remove "leveling" soon, so the sequencer will be the default.
+- Start your char with lvl 1 as the autoconfig currently works at lvl 1 only. Alternatively you can check leveling.go and leveling_sequence.go respectively for detailed manual config. This handling will be enhanced later.
 
 ---
 <div style="background-color: #FFFACD; padding: 10px; border-radius: 5px; text-align: center">

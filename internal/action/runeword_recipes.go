@@ -74,7 +74,7 @@ var Runewords = []Runeword{
 		Runes:         []string{"RalRune", "OhmRune", "SurRune", "EthRune"},
 		BaseItemTypes: []string{item.TypeArmor},
 		Rolls: []RunewordStatRolls{
-			{Min: 15, Max: 21, StatID: stat.Aura}, // 103
+			{Min: 15, Max: 21, StatID: stat.Aura, Layer: 103}, // Thorns
 			{Min: 25, Max: 50, StatID: stat.PoisonSkillDamage},
 		},
 		AllowReroll:   true,
@@ -120,7 +120,7 @@ var Runewords = []Runeword{
 		Runes:         []string{"AmnRune", "RalRune", "MalRune", "IstRune", "OhmRune"},
 		BaseItemTypes: []string{item.TypeAxe, item.TypeWand, item.TypeClub, item.TypeScepter, item.TypeMace, item.TypeHammer, item.TypeSword, item.TypeKnife, item.TypeSpear, item.TypePolearm, item.TypeStaff, item.TypeHandtoHand, item.TypeHandtoHand2},
 		Rolls: []RunewordStatRolls{
-			//	{Min: 240, Max: 290, StatID: stat.EnhancedDamageMin}, // Excluding temporarily
+			{Min: 250, Max: 290, StatID: stat.EnhancedDamageMin},     // Excluding temporarily
 			{Min: 2, Max: 6, StatID: stat.NonClassSkill, Layer: 155}, // 155
 			{Min: 1, Max: 6, StatID: stat.NonClassSkill, Layer: 149}, // 149
 			{Min: 1, Max: 4, StatID: stat.NonClassSkill, Layer: 146}, // 146
@@ -140,7 +140,7 @@ var Runewords = []Runeword{
 		Runes:         []string{"FalRune", "OhmRune", "UmRune"},
 		BaseItemTypes: []string{item.TypeHandtoHand, item.TypeHandtoHand2},
 		Rolls: []RunewordStatRolls{
-			{Min: 240, Max: 290, StatID: stat.EnhancedDamageMin},
+			{Min: 290, Max: 340, StatID: stat.EnhancedDamageMin},
 		},
 		AllowReroll:   false,
 		BaseSortOrder: []stat.ID{stat.SingleSkill, stat.MinDamage},
@@ -194,7 +194,7 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypeAxe, item.TypePolearm, item.TypeHammer},
 		Rolls: []RunewordStatRolls{
 			{Min: 330, Max: 370, StatID: stat.EnhancedDamageMin},
-			{Min: 40, Max: 60, StatID: stat.PierceCold},
+			{Min: 40, Max: 60, StatID: stat.EnemyColdResist},
 		},
 		AllowEth:    true,
 		AllowReroll: false,
@@ -203,8 +203,14 @@ var Runewords = []Runeword{
 		Name:          item.RunewordDragon,
 		Runes:         []string{"SurRune", "LoRune", "SolRune"},
 		BaseItemTypes: []string{item.TypeArmor, item.TypeShield, item.TypeAuricShields},
-		Rolls:         []RunewordStatRolls{
-			//	{Min: 3, Max: 5, StatID: "To All Attributes"},
+		Rolls: []RunewordStatRolls{
+			// Dragon grants a fixed +360 Defense (not stored as EnhancedDefense).
+			{Min: 360, Max: 360, StatID: stat.Defense},
+			// Represent "+3-5 To All Attributes" as individual stats
+			{Min: 3, Max: 5, StatID: stat.Strength},
+			{Min: 3, Max: 5, StatID: stat.Energy},
+			{Min: 3, Max: 5, StatID: stat.Dexterity},
+			{Min: 3, Max: 5, StatID: stat.Vitality},
 		},
 		BaseSortOrder: []stat.ID{stat.Defense},
 	},
@@ -215,7 +221,10 @@ var Runewords = []Runeword{
 		Rolls: []RunewordStatRolls{
 			{Min: 20, Max: 30, StatID: stat.FasterHitRecovery},
 			{Min: 150, Max: 220, StatID: stat.Defense},
-			//	{Min: 5, Max: 20, StatID: "All Resistances"},
+			{Min: 5, Max: 20, StatID: stat.FireResist},
+			{Min: 5, Max: 20, StatID: stat.ColdResist},
+			{Min: 5, Max: 20, StatID: stat.LightningResist},
+			{Min: 5, Max: 20, StatID: stat.PoisonResist},
 			{Min: 12, Max: 25, StatID: stat.MagicFind},
 		},
 		AllowReroll:   false,
@@ -238,7 +247,11 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypeAmazonBow, item.TypeBow, item.TypeCrossbow},
 		Rolls: []RunewordStatRolls{
 			{Min: 320, Max: 380, StatID: stat.DemonDamagePercent},
-			//	{Min: 5, Max: 10, StatID: "To All Attributes"},
+			// Represent "+5-10 To All Attributes" as individual stats
+			{Min: 5, Max: 10, StatID: stat.Strength},
+			{Min: 5, Max: 10, StatID: stat.Energy},
+			{Min: 5, Max: 10, StatID: stat.Dexterity},
+			{Min: 5, Max: 10, StatID: stat.Vitality},
 		},
 		AllowReroll:   true,
 		BaseSortOrder: []stat.ID{stat.MinDamage},
@@ -248,7 +261,7 @@ var Runewords = []Runeword{
 		Runes:         []string{"JahRune", "IthRune", "BerRune"},
 		BaseItemTypes: []string{item.TypeArmor},
 		Rolls: []RunewordStatRolls{
-			{Min: 750, Max: 775, StatID: stat.EnhancedDefense},
+			{Min: 750, Max: 775, StatID: stat.Defense},
 		},
 		AllowReroll:   false,
 		BaseSortOrder: []stat.ID{stat.Defense},
@@ -309,7 +322,8 @@ var Runewords = []Runeword{
 		Runes:         []string{"NefRune", "PulRune", "VexRune"},
 		BaseItemTypes: []string{item.TypeHelm, item.TypePelt, item.TypePrimalHelm, item.TypeCirclet},
 		Rolls: []RunewordStatRolls{
-			{Min: 4, Max: 8, StatID: stat.Aura}, // Resist fire unmapped
+			{Min: 4, Max: 8, StatID: stat.Aura, Layer: 100}, // Resist Fire
+			{Min: 10, Max: 15, StatID: stat.EnemyFireResist},
 		},
 		AllowReroll:   false,
 		BaseSortOrder: []stat.ID{stat.Defense},
@@ -319,8 +333,13 @@ var Runewords = []Runeword{
 		Runes:         []string{"ElRune", "SolRune", "DolRune", "LoRune"},
 		BaseItemTypes: []string{item.TypeArmor},
 		Rolls: []RunewordStatRolls{
-			{Min: 8, Max: 12, StatID: stat.LifePerLevel},
-			//	{Min: 25, Max: 30, StatID: "All Resistances"},
+			// Fortitude armor has a fixed +200% Enhanced Defense.
+			//{Min: 200, Max: 200, StatID: stat.EnhancedDefense},
+			// {Min: 1.0, Max: 1.5, StatID: stat.LifePerLevel}, // commented: d2go provides per-level as int(stat/2048)
+			{Min: 25, Max: 30, StatID: stat.FireResist},
+			{Min: 25, Max: 30, StatID: stat.ColdResist},
+			{Min: 25, Max: 30, StatID: stat.LightningResist},
+			{Min: 25, Max: 30, StatID: stat.PoisonResist},
 		},
 		AllowReroll:   false,
 		AllowEth:      true,
@@ -383,7 +402,7 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypeAmazonBow, item.TypeBow, item.TypeCrossbow},
 		Rolls: []RunewordStatRolls{
 			{Min: 200, Max: 275, StatID: stat.EnhancedDamageMin},
-			{Min: 2, Max: 6, StatID: stat.SingleSkill}, // 107
+			{Min: 2, Max: 6, StatID: stat.SingleSkill, Layer: 32}, // Valkyrie
 		},
 		AllowReroll:   false,
 		BaseSortOrder: []stat.ID{stat.MinDamage},
@@ -392,8 +411,12 @@ var Runewords = []Runeword{
 		Name:          item.RunewordHeartOfTheOak,
 		Runes:         []string{"KoRune", "VexRune", "PulRune", "ThulRune"},
 		BaseItemTypes: []string{item.TypeMace},
-		Rolls:         []RunewordStatRolls{
-			//	{Min: 30, Max: 40, StatID: "All Resistances"},
+		Rolls: []RunewordStatRolls{
+			// Represent "+30-40 All Resistances" as four individual resists
+			{Min: 30, Max: 40, StatID: stat.FireResist},
+			{Min: 30, Max: 40, StatID: stat.ColdResist},
+			{Min: 30, Max: 40, StatID: stat.LightningResist},
+			{Min: 30, Max: 40, StatID: stat.PoisonResist},
 		},
 		AllowReroll: true,
 		AllowEth:    true,
@@ -428,7 +451,7 @@ var Runewords = []Runeword{
 		Runes:         []string{"ShaelRune", "KoRune", "EldRune"},
 		BaseItemTypes: []string{item.TypeArmor, item.TypeAxe, item.TypeWand, item.TypeClub, item.TypeScepter, item.TypeMace, item.TypeHammer, item.TypeSword, item.TypeKnife, item.TypeSpear, item.TypePolearm, item.TypeStaff, item.TypeHandtoHand, item.TypeHandtoHand2},
 		Rolls: []RunewordStatRolls{
-			{Min: 180, Max: 200, StatID: stat.EnhancedDamage},
+			{Min: 180, Max: 200, StatID: stat.EnhancedDamage}, //weapon
 		},
 	},
 	{
@@ -458,9 +481,9 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypePolearm, item.TypeAmazonBow, item.TypeBow, item.TypeCrossbow},
 		Rolls: []RunewordStatRolls{
 			{Min: 12, Max: 17, StatID: stat.Aura, Layer: 120}, // 120
-			//	{Min: 200, Max: 260, StatID: stat.EnhancedDamageMin},
+			{Min: 200, Max: 260, StatID: stat.EnhancedDamageMin},
 			{Min: 180, Max: 250, StatID: stat.AttackRatingPercent},
-			{Min: 1, Max: 6, StatID: stat.NonClassSkill, Layer: 120}, // 9
+			{Min: 1, Max: 6, StatID: stat.NonClassSkill, Layer: 9}, // Critical Strike
 		},
 		AllowReroll:   true,
 		AllowEth:      true,
@@ -479,11 +502,7 @@ var Runewords = []Runeword{
 		Name:          item.RunewordKingsGrace,
 		Runes:         []string{"AmnRune", "RalRune", "ThulRune"},
 		BaseItemTypes: []string{item.TypeSword, item.TypeScepter},
-		Rolls: []RunewordStatRolls{
-			{Min: 100, Max: 150, StatID: stat.EnhancedDamageMin},
-			{Min: 50, Max: 100, StatID: stat.DemonDamagePercent},
-		},
-		AllowReroll: false,
+		AllowReroll:   false,
 	},
 	{
 		Name:          item.RunewordLastWish,
@@ -510,23 +529,14 @@ var Runewords = []Runeword{
 		Name:          item.RunewordLeaf,
 		Runes:         []string{"TirRune", "RalRune"},
 		BaseItemTypes: []string{item.TypeStaff},
-		Rolls: []RunewordStatRolls{
-			{Min: 50, Max: 70, StatID: stat.FireSkillDamage},
-		},
-		AllowReroll: true,
-		AllowEth:    true,
+		AllowReroll:   false,
+		AllowEth:      true,
 	},
 	{
 		Name:          item.RunewordLionheart,
 		Runes:         []string{"HelRune", "LumRune", "FalRune"},
 		BaseItemTypes: []string{item.TypeArmor},
-		Rolls: []RunewordStatRolls{
-			//	{Min: 10, Max: 15, StatID: "To All Attributes"},
-			{Min: 15, Max: 20, StatID: stat.Vitality},
-			{Min: 10, Max: 15, StatID: stat.Dexterity},
-			{Min: 50, Max: 75, StatID: stat.MaxLife},
-		},
-		AllowReroll: true,
+		AllowReroll:   false,
 	},
 	{
 		Name:          item.RunewordLore,
@@ -554,6 +564,9 @@ var Runewords = []Runeword{
 		Name:          item.RunewordMetamorphosis,
 		Runes:         []string{"IoRune", "ChamRune", "FalRune"},
 		BaseItemTypes: []string{item.TypeHelm, item.TypePelt, item.TypePrimalHelm, item.TypeCirclet},
+		Rolls: []RunewordStatRolls{
+			{Min: 50, Max: 80, StatID: stat.EnhancedDefense},
+		},
 	},
 	{
 		Name:          item.RunewordMist,
@@ -603,7 +616,10 @@ var Runewords = []Runeword{
 		Rolls: []RunewordStatRolls{
 			{Min: 15, Max: 25, StatID: stat.MaxLife},
 			{Min: 15, Max: 30, StatID: stat.ManaRecoveryBonus},
-			//	{Min: 60, Max: 70, StatID: "All Resistances"},
+			{Min: 60, Max: 70, StatID: stat.FireResist},
+			{Min: 60, Max: 70, StatID: stat.ColdResist},
+			{Min: 60, Max: 70, StatID: stat.LightningResist},
+			{Min: 60, Max: 70, StatID: stat.PoisonResist},
 		},
 		AllowReroll: false,
 	},
@@ -613,7 +629,10 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypePolearm, item.TypeSpear},
 		Rolls: []RunewordStatRolls{
 			{Min: 200, Max: 300, StatID: stat.Defense},
-			//	{Min: 20, Max: 30, StatID: "All Resistances"},
+			{Min: 20, Max: 30, StatID: stat.FireResist},
+			{Min: 20, Max: 30, StatID: stat.ColdResist},
+			{Min: 20, Max: 30, StatID: stat.LightningResist},
+			{Min: 20, Max: 30, StatID: stat.PoisonResist},
 		},
 		AllowReroll:   false,
 		BaseSortOrder: []stat.ID{stat.TwoHandedMaxDamage},
@@ -661,7 +680,7 @@ var Runewords = []Runeword{
 		Runes:         []string{"ChamRune", "ShaelRune", "UmRune"},
 		BaseItemTypes: []string{item.TypeSword, item.TypeKnife, item.TypeHandtoHand, item.TypeHandtoHand2},
 		Rolls: []RunewordStatRolls{
-			{Min: 260, Max: 320, StatID: stat.Aura}, // Cleansing unmapped
+			{Min: 13, Max: 17, StatID: stat.Aura, Layer: 109}, // Cleansing
 			{Min: 1, Max: 2, StatID: stat.AllSkills},
 			{Min: 220, Max: 320, StatID: stat.EnhancedDamage},
 		},
@@ -694,7 +713,10 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypeArmor},
 		Rolls: []RunewordStatRolls{
 			{Min: 140, Max: 170, StatID: stat.EnhancedDefense},
-			//	{Min: 25, Max: 35, StatID: "All Resistances"},
+			{Min: 25, Max: 35, StatID: stat.FireResist},
+			{Min: 25, Max: 35, StatID: stat.ColdResist},
+			{Min: 25, Max: 35, StatID: stat.LightningResist},
+			{Min: 25, Max: 35, StatID: stat.PoisonResist},
 		},
 		AllowReroll:   false,
 		BaseSortOrder: []stat.ID{stat.Defense},
@@ -726,8 +748,12 @@ var Runewords = []Runeword{
 		Name:          item.RunewordRift,
 		Runes:         []string{"HelRune", "KoRune", "LemRune", "GulRune"},
 		BaseItemTypes: []string{item.TypePolearm, item.TypeScepter},
-		Rolls:         []RunewordStatRolls{
-			//	{Min: 5, Max: 10, StatID: "To All Attributes"},
+		Rolls: []RunewordStatRolls{
+			// Represent "+5-10 To All Attributes" as individual stats
+			{Min: 5, Max: 10, StatID: stat.Strength},
+			{Min: 5, Max: 10, StatID: stat.Energy},
+			{Min: 5, Max: 10, StatID: stat.Dexterity},
+			{Min: 5, Max: 10, StatID: stat.Vitality},
 		},
 		AllowReroll: true,
 	},
@@ -737,7 +763,10 @@ var Runewords = []Runeword{
 		BaseItemTypes: []string{item.TypeShield, item.TypeAuricShields},
 		Rolls: []RunewordStatRolls{
 			{Min: 130, Max: 160, StatID: stat.EnhancedDefense},
-			//	{Min: 50, Max: 70, StatID: "All Resistances"},
+			{Min: 50, Max: 70, StatID: stat.FireResist},
+			{Min: 50, Max: 70, StatID: stat.ColdResist},
+			{Min: 50, Max: 70, StatID: stat.LightningResist},
+			{Min: 50, Max: 70, StatID: stat.PoisonResist},
 		},
 		AllowReroll: true,
 	},

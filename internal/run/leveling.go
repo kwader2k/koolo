@@ -155,8 +155,8 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation = true
 	a.ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding = true
 	a.ctx.CharacterCfg.Game.Leveling.AutoEquip = true
-	a.ctx.CharacterCfg.Game.Leveling.EnableRunewordMaker = true
-	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
+	a.ctx.CharacterCfg.Game.RunewordMaker.Enabled = true
+	a.ctx.CharacterCfg.Game.RunewordMaker.EnabledRecipes = a.GetRunewords()
 	a.ctx.CharacterCfg.Character.UseTeleport = false
 	a.ctx.CharacterCfg.Character.UseMerc = false
 	a.ctx.CharacterCfg.Character.StashToShared = false
@@ -230,7 +230,7 @@ func (a Leveling) AdjustDifficultyConfig() {
 
 	a.ensureDifficultySwitchSettings()
 
-	a.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = a.GetRunewords()
+	a.ctx.CharacterCfg.Game.RunewordMaker.EnabledRecipes = a.GetRunewords()
 	a.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 5000 * lvl.Value
 	if lvl.Value >= 4 && lvl.Value < 24 {
 		a.ctx.CharacterCfg.Health.HealingPotionAt = 85

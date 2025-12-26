@@ -29,6 +29,7 @@
     <div class="notification">
         <h3>General Settings</h3><br>
         <form method="post" autocomplete="off" class="compact-form">
+            <input type="hidden" name="cloneSource" value="{{ .CloneSource }}"/>
             <div class="supervisor-input-row">
                 <label {{ if ne .Supervisor "" }}hidden="hidden"{{ end }}>
                     <span>Supervisor name</span>
@@ -483,18 +484,6 @@
                         <span class="walking-radius-value" id="clearPathDistValue">{{ if .Config.Character.ClearPathDist }}{{ .Config.Character.ClearPathDist }}{{ else }}12{{ end }}</span>
                     </div>
                     <div class="input-info">Distance (in game units) to clear enemies while walking through areas</div>
-                </div>
-                <h6>Create Runewords</h6>
-                <div style="margin-left: 20px;">
-                    <input type="text" id="search-runewords" placeholder="Search runewords..." style="margin-bottom: 10px; width: 100%; max-width: 300px;">
-                    <div class="recipe-grid" id="runeword-recipe-grid">
-                        {{ range $index, $recipe := .RunewordRecipeList }}
-                            <label class="runeword-item" style="display: none;"> <!-- Initially hidden -->
-                                <input type="checkbox" name="gameLevelingEnabledRunewordRecipes" value="{{ $recipe }}" {{ if contains $.Config.Game.Leveling.EnabledRunewordRecipes $recipe }}checked{{ end }}>
-                                <span class="runeword-name">{{ $recipe }}</span>
-                            </label>
-                        {{ end }}
-                    </div>
                 </div>
             </article>
             <!-- Packet Usage Options -->
@@ -989,6 +978,40 @@
                         }
                     });
                 });
+            </script>
+            <h3>Runeword Maker</h3>
+            <div style="margin-left: 20px; margin-bottom: 20px;">
+                <p style="font-size: 0.9em; color: #aaa; margin-bottom: 10px;">
+                    Configure runeword maker and reroll options on the dedicated Runeword Settings page.
+                </p>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0 0 10px 0; font-size: 0.9em;">
+                    <input type="checkbox" id="runewordMakerEnabled" name="runewordMakerEnabled" {{ if .Config.Game.RunewordMaker.Enabled }}checked{{ end }}/>
+                    <span>Enable Runeword Maker</span>
+                </label>
+                <a href="/runewords?characterName={{ .Supervisor }}">
+                    <input type="button" value="Open Runeword Settings" />
+                </a>
+            </div>
+            <script>
+                (function () {
+                    const rwEnabledToggle = document.getElementById('runewordMakerEnabled');
+                    const hasActiveRecipes = {{ if gt (len .Config.Game.RunewordMaker.EnabledRecipes) 0 }}true{{ else }}false{{ end }};
+                    if (!rwEnabledToggle) {
+                        return;
+                    }
+                    rwEnabledToggle.addEventListener('change', function () {
+                        if (rwEnabledToggle.checked) {
+                            return;
+                        }
+                        if (!hasActiveRecipes) {
+                            return;
+                        }
+                        const ok = confirm('Active recipes exist. Disabling will stop all runeword crafting.');
+                        if (!ok) {
+                            rwEnabledToggle.checked = true;
+                        }
+                    });
+                })();
             </script>
             <h3>Cube Recipes</h3>
             <label>

@@ -15,22 +15,42 @@ type Bot struct {
 	discordSession *discordgo.Session
 	channelID      string
 	manager        *bot.SupervisorManager
+	useWebhook     bool
+	webhookClient  *webhookClient
 }
 
-func NewBot(token, channelID string, manager *bot.SupervisorManager) (*Bot, error) {
+func NewBot(token, channelID string, manager *bot.SupervisorManager, useWebhook bool, webhookURL string) (*Bot, error) {
+	botInstance := &Bot{
+		channelID:     channelID,
+		manager:       manager,
+		useWebhook:    useWebhook,
+		webhookClient: nil,
+	}
+
+	if useWebhook {
+		if webhookURL == "" {
+			return nil, fmt.Errorf("webhook URL is required when using webhook mode")
+		}
+		botInstance.webhookClient = newWebhookClient(webhookURL)
+		return botInstance, nil
+	}
+
 	dg, err := discordgo.New("Bot " + token)
 	if err != nil {
 		return nil, fmt.Errorf("error creating Discord session: %w", err)
 	}
 
-	return &Bot{
-		discordSession: dg,
-		channelID:      channelID,
-		manager:        manager,
-	}, nil
+	botInstance.discordSession = dg
+
+	return botInstance, nil
 }
 
 func (b *Bot) Start(ctx context.Context) error {
+	if b.useWebhook {
+		<-ctx.Done()
+		return nil
+	}
+
 	//b.discordSession.Debug = true
 	b.discordSession.AddHandler(b.onMessageCreated)
 	// Add MESSAGE_CONTENT intent to read message content (required by Discord)

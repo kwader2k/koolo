@@ -152,6 +152,26 @@ func GamePaused(be BaseEvent, paused bool) GamePausedEvent {
 	}
 }
 
+type RunewordRerollEvent struct {
+	BaseEvent
+	Runeword      string
+	TargetStats   string
+	ActualStats   string
+	Success       bool
+	FailureReason string
+}
+
+func RunewordReroll(be BaseEvent, runeword string, targetStats string, actualStats string, success bool, failureReason string) RunewordRerollEvent {
+	return RunewordRerollEvent{
+		BaseEvent:     be,
+		Runeword:      runeword,
+		TargetStats:   targetStats,
+		ActualStats:   actualStats,
+		Success:       success,
+		FailureReason: failureReason,
+	}
+}
+
 // RequestCompanionJoinGameEvent is sent when the leader creates a new game and wants the companions to join it
 type RequestCompanionJoinGameEvent struct {
 	BaseEvent

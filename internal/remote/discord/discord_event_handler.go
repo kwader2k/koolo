@@ -11,48 +11,61 @@ import (
 	"github.com/hectorgimenez/koolo/internal/event"
 )
 
-func (b *Bot) Handle(_ context.Context, e event.Event) error {
-	if b.shouldPublish(e) {
+func (b *Bot) Handle(ctx context.Context, e event.Event) error {
+	if !b.shouldPublish(e) {
+		return nil
+	}
 
-		switch evt := e.(type) {
-		case event.GameCreatedEvent:
-			message := fmt.Sprintf("**[%s]** %s\nGame: %s\nPassword: %s", evt.Supervisor(), evt.Message(), evt.Name, evt.Password)
-			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
-			return err
-		case event.GameFinishedEvent:
-			message := fmt.Sprintf("**[%s]** %s", evt.Supervisor(), evt.Message())
-			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
-			return err
-		case event.RunStartedEvent:
-			message := fmt.Sprintf("**[%s]** started a new run: **%s**", evt.Supervisor(), evt.RunName)
-			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
-			return err
-		case event.RunFinishedEvent:
-			message := fmt.Sprintf("**[%s]** finished run: **%s** (%s)", evt.Supervisor(), evt.RunName, evt.Reason)
-			_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
-			return err
-		default:
-			break
-		}
+	switch evt := e.(type) {
+	case event.GameCreatedEvent:
+		message := fmt.Sprintf("**[%s]** %s\nGame: %s\nPassword: %s", evt.Supervisor(), evt.Message(), evt.Name, evt.Password)
+		return b.sendEventMessage(ctx, message)
+	case event.GameFinishedEvent:
+		message := fmt.Sprintf("**[%s]** %s", evt.Supervisor(), evt.Message())
+		return b.sendEventMessage(ctx, message)
+	case event.RunStartedEvent:
+		message := fmt.Sprintf("**[%s]** started a new run: **%s**", evt.Supervisor(), evt.RunName)
+		return b.sendEventMessage(ctx, message)
+	case event.RunFinishedEvent:
+		message := fmt.Sprintf("**[%s]** finished run: **%s** (%s)", evt.Supervisor(), evt.RunName, evt.Reason)
+		return b.sendEventMessage(ctx, message)
+	default:
+		break
+	}
 
-		buf := new(bytes.Buffer)
-		err := jpeg.Encode(buf, e.Image(), &jpeg.Options{Quality: 80})
-		if err != nil {
-			return err
-		}
+	if e.Image() == nil {
+		return nil
+	}
 
-		// Add supervisor name to screenshot messages
-		message := fmt.Sprintf("**[%s]** %s", e.Supervisor(), e.Message())
-
-		_, err = b.discordSession.ChannelMessageSendComplex(b.channelID, &discordgo.MessageSend{
-			File:    &discordgo.File{Name: "Screenshot.jpeg", ContentType: "image/jpeg", Reader: buf},
-			Content: message,
-		})
-
+	buf := new(bytes.Buffer)
+	if err := jpeg.Encode(buf, e.Image(), &jpeg.Options{Quality: 80}); err != nil {
 		return err
 	}
 
-	return nil
+	message := fmt.Sprintf("**[%s]** %s", e.Supervisor(), e.Message())
+	return b.sendScreenshot(ctx, message, buf.Bytes())
+}
+
+func (b *Bot) sendEventMessage(ctx context.Context, message string) error {
+	if b.useWebhook {
+		return b.webhookClient.Send(ctx, message, "", nil)
+	}
+
+	_, err := b.discordSession.ChannelMessageSend(b.channelID, message)
+	return err
+}
+
+func (b *Bot) sendScreenshot(ctx context.Context, message string, image []byte) error {
+	if b.useWebhook {
+		return b.webhookClient.Send(ctx, message, "Screenshot.jpeg", image)
+	}
+
+	reader := bytes.NewReader(image)
+	_, err := b.discordSession.ChannelMessageSendComplex(b.channelID, &discordgo.MessageSend{
+		File:    &discordgo.File{Name: "Screenshot.jpeg", ContentType: "image/jpeg", Reader: reader},
+		Content: message,
+	})
+	return err
 }
 
 func (b *Bot) shouldPublish(e event.Event) bool {

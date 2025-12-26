@@ -188,59 +188,66 @@ func stashInventory(firstRun bool) {
 			continue
 		}
 
-		// Determine target tab for this specific item
-		targetStartTab := startTab
-
-		// Always stash unique charms to the shared stash (override personal stash setting)
-		if (i.Name == "grandcharm" || i.Name == "smallcharm" || i.Name == "largecharm") && i.Quality == item.QualityUnique {
-			targetStartTab = 2 // Force shared stash for unique charms
-		}
-
-		itemStashed := false
-		// Loop through tabs trying to stash the item
-		// For shared stash mode: try tabs 2, 3, 4, then fall back to 1 if all shared tabs are full
-		// For personal stash mode: try tab 1, then 2, 3, 4 if personal is full
-		maxTab := 4 // We only have 4 tabs total
-
-		for tabAttempt := targetStartTab; tabAttempt <= maxTab; tabAttempt++ {
-			SwitchStashTab(tabAttempt)
-
-			if stashItemAction(i, matchedRule, ruleFile, firstRun) {
-				itemStashed = true
-				r, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(i)
-
-				if res != nip.RuleResultFullMatch && firstRun {
-					ctx.Logger.Info(
-						fmt.Sprintf("Item %s [%s] stashed to tab %d because it was found in the inventory during the first run.", i.Desc().Name, i.Quality.ToString(), tabAttempt),
-					)
-				} else {
-					ctx.Logger.Info(
-						fmt.Sprintf("Item %s [%s] stashed to tab %d", i.Desc().Name, i.Quality.ToString(), tabAttempt),
-						slog.String("nipFile", fmt.Sprintf("%s:%d", r.Filename, r.LineNumber)),
-						slog.String("rawRule", r.RawLine),
-					)
-				}
-				break
-			}
-			ctx.Logger.Debug(fmt.Sprintf("Item %s could not be stashed on tab %d. Trying next.", i.Name, tabAttempt))
-		}
-
-		// If we couldn't stash in shared tabs and started with shared, try personal as last resort
-		if !itemStashed && targetStartTab == 2 {
-			ctx.Logger.Debug(fmt.Sprintf("All shared stash tabs full for %s, trying personal stash as fallback", i.Name))
-			SwitchStashTab(1)
-			if stashItemAction(i, matchedRule, ruleFile, firstRun) {
-				itemStashed = true
-				ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) as fallback", i.Desc().Name, i.Quality.ToString()))
-			}
-		}
-
-		if !itemStashed {
+		stashed := stashItemAcrossTabs(i, matchedRule, ruleFile, firstRun)
+		if !stashed {
 			ctx.Logger.Warn(fmt.Sprintf("ERROR: Item %s [%s] could not be stashed into any tab. All stash tabs might be full.", i.Desc().Name, i.Quality.ToString()))
-			// TODO: Potentially stop the bot or alert the user more critically here
 		}
 	}
 	step.CloseAllMenus()
+}
+
+// stashItemAcrossTabs attempts to stash the given item across available tabs, applying the same logic
+// used by the main stash routine. It returns true if the item was stashed successfully.
+func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, firstRun bool) bool {
+	ctx := context.Get()
+	displayName := formatItemName(i)
+
+	startTab := 1
+	if ctx.CharacterCfg.Character.StashToShared {
+		startTab = 2
+	}
+
+	targetStartTab := startTab
+	if (i.Name == "grandcharm" || i.Name == "smallcharm" || i.Name == "largecharm") && i.Quality == item.QualityUnique {
+		targetStartTab = 2
+	}
+
+	itemStashed := false
+	maxTab := 4
+
+	for tabAttempt := targetStartTab; tabAttempt <= maxTab; tabAttempt++ {
+		SwitchStashTab(tabAttempt)
+
+		if stashItemAction(i, matchedRule, ruleFile, firstRun) {
+			itemStashed = true
+			r, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(i)
+
+			if res != nip.RuleResultFullMatch && firstRun {
+				ctx.Logger.Info(
+					fmt.Sprintf("Item %s [%s] stashed to tab %d because it was found in the inventory during the first run.", displayName, i.Quality.ToString(), tabAttempt),
+				)
+			} else {
+				ctx.Logger.Info(
+					fmt.Sprintf("Item %s [%s] stashed to tab %d", displayName, i.Quality.ToString(), tabAttempt),
+					slog.String("nipFile", fmt.Sprintf("%s:%d", r.Filename, r.LineNumber)),
+					slog.String("rawRule", r.RawLine),
+				)
+			}
+			break
+		}
+		ctx.Logger.Debug(fmt.Sprintf("Item %s could not be stashed on tab %d. Trying next.", displayName, tabAttempt))
+	}
+
+	if !itemStashed && targetStartTab == 2 {
+		ctx.Logger.Debug(fmt.Sprintf("All shared stash tabs full for %s, trying personal stash as fallback", displayName))
+		SwitchStashTab(1)
+		if stashItemAction(i, matchedRule, ruleFile, firstRun) {
+			itemStashed = true
+			ctx.Logger.Info(fmt.Sprintf("Item %s [%s] stashed to personal stash (tab 1) as fallback", displayName, i.Quality.ToString()))
+		}
+	}
+
+	return itemStashed
 }
 
 // shouldStashIt now returns stashIt, dropIt, matchedRule, ruleFile
@@ -272,10 +279,6 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	if firstRun {
 		fmt.Printf("DEBUG: Allowing stash for '%s' (first run).\n", i.Name)
 		return true, false, "FirstRun", ""
-	}
-
-	if i.IsRuneword {
-		return true, false, "Runeword", ""
 	}
 
 	// Stash items that are part of a recipe which are not covered by the NIP rules
@@ -315,6 +318,10 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 			fmt.Printf("DEBUG: Allowing stash for '%s' (pickit rule match: %s).\n", i.Name, rule.RawLine)
 			return true, false, rule.RawLine, rule.Filename + ":" + strconv.Itoa(rule.LineNumber)
 		}
+	}
+
+	if i.IsRuneword {
+		return true, false, "Runeword", ""
 	}
 
 	fmt.Printf("DEBUG: Disallowing stash for '%s' (no rule match and not explicitly kept, and not exceeding quantity).\n", i.Name)
@@ -401,6 +408,7 @@ func shouldKeepRecipeItem(i data.Item) bool {
 func stashItemAction(i data.Item, rule string, ruleFile string, skipLogging bool) bool {
 	ctx := context.Get()
 	ctx.SetLastAction("stashItemAction")
+	displayName := formatItemName(i)
 
 	screenPos := ui.GetScreenCoordsForItem(i)
 	ctx.HID.MovePointer(screenPos.X, screenPos.Y)
@@ -422,7 +430,7 @@ func stashItemAction(i data.Item, rule string, ruleFile string, skipLogging bool
 	dropLocation := "unknown"
 
 	// log the contents of picked up items
-	ctx.Logger.Debug(fmt.Sprintf("Checking PickedUpItems for %s (UnitID: %d)", i.Name, i.UnitID)) // Changed to Debug as this is internal state
+	ctx.Logger.Debug(fmt.Sprintf("Checking PickedUpItems for %s (UnitID: %d)", displayName, i.UnitID)) // Changed to Debug as this is internal state
 	if _, found := ctx.CurrentGame.PickedUpItems[int(i.UnitID)]; found {
 		areaId := ctx.CurrentGame.PickedUpItems[int(i.UnitID)]
 		dropLocation = area.ID(areaId).Area().Name // Corrected to use areaId variable
@@ -434,10 +442,35 @@ func stashItemAction(i data.Item, rule string, ruleFile string, skipLogging bool
 
 	// Don't log items that we already have in inventory during first run or that we don't want to notify about (gems, low runes .. etc)
 	if !skipLogging && shouldNotifyAboutStashing(i) && ruleFile != "" {
-		event.Send(event.ItemStashed(event.WithScreenshot(ctx.Name, fmt.Sprintf("Item %s [%d] stashed", i.Name, i.Quality), screenshot), data.Drop{Item: i, Rule: rule, RuleFile: ruleFile, DropLocation: dropLocation}))
+		dropItem := i
+		if dropItem.IsRuneword && dropItem.IdentifiedName == "" {
+			dropItem.IdentifiedName = displayName
+		}
+		event.Send(event.ItemStashed(
+			event.WithScreenshot(ctx.Name, fmt.Sprintf("Item %s [%d] stashed", displayName, i.Quality), screenshot),
+			data.Drop{Item: dropItem, Rule: rule, RuleFile: ruleFile, DropLocation: dropLocation},
+		))
 	}
 
 	return true // Item successfully stashed
+}
+
+func formatItemName(i data.Item) string {
+	if i.IsRuneword && i.RunewordName != item.RunewordNone {
+		if rwName := string(item.Name(i.RunewordName)); rwName != "" {
+			return rwName
+		}
+	}
+
+	if i.IdentifiedName != "" {
+		return i.IdentifiedName
+	}
+
+	if desc := i.Desc().Name; desc != "" {
+		return desc
+	}
+
+	return string(i.Name)
 }
 
 // dropExcessItems iterates through inventory and drops items marked for dropping

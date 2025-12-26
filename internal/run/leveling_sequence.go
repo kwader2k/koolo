@@ -640,8 +640,8 @@ func (ls LevelingSequence) setupLevelOneConfig() {
 	ls.ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation = true
 	ls.ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding = true
 	ls.ctx.CharacterCfg.Game.Leveling.AutoEquip = true
-	ls.ctx.CharacterCfg.Game.Leveling.EnableRunewordMaker = true
-	ls.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = ls.GetRunewords()
+	ls.ctx.CharacterCfg.Game.RunewordMaker.Enabled = true
+	ls.ctx.CharacterCfg.Game.RunewordMaker.EnabledRecipes = ls.GetRunewords()
 	ls.ctx.CharacterCfg.Character.UseTeleport = false
 	ls.ctx.CharacterCfg.Character.UseMerc = false
 	ls.ctx.CharacterCfg.Character.StashToShared = false
@@ -704,7 +704,7 @@ func (ls LevelingSequence) AdjustDifficultyConfig() {
 		return
 	}
 
-	ls.ctx.CharacterCfg.Game.Leveling.EnabledRunewordRecipes = ls.GetRunewords()
+	ls.ctx.CharacterCfg.Game.RunewordMaker.EnabledRecipes = ls.GetRunewords()
 	ls.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 5000 * lvl.Value
 
 	if !ls.ctx.CharacterCfg.Character.UseMerc && ls.ctx.Data.Quests[quest.Act1SistersBurialGrounds].Completed() {
