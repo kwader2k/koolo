@@ -190,9 +190,11 @@ func main() {
 		discordBot, err := discord.NewBot(
 			config.Koolo.Discord.Token,
 			config.Koolo.Discord.ChannelID,
+			config.Koolo.Discord.ItemChannelID,
 			manager,
 			config.Koolo.Discord.UseWebhook,
 			config.Koolo.Discord.WebhookURL,
+			config.Koolo.Discord.ItemWebhookURL,
 		)
 		if err != nil {
 			logger.Error("Discord could not been initialized", slog.Any("error", err))

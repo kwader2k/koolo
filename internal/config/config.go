@@ -55,11 +55,14 @@ type KooloCfg struct {
 		EnableRunFinishMessages      bool     `yaml:"enableRunFinishMessages"`
 		EnableDiscordChickenMessages bool     `yaml:"enableDiscordChickenMessages"`
 		EnableDiscordErrorMessages   bool     `yaml:"enableDiscordErrorMessages"`
+		DisableItemStashScreenshots  bool     `yaml:"disableItemStashScreenshots"`
 		BotAdmins                    []string `yaml:"botAdmins"`
 		ChannelID                    string   `yaml:"channelId"`
+		ItemChannelID                string   `yaml:"itemChannelId"`
 		Token                        string   `yaml:"token"`
 		UseWebhook                   bool     `yaml:"useWebhook"`
 		WebhookURL                   string   `yaml:"webhookUrl"`
+		ItemWebhookURL               string   `yaml:"itemWebhookUrl"`
 	} `yaml:"discord"`
 	Telegram struct {
 		Enabled bool   `yaml:"enabled"`

@@ -14,15 +14,18 @@ D2RPath: 'C:\Program Files (x86)\Diablo II Resurrected' # Path to Diablo II Resu
 discord:
   enabled: false
   channelId: ''
+  itemChannelId: ''
   token: ''
   useWebhook: false    # Use Discord webhook for alerts only
   webhookUrl: ''       # Discord webhook URL
+  itemWebhookUrl: ''   # Discord item webhook URL (optional)
   botAdmins: []  # Add your Discord User IDs here, e.g., ['123456789012345678']
   enableGameCreatedMessages: false
   enableNewRunMessages: false
   enableRunFinishMessages: false
   enableDiscordChickenMessages: true
   enableDiscordErrorMessages: true
+  disableItemStashScreenshots: false
 
 telegram:
   enabled: false

@@ -14,17 +14,21 @@ import (
 type Bot struct {
 	discordSession *discordgo.Session
 	channelID      string
+	itemChannelID  string
 	manager        *bot.SupervisorManager
 	useWebhook     bool
 	webhookClient  *webhookClient
+	itemWebhook    *webhookClient
 }
 
-func NewBot(token, channelID string, manager *bot.SupervisorManager, useWebhook bool, webhookURL string) (*Bot, error) {
+func NewBot(token, channelID, itemChannelID string, manager *bot.SupervisorManager, useWebhook bool, webhookURL, itemWebhookURL string) (*Bot, error) {
 	botInstance := &Bot{
 		channelID:     channelID,
+		itemChannelID: strings.TrimSpace(itemChannelID),
 		manager:       manager,
 		useWebhook:    useWebhook,
 		webhookClient: nil,
+		itemWebhook:   nil,
 	}
 
 	if useWebhook {
@@ -32,6 +36,9 @@ func NewBot(token, channelID string, manager *bot.SupervisorManager, useWebhook 
 			return nil, fmt.Errorf("webhook URL is required when using webhook mode")
 		}
 		botInstance.webhookClient = newWebhookClient(webhookURL)
+		if strings.TrimSpace(itemWebhookURL) != "" {
+			botInstance.itemWebhook = newWebhookClient(itemWebhookURL)
+		}
 		return botInstance, nil
 	}
 

@@ -333,12 +333,22 @@
                             placeholder="Channel ID"
                             value="{{ .Discord.ChannelID }}"
                     />
+                    <input
+                            name="discord_item_channel_id"
+                            placeholder="Item Channel ID (optional)"
+                            value="{{ .Discord.ItemChannelID }}"
+                    />
                 </div>
                 <div id="discord-webhook-config" style="{{ if not .Discord.UseWebhook }}display:none;{{ end }}">
                     <input
                             name="discord_webhook_url"
                             placeholder="Webhook URL"
                             value="{{ .Discord.WebhookURL }}"
+                    />
+                    <input
+                            name="discord_item_webhook_url"
+                            placeholder="Item Webhook URL (optional)"
+                            value="{{ .Discord.ItemWebhookURL }}"
                     />
                 </div>
                 <fieldset class="grid">
@@ -361,6 +371,10 @@
                     <label>
                         <input type="checkbox" name="enable_discord_error_messages" value="{{ .Discord.EnableDiscordErrorMessages }}" {{ if .Discord.EnableDiscordErrorMessages }} checked="checked" {{ end }} />
                         Enable Error Messages
+                    </label>
+                    <label>
+                        <input type="checkbox" name="discord_disable_item_stash_screenshots" value="{{ .Discord.DisableItemStashScreenshots }}" {{ if .Discord.DisableItemStashScreenshots }} checked="checked" {{ end }} />
+                        Disable Item Stash Screenshots (send text only)
                     </label>
                 </fieldset>
                 <h4>Telegram integration</h4>
