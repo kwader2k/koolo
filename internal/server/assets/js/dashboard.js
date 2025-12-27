@@ -547,6 +547,25 @@ function triggerAutoStartOnce() {
     });
 }
 
+function scanStashTabs() {
+  fetch("/api/stash/export-txt")
+    .then((response) => {
+      if (!response.ok) {
+        return response.text().then((text) => {
+          throw new Error(text || "Failed to export stash");
+        });
+      }
+      return response.json();
+    })
+    .then((data) => {
+      const msg = `Exported ${data.count || 0} items to:\n${data.file || ""}`;
+      alert(msg);
+    })
+    .catch((error) => {
+      alert("Stash export failed: " + error.message);
+    });
+}
+
 function updateButtons(startPauseBtn, stopBtn, attachBtn, manualPlayBtn, status, manualModeActive) {
   // Manual mode active - show yellow M button
   if (manualModeActive) {

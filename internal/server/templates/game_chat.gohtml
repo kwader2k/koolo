@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Chat</title>
+    <link rel="stylesheet" href="../assets/css/pico.min.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <style>
+        .chat-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--backdrop);
+        }
+
+        .chat-header {
+            flex: 0;
+            padding: 1rem;
+            background: var(--card-background-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-box-shadow);
+        }
+
+        .chat-header h1 {
+            margin: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-header button {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            background: var(--card-background-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-box-shadow);
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .message {
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            word-wrap: break-word;
+            animation: slideIn 0.3s ease-in-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.sent {
+            background: var(--form-element-valid-border-color);
+            color: white;
+            margin-left: 2rem;
+            text-align: left;
+        }
+
+        .message.received {
+            background: var(--form-element-invalid-border-color);
+            color: white;
+            margin-right: 2rem;
+            text-align: left;
+        }
+
+        .message-sender {
+            font-weight: bold;
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+            opacity: 0.9;
+        }
+
+        .message-text {
+            font-size: 0.95rem;
+            word-break: break-word;
+        }
+
+        .message-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            margin-top: 0.25rem;
+        }
+
+        .empty-messages {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--muted-color);
+            text-align: center;
+        }
+
+        .input-container {
+            flex: 0;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-container input {
+            flex: 1;
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            border: 2px solid var(--form-element-border-color);
+            background: var(--card-background-color);
+            color: var(--form-element-valid-border-color);
+            font-size: 1rem;
+        }
+
+        .input-container input:focus {
+            outline: none;
+            border-color: var(--form-element-valid-border-color);
+            box-shadow: 0 0 0 3px rgba(76, 175, 80, 0.1);
+        }
+
+        .input-container button {
+            padding: 0.75rem 1.5rem;
+            white-space: nowrap;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .status-indicator.online {
+            background: var(--form-element-valid-border-color);
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.offline {
+            background: var(--form-element-invalid-border-color);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--muted-color);
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--text-color);
+        }
+
+        .character-select {
+            margin-bottom: 1rem;
+        }
+
+        .character-select select {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: var(--border-radius);
+        }
+
+        .loading {
+            text-align: center;
+            color: var(--muted-color);
+        }
+    </style>
+</head>
+<body>
+<div class="chat-container">
+    <div class="chat-header">
+        <h1>
+            <span>
+                <span class="status-indicator online" id="statusIndicator"></span>
+                Game Chat
+            </span>
+            <button class="close-btn" onclick="closeChat()" title="Close Chat">&times;</button>
+        </h1>
+    </div>
+
+    <div class="messages-container" id="messagesContainer">
+        <div class="empty-messages">
+            <div>
+                <p>No messages yet</p>
+                <small>Messages will appear here</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="input-container">
+        <input
+            type="text"
+            id="messageInput"
+            placeholder="Type your message here..."
+            maxlength="255"
+            onkeypress="handleKeyPress(event)"
+        >
+        <button onclick="sendMessage()" class="btn btn-primary">Send</button>
+        <button onclick="clearHistory()" class="btn btn-outline" title="Clear History">Clear</button>
+    </div>
+</div>
+
+<script>
+    let messagesContainer;
+    let messageInput;
+    let statusIndicator;
+    let autoScroll = true;
+    let statusCheckInterval;
+
+    // Initialize on page load
+    window.addEventListener('load', () => {
+        // Get DOM elements AFTER page loads
+        messagesContainer = document.getElementById('messagesContainer');
+        messageInput = document.getElementById('messageInput');
+        statusIndicator = document.getElementById('statusIndicator');
+        
+        if (!messagesContainer || !messageInput || !statusIndicator) {
+            console.error('Failed to find required DOM elements');
+            return;
+        }
+        
+        console.log('Chat page loaded, DOM elements found');
+        loadChatHistory();
+        checkGameStatus();
+        messageInput.focus();
+        // Check game status more frequently - every 2 seconds
+        statusCheckInterval = setInterval(checkGameStatus, 2000);
+    });
+
+    // Clean up interval on unload
+    window.addEventListener('beforeunload', () => {
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+        }
+    });
+
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        try {
+            console.log('Sending message:', message);
+            const response = await fetch('/api/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message }),
+            });
+
+            const responseText = await response.text();
+            console.log('Response status:', response.status, 'Body:', responseText);
+
+            if (!response.ok) {
+                showError('Failed to send message: ' + responseText);
+                return;
+            }
+
+            messageInput.value = '';
+            messageInput.focus();
+            loadChatHistory();
+        } catch (error) {
+            console.error('Error sending message:', error);
+            showError('Error sending message: ' + error.message);
+        }
+    }
+
+    async function loadChatHistory() {
+        try {
+            const response = await fetch('/api/chat/history');
+            if (!response.ok) {
+                throw new Error('Failed to load chat history');
+            }
+
+            const data = await response.json();
+            displayMessages(data.messages || []);
+        } catch (error) {
+            console.error('Error loading chat history:', error);
+        }
+    }
+
+    function displayMessages(messages) {
+        if (!messages || messages.length === 0) {
+            messagesContainer.innerHTML = `
+                <div class="empty-messages">
+                    <div>
+                        <p>No messages yet</p>
+                        <small>Messages will appear here</small>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        const shouldAutoScroll = autoScroll &&
+            (messagesContainer.scrollTop + messagesContainer.clientHeight >=
+                messagesContainer.scrollHeight - 50);
+
+        messagesContainer.innerHTML = messages.map(msg => `
+            <div class="message ${msg.direction}">
+                <div class="message-sender">${escapeHtml(msg.sender)}</div>
+                <div class="message-text">${escapeHtml(msg.message)}</div>
+                <div class="message-time">${formatTime(msg.timestamp)}</div>
+            </div>
+        `).join('');
+
+        if (shouldAutoScroll) {
+            scrollToBottom();
+        }
+    }
+
+    function scrollToBottom() {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function formatTime(timestamp) {
+        const date = new Date(timestamp);
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hour12: true
+        });
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    async function clearHistory() {
+        if (!confirm('Are you sure you want to clear chat history?')) return;
+
+        try {
+            const response = await fetch('/api/chat/clear', {
+                method: 'POST',
+            });
+
+            if (!response.ok) {
+                showError('Failed to clear history');
+                return;
+            }
+
+            loadChatHistory();
+        } catch (error) {
+            showError('Error clearing history: ' + error.message);
+        }
+    }
+
+    function closeChat() {
+        window.history.back();
+    }
+
+    async function checkGameStatus() {
+        try {
+            const response = await fetch('/api/status');
+            if (!response.ok) {
+                console.warn('Status check failed:', response.status);
+                updateStatus(false);
+                return;
+            }
+
+            const data = await response.json();
+            console.log('Game status:', data.inGame);
+            updateStatus(data.inGame === true);
+        } catch (error) {
+            console.error('Status check error:', error);
+            updateStatus(false);
+        }
+    }
+
+    function updateStatus(online) {
+        if (online) {
+            statusIndicator.className = 'status-indicator online';
+            messageInput.disabled = false;
+            messageInput.placeholder = 'Type your message here...';
+        } else {
+            statusIndicator.className = 'status-indicator offline';
+            // Allow typing even if offline - user can prepare messages
+            messageInput.disabled = false;
+            messageInput.placeholder = 'Type your message (will send when game is ready)...';
+        }
+    }
+
+    function showError(message) {
+        console.error('Chat Error:', message);
+        // Create a temporary error notification
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #d32f2f;
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10000;
+            max-width: 400px;
+            font-size: 14px;
+        `;
+        errorDiv.textContent = message;
+        document.body.appendChild(errorDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            errorDiv.remove();
+        }, 5000);
+        
+        // Also show in alert for critical errors
+        if (message.includes('context not available') || message.includes('Game')) {
+            alert(message);
+        }
+    }
+
+    // Listen for scroll
+    messagesContainer.addEventListener('scroll', () => {
+        autoScroll = messagesContainer.scrollTop + messagesContainer.clientHeight >=
+            messagesContainer.scrollHeight - 50;
+    });
+
+    // Refresh chat history every 2 seconds
+    setInterval(loadChatHistory, 2000);
+</script>
+</body>
+</html>

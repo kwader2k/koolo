@@ -1,6 +1,16 @@
 @echo off
 setlocal enabledelayedexpansion
 
+:: Optional non-interactive mode
+if /i "%~1"=="--auto" set AUTO=1
+if /i "%AUTO%"=="1" (
+    set install_go=N
+    set continue_with_go=Y
+    set install_garble=N
+    set continue_with_garble=Y
+    set replace_settings=N
+)
+
 :: Preserve UI and critical packages
 set GOGARBLE=!github.com/hectorgimenez/koolo/internal/server*,!github.com/hectorgimenez/koolo/internal/event*,!github.com/inkeliz/gowebview*
 
@@ -35,8 +45,10 @@ if !errorlevel! neq 0 (
     call :pause_and_exit !errorlevel!
 )
 echo.
-powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
-pause > nul
+if /i "!AUTO!" neq "1" (
+    powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
+    pause > nul
+)
 exit /b 0
 
 :check_go_installation
@@ -60,7 +72,7 @@ if %errorlevel% neq 0 (
     :: Extract major.minor version (e.g., 1.24 from 1.24.3)
     for /f "tokens=1,2 delims=." %%a in ("!go_version!") do set go_major_minor=%%a.%%b
 
-    if "!go_major_minor!"=="%REQUIRED_GO_VERSION%" (
+if "!go_major_minor!"=="%REQUIRED_GO_VERSION%" (
         call :print_success "Go version !go_version! is installed."
     ) else (
         call :print_warning "You are currently using Go version !go_version!"
@@ -103,7 +115,7 @@ if %errorlevel% neq 0 (
     :: Extract exact version
     for /f "tokens=1,2,3 delims=." %%a in ("!garble_version!") do set garble_major_minor=%%a.%%b.%%c
 
-    if "!garble_major_minor!"=="%REQUIRED_GARBLE_VERSION%" (
+if "!garble_major_minor!"=="%REQUIRED_GARBLE_VERSION%" (
         call :print_success "Garble version !garble_version! is installed."
     ) else (
         call :print_warning "You are currently using Garble version !garble_version!"
@@ -196,6 +208,13 @@ if exist "%STATIC_BUILD_DIR%" (
 :: Check if the executable was actually created
 if exist "%OUTPUT_EXE%" (
     call :print_success "Successfully built obfuscated executable: %BUILD_ID%.exe"
+    call :print_step "Creating easy-to-find copy: Koolo-ChatFix.exe"
+    copy /y "%OUTPUT_EXE%" "build\Koolo-ChatFix.exe" > nul
+    if !errorlevel! neq 0 (
+        call :print_warning "Could not create Koolo-ChatFix.exe copy"
+    ) else (
+        call :print_success "Koolo-ChatFix.exe created in build folder"
+    )
 ) else (
     call :print_error "Failed to build Koolo binary - executable was not created"
     echo.
@@ -300,13 +319,19 @@ goto :eof
 :: Function to pause and exit with error code
 :pause_and_exit
 echo.
-powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
-pause > nul
+if /i "!AUTO!" neq "1" (
+    powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
+    pause > nul
+)
 exit %1
 
 :: Function to get user input
 :get_user_input
 setlocal enabledelayedexpansion
+set varname=%~2
+if defined !%varname%! (
+    endlocal & goto :eof
+)
 call :print_prompt "%~1"
 set /p "user_input="
 endlocal & set "%~2=%user_input%"

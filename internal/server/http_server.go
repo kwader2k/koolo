@@ -32,7 +32,11 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/bot"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
@@ -41,6 +45,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/remote/droplog"
 	terrorzones "github.com/hectorgimenez/koolo/internal/terrorzone"
+	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
@@ -712,6 +717,16 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/supervisors/bulk-apply", s.bulkApplyCharacterSettings)
 	http.HandleFunc("/Drop-manager", s.DropManagerPage)
 
+	// Game Chat routes
+	http.HandleFunc("/game-chat", s.gameChatPage)
+	http.HandleFunc("/api/chat/send", s.SendChatMessage)
+	http.HandleFunc("/api/chat/history", s.GetChatHistory)
+	http.HandleFunc("/api/chat/clear", s.ClearChatHistory)
+	http.HandleFunc("/api/status", s.GetGameStatus)
+	http.HandleFunc("/api/stash/export-txt", s.exportStashTxt)
+
+	s.startGameChatPolling()
+
 	s.registerDropRoutes()
 
 	assets, _ := fs.Sub(assetsFS, "assets")
@@ -728,6 +743,32 @@ func (s *HttpServer) Listen(port int) error {
 	return nil
 }
 
+func (s *HttpServer) startGameChatPolling() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+		for {
+			<-ticker.C
+			if s.manager == nil {
+				continue
+			}
+			supervisors := s.manager.GetAllActiveSupervisors()
+			for _, sup := range supervisors {
+				if sup == nil {
+					continue
+				}
+				ctx := sup.GetContext()
+				if ctx == nil || ctx.GameReader == nil {
+					continue
+				}
+				lines := ctx.GameReader.ReadChatMessages()
+				for _, line := range lines {
+					AddReceivedMessage(line.Sender, line.Message)
+				}
+			}
+		}
+	}()
+}
 func (s *HttpServer) reloadConfig(w http.ResponseWriter, r *http.Request) {
 	result := s.manager.ReloadConfig()
 	if result != nil {
@@ -1175,6 +1216,269 @@ func (s *HttpServer) exportDrops(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok", "file": outPath})
 }
 
+func (s *HttpServer) exportStashTxt(w http.ResponseWriter, r *http.Request) {
+	supervisors := s.manager.GetAllActiveSupervisors()
+	if len(supervisors) == 0 {
+		http.Error(w, "no active supervisors", http.StatusBadRequest)
+		return
+	}
+	// Only operate on the target supervisor below; do not globally pause others
+
+	targetName := r.URL.Query().Get("characterName")
+	var sup bot.Supervisor
+	if targetName != "" {
+		for _, candidate := range supervisors {
+			if candidate != nil && candidate.Name() == targetName {
+				sup = candidate
+				break
+			}
+		}
+		if sup == nil {
+			http.Error(w, "specified supervisor not found", http.StatusNotFound)
+			return
+		}
+	} else {
+		for _, candidate := range supervisors {
+			if candidate == nil {
+				continue
+			}
+			cctx := candidate.GetContext()
+			if cctx != nil && cctx.Manager.InGame() && cctx.Data.OpenMenus.Stash {
+				sup = candidate
+				break
+			}
+		}
+		if sup == nil {
+			for _, candidate := range supervisors {
+				if candidate == nil {
+					continue
+				}
+				cctx := candidate.GetContext()
+				if cctx != nil && cctx.Manager.InGame() {
+					sup = candidate
+					break
+				}
+			}
+		}
+	}
+
+	if sup == nil {
+		http.Error(w, "no in-game supervisors available", http.StatusBadRequest)
+		return
+	}
+
+	supCtx := sup.GetContext()
+	if supCtx == nil {
+		http.Error(w, "context not available", http.StatusInternalServerError)
+		return
+	}
+
+	prevPriority := supCtx.ExecutionPriority
+	wasPaused := prevPriority == ctx.PriorityPause
+	supCtx.AttachRoutine(ctx.PriorityPause)
+	if !wasPaused {
+		sup.TogglePause()
+		utils.PingSleep(utils.Light, 150)
+		ctx.Get().PauseIfNotPriority()
+	}
+	defer func() {
+		// Resume only if we paused it here
+		if !wasPaused {
+			utils.PingSleep(utils.Light, 150)
+			sup.TogglePause()
+		}
+	}()
+
+	// If not in town, return to town first to ensure stash is available
+	if !supCtx.Data.PlayerUnit.Area.IsTown() {
+		ctx.Get().PauseIfNotPriority()
+		targetTown := town.GetTownByArea(supCtx.Data.PlayerUnit.Area).TownArea()
+		if err := action.WayPoint(targetTown); err != nil {
+			// Fallback to TP return if waypoint fails for any reason
+			if err2 := action.ReturnTown(); err2 != nil {
+				http.Error(w, fmt.Sprintf("failed to return to town: %v; fallback failed: %v", err, err2), http.StatusBadRequest)
+				return
+			}
+		}
+		utils.PingSleep(utils.Medium, 500)
+		supCtx.RefreshGameData()
+	}
+
+	if !supCtx.Data.OpenMenus.Stash {
+		supCtx.AttachRoutine(ctx.PriorityPause)
+		ctx.Get().PauseIfNotPriority()
+		maxAttempts := 6
+		for attempt := 0; attempt < maxAttempts; attempt++ {
+			supCtx.RefreshGameData()
+			if supCtx.Data.OpenMenus.Stash {
+				break
+			}
+			if attempt >= 2 {
+				if bank, found := supCtx.Data.Objects.FindOne(object.Bank); found {
+					_ = action.MoveToCoords(bank.Position, step.WithDistanceToFinish(6))
+					utils.PingSleep(utils.Medium, 150)
+					supCtx.RefreshGameData()
+				} else {
+					// Fallback positions for towns when bank object is not loaded yet
+					switch supCtx.Data.PlayerUnit.Area {
+					case area.KurastDocks:
+						_ = action.MoveToCoords(data.Position{X: 5146, Y: 5067}, step.WithDistanceToFinish(6))
+					case area.LutGholein:
+						_ = action.MoveToCoords(data.Position{X: 5130, Y: 5086}, step.WithDistanceToFinish(6))
+					}
+					utils.PingSleep(utils.Medium, 150)
+					supCtx.RefreshGameData()
+				}
+			}
+			_ = action.OpenStash()
+			utils.PingSleep(utils.Medium, 250)
+			supCtx.RefreshGameData()
+		}
+		if !supCtx.Data.OpenMenus.Stash {
+			http.Error(w, "stash not detected as open after attempts", http.StatusBadRequest)
+			return
+		}
+	}
+
+	{
+		p1 := supCtx.Data.PlayerUnit.Position
+		utils.PingSleep(utils.Medium, 600)
+		supCtx.RefreshGameData()
+		p2 := supCtx.Data.PlayerUnit.Position
+		if p1.X != p2.X || p1.Y != p2.Y {
+			utils.PingSleep(utils.Medium, 600)
+			supCtx.RefreshGameData()
+		}
+	}
+
+	var buf bytes.Buffer
+	total := 0
+	for tab := 1; tab <= 4; tab++ {
+		supCtx.AttachRoutine(ctx.PriorityPause)
+		ctx.Get().PauseIfNotPriority()
+		action.SwitchStashTab(tab)
+		utils.PingSleep(utils.Medium, 500)
+		supCtx.RefreshGameData()
+
+		items := make([]data.Item, 0)
+		for _, it := range supCtx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+			if it.Location.Page+1 == tab {
+				items = append(items, it)
+			}
+		}
+
+		if len(items) == 0 {
+			continue
+		}
+
+		buf.WriteString(fmt.Sprintf("=== Tab %d ===\n", tab))
+		for _, it := range items {
+			// Item header
+			name := ""
+			if it.IsRuneword && it.RunewordName != item.RunewordNone {
+				if rw := string(item.Name(it.RunewordName)); rw != "" {
+					name = rw
+				}
+			}
+			if name == "" && it.IdentifiedName != "" {
+				name = it.IdentifiedName
+			}
+			if name == "" && it.Desc().Name != "" {
+				name = it.Desc().Name
+			}
+			if name == "" {
+				name = string(it.Name)
+			}
+
+			buf.WriteString(fmt.Sprintf("%s [%s] at (%d,%d)\n", name, it.Quality.ToString(), it.Position.X, it.Position.Y))
+
+			// Item identity details
+			if it.IsRuneword && it.RunewordName != item.RunewordNone {
+				rwName := string(item.Name(it.RunewordName))
+				if rwName != "" {
+					buf.WriteString(fmt.Sprintf("  Runeword: %s\n", rwName))
+				}
+				base := it.Desc().Name
+				if base == "" {
+					base = string(it.Name)
+				}
+				if base != "" {
+					buf.WriteString(fmt.Sprintf("  Base: %s\n", base))
+				}
+				// Socketed rune sequence (recipe order as a readable fallback)
+				for _, rw := range action.Runewords {
+					if rw.Name == it.RunewordName && len(rw.Runes) > 0 {
+						labels := make([]string, 0, len(rw.Runes))
+						for _, r := range rw.Runes {
+							name := r
+							if strings.HasSuffix(name, "Rune") {
+								name = name[:len(name)-len("Rune")]
+							}
+							labels = append(labels, name)
+						}
+						buf.WriteString(fmt.Sprintf("  Socketed Runes: %s\n", strings.Join(labels, " + ")))
+						break
+					}
+				}
+			}
+
+			// Stats: build textual lines from labels + values, mimicking tooltip
+			if len(it.Stats) > 0 {
+				lines := statsToStrings(it.Stats)
+				if len(lines) > 0 {
+					buf.WriteString("  Stats:\n")
+					for _, line := range lines {
+						buf.WriteString(fmt.Sprintf("    - %s\n", line))
+					}
+				} else {
+					// Fallback: humanized labels if no verbatim strings are available
+					buf.WriteString("  Stats:\n")
+					for _, sdata := range it.Stats {
+						label := action.PrettyRunewordStatLabel(sdata.ID, sdata.Layer)
+						if label == "" {
+							label = fmt.Sprintf("%v", sdata.ID)
+						}
+						val := int(sdata.Value)
+						sign := "+"
+						if val < 0 {
+							sign = ""
+						}
+						text := fmt.Sprintf("%s%d%s %s",
+							sign,
+							val,
+							percentSuffix(label),
+							label,
+						)
+						buf.WriteString(fmt.Sprintf("    - %s\n", text))
+					}
+				}
+			}
+
+			buf.WriteString("\n")
+			total++
+		}
+	}
+
+	base := config.Koolo.LogSaveDirectory
+	if base == "" {
+		base = "logs"
+	}
+	dir := filepath.Join(base, "stash_exports")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		http.Error(w, fmt.Sprintf("failed to create export directory: %v", err), http.StatusInternalServerError)
+		return
+	}
+	outName := fmt.Sprintf("stash-%s.txt", time.Now().Format("2006-01-02-15-04-05"))
+	outPath := filepath.Join(dir, outName)
+	if err := os.WriteFile(outPath, buf.Bytes(), 0o644); err != nil {
+		http.Error(w, fmt.Sprintf("failed to write export: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"status": "ok", "file": outPath, "count": total})
+}
+
 // helper: convert stats to strings for filtering
 func statsToStrings(stats any) []string {
 	v := reflect.ValueOf(stats)
@@ -1198,6 +1502,25 @@ func statsToStrings(stats any) []string {
 		}
 	}
 	return out
+}
+
+// percentSuffix returns "%" for labels that represent percentage stats; empty otherwise.
+func percentSuffix(label string) string {
+	l := strings.ToLower(label)
+	switch {
+	case strings.Contains(l, "faster"),
+		strings.Contains(l, "increased"),
+		strings.Contains(l, "enhanced"),
+		strings.Contains(l, "resist"),
+		strings.Contains(l, "magic find"),
+		strings.Contains(l, "gold find"),
+		strings.Contains(l, "deadly strike"),
+		strings.Contains(l, "crushing blow"),
+		strings.Contains(l, "open wounds"):
+		return "%"
+	default:
+		return ""
+	}
 }
 
 func validateSchedulerData(cfg *config.CharacterCfg) error {
