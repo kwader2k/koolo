@@ -2838,6 +2838,19 @@ func (s *HttpServer) bulkApplyCharacterSettings(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Save source supervisor's form data first so bulk apply uses current form state (not saved state)
+	// This fixes UX issue where bulk apply button is next to save, but would apply old saved values
+	if req.SourceSupervisor != "" {
+		if sourceCfg, found := config.GetCharacter(req.SourceSupervisor); found && sourceCfg != nil {
+			if err := s.updateConfigFromForm(values, sourceCfg, req.Sections, req.RunDetailTargets); err == nil {
+				if err := config.SaveSupervisorConfig(req.SourceSupervisor, sourceCfg); err != nil {
+					s.logger.Warn("failed to save source supervisor config", slog.String("supervisor", req.SourceSupervisor), slog.Any("error", err))
+				}
+			}
+		}
+	}
+
+	// Now get the runeword source from the freshly saved config
 	var runewordSource *config.CharacterCfg
 	if req.Sections.RunewordMaker && req.SourceSupervisor != "" {
 		if src, ok := config.GetCharacter(req.SourceSupervisor); ok && src != nil {

@@ -319,6 +319,36 @@
         </label>
     </div>
 
+    <!-- Runeword Maker Global Options -->
+    <div style="margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #4a4a4a; background: rgba(30, 35, 45, 0.9);">
+        <div style="font-size: 0.85rem; color: #aab; margin-bottom: 8px;">
+            <strong>Runeword Maker Options</strong>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+            <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                <input type="checkbox"
+                       name="rwAutoUpgrade"
+                       form="runeword-settings-form"
+                       {{ if .Config.Game.RunewordMaker.AutoUpgrade }}checked{{ end }}/>
+                <span style="white-space: nowrap; color: #f5f7ff;" title="Automatically upgrade to a better tier base when found (e.g., replace normal Spirit with exceptional)">Auto Upgrade Tiers</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                <input type="checkbox"
+                       name="rwOnlyIfWearable"
+                       form="runeword-settings-form"
+                       {{ if .Config.Game.RunewordMaker.OnlyIfWearable }}checked{{ end }}/>
+                <span style="white-space: nowrap; color: #f5f7ff;" title="Only make runewords if the character meets the strength/dexterity requirements to wear the item">Only If Wearable</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                <input type="checkbox"
+                       name="rwAutoTierByDifficulty"
+                       form="runeword-settings-form"
+                       {{ if .Config.Game.RunewordMaker.AutoTierByDifficulty }}checked{{ end }}/>
+                <span style="white-space: nowrap; color: #f5f7ff;" title="Auto-select base tier based on difficulty: Normal=Normal, Nightmare=Exceptional, Hell=Elite">Auto Tier by Difficulty</span>
+            </label>
+        </div>
+    </div>
+
     <form method="post" autocomplete="off" class="compact-form" id="runeword-settings-form">
         <input type="hidden" name="name" value="{{ .Supervisor }}"/>
         <script id="rw-overrides-data" type="application/json">
@@ -418,8 +448,9 @@
                         </div>
                         <div class="grid">
                             <label>
-                                Base type
-                                <select id="rwBaseType" name="rwBaseType"></select>
+                                Base types <span style="font-size: 0.8em; color: #888;">(select multiple for runewords like Spirit)</span>
+                                <div id="rwBaseTypeContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; min-height: 32px;"></div>
+                                <input type="hidden" id="rwBaseType" name="rwBaseType" value=""/>
                             </label>
                             <label>
                                 Base tier
@@ -611,7 +642,8 @@
             const ethModeSelect = document.getElementById('rwEthMode');
             const qualityModeSelect = document.getElementById('rwQualityMode');
             const targetStatsContainer = null; // Legacy placeholder, reroll handled below
-            const baseTypeSelect = document.getElementById('rwBaseType');
+            const baseTypeContainer = document.getElementById('rwBaseTypeContainer');
+            const baseTypeInput = document.getElementById('rwBaseType');
             const baseTierSelect = document.getElementById('rwBaseTier');
             const baseNameInput = document.getElementById('rwBaseName');
             const baseNameSelect = document.getElementById('rwBaseNameSelect');
@@ -1066,7 +1098,9 @@
                     if (baseNameInput) baseNameInput.value = '';
                     return;
                 }
-                const baseType = baseTypeSelect ? baseTypeSelect.value : '';
+                // Get first selected base type from checkboxes (or empty if none)
+                const firstChecked = baseTypeContainer ? baseTypeContainer.querySelector('input[type="checkbox"]:checked') : null;
+                const baseType = firstChecked ? firstChecked.value : '';
                 const tier = baseTierSelect ? baseTierSelect.value : '';
 
                 baseNameSelect.innerHTML = '';
@@ -1677,7 +1711,7 @@
                 return {
                     EthMode: ethModeSelect ? (ethModeSelect.value || 'any') : 'any',
                     QualityMode: qualityModeSelect ? (qualityModeSelect.value || 'any') : 'any',
-                    BaseType: baseTypeSelect ? (baseTypeSelect.value || '') : '',
+                    BaseType: baseTypeInput ? (baseTypeInput.value || '') : '',
                     BaseTier: baseTierSelect ? (baseTierSelect.value || '') : '',
                     BaseName: baseNameInput ? (baseNameInput.value || '') : '',
                     TargetStats: []
@@ -1805,46 +1839,53 @@
                         renderRerollRulesForCurrent(name);
                     }
 
-                    // Load base item types for this runeword into the Base type selector
-                    if (baseTypeSelect) {
-                        baseTypeSelect.innerHTML = '';
+                    // Load base item types for this runeword into checkboxes
+                    if (baseTypeContainer && baseTypeInput) {
+                        baseTypeContainer.innerHTML = '';
+
+                        // Helper to update hidden input from checked boxes
+                        function updateBaseTypeInput() {
+                            var checked = baseTypeContainer.querySelectorAll('input[type="checkbox"]:checked');
+                            var values = Array.from(checked).map(function(cb) { return cb.value; });
+                            baseTypeInput.value = values.join(',');
+                            // Update base names when selection changes
+                            updateBaseNames();
+                        }
 
                         fetch('/api/runewords/base-types?name=' + encodeURIComponent(name))
                             .then(function(resp) { return resp.json(); })
                             .then(function(bases) {
                                 if (!Array.isArray(bases) || bases.length === 0) {
+                                    baseTypeContainer.innerHTML = '<span style="color: #888; font-size: 0.85em;">No base types available</span>';
                                     return;
                                 }
-                                bases.forEach(function(bt, idx) {
-                                    var opt = document.createElement('option');
-                                    opt.value = bt.code;
-                                    opt.textContent = bt.label;
-                                    baseTypeSelect.appendChild(opt);
-                                });
 
                                 const ov = overridesMap ? overridesMap[name] : null;
-                                let desiredBaseType = ov && ov.BaseType ? ov.BaseType : '';
-                                if (desiredBaseType) {
-                                    let found = false;
-                                    for (let i = 0; i < baseTypeSelect.options.length; i++) {
-                                        if (baseTypeSelect.options[i].value === desiredBaseType) {
-                                            baseTypeSelect.value = desiredBaseType;
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!found && baseTypeSelect.options.length > 0) {
-                                        baseTypeSelect.value = baseTypeSelect.options[0].value;
-                                    }
-                                } else if (baseTypeSelect.options.length > 0) {
-                                    baseTypeSelect.value = baseTypeSelect.options[0].value;
-                                }
+                                let savedBaseTypes = ov && ov.BaseType ? ov.BaseType.split(',').map(function(s) { return s.trim(); }) : [];
 
-                                // After loading base types, load matching base names
-                                updateBaseNames();
+                                bases.forEach(function(bt) {
+                                    var label = document.createElement('label');
+                                    label.style.cssText = 'display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85em; cursor: pointer; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px;';
+
+                                    var cb = document.createElement('input');
+                                    cb.type = 'checkbox';
+                                    cb.value = bt.code;
+                                    cb.checked = savedBaseTypes.indexOf(bt.code) !== -1;
+                                    cb.addEventListener('change', updateBaseTypeInput);
+
+                                    var span = document.createElement('span');
+                                    span.textContent = bt.label;
+
+                                    label.appendChild(cb);
+                                    label.appendChild(span);
+                                    baseTypeContainer.appendChild(label);
+                                });
+
+                                // Set initial hidden input value
+                                updateBaseTypeInput();
                             })
                             .catch(function() {
-                                // ignore errors for now
+                                baseTypeContainer.innerHTML = '<span style="color: #888; font-size: 0.85em;">Failed to load base types</span>';
                             });
                     }
                     // TODO: load saved override values for this runeword into the fields.
@@ -1893,11 +1934,7 @@
                 });
             }
 
-            if (baseTypeSelect) {
-                baseTypeSelect.addEventListener('change', function () {
-                    updateBaseNames();
-                });
-            }
+            // Base type change handler is now attached to checkboxes in the loadBaseTypes code
 
             if (baseTierSelect) {
                 baseTierSelect.addEventListener('change', function () {

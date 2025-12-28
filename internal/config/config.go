@@ -386,8 +386,11 @@ type CharacterCfg struct {
 			EnabledRunewordRecipes    []string `yaml:"enabledRunewordRecipes"`
 		} `yaml:"leveling"`
 		RunewordMaker struct {
-			Enabled        bool     `yaml:"enabled"`
-			EnabledRecipes []string `yaml:"enabledRunewordRecipes"`
+			Enabled              bool     `yaml:"enabled"`
+			EnabledRecipes       []string `yaml:"enabledRunewordRecipes"`
+			AutoUpgrade          bool     `yaml:"autoUpgrade"`          // Upgrade when better tier base found
+			OnlyIfWearable       bool     `yaml:"onlyIfWearable"`       // Only make if character meets str/dex requirements
+			AutoTierByDifficulty bool     `yaml:"autoTierByDifficulty"` // Auto-select tier based on difficulty
 		} `yaml:"runewordMaker"`
 		LevelingSequence struct {
 			SequenceFile string `yaml:"sequenceFile"`

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
@@ -59,12 +60,27 @@ func MakeRunewords() error {
 			if baseItem, hasBase := hasBaseForRunewordRecipe(baseItems, recipe); hasBase {
 				existingTier, hasExisting := currentRunewordBaseTier(ctx, recipe, baseItem.Type().Name)
 
-				if isLevelingChar && hasExisting && (len(recipe.BaseSortOrder) == 0 || baseItem.Desc().Tier() <= existingTier) {
+				// Check if we should skip this base due to tier upgrade logic
+				// For leveling characters: always apply tier check (existing behavior)
+				// For non-leveling: only apply if AutoUpgrade is enabled
+				shouldCheckUpgrade := isLevelingChar || cfg.Game.RunewordMaker.AutoUpgrade
+				if shouldCheckUpgrade && hasExisting && (len(recipe.BaseSortOrder) == 0 || baseItem.Desc().Tier() <= existingTier) {
 					ctx.Logger.Debug("Skipping recipe - existing runeword has equal or better tier in same base type",
 						"recipe", recipe.Name,
 						"baseType", baseItem.Type().Name,
 						"existingTier", existingTier,
 						"newBaseTier", baseItem.Desc().Tier())
+					continueProcessing = false
+					continue
+				}
+
+				// Check if character can wear this item (if OnlyIfWearable is enabled)
+				if cfg.Game.RunewordMaker.OnlyIfWearable && !characterMeetsRequirements(ctx, baseItem) {
+					ctx.Logger.Debug("Skipping recipe - character cannot wear this base item",
+						"recipe", recipe.Name,
+						"base", baseItem.Name,
+						"requiredStr", baseItem.Desc().RequiredStrength,
+						"requiredDex", baseItem.Desc().RequiredDexterity)
 					continueProcessing = false
 					continue
 				}
@@ -304,6 +320,18 @@ func hasBaseForRunewordRecipe(items []data.Item, recipe Runeword) (data.Item, bo
 		effectiveBaseName = strings.TrimSpace(ov.BaseName)
 	}
 
+	// Auto-select tier based on difficulty if enabled and no manual tier set
+	if effectiveBaseTier == "" && ctx.CharacterCfg.Game.RunewordMaker.AutoTierByDifficulty {
+		switch ctx.CharacterCfg.Game.Difficulty {
+		case difficulty.Normal:
+			effectiveBaseTier = "normal"
+		case difficulty.Nightmare:
+			effectiveBaseTier = "exceptional"
+		case difficulty.Hell:
+			effectiveBaseTier = "elite"
+		}
+	}
+
 	var validBases []data.Item
 	for _, itm := range items {
 		itemType := itm.Type().Code
@@ -320,8 +348,19 @@ func hasBaseForRunewordRecipe(items []data.Item, recipe Runeword) (data.Item, bo
 		}
 
 		// Apply user-specified base type restriction when not leveling.
-		if effectiveBaseType != "" && itemType != effectiveBaseType {
-			continue
+		// Supports comma-separated list for multiple base types (e.g., "sword,shield" for Spirit)
+		if effectiveBaseType != "" {
+			allowedTypes := strings.Split(effectiveBaseType, ",")
+			typeAllowed := false
+			for _, t := range allowedTypes {
+				if strings.TrimSpace(t) == itemType {
+					typeAllowed = true
+					break
+				}
+			}
+			if !typeAllowed {
+				continue
+			}
 		}
 
 		// exception to use only 1-handed maces/clubs for steel/malice/strength for barb leveling
@@ -510,4 +549,24 @@ func hasItemsForRunewordRecipe(items []data.Item, recipe Runeword) ([]data.Item,
 	}
 
 	return nil, false
+}
+
+// characterMeetsRequirements checks if the character has enough strength and dexterity to wear an item
+func characterMeetsRequirements(ctx *context.Status, itm data.Item) bool {
+	strStat, hasStr := ctx.Data.PlayerUnit.BaseStats.FindStat(stat.Strength, 0)
+	dexStat, hasDex := ctx.Data.PlayerUnit.BaseStats.FindStat(stat.Dexterity, 0)
+
+	charStr := 0
+	charDex := 0
+	if hasStr {
+		charStr = strStat.Value
+	}
+	if hasDex {
+		charDex = dexStat.Value
+	}
+
+	reqStr := itm.Desc().RequiredStrength
+	reqDex := itm.Desc().RequiredDexterity
+
+	return charStr >= reqStr && charDex >= reqDex
 }

@@ -372,6 +372,11 @@ func (s *HttpServer) runewordSettings(w http.ResponseWriter, r *http.Request) {
 
 		cfg.CubeRecipes.PrioritizeRunewords = r.Form.Has("rwPrioritizeBeforeCubing")
 
+		// Parse global runeword maker options
+		cfg.Game.RunewordMaker.AutoUpgrade = r.Form.Has("rwAutoUpgrade")
+		cfg.Game.RunewordMaker.OnlyIfWearable = r.Form.Has("rwOnlyIfWearable")
+		cfg.Game.RunewordMaker.AutoTierByDifficulty = r.Form.Has("rwAutoTierByDifficulty")
+
 		if _, ok := r.Form["runewordMakerEnabled"]; ok {
 			cfg.Game.RunewordMaker.Enabled = r.Form.Has("runewordMakerEnabled")
 		}
