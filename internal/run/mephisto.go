@@ -131,8 +131,9 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 	}
 
 	if m.ctx.CharacterCfg.Game.Mephisto.OpenChests || m.ctx.CharacterCfg.Game.Mephisto.KillCouncilMembers {
-
-		return action.ClearCurrentLevel(m.ctx.CharacterCfg.Game.Mephisto.OpenChests, m.CouncilMemberFilter())
+		if err = action.ClearCurrentLevel(m.ctx.CharacterCfg.Game.Mephisto.OpenChests, m.CouncilMemberFilter()); err != nil {
+			return err
+		}
 	}
 
 	if IsQuestRun(parameters) || m.ctx.CharacterCfg.Game.Mephisto.ExitToA4 {
