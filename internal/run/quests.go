@@ -829,11 +829,6 @@ func (a Quests) rescueAnyaQuest() error {
 }
 
 func (a Quests) killAncientsQuest() error {
-	var ancientsAltar = data.Position{
-		X: 10049,
-		Y: 12623,
-	}
-
 	// Store the original configuration
 	originalBackToTownCfg := a.ctx.CharacterCfg.BackToTown
 	originalTownChicken := a.ctx.CharacterCfg.Health.TownChickenAt
@@ -869,13 +864,24 @@ func (a Quests) killAncientsQuest() error {
 	action.UsePortalInTown()
 	action.Buff()
 
-	action.MoveToCoords(ancientsAltar)
+	// Find and interact with the altar object
+	altar, found := a.ctx.Data.Objects.FindOne(object.AncientsAltar)
+	if !found {
+		return fmt.Errorf("AncientsAltar not found")
+	}
 
-	utils.Sleep(1000)
-	a.ctx.HID.Click(game.LeftButton, 720, 260)
-	utils.Sleep(1000)
-	a.ctx.HID.PressKey(win.VK_RETURN)
-	utils.Sleep(2000)
+	err = action.InteractObject(altar, func() bool {
+		// After clicking, press Enter to confirm the dialog
+		a.ctx.HID.PressKey(win.VK_RETURN)
+		utils.Sleep(2000)
+
+		// Check if Ancients spawned (elite monsters appeared)
+		ancients := a.ctx.Data.Monsters.Enemies(data.MonsterEliteFilter())
+		return len(ancients) > 0
+	})
+	if err != nil {
+		return err
+	}
 
 	// Modify the configuration for the Ancients fight
 	a.ctx.CharacterCfg.BackToTown.NoHpPotions = false
@@ -904,7 +910,23 @@ func (a Quests) killAncientsQuest() error {
 
 	utils.Sleep(500)
 	step.CloseAllMenus()
-	action.ReturnTown()
+	action.InRunReturnTownRoutine()
+
+	// Continue to Worldstone Keep and get the waypoint
+	err = action.MoveToArea(area.TheWorldStoneKeepLevel1)
+	if err != nil {
+		return err
+	}
+
+	err = action.MoveToArea(area.TheWorldStoneKeepLevel2)
+	if err != nil {
+		return err
+	}
+
+	err = action.DiscoverWaypoint()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

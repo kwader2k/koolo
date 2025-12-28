@@ -1,8 +1,11 @@
 package run
 
 import (
+	"fmt"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
@@ -87,11 +90,6 @@ func (a Ancients) Run(parameters *RunParameters) error {
 }
 
 func (a Ancients) killAncients() error {
-	var ancientsAltar = data.Position{
-		X: 10049,
-		Y: 12623,
-	}
-
 	// Store the original configuration
 	originalBackToTownCfg := a.ctx.CharacterCfg.BackToTown
 	originalTownChicken := a.ctx.CharacterCfg.Health.TownChickenAt
@@ -104,13 +102,24 @@ func (a Ancients) killAncients() error {
 		a.ctx.Logger.Info("Restored original back-to-town checks after Ancients fight.")
 	}()
 
-	action.MoveToCoords(ancientsAltar)
+	// Find and interact with the altar object
+	altar, found := a.ctx.Data.Objects.FindOne(object.AncientsAltar)
+	if !found {
+		return fmt.Errorf("AncientsAltar not found")
+	}
 
-	utils.Sleep(1000)
-	a.ctx.HID.Click(game.LeftButton, 720, 260)
-	utils.Sleep(1000)
-	a.ctx.HID.PressKey(win.VK_RETURN)
-	utils.Sleep(2000)
+	err := action.InteractObject(altar, func() bool {
+		// After clicking, press Enter to confirm the dialog
+		a.ctx.HID.PressKey(win.VK_RETURN)
+		utils.Sleep(2000)
+
+		// Check if Ancients spawned (elite monsters appeared)
+		ancients := a.ctx.Data.Monsters.Enemies(data.MonsterEliteFilter())
+		return len(ancients) > 0
+	})
+	if err != nil {
+		return err
+	}
 
 	// Modify the configuration for the Ancients fight
 	a.ctx.CharacterCfg.BackToTown.NoHpPotions = false
