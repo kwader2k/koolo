@@ -188,7 +188,15 @@ func UsePortalInTown() error {
 	return nil
 }
 
+// UsePortalFrom searches for and uses a portal owned by the specified player.
+// Uses 5 retry attempts by default.
 func UsePortalFrom(owner string) error {
+	return UsePortalFromWithRetries(owner, 5)
+}
+
+// UsePortalFromWithRetries searches for and uses a portal with configurable retries.
+// This helps handle cases where the portal isn't immediately visible after moving around town.
+func UsePortalFromWithRetries(owner string, maxAttempts int) error {
 	ctx := context.Get()
 	ctx.SetLastAction("UsePortalFrom")
 
@@ -201,30 +209,47 @@ func UsePortalFrom(owner string) error {
 		return nil
 	}
 
-	for _, obj := range ctx.Data.Objects {
-		if obj.IsPortal() && obj.Owner == owner {
-			return InteractObjectByID(obj.ID, func() bool {
-				// Check for death during interaction callback
-				if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
-					return false // Returning false will stop the interaction loop, and the error will be caught outside
-				}
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		// Refresh game data to get current objects
+		ctx.RefreshGameData()
 
-				if !ctx.Data.PlayerUnit.Area.IsTown() {
-					// Ensure area data is synced after portal transition
-					utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for portal transition
-					ctx.RefreshGameData()
-					// Check for death after refreshing game data
+		for _, obj := range ctx.Data.Objects {
+			if obj.IsPortal() && obj.Owner == owner {
+				return InteractObjectByID(obj.ID, func() bool {
+					// Check for death during interaction callback
 					if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
-						return false
+						return false // Returning false will stop the interaction loop, and the error will be caught outside
 					}
 
-					if err := ensureAreaSync(ctx, ctx.Data.PlayerUnit.Area); err != nil {
-						return false
+					if !ctx.Data.PlayerUnit.Area.IsTown() {
+						// Ensure area data is synced after portal transition
+						utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for portal transition
+						ctx.RefreshGameData()
+						// Check for death after refreshing game data
+						if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
+							return false
+						}
+
+						if err := ensureAreaSync(ctx, ctx.Data.PlayerUnit.Area); err != nil {
+							return false
+						}
+						return true
 					}
-					return true
-				}
-				return false
-			})
+					return false
+				})
+			}
+		}
+
+		// Portal not found - if more attempts left, wait and retry
+		if attempt < maxAttempts-1 {
+			ctx.Logger.Debug("Portal not found, retrying...", "attempt", attempt+1, "owner", owner)
+			utils.Sleep(300)
+
+			// On later attempts, try moving to TP waiting area to get portal in range
+			if attempt >= 1 {
+				tpArea := town.GetTownByArea(ctx.Data.PlayerUnit.Area).TPWaitingArea(*ctx.Data)
+				_ = MoveToCoords(tpArea)
+			}
 		}
 	}
 
