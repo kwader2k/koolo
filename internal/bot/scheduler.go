@@ -224,8 +224,8 @@ func (s *Scheduler) checkDurationSchedule(supervisorName string, cfg *config.Cha
 			return
 		}
 
-		// Normal wake time check
-		if now.After(state.TodayWakeTime) || now.Equal(state.TodayWakeTime) {
+		// Normal wake time check - also verify we're before rest time to prevent restart loop
+		if (now.After(state.TodayWakeTime) || now.Equal(state.TodayWakeTime)) && now.Before(state.TodayRestTime) {
 			s.transitionToPlaying(supervisorName, state, now)
 		}
 
