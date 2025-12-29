@@ -116,13 +116,50 @@ type RunewordRerollRule struct {
 }
 
 type Scheduler struct {
-	Enabled bool  `yaml:"enabled"`
-	Days    []Day `yaml:"days"`
+	Enabled bool   `yaml:"enabled"`
+	Mode    string `yaml:"mode"` // "timeSlots" (default) or "duration"
+
+	// Time Slots Mode (existing)
+	Days              []Day `yaml:"days"`
+	GlobalVarianceMin int   `yaml:"globalVarianceMin,omitempty"` // Default variance for all ranges (+/- minutes)
+
+	// Duration Mode
+	Duration DurationSchedule `yaml:"duration,omitempty"`
+}
+
+// DurationSchedule configures human-like play patterns with randomized breaks
+type DurationSchedule struct {
+	// Wake Up
+	WakeUpTime     string `yaml:"wakeUpTime"`     // Base wake time "HH:MM" (e.g., "08:00")
+	WakeUpVariance int    `yaml:"wakeUpVariance"` // +/- minutes (e.g., 30)
+
+	// Play Duration
+	PlayHours         int `yaml:"playHours"`         // Base play time per day (e.g., 14)
+	PlayHoursVariance int `yaml:"playHoursVariance"` // +/- hours (e.g., 2 means 12-16h)
+
+	// Meal Breaks (longer)
+	MealBreakCount    int `yaml:"mealBreakCount"`    // Number of meal breaks (e.g., 2 for lunch+dinner)
+	MealBreakDuration int `yaml:"mealBreakDuration"` // Base duration in minutes (e.g., 30)
+	MealBreakVariance int `yaml:"mealBreakVariance"` // +/- minutes for duration (e.g., 15)
+
+	// Short Breaks (snack/water/bathroom)
+	ShortBreakCount    int `yaml:"shortBreakCount"`    // Number of short breaks (e.g., 3-4)
+	ShortBreakDuration int `yaml:"shortBreakDuration"` // Base duration in minutes (e.g., 8)
+	ShortBreakVariance int `yaml:"shortBreakVariance"` // +/- minutes for duration (e.g., 5)
+
+	// Timing Variance (when breaks occur)
+	BreakTimingVariance int `yaml:"breakTimingVariance"` // +/- minutes for break start times (e.g., 30)
+
+	// Jitter Range - makes variance itself variable, randomized per roll
+	JitterMin int `yaml:"jitterMin"` // Min jitter multiplier % (e.g., 30)
+	JitterMax int `yaml:"jitterMax"` // Max jitter multiplier % (e.g., 150)
 }
 
 type TimeRange struct {
-	Start time.Time `yaml:"start"`
-	End   time.Time `yaml:"end"`
+	Start            time.Time `yaml:"start"`
+	End              time.Time `yaml:"end"`
+	StartVarianceMin int       `yaml:"startVarianceMin,omitempty"` // +/- minutes for start time
+	EndVarianceMin   int       `yaml:"endVarianceMin,omitempty"`   // +/- minutes for end time
 }
 
 type CharacterCfg struct {

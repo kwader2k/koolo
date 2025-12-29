@@ -52,6 +52,7 @@ type HttpServer struct {
 	logger              *slog.Logger
 	server              *http.Server
 	manager             *bot.SupervisorManager
+	scheduler           *bot.Scheduler
 	templates           *template.Template
 	wsServer            *WebSocketServer
 	pickitAPI           *PickitAPI
@@ -204,7 +205,7 @@ func (s *HttpServer) BroadcastStatus() {
 	}
 }
 
-func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, error) {
+func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Scheduler) (*HttpServer, error) {
 	var templates *template.Template
 	helperFuncs := template.FuncMap{
 		"isInSlice": func(slice []stat.Resist, value string) bool {
@@ -270,6 +271,7 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager) (*HttpServer, erro
 	server := &HttpServer{
 		logger:       logger,
 		manager:      manager,
+		scheduler:    scheduler,
 		templates:    templates,
 		pickitAPI:    NewPickitAPI(),
 		sequenceAPI:  NewSequenceAPI(logger),
@@ -636,11 +638,58 @@ func (s *HttpServer) getStatusData() IndexData {
 		}
 	}
 
+	// Collect scheduler status for each supervisor
+	schedulerStatus := make(map[string]*SchedulerStatusInfo)
+	if s.scheduler != nil {
+		for _, supervisorName := range s.manager.AvailableSupervisors() {
+			cfg := config.GetCharacters()[supervisorName]
+			if cfg == nil {
+				continue
+			}
+
+			info := &SchedulerStatusInfo{
+				Enabled: cfg.Scheduler.Enabled,
+				Mode:    cfg.Scheduler.Mode,
+			}
+
+			// For duration mode, get live state from scheduler
+			if cfg.Scheduler.Mode == "duration" && cfg.Scheduler.Enabled {
+				state := s.scheduler.GetDurationState(supervisorName)
+				if state != nil {
+					info.Phase = string(state.CurrentPhase)
+					info.PhaseStartTime = state.PhaseStartTime.Format(time.RFC3339)
+					info.PhaseEndTime = state.PhaseEndTime.Format(time.RFC3339)
+					info.TodayWakeTime = state.TodayWakeTime.Format(time.RFC3339)
+					info.TodayRestTime = state.TodayRestTime.Format(time.RFC3339)
+					info.PlayedMinutes = state.PlayedMinutes
+
+					// Get next 3 breaks
+					nextBreaks := []SchedulerBreak{}
+					now := time.Now()
+					for i := state.CurrentBreakIdx; i < len(state.ScheduledBreaks) && len(nextBreaks) < 3; i++ {
+						brk := state.ScheduledBreaks[i]
+						if brk.StartTime.After(now) {
+							nextBreaks = append(nextBreaks, SchedulerBreak{
+								Type:      brk.Type,
+								StartTime: brk.StartTime.Format(time.RFC3339),
+								Duration:  brk.Duration,
+							})
+						}
+					}
+					info.NextBreaks = nextBreaks
+				}
+			}
+
+			schedulerStatus[supervisorName] = info
+		}
+	}
+
 	return IndexData{
 		Version:                     config.Version,
 		Status:                      status,
 		DropCount:                   drops,
 		AutoStart:                   autoStart,
+		SchedulerStatus:             schedulerStatus,
 		GlobalAutoStartEnabled:      config.Koolo.AutoStart.Enabled,
 		GlobalAutoStartDelaySeconds: config.Koolo.AutoStart.DelaySeconds,
 	}
@@ -710,6 +759,7 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/sequence-editor/files", s.sequenceAPI.handleListSequenceFiles)
 
 	http.HandleFunc("/api/supervisors/bulk-apply", s.bulkApplyCharacterSettings)
+	http.HandleFunc("/api/scheduler-history", s.schedulerHistory)
 	http.HandleFunc("/Drop-manager", s.DropManagerPage)
 
 	s.registerDropRoutes()
@@ -737,6 +787,56 @@ func (s *HttpServer) reloadConfig(w http.ResponseWriter, r *http.Request) {
 
 	s.logger.Info("Config reloaded")
 	w.WriteHeader(http.StatusOK)
+}
+
+// SchedulerHistoryEntry matches bot.HistoryEntry for JSON serialization
+type SchedulerHistoryEntry struct {
+	Date              string                  `json:"date"`
+	WakeTime          string                  `json:"wakeTime"`
+	SleepTime         string                  `json:"sleepTime"`
+	TotalPlayMinutes  int                     `json:"totalPlayMinutes"`
+	TotalBreakMinutes int                     `json:"totalBreakMinutes"`
+	Breaks            []SchedulerBreakEntry   `json:"breaks"`
+}
+
+type SchedulerBreakEntry struct {
+	Type      string `json:"type"`
+	StartTime string `json:"startTime"`
+	Duration  int    `json:"duration"`
+}
+
+type SchedulerHistoryResponse struct {
+	History []SchedulerHistoryEntry `json:"history"`
+}
+
+func (s *HttpServer) schedulerHistory(w http.ResponseWriter, r *http.Request) {
+	supervisor := r.URL.Query().Get("supervisor")
+	if supervisor == "" {
+		http.Error(w, "supervisor parameter required", http.StatusBadRequest)
+		return
+	}
+
+	// Read history file directly (same path as scheduler uses)
+	historyPath := filepath.Join("config", supervisor, "scheduler_history.json")
+	data, err := os.ReadFile(historyPath)
+	if err != nil {
+		// No history yet - return empty array
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(SchedulerHistoryResponse{History: []SchedulerHistoryEntry{}})
+		return
+	}
+
+	// Parse and return
+	var history SchedulerHistoryResponse
+	if err := json.Unmarshal(data, &history); err != nil {
+		s.logger.Error("Failed to parse scheduler history", "error", err)
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(SchedulerHistoryResponse{History: []SchedulerHistoryEntry{}})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(history)
 }
 
 func (s *HttpServer) Stop() error {
@@ -1365,14 +1465,27 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 	// Scheduler
 	if sections.Scheduler {
 		cfg.Scheduler.Enabled = values.Has("schedulerEnabled")
+		cfg.Scheduler.Mode = values.Get("schedulerMode")
+		if cfg.Scheduler.Mode == "" {
+			cfg.Scheduler.Mode = "timeSlots"
+		}
+
+		// Global variance for time slots mode
+		if v := values.Get("globalVarianceMin"); v != "" {
+			cfg.Scheduler.GlobalVarianceMin, _ = strconv.Atoi(v)
+		}
+
 		// Reset scheduler days if we are updating them
 		if len(cfg.Scheduler.Days) != 7 {
 			cfg.Scheduler.Days = make([]config.Day, 7)
 		}
 
+		// Parse time slots mode data
 		for day := 0; day < 7; day++ {
 			starts := values[fmt.Sprintf("scheduler[%d][start][]", day)]
 			ends := values[fmt.Sprintf("scheduler[%d][end][]", day)]
+			startVars := values[fmt.Sprintf("scheduler[%d][startVar][]", day)]
+			endVars := values[fmt.Sprintf("scheduler[%d][endVar][]", day)]
 
 			cfg.Scheduler.Days[day].DayOfWeek = day
 			cfg.Scheduler.Days[day].TimeRanges = make([]config.TimeRange, 0)
@@ -1386,14 +1499,61 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 				if err != nil {
 					continue
 				}
-				cfg.Scheduler.Days[day].TimeRanges = append(cfg.Scheduler.Days[day].TimeRanges, struct {
-					Start time.Time "yaml:\"start\""
-					End   time.Time "yaml:\"end\""
-				}{
-					Start: start,
-					End:   end,
+
+				var startVar, endVar int
+				if i < len(startVars) {
+					startVar, _ = strconv.Atoi(startVars[i])
+				}
+				if i < len(endVars) {
+					endVar, _ = strconv.Atoi(endVars[i])
+				}
+
+				cfg.Scheduler.Days[day].TimeRanges = append(cfg.Scheduler.Days[day].TimeRanges, config.TimeRange{
+					Start:            start,
+					End:              end,
+					StartVarianceMin: startVar,
+					EndVarianceMin:   endVar,
 				})
 			}
+		}
+
+		// Parse duration mode data
+		cfg.Scheduler.Duration.WakeUpTime = values.Get("durationWakeUpTime")
+		if v := values.Get("durationWakeUpVariance"); v != "" {
+			cfg.Scheduler.Duration.WakeUpVariance, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationPlayHours"); v != "" {
+			cfg.Scheduler.Duration.PlayHours, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationPlayHoursVariance"); v != "" {
+			cfg.Scheduler.Duration.PlayHoursVariance, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationMealBreakCount"); v != "" {
+			cfg.Scheduler.Duration.MealBreakCount, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationMealBreakDuration"); v != "" {
+			cfg.Scheduler.Duration.MealBreakDuration, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationMealBreakVariance"); v != "" {
+			cfg.Scheduler.Duration.MealBreakVariance, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationShortBreakCount"); v != "" {
+			cfg.Scheduler.Duration.ShortBreakCount, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationShortBreakDuration"); v != "" {
+			cfg.Scheduler.Duration.ShortBreakDuration, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationShortBreakVariance"); v != "" {
+			cfg.Scheduler.Duration.ShortBreakVariance, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationBreakTimingVariance"); v != "" {
+			cfg.Scheduler.Duration.BreakTimingVariance, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationJitterMin"); v != "" {
+			cfg.Scheduler.Duration.JitterMin, _ = strconv.Atoi(v)
+		}
+		if v := values.Get("durationJitterMax"); v != "" {
+			cfg.Scheduler.Duration.JitterMax, _ = strconv.Atoi(v)
 		}
 
 		if err := validateSchedulerData(cfg); err != nil {
@@ -2393,6 +2553,99 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.BackToTown.NoMpPotions = r.Form.Has("noMpPotions")
 		cfg.BackToTown.MercDied = r.Form.Has("mercDied")
 		cfg.BackToTown.EquipmentBroken = r.Form.Has("equipmentBroken")
+
+		// Scheduler
+		cfg.Scheduler.Enabled = r.Form.Has("schedulerEnabled")
+		cfg.Scheduler.Mode = r.Form.Get("schedulerMode")
+		if cfg.Scheduler.Mode == "" {
+			cfg.Scheduler.Mode = "timeSlots"
+		}
+
+		// Global variance for time slots mode
+		if v := r.Form.Get("globalVarianceMin"); v != "" {
+			cfg.Scheduler.GlobalVarianceMin, _ = strconv.Atoi(v)
+		}
+
+		// Reset scheduler days if we are updating them
+		if len(cfg.Scheduler.Days) != 7 {
+			cfg.Scheduler.Days = make([]config.Day, 7)
+		}
+
+		// Parse time slots mode data
+		for day := 0; day < 7; day++ {
+			starts := r.Form[fmt.Sprintf("scheduler[%d][start][]", day)]
+			ends := r.Form[fmt.Sprintf("scheduler[%d][end][]", day)]
+			startVars := r.Form[fmt.Sprintf("scheduler[%d][startVar][]", day)]
+			endVars := r.Form[fmt.Sprintf("scheduler[%d][endVar][]", day)]
+
+			cfg.Scheduler.Days[day].DayOfWeek = day
+			cfg.Scheduler.Days[day].TimeRanges = make([]config.TimeRange, 0)
+
+			for i := 0; i < len(starts); i++ {
+				start, err := time.Parse("15:04", starts[i])
+				if err != nil {
+					continue
+				}
+				end, err := time.Parse("15:04", ends[i])
+				if err != nil {
+					continue
+				}
+
+				var startVar, endVar int
+				if i < len(startVars) {
+					startVar, _ = strconv.Atoi(startVars[i])
+				}
+				if i < len(endVars) {
+					endVar, _ = strconv.Atoi(endVars[i])
+				}
+
+				cfg.Scheduler.Days[day].TimeRanges = append(cfg.Scheduler.Days[day].TimeRanges, config.TimeRange{
+					Start:            start,
+					End:              end,
+					StartVarianceMin: startVar,
+					EndVarianceMin:   endVar,
+				})
+			}
+		}
+
+		// Parse duration mode data
+		cfg.Scheduler.Duration.WakeUpTime = r.Form.Get("durationWakeUpTime")
+		if v := r.Form.Get("durationWakeUpVariance"); v != "" {
+			cfg.Scheduler.Duration.WakeUpVariance, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationPlayHours"); v != "" {
+			cfg.Scheduler.Duration.PlayHours, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationPlayHoursVariance"); v != "" {
+			cfg.Scheduler.Duration.PlayHoursVariance, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationMealBreakCount"); v != "" {
+			cfg.Scheduler.Duration.MealBreakCount, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationMealBreakDuration"); v != "" {
+			cfg.Scheduler.Duration.MealBreakDuration, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationMealBreakVariance"); v != "" {
+			cfg.Scheduler.Duration.MealBreakVariance, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationShortBreakCount"); v != "" {
+			cfg.Scheduler.Duration.ShortBreakCount, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationShortBreakDuration"); v != "" {
+			cfg.Scheduler.Duration.ShortBreakDuration, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationShortBreakVariance"); v != "" {
+			cfg.Scheduler.Duration.ShortBreakVariance, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationBreakTimingVariance"); v != "" {
+			cfg.Scheduler.Duration.BreakTimingVariance, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationJitterMin"); v != "" {
+			cfg.Scheduler.Duration.JitterMin, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("durationJitterMax"); v != "" {
+			cfg.Scheduler.Duration.JitterMax, _ = strconv.Atoi(v)
+		}
 
 		// Muling
 		cfg.Muling.Enabled = r.FormValue("mulingEnabled") == "on"

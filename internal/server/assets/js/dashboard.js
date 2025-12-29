@@ -66,7 +66,8 @@ function updateDashboard(data) {
       card = createCharacterCard(key);
       container.appendChild(card);
     }
-    updateCharacterCard(card, key, value, data.DropCount[key]);
+    const schedulerInfo = data.schedulerStatus ? data.schedulerStatus[key] : null;
+    updateCharacterCard(card, key, value, data.DropCount[key], schedulerInfo);
 
     // Sync Auto Start toggle if present
     const autoStartCheckbox = card.querySelector(".autostart-checkbox");
@@ -187,6 +188,11 @@ function createCharacterCard(key) {
                         <div class="stat-label">Errors</div>
                         <div class="stat-value errors">0</div>
                     </div>
+                </div>
+                <div class="scheduler-status" style="display:none;">
+                    <div class="scheduler-phase"></div>
+                    <div class="scheduler-info"></div>
+                    <div class="scheduler-next"></div>
                 </div>
                 <div class="expanded-controls">
                     <button class="btn btn-outline" onclick="location.href='/debug?characterName=${key}'" title="Open Debug Page">
@@ -323,7 +329,7 @@ function updateStatusPosition(card, isExpanded) {
   }
 }
 
-function updateCharacterCard(card, key, value, dropCount) {
+function updateCharacterCard(card, key, value, dropCount, schedulerInfo) {
   if (!card) return;
 
   const startPauseBtn = card.querySelector(".start-pause");
@@ -334,6 +340,7 @@ function updateCharacterCard(card, key, value, dropCount) {
   const statusDetails = card.querySelector(".status-details");
   const statusBadge = statusDetails.querySelector(".status-badge");
   const statusIndicator = card.querySelector(".status-indicator");
+  const schedulerStatusDiv = card.querySelector(".scheduler-status");
 
   if (statusBadge && statusDetails) {
     updateStatus(statusBadge, statusDetails, value.SupervisorStatus);
@@ -369,6 +376,74 @@ function updateCharacterCard(card, key, value, dropCount) {
   if (statusDetails) {
     updateStartedTime(statusDetails, value.StartedAt);
   }
+
+  // Update scheduler status
+  if (schedulerStatusDiv) {
+    updateSchedulerStatus(schedulerStatusDiv, schedulerInfo);
+  }
+}
+
+// Format time remaining as "Xh Ym" or "Ym"
+function formatCountdown(targetTimeStr) {
+  if (!targetTimeStr) return "";
+  const diff = new Date(targetTimeStr) - new Date();
+  if (diff <= 0) return "now";
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+}
+
+// Format time as "HH:MM"
+function formatTime(timeStr) {
+  if (!timeStr) return "-";
+  const d = new Date(timeStr);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+function updateSchedulerStatus(container, info) {
+  if (!info || !info.enabled || info.mode !== "duration") {
+    container.style.display = "none";
+    return;
+  }
+
+  container.style.display = "block";
+
+  const phaseDiv = container.querySelector(".scheduler-phase");
+  const infoDiv = container.querySelector(".scheduler-info");
+  const nextDiv = container.querySelector(".scheduler-next");
+
+  // Phase badge
+  const phaseClass = info.phase === "playing" ? "phase-playing" :
+                     info.phase === "onBreak" ? "phase-break" : "phase-resting";
+  const phaseText = info.phase === "playing" ? "PLAYING" :
+                    info.phase === "onBreak" ? "ON BREAK" : "RESTING";
+  phaseDiv.innerHTML = `<span class="scheduler-phase-badge ${phaseClass}">${phaseText}</span>`;
+
+  // Info line
+  if (info.phase === "playing") {
+    const playedHours = Math.floor(info.playedMinutes / 60);
+    const playedMins = info.playedMinutes % 60;
+    const playedStr = playedHours > 0 ? `${playedHours}h ${playedMins}m` : `${playedMins}m`;
+    infoDiv.innerHTML = `<span>Started: ${formatTime(info.phaseStartTime)}</span> • <span>Played: ${playedStr}</span>`;
+  } else if (info.phase === "onBreak") {
+    infoDiv.innerHTML = `<span>Break until: ${formatTime(info.phaseEndTime)}</span> (${formatCountdown(info.phaseEndTime)})`;
+  } else {
+    infoDiv.innerHTML = `<span>Resting until: ${formatTime(info.todayWakeTime)}</span> (${formatCountdown(info.todayWakeTime)})`;
+  }
+
+  // Next events
+  let nextHtml = "";
+  if (info.nextBreaks && info.nextBreaks.length > 0) {
+    nextHtml = "<div class='scheduler-next-title'>Next:</div>";
+    info.nextBreaks.slice(0, 3).forEach((brk, i) => {
+      const label = brk.type === "meal" ? "Meal break" : "Short break";
+      nextHtml += `<div class="scheduler-next-item">${label} at ${formatTime(brk.startTime)} (${brk.duration}min) - in ${formatCountdown(brk.startTime)}</div>`;
+    });
+  }
+  if (info.todayRestTime && info.phase === "playing") {
+    nextHtml += `<div class="scheduler-rest-time">Rest begins: ~${formatTime(info.todayRestTime)} (in ${formatCountdown(info.todayRestTime)})</div>`;
+  }
+  nextDiv.innerHTML = nextHtml;
 }
 
 function updateStatusIndicator(statusIndicator, status) {
@@ -395,9 +470,6 @@ function updateStatus(statusBadge, statusDetails, status) {
 }
 
 function updateStartedTime(statusDetails, startedAt) {
-  const startTime = new Date(startedAt);
-  const now = new Date();
-
   let runningForElement = statusDetails.querySelector(".running-for");
   if (!runningForElement) {
     runningForElement = document.createElement("div");
@@ -405,7 +477,17 @@ function updateStartedTime(statusDetails, startedAt) {
     statusDetails.appendChild(runningForElement);
   }
 
-  if (startTime.getFullYear() === 1) {
+  // Check for invalid/empty startedAt before parsing
+  if (!startedAt || startedAt === "" || startedAt === "0001-01-01T00:00:00Z") {
+    runningForElement.textContent = "Running for: N/A";
+    return;
+  }
+
+  const startTime = new Date(startedAt);
+  const now = new Date();
+
+  // Check for invalid date or dates before year 2000 (Go zero time, etc.)
+  if (isNaN(startTime.getTime()) || startTime.getFullYear() < 2000) {
     runningForElement.textContent = "Running for: N/A";
     return;
   }

@@ -639,33 +639,167 @@
                 </label>
             </fieldset>
             <h3 id="scheduler-section">Scheduler</h3><br>
-            <label>Set the time ranges when the bot should Start and Stop automatically. Multiple time ranges can be set for the same day if you want to simulate breaks. This will enforce killing of the game client on Stop.</label><br>
+            <label>Automate when the bot runs. Choose between Time Slots (specific hours) or Duration (human-like play patterns).</label><br>
             <fieldset class="grid">
                 <label>
                     Enabled
-                    <input type="checkbox" name="schedulerEnabled" {{ if .Config.Scheduler.Enabled }}checked{{ end }}/>
+                    <input type="checkbox" name="schedulerEnabled" id="schedulerEnabled" {{ if .Config.Scheduler.Enabled }}checked{{ end }}/>
                 </label>
             </fieldset>
             <div id="scheduler-settings" {{ if not .Config.Scheduler.Enabled }}style="display: none;"{{ end }}>
-                {{ range $dayIndex := seq 0 6 }}
-                <div class="scheduler-day">
-                    <h4>{{ index $.DayNames $dayIndex }}</h4>
-                    <div class="time-ranges" data-day="{{ $dayIndex }}">
-                        {{ $day := index $.Config.Scheduler.Days $dayIndex }}
-                        {{ range $timeRange := $day.TimeRanges }}
-                        <div class="time-range">
-                            <input type="time" name="scheduler[{{ $dayIndex }}][start][]" value="{{ $timeRange.Start.Format "15:04" }}" required>
-                            <span>to</span>
-                            <input type="time" name="scheduler[{{ $dayIndex }}][end][]" value="{{ $timeRange.End.Format "15:04" }}" required>
-                            <button type="button" class="remove-time-range"><i class="bi bi-trash"></i></button>
-                        </div>
-                        {{ end }}
+                <!-- Mode Toggle -->
+                <fieldset class="grid">
+                    <label>
+                        Mode
+                        <select name="schedulerMode" id="schedulerMode">
+                            <option value="timeSlots" {{ if or (eq .Config.Scheduler.Mode "timeSlots") (eq .Config.Scheduler.Mode "") }}selected{{ end }}>Time Slots</option>
+                            <option value="duration" {{ if eq .Config.Scheduler.Mode "duration" }}selected{{ end }}>Duration (Human-like)</option>
+                        </select>
+                    </label>
+                </fieldset>
+
+                <!-- Time Slots Mode -->
+                <div id="timeSlotsMode" class="scheduler-mode-panel" {{ if eq .Config.Scheduler.Mode "duration" }}style="display: none;"{{ end }}>
+                    <div class="scheduler-toolbar">
+                        <fieldset class="grid">
+                            <label>
+                                Global Variance (+/- minutes)
+                                <input type="number" name="globalVarianceMin" value="{{ .Config.Scheduler.GlobalVarianceMin }}" min="0" max="120" step="5" placeholder="0"/>
+                            </label>
+                        </fieldset>
                     </div>
-                    <button type="button" class="add-time-range" data-day="{{ $dayIndex }}">
-                        <i class="bi bi-plus-circle"></i> Add Time Range
-                    </button>
+                    {{ range $dayIndex := seq 0 6 }}
+                    <details class="scheduler-day-details">
+                        <summary>
+                            <span class="day-name">{{ index $.DayNames $dayIndex }}</span>
+                            <span class="time-range-count" data-day="{{ $dayIndex }}">
+                                ({{ len (index $.Config.Scheduler.Days $dayIndex).TimeRanges }} ranges)
+                            </span>
+                        </summary>
+                        <div class="time-ranges" data-day="{{ $dayIndex }}">
+                            {{ $day := index $.Config.Scheduler.Days $dayIndex }}
+                            {{ range $timeRange := $day.TimeRanges }}
+                            <div class="time-range">
+                                <input type="time" name="scheduler[{{ $dayIndex }}][start][]" value="{{ $timeRange.Start.Format "15:04" }}" required>
+                                <span>to</span>
+                                <input type="time" name="scheduler[{{ $dayIndex }}][end][]" value="{{ $timeRange.End.Format "15:04" }}" required>
+                                <span>Var:</span>
+                                <input type="number" name="scheduler[{{ $dayIndex }}][startVar][]" value="{{ $timeRange.StartVarianceMin }}" min="0" max="60" step="5" placeholder="0" title="Start variance (+/- min)" style="width:60px;">
+                                <span>/</span>
+                                <input type="number" name="scheduler[{{ $dayIndex }}][endVar][]" value="{{ $timeRange.EndVarianceMin }}" min="0" max="60" step="5" placeholder="0" title="End variance (+/- min)" style="width:60px;">
+                                <button type="button" class="remove-time-range"><i class="bi bi-trash"></i></button>
+                            </div>
+                            {{ end }}
+                        </div>
+                        <button type="button" class="add-time-range" data-day="{{ $dayIndex }}">
+                            <i class="bi bi-plus-circle"></i> Add Time Range
+                        </button>
+                    </details>
+                    {{ end }}
                 </div>
-                {{ end }}
+
+                <!-- Duration Mode -->
+                <div id="durationMode" class="scheduler-mode-panel" {{ if ne .Config.Scheduler.Mode "duration" }}style="display: none;"{{ end }}>
+                    <p><strong>Duration Mode</strong> simulates realistic human play patterns with randomized wake times, breaks, and rest periods.</p>
+
+                    <fieldset>
+                        <legend>Wake Up</legend>
+                        <div class="grid">
+                            <label>
+                                Time
+                                <input type="time" name="durationWakeUpTime" value="{{ if .Config.Scheduler.Duration.WakeUpTime }}{{ .Config.Scheduler.Duration.WakeUpTime }}{{ else }}08:00{{ end }}"/>
+                            </label>
+                            <label>
+                                Variance (+/- min)
+                                <input type="number" name="durationWakeUpVariance" value="{{ .Config.Scheduler.Duration.WakeUpVariance }}" min="0" max="120" step="5" placeholder="30"/>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Play Session</legend>
+                        <div class="grid">
+                            <label>
+                                Duration (hours)
+                                <input type="number" name="durationPlayHours" value="{{ if .Config.Scheduler.Duration.PlayHours }}{{ .Config.Scheduler.Duration.PlayHours }}{{ else }}14{{ end }}" min="1" max="23" step="1"/>
+                            </label>
+                            <label>
+                                Variance (+/- hours)
+                                <input type="number" name="durationPlayHoursVariance" value="{{ .Config.Scheduler.Duration.PlayHoursVariance }}" min="0" max="6" step="1" placeholder="2"/>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Meal Breaks (lunch/dinner)</legend>
+                        <div class="grid">
+                            <label>
+                                Count
+                                <input type="number" name="durationMealBreakCount" value="{{ if .Config.Scheduler.Duration.MealBreakCount }}{{ .Config.Scheduler.Duration.MealBreakCount }}{{ else }}2{{ end }}" min="0" max="4" step="1"/>
+                            </label>
+                            <label>
+                                Duration (min)
+                                <input type="number" name="durationMealBreakDuration" value="{{ if .Config.Scheduler.Duration.MealBreakDuration }}{{ .Config.Scheduler.Duration.MealBreakDuration }}{{ else }}30{{ end }}" min="5" max="90" step="5"/>
+                            </label>
+                            <label>
+                                Variance (+/- min)
+                                <input type="number" name="durationMealBreakVariance" value="{{ .Config.Scheduler.Duration.MealBreakVariance }}" min="0" max="30" step="5" placeholder="15"/>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Short Breaks (snack/water/bathroom)</legend>
+                        <div class="grid">
+                            <label>
+                                Count
+                                <input type="number" name="durationShortBreakCount" value="{{ if .Config.Scheduler.Duration.ShortBreakCount }}{{ .Config.Scheduler.Duration.ShortBreakCount }}{{ else }}3{{ end }}" min="0" max="8" step="1"/>
+                            </label>
+                            <label>
+                                Duration (min)
+                                <input type="number" name="durationShortBreakDuration" value="{{ if .Config.Scheduler.Duration.ShortBreakDuration }}{{ .Config.Scheduler.Duration.ShortBreakDuration }}{{ else }}8{{ end }}" min="1" max="30" step="1"/>
+                            </label>
+                            <label>
+                                Variance (+/- min)
+                                <input type="number" name="durationShortBreakVariance" value="{{ .Config.Scheduler.Duration.ShortBreakVariance }}" min="0" max="15" step="1" placeholder="5"/>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Break Timing</legend>
+                        <div class="grid">
+                            <label>
+                                When breaks start (+/- min)
+                                <input type="number" name="durationBreakTimingVariance" value="{{ .Config.Scheduler.Duration.BreakTimingVariance }}" min="0" max="60" step="5" placeholder="30"/>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <fieldset>
+                        <legend>Jitter (variance variability)</legend>
+                        <p style="font-size:0.85em;color:var(--text-secondary);margin-top:0;">Makes variance itself unpredictable. Each roll picks a random multiplier in this range.</p>
+                        <div class="grid">
+                            <label>
+                                Min %
+                                <input type="number" name="durationJitterMin" value="{{ if .Config.Scheduler.Duration.JitterMin }}{{ .Config.Scheduler.Duration.JitterMin }}{{ else }}50{{ end }}" min="0" max="100" step="10" placeholder="50"/>
+                            </label>
+                            <label>
+                                Max %
+                                <input type="number" name="durationJitterMax" value="{{ if .Config.Scheduler.Duration.JitterMax }}{{ .Config.Scheduler.Duration.JitterMax }}{{ else }}150{{ end }}" min="100" max="300" step="10" placeholder="150"/>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                </div>
+
+                <!-- Scheduler History Panel -->
+                <details class="scheduler-history-panel" id="schedulerHistoryPanel">
+                    <summary><strong>Play History (Last 30 Days)</strong></summary>
+                    <div id="schedulerHistoryContent">
+                        <div class="history-loading">Loading history...</div>
+                    </div>
+                </details>
             </div>
             <div style="display:flex; align-items:center; gap:0.5rem;">
                 <h3 id="health-settings" style="margin:0">Health settings</h3>

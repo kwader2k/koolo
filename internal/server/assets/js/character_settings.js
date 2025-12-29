@@ -444,7 +444,118 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function toggleSchedulerVisibility() {
-        schedulerSettings.style.display = schedulerEnabled.checked ? 'grid' : 'none';
+        schedulerSettings.style.display = schedulerEnabled.checked ? 'block' : 'none';
+    }
+
+    function toggleSchedulerMode() {
+        const mode = document.getElementById('schedulerMode').value;
+        const timeSlotsMode = document.getElementById('timeSlotsMode');
+        const durationMode = document.getElementById('durationMode');
+
+        if (mode === 'duration') {
+            if (timeSlotsMode) timeSlotsMode.style.display = 'none';
+            if (durationMode) durationMode.style.display = 'block';
+        } else {
+            if (timeSlotsMode) timeSlotsMode.style.display = 'block';
+            if (durationMode) durationMode.style.display = 'none';
+        }
+    }
+
+    // Load scheduler history from API
+    function loadSchedulerHistory() {
+        const historyPanel = document.getElementById('schedulerHistoryPanel');
+        const historyContent = document.getElementById('schedulerHistoryContent');
+        if (!historyPanel || !historyContent) return;
+
+        // Get supervisor name from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const supervisor = urlParams.get('supervisor');
+        if (!supervisor) {
+            historyContent.innerHTML = '<p class="history-empty">No supervisor selected</p>';
+            return;
+        }
+
+        fetch(`/api/scheduler-history?supervisor=${encodeURIComponent(supervisor)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (!data.history || data.history.length === 0) {
+                    historyContent.innerHTML = '<p class="history-empty">No play history yet. History is recorded when using Duration mode.</p>';
+                    return;
+                }
+
+                // Calculate stats
+                let totalPlayMinutes = 0;
+                let totalWakeMinutes = 0;
+                let totalSleepMinutes = 0;
+                let count = 0;
+
+                data.history.forEach(entry => {
+                    totalPlayMinutes += entry.totalPlayMinutes || 0;
+                    if (entry.wakeTime) {
+                        const [h, m] = entry.wakeTime.split(':').map(Number);
+                        totalWakeMinutes += h * 60 + m;
+                    }
+                    if (entry.sleepTime) {
+                        const [h, m] = entry.sleepTime.split(':').map(Number);
+                        totalSleepMinutes += h * 60 + m;
+                    }
+                    count++;
+                });
+
+                const avgPlayHours = count > 0 ? (totalPlayMinutes / count / 60).toFixed(1) : 0;
+                const avgWakeMinutes = count > 0 ? Math.round(totalWakeMinutes / count) : 0;
+                const avgSleepMinutes = count > 0 ? Math.round(totalSleepMinutes / count) : 0;
+                const avgWakeTime = `${String(Math.floor(avgWakeMinutes / 60)).padStart(2, '0')}:${String(avgWakeMinutes % 60).padStart(2, '0')}`;
+                const avgSleepTime = `${String(Math.floor(avgSleepMinutes / 60)).padStart(2, '0')}:${String(avgSleepMinutes % 60).padStart(2, '0')}`;
+                const totalHours = (totalPlayMinutes / 60).toFixed(1);
+
+                // Build HTML
+                let html = `
+                    <div class="history-stats">
+                        <div class="stat-item"><strong>Avg Play:</strong> ${avgPlayHours}h/day</div>
+                        <div class="stat-item"><strong>Avg Wake:</strong> ${avgWakeTime}</div>
+                        <div class="stat-item"><strong>Avg Sleep:</strong> ${avgSleepTime}</div>
+                        <div class="stat-item"><strong>Total:</strong> ${totalHours}h over ${count} days</div>
+                    </div>
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Play</th>
+                                <th>Wake</th>
+                                <th>Sleep</th>
+                                <th>Breaks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                data.history.slice(0, 10).forEach(entry => {
+                    const playHours = ((entry.totalPlayMinutes || 0) / 60).toFixed(1);
+                    const breakCount = entry.breaks ? entry.breaks.length : 0;
+                    html += `
+                        <tr>
+                            <td>${entry.date}</td>
+                            <td>${playHours}h</td>
+                            <td>${entry.wakeTime || '-'}</td>
+                            <td>${entry.sleepTime || '-'}</td>
+                            <td>${breakCount}</td>
+                        </tr>
+                    `;
+                });
+
+                html += '</tbody></table>';
+
+                if (data.history.length > 10) {
+                    html += `<p class="history-more">Showing 10 of ${data.history.length} days</p>`;
+                }
+
+                historyContent.innerHTML = html;
+            })
+            .catch(error => {
+                console.error('Failed to load scheduler history:', error);
+                historyContent.innerHTML = '<p class="history-error">Failed to load history</p>';
+            });
     }
 
     function updateCharacterOptions() {
@@ -654,9 +765,17 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Set initial state
     toggleSchedulerVisibility();
+    toggleSchedulerMode();
+    loadSchedulerHistory();
     updateNovaSorceressOptions();
 
     schedulerEnabled.addEventListener('change', toggleSchedulerVisibility);
+
+    // Mode toggle event listener
+    const schedulerModeSelect = document.getElementById('schedulerMode');
+    if (schedulerModeSelect) {
+        schedulerModeSelect.addEventListener('change', toggleSchedulerMode);
+    }
 
     document.querySelectorAll('.add-time-range').forEach(button => {
         button.addEventListener('click', function () {
@@ -669,6 +788,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     <input type="time" name="scheduler[${day}][start][]" required>
                     <span>to</span>
                     <input type="time" name="scheduler[${day}][end][]" required>
+                    <span>Var:</span>
+                    <input type="number" name="scheduler[${day}][startVar][]" min="0" max="60" step="5" placeholder="0" title="Start variance (+/- min)" style="width:60px;">
+                    <span>/</span>
+                    <input type="number" name="scheduler[${day}][endVar][]" min="0" max="60" step="5" placeholder="0" title="End variance (+/- min)" style="width:60px;">
                     <button type="button" class="remove-time-range"><i class="bi bi-trash"></i></button>
                 `;
                 timeRangesDiv.appendChild(newTimeRange);

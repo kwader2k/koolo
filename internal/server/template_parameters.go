@@ -16,12 +16,32 @@ type TZGroup struct {
 	LootTier      string
 }
 
+// SchedulerStatusInfo contains scheduler state for UI display
+type SchedulerStatusInfo struct {
+	Enabled         bool              `json:"enabled"`
+	Mode            string            `json:"mode"`
+	Phase           string            `json:"phase"`
+	PhaseStartTime  string            `json:"phaseStartTime"`
+	PhaseEndTime    string            `json:"phaseEndTime"`
+	TodayWakeTime   string            `json:"todayWakeTime"`
+	TodayRestTime   string            `json:"todayRestTime"`
+	PlayedMinutes   int               `json:"playedMinutes"`
+	NextBreaks      []SchedulerBreak  `json:"nextBreaks"`
+}
+
+type SchedulerBreak struct {
+	Type      string `json:"type"`
+	StartTime string `json:"startTime"`
+	Duration  int    `json:"duration"`
+}
+
 type IndexData struct {
 	ErrorMessage                string
 	Version                     string
 	Status                      map[string]bot.Stats
 	DropCount                   map[string]int
 	AutoStart                   map[string]bool
+	SchedulerStatus             map[string]*SchedulerStatusInfo `json:"schedulerStatus"`
 	GlobalAutoStartEnabled      bool
 	GlobalAutoStartDelaySeconds int
 	ShowAutoStartPrompt         bool

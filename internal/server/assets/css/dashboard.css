@@ -666,6 +666,74 @@ body {
 }
 
 /* ========================================
+   SCHEDULER STATUS DISPLAY
+   ======================================== */
+.scheduler-status {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: linear-gradient(145deg, var(--bg-tertiary) 0%, var(--bg-secondary) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.scheduler-phase-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: var(--radius-md);
+  font-weight: 700;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.scheduler-phase-badge.phase-playing {
+  background: linear-gradient(135deg, var(--status-success) 0%, #1e874d 100%);
+  color: white;
+}
+
+.scheduler-phase-badge.phase-break {
+  background: linear-gradient(135deg, var(--status-warning) 0%, #e5ac00 100%);
+  color: #1a1d24;
+}
+
+.scheduler-phase-badge.phase-resting {
+  background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+  color: white;
+}
+
+.scheduler-info {
+  margin-top: var(--spacing-sm);
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.scheduler-info span {
+  color: var(--text-primary);
+}
+
+.scheduler-next {
+  margin-top: var(--spacing-sm);
+  font-size: 0.85em;
+}
+
+.scheduler-next-title {
+  color: var(--text-secondary);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.scheduler-next-item {
+  color: var(--text-secondary);
+  padding: 2px 0;
+}
+
+.scheduler-rest-time {
+  margin-top: var(--spacing-sm);
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* ========================================
    RUN STATISTICS
    ======================================== */
 .run-stats {

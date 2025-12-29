@@ -834,6 +834,94 @@
 }
 
 /* ========================================
+   SCHEDULER HISTORY PANEL
+   ======================================== */
+.scheduler-history-panel {
+  margin-top: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  padding: var(--spacing-sm);
+}
+
+.scheduler-history-panel summary {
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  color: var(--text-primary);
+}
+
+.scheduler-history-panel summary:hover {
+  color: var(--primary);
+}
+
+.scheduler-history-panel[open] summary {
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: var(--spacing-md);
+}
+
+.history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+}
+
+.history-stats .stat-item {
+  color: var(--text-secondary);
+  font-size: 0.9em;
+}
+
+.history-stats .stat-item strong {
+  color: var(--primary);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+}
+
+.history-table th,
+.history-table td {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.history-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 0.85em;
+  text-transform: uppercase;
+}
+
+.history-table tbody tr:hover {
+  background: var(--bg-tertiary);
+}
+
+.history-empty,
+.history-error,
+.history-loading,
+.history-more {
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: var(--spacing-md);
+  text-align: center;
+}
+
+.history-error {
+  color: var(--status-danger);
+}
+
+.history-more {
+  font-size: 0.85em;
+  margin-top: var(--spacing-sm);
+}
+
+/* ========================================
    RECIPE GRID
    ======================================== */
 .recipe-grid {

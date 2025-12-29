@@ -98,7 +98,7 @@ func main() {
 	manager := bot.NewSupervisorManager(logger, eventListener)
 	scheduler := bot.NewScheduler(manager, logger)
 	go scheduler.Start()
-	srv, err := server.New(logger, manager)
+	srv, err := server.New(logger, manager, scheduler)
 	if err != nil {
 		log.Fatalf("Error starting local server: %s", err.Error())
 	}
