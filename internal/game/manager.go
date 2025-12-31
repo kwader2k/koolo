@@ -13,6 +13,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/utils"
+	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
 	"golang.org/x/sys/windows"
 	"golang.org/x/sys/windows/registry"
@@ -218,7 +219,56 @@ func (gm *Manager) InGame() bool {
 	return gm.gr.InGame()
 }
 
+// isGPUErrorWindow checks if the given window is displaying the GPU initialization error dialog
+// It enumerates child windows to find the static text control containing the error message
+func isGPUErrorWindow(hwnd windows.HWND) bool {
+	var foundError bool
+
+	// Callback to enumerate child windows and check their text
+	cb := syscall.NewCallback(func(childHwnd windows.HWND, lParam uintptr) uintptr {
+		// Get text from child window (static text control in MessageBox)
+		var text [512]uint16
+		winproc.GetWindowText.Call(
+			uintptr(childHwnd),
+			uintptr(unsafe.Pointer(&text[0])),
+			uintptr(len(text)),
+		)
+		windowText := syscall.UTF16ToString(text[:])
+
+		// Check if it contains the GPU error message
+		if strings.Contains(windowText, "Failed to initialize graphics") {
+			foundError = true
+			return 0 // Stop enumeration
+		}
+		return 1 // Continue enumeration
+	})
+
+	// Enumerate child windows of the dialog
+	winproc.EnumChildWindows.Call(uintptr(hwnd), cb, 0)
+
+	return foundError
+}
+
+// closeWindowAndTerminateProcess closes the error dialog and terminates the D2R process
+func closeWindowAndTerminateProcess(hwnd windows.HWND, pid uint32) {
+	// Send WM_CLOSE to close the dialog
+	const WM_CLOSE = 0x0010
+	win.SendMessage(win.HWND(hwnd), WM_CLOSE, 0, 0)
+
+	// Give it a moment to close
+	time.Sleep(500 * time.Millisecond)
+
+	// Terminate the process
+	handle, err := windows.OpenProcess(windows.PROCESS_TERMINATE, false, pid)
+	if err == nil {
+		windows.TerminateProcess(handle, 1)
+		windows.CloseHandle(handle)
+	}
+}
+
 func StartGame(username string, password string, authmethod string, authToken string, realm string, arguments string, useCustomSettings bool) (uint32, win.HWND, error) {
+	const maxGPURetries = 5
+
 	// First check for other instances of the game and kill the handles, otherwise we will not be able to start the game
 	err := KillAllClientHandles()
 	if err != nil {
@@ -318,38 +368,50 @@ func StartGame(username string, password string, authmethod string, authToken st
 		// If we got to here we've successfully updated the auth token :)
 	}
 
-	// Start the game
-	cmd := exec.Command(config.Koolo.D2RPath+"\\D2R.exe", fullArgs...)
-	err = cmd.Start()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	var foundHwnd windows.HWND
-	cb := syscall.NewCallback(func(hwnd windows.HWND, lParam uintptr) uintptr {
-		var pid uint32
-		windows.GetWindowThreadProcessId(hwnd, &pid)
-		if pid == uint32(cmd.Process.Pid) {
-			foundHwnd = hwnd
-			return 0
+	// Start the game with retry logic for GPU initialization errors
+	for attempt := 0; attempt < maxGPURetries; attempt++ {
+		cmd := exec.Command(config.Koolo.D2RPath+"\\D2R.exe", fullArgs...)
+		err = cmd.Start()
+		if err != nil {
+			return 0, 0, err
 		}
-		return 1
-	})
-	for {
-		windows.EnumWindows(cb, unsafe.Pointer(&cmd.Process.Pid))
-		if foundHwnd != 0 {
-			// Small delay and read again, to be sure we are capturing the right hwnd
-			time.Sleep(time.Second)
+
+		var foundHwnd windows.HWND
+		cb := syscall.NewCallback(func(hwnd windows.HWND, lParam uintptr) uintptr {
+			var pid uint32
+			windows.GetWindowThreadProcessId(hwnd, &pid)
+			if pid == uint32(cmd.Process.Pid) {
+				foundHwnd = hwnd
+				return 0
+			}
+			return 1
+		})
+		for {
 			windows.EnumWindows(cb, unsafe.Pointer(&cmd.Process.Pid))
-			break
+			if foundHwnd != 0 {
+				// Small delay and read again, to be sure we are capturing the right hwnd
+				time.Sleep(time.Second)
+				windows.EnumWindows(cb, unsafe.Pointer(&cmd.Process.Pid))
+				break
+			}
 		}
+
+		// Check if the window is a GPU error dialog
+		if isGPUErrorWindow(foundHwnd) {
+			fmt.Printf("GPU initialization error detected (attempt %d/%d), retrying...\n", attempt+1, maxGPURetries)
+			closeWindowAndTerminateProcess(foundHwnd, uint32(cmd.Process.Pid))
+			time.Sleep(2 * time.Second)
+			continue // Retry
+		}
+
+		// Close the handle for the new process, it will allow the user to open another instance of the game
+		err = KillAllClientHandles()
+		if err != nil {
+			return 0, 0, err
+		}
+
+		return uint32(cmd.Process.Pid), win.HWND(foundHwnd), nil
 	}
 
-	// Close the handle for the new process, it will allow the user to open another instance of the game
-	err = KillAllClientHandles()
-	if err != nil {
-		return 0, 0, err
-	}
-
-	return uint32(cmd.Process.Pid), win.HWND(foundHwnd), nil
+	return 0, 0, errors.New("GPU initialization failed after maximum retries")
 }

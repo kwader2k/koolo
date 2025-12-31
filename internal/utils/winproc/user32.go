@@ -20,4 +20,5 @@ var (
     GetWindowTextLength     = USER32.NewProc("GetWindowTextLengthW")
     RedrawWindow            = USER32.NewProc("RedrawWindow")
     UpdateWindow            = USER32.NewProc("UpdateWindow")
+    EnumChildWindows        = USER32.NewProc("EnumChildWindows")
 )
