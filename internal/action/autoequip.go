@@ -589,18 +589,21 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			continue
 		}
 		// Find the best item for this slot that is not already equipped in ANOTHER slot.
+		// Use fresh equipped data to avoid stale snapshots picking the same unit twice.
+		equippedByID := getEquippedUnitLocations(target)
 		var bestCandidate data.Item
 		foundCandidate := false
 		for _, itm := range items { // Changed "item" to "itm" here
 			if itm.InTradeOrStoreScreen {
 				continue
 			}
-			// A valid candidate is an item that is not equipped, OR is already equipped in the current slot we are checking.
-			if itm.Location.LocationType != item.LocationEquipped || itm.Location.BodyLocation == loc { // And here
-				bestCandidate = itm // And here
-				foundCandidate = true
-				break
+			if equippedLoc, equipped := equippedByID[itm.UnitID]; equipped && equippedLoc != loc {
+				continue
 			}
+			// A valid candidate is not equipped, OR is already equipped in the current slot we are checking.
+			bestCandidate = itm // And here
+			foundCandidate = true
+			break
 		}
 
 		// If no suitable item was found (e.g., all good items are equipped in other slots)
@@ -681,6 +684,18 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 	}
 
 	return equippedSomething, nil
+}
+
+func getEquippedUnitLocations(target item.LocationType) map[data.UnitID]item.LocationType {
+	ctx := context.Get()
+	equipped := make(map[data.UnitID]item.LocationType)
+	for _, itm := range ctx.Data.Inventory.ByLocation(target) {
+		if itm.UnitID == 0 || itm.InTradeOrStoreScreen {
+			continue
+		}
+		equipped[itm.UnitID] = itm.Location.BodyLocation
+	}
+	return equipped
 }
 
 func getBodyLocationScreenCoords(bodyloc item.LocationType) (data.Position, error) {
