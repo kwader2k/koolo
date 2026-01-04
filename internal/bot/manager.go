@@ -231,6 +231,16 @@ func (mng *SupervisorManager) GetSupervisor(supervisor string) Supervisor {
 	return nil
 }
 
+func (mng *SupervisorManager) GetAllActiveSupervisors() []Supervisor {
+	supervisors := make([]Supervisor, 0)
+	for _, sup := range mng.supervisors {
+		if sup != nil {
+			supervisors = append(supervisors, sup)
+		}
+	}
+	return supervisors
+}
+
 func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slog.Logger, attach bool, optionalPID uint32, optionalHWND win.HWND) (Supervisor, *game.CrashDetector, error) {
 	cfg, found := config.GetCharacter(supervisorName)
 	if !found {

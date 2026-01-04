@@ -23,6 +23,19 @@ func OpenTPIfLeader() error {
 	return nil
 }
 
+func UsePotion() {
+	ctx := context.Get()
+	ctx.SetLastAction("UsePotion")
+	if ctx.BeltManager == nil {
+		return
+	}
+	// Prefer rejuv if available, otherwise heal
+	if ctx.BeltManager.DrinkPotion(data.RejuvenationPotion, false) {
+		return
+	}
+	_ = ctx.BeltManager.DrinkPotion(data.HealingPotion, false)
+}
+
 func IsMonsterSealElite(monster data.Monster) bool {
 	return monster.Type == data.MonsterTypeSuperUnique && (monster.Name == npc.OblivionKnight || monster.Name == npc.VenomLord || monster.Name == npc.StormCaster)
 }

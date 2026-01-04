@@ -32,6 +32,12 @@ type MemoryReader struct {
 	logger         *slog.Logger
 }
 
+type ChatLine struct {
+	Sender    string
+	Message   string
+	Timestamp time.Time
+}
+
 func NewGameReader(cfg *config.CharacterCfg, supervisorName string, pid uint32, window win.HWND, logger *slog.Logger) (*MemoryReader, error) {
 	process, err := memory.NewProcessForPID(pid)
 	if err != nil {
@@ -267,6 +273,10 @@ func (gd *MemoryReader) GetData() Data {
 		AreaData:     currentArea,
 		Areas:        gd.cachedMapData,
 	}
+}
+
+func (gd *MemoryReader) ReadChatMessages() []ChatLine {
+	return nil
 }
 
 func (gd *MemoryReader) getMapSeed(playerUnit uintptr) (uint, error) {
