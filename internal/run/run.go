@@ -2,6 +2,8 @@ package run
 
 import (
 	"github.com/hectorgimenez/koolo/internal/config"
+	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/icc"
 )
 
 type SequencerResult int8
@@ -59,134 +61,150 @@ func BuildRuns(cfg *config.CharacterCfg, runs []string) (builtRuns []Run) {
 }
 
 func BuildRun(run string) Run {
+	var runInstance Run
 	switch run {
 	case string(config.CountessRun):
-		return NewCountess()
+		runInstance = NewCountess()
 	case string(config.AndarielRun):
-		return NewAndariel()
+		runInstance = NewAndariel()
 	case string(config.SummonerRun):
-		return NewSummoner()
+		runInstance = NewSummoner()
 	case string(config.DurielRun):
-		return NewDuriel()
+		runInstance = NewDuriel()
 	case string(config.MuleRun):
-		return NewMule()
+		runInstance = NewMule()
 	case string(config.MephistoRun):
-		return NewMephisto(nil)
+		runInstance = NewMephisto(nil)
 	case string(config.TravincalRun):
-		return NewTravincal()
+		runInstance = NewTravincal()
 	case string(config.DiabloRun):
-		return NewDiablo()
+		runInstance = NewDiablo()
 	case string(config.EldritchRun):
-		return NewEldritch()
+		runInstance = NewEldritch()
 	case string(config.PindleskinRun):
-		return NewPindleskin()
+		runInstance = NewPindleskin()
 	case string(config.NihlathakRun):
-		return NewNihlathak()
+		runInstance = NewNihlathak()
 	case string(config.AncientTunnelsRun):
-		return NewAncientTunnels()
+		runInstance = NewAncientTunnels()
 	case string(config.MausoleumRun):
-		return NewMausoleum()
+		runInstance = NewMausoleum()
 	case string(config.PitRun):
-		return NewPit()
+		runInstance = NewPit()
 	case string(config.StonyTombRun):
-		return NewStonyTomb()
+		runInstance = NewStonyTomb()
 	case string(config.ArachnidLairRun):
-		return NewArachnidLair()
+		runInstance = NewArachnidLair()
 	case string(config.TristramRun):
-		return NewTristram()
+		runInstance = NewTristram()
 	case string(config.LowerKurastRun):
-		return NewLowerKurast()
+		runInstance = NewLowerKurast()
 	case string(config.LowerKurastChestRun):
-		return NewLowerKurastChest()
+		runInstance = NewLowerKurastChest()
 	case string(config.BaalRun):
-		return NewBaal(nil)
+		runInstance = NewBaal(nil)
 	case string(config.TalRashaTombsRun):
-		return NewTalRashaTombs()
+		runInstance = NewTalRashaTombs()
 	case string(config.LevelingRun):
-		return NewLeveling()
+		runInstance = NewLeveling()
 	case string(config.LevelingSequenceRun):
-		return NewLevelingSequence()
+		runInstance = NewLevelingSequence()
 	case string(config.QuestsRun):
-		return NewQuests()
+		runInstance = NewQuests()
 	case string(config.CowsRun):
-		return NewCows()
+		runInstance = NewCows()
 	case string(config.ThreshsocketRun):
-		return NewThreshsocket()
+		runInstance = NewThreshsocket()
 	case string(config.SpiderCavernRun):
-		return NewSpiderCavern()
+		runInstance = NewSpiderCavern()
 	case string(config.DrifterCavernRun):
-		return NewDriverCavern()
+		runInstance = NewDriverCavern()
 	case string(config.EnduguRun):
-		return NewEndugu()
+		runInstance = NewEndugu()
 	case string(config.UtilityRun):
-		return NewUtility()
+		runInstance = NewUtility()
 	case string(config.FireEyeRun):
-		return NewFireEye()
+		runInstance = NewFireEye()
 	case string(config.RakanishuRun):
-		return NewRakanishu()
+		runInstance = NewRakanishu()
 	case string(config.ShoppingRun):
-		return NewShopping()
+		runInstance = NewShopping()
 	//Quests Runs
 	case string(config.DenRun):
-		return NewDen()
+		runInstance = NewDen()
 	case string(config.BloodravenRun):
-		return NewBloodraven()
+		runInstance = NewBloodraven()
 	case string(config.RescueCainRun):
-		return NewRescueCain()
+		runInstance = NewRescueCain()
 	case string(config.RetrieveHammerRun):
-		return NewRetrieveHammer()
+		runInstance = NewRetrieveHammer()
 	case string(config.RadamentRun):
-		return NewRadament()
+		runInstance = NewRadament()
 	case string(config.CubeRun):
-		return NewCube()
+		runInstance = NewCube()
 	case string(config.StaffRun):
-		return NewStaff()
+		runInstance = NewStaff()
 	case string(config.AmuletRun):
-		return NewAmulet()
+		runInstance = NewAmulet()
 	case string(config.JadeFigurineRun):
-		return NewJadeFigurine()
+		runInstance = NewJadeFigurine()
 	case string(config.GidbinnRun):
-		return NewGidbinn()
+		runInstance = NewGidbinn()
 	case string(config.LamEsenRun):
-		return NewLamEsen()
+		runInstance = NewLamEsen()
 	case string(config.KhalimsEyeRun):
-		return NewKhalimsEye()
+		runInstance = NewKhalimsEye()
 	case string(config.KhalimsBrainRun):
-		return NewKhalimsBrain()
+		runInstance = NewKhalimsBrain()
 	case string(config.KhalimsHeartRun):
-		return NewKhalimsHeart()
+		runInstance = NewKhalimsHeart()
 	case string(config.IzualRun):
-		return NewIzual()
+		runInstance = NewIzual()
 	case string(config.HellforgeRun):
-		return NewHellforge()
+		runInstance = NewHellforge()
 	case string(config.ShenkRun):
-		return NewShenk()
+		runInstance = NewShenk()
 	case string(config.RescueBarbsRun):
-		return NewRescueBarbs()
+		runInstance = NewRescueBarbs()
 	case string(config.AnyaRun):
-		return NewAnya()
+		runInstance = NewAnya()
 	case string(config.AncientsRun):
-		return NewAncients()
+		runInstance = NewAncients()
 	case string(config.FrozenAuraMercRun):
-		return NewFrozenAuraMerc()
+		runInstance = NewFrozenAuraMerc()
 	case string(config.TristramEarlyGoldfarmRun):
-		return NewTristramEarlyGoldfarm()
+		runInstance = NewTristramEarlyGoldfarm()
 	case string(config.OrgansRun):
-		return NewOrgans()
+		runInstance = NewOrgans()
 	case string(config.PandemoniumRun):
-		return NewTorch()
+		runInstance = NewTorch()
 	case string(config.UberIzualRun):
-		return NewUberIzual()
+		runInstance = NewUberIzual()
 	case string(config.UberDurielRun):
-		return NewUberDuriel()
+		runInstance = NewUberDuriel()
 	case string(config.LilithRun):
-		return NewLilith()
+		runInstance = NewLilith()
 	// Development / Utility runs
 	case string(config.DevelopmentRun):
-		return NewDevRun()
+		runInstance = NewDevRun()
 	}
 
-	return nil
+	return wrapRun(runInstance)
+}
+
+// wraps a Run for auto-broadcasting
+func wrapRun(runInstance Run) Run {
+	if runInstance == nil {
+		return nil
+	}
+	ctx := context.Get()
+	if ctx.CharacterCfg.GroupLeveling.Enabled {
+		return &broadcastRun{
+			wrapped: runInstance,
+			ctx:     ctx,
+		}
+	}
+	return runInstance
 }
 
 func BuildRunParameters(farmingRun bool, sequenceSettings *SequenceSettings) *RunParameters {
@@ -202,4 +220,31 @@ func IsFarmingRun(parameters *RunParameters) bool {
 
 func IsQuestRun(parameters *RunParameters) bool {
 	return parameters != nil && !parameters.FarmingRun
+}
+
+// broadcastRun wraps a Run to auto-broadcast
+type broadcastRun struct {
+	wrapped Run
+	ctx     *context.Status
+}
+
+func (br *broadcastRun) Name() string {
+	return br.wrapped.Name()
+}
+
+func (br *broadcastRun) Run(parameters *RunParameters) error {
+	// Broadcast if leader
+	if br.ctx.ICCManager != nil {
+		if iccMgr, ok := br.ctx.ICCManager.(*context.ICCManager); ok {
+			coord := icc.NewGroupLevelingCoordinator(br.ctx, iccMgr)
+			if coord.IsLeader() {
+				coord.BroadcastRun(br.wrapped.Name(), map[string]interface{}{})
+			}
+		}
+	}
+	return br.wrapped.Run(parameters)
+}
+
+func (br *broadcastRun) CheckConditions(parameters *RunParameters) SequencerResult {
+	return br.wrapped.CheckConditions(parameters)
 }

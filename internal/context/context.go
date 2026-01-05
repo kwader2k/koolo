@@ -83,6 +83,7 @@ type GroupLevelingState struct {
 	LeaderLastSeen   time.Time
 	QuestCredits     map[string]bool // QuestID → Completed
 	BossKillCredits  map[string]bool // BossName → Killed
+	ExecuteRun       func(runName string, runData map[string]interface{}) error
 }
 
 type Debug struct {

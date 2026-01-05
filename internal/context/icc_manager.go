@@ -27,6 +27,7 @@ const (
 	EventTypeSynchroStateRequest EventType = "synchro_state_request"
 	EventTypePositionUpdate      EventType = "position_update"
 	EventTypeGroupMemberJoined   EventType = "group_member_joined"
+	EventTypeCurrentRun          EventType = "current_run"
 )
 
 type ICCEvent struct {
