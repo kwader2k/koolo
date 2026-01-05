@@ -17,7 +17,6 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
-	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	cp "github.com/otiai10/copy"
 
@@ -331,22 +330,22 @@ type CharacterCfg struct {
 	} `yaml:"character"`
 
 	Game struct {
-		MinGoldPickupThreshold int                   `yaml:"minGoldPickupThreshold"`
-		UseCainIdentify        bool                  `yaml:"useCainIdentify"`
-		DisableIdentifyTome    bool                  `yaml:"disableIdentifyTome"`
-		InteractWithShrines    bool                  `yaml:"interactWithShrines"`
-		InteractWithChests     bool                  `yaml:"interactWithChests"`
-		InteractWithSuperChests bool                 `yaml:"interactWithSuperChests"`
-		StopLevelingAt         int                   `yaml:"stopLevelingAt"`
-		IsNonLadderChar        bool                  `yaml:"isNonLadderChar"`
-		ClearTPArea            bool                  `yaml:"clearTPArea"`
-		Difficulty             difficulty.Difficulty `yaml:"difficulty"`
-		RandomizeRuns          bool                  `yaml:"randomizeRuns"`
-		Runs                   []Run                 `yaml:"runs"`
-		CreateLobbyGames       bool                  `yaml:"createLobbyGames"`
-		PublicGameCounter      int                   `yaml:"-"`
-		MaxFailedMenuAttempts  int                   `yaml:"maxFailedMenuAttempts"`
-		Pindleskin             struct {
+		MinGoldPickupThreshold  int                   `yaml:"minGoldPickupThreshold"`
+		UseCainIdentify         bool                  `yaml:"useCainIdentify"`
+		DisableIdentifyTome     bool                  `yaml:"disableIdentifyTome"`
+		InteractWithShrines     bool                  `yaml:"interactWithShrines"`
+		InteractWithChests      bool                  `yaml:"interactWithChests"`
+		InteractWithSuperChests bool                  `yaml:"interactWithSuperChests"`
+		StopLevelingAt          int                   `yaml:"stopLevelingAt"`
+		IsNonLadderChar         bool                  `yaml:"isNonLadderChar"`
+		ClearTPArea             bool                  `yaml:"clearTPArea"`
+		Difficulty              difficulty.Difficulty `yaml:"difficulty"`
+		RandomizeRuns           bool                  `yaml:"randomizeRuns"`
+		Runs                    []Run                 `yaml:"runs"`
+		CreateLobbyGames        bool                  `yaml:"createLobbyGames"`
+		PublicGameCounter       int                   `yaml:"-"`
+		MaxFailedMenuAttempts   int                   `yaml:"maxFailedMenuAttempts"`
+		Pindleskin              struct {
 			SkipOnImmunities []stat.Resist `yaml:"skipOnImmunities"`
 		} `yaml:"pindleskin"`
 		Cows struct {
@@ -486,8 +485,8 @@ type CharacterCfg struct {
 		CompanionGamePassword string `yaml:"companionGamePassword"`
 	} `yaml:"companion"`
 	Gambling struct {
-		Enabled bool        `yaml:"enabled"`
-		Items   []item.Name `yaml:"items"`
+		Enabled bool     `yaml:"enabled"`
+		Items   []string `yaml:"items,omitempty"`
 	} `yaml:"gambling"`
 	Muling struct {
 		Enabled      bool     `yaml:"enabled"`
@@ -615,6 +614,10 @@ func Load() error {
 
 		if charCfg.Game.MaxFailedMenuAttempts == 0 {
 			charCfg.Game.MaxFailedMenuAttempts = 10
+		}
+
+		if len(charCfg.Gambling.Items) == 0 {
+			charCfg.Gambling.Items = []string{"coronet", "circlet", "amulet"}
 		}
 
 		var pickitPath string

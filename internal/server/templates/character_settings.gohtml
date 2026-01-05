@@ -1117,6 +1117,11 @@
                 <input type="checkbox" name="gamblingEnabled" {{ if .Config.Gambling.Enabled }}checked{{ end }}/>
                 Enabled
             </label>
+            <label>
+                Items to gamble (comma-separated):
+                <input type="text" name="gamblingItems" value="{{ range $i, $v := .Config.Gambling.Items }}{{ if gt $i 0 }}, {{ end }}{{$v}}{{ end }}" placeholder="coronet, circlet, amulet"/>
+                <small>Example: coronet, circlet, amulet</small>
+            </label>
             <h3 id="muling-settings">Muling</h3>
             <p>Configure automatic muling to transfer items from this character to mule characters. Items will be moved from shared stash tabs (2-4) to the mule's private stash (tab 1).</p>
             <label>

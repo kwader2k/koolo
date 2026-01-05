@@ -791,12 +791,12 @@ func (s *HttpServer) reloadConfig(w http.ResponseWriter, r *http.Request) {
 
 // SchedulerHistoryEntry matches bot.HistoryEntry for JSON serialization
 type SchedulerHistoryEntry struct {
-	Date              string                  `json:"date"`
-	WakeTime          string                  `json:"wakeTime"`
-	SleepTime         string                  `json:"sleepTime"`
-	TotalPlayMinutes  int                     `json:"totalPlayMinutes"`
-	TotalBreakMinutes int                     `json:"totalBreakMinutes"`
-	Breaks            []SchedulerBreakEntry   `json:"breaks"`
+	Date              string                `json:"date"`
+	WakeTime          string                `json:"wakeTime"`
+	SleepTime         string                `json:"sleepTime"`
+	TotalPlayMinutes  int                   `json:"totalPlayMinutes"`
+	TotalBreakMinutes int                   `json:"totalBreakMinutes"`
+	Breaks            []SchedulerBreakEntry `json:"breaks"`
 }
 
 type SchedulerBreakEntry struct {
@@ -1722,6 +1722,18 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
+			if raw := strings.TrimSpace(values.Get("gamblingItems")); raw != "" {
+				parts := strings.Split(raw, ",")
+				items := make([]string, 0, len(parts))
+				for _, p := range parts {
+					if p = strings.TrimSpace(p); p != "" {
+						items = append(items, p)
+					}
+				}
+				cfg.Gambling.Items = items
+			} else {
+				cfg.Gambling.Items = []string{}
+			}
 		}
 
 		// Class-specific options are only updated when identity is explicitly updated.
@@ -2583,6 +2595,18 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Gambling
 		cfg.Gambling.Enabled = r.Form.Has("gamblingEnabled")
+		if raw := strings.TrimSpace(r.Form.Get("gamblingItems")); raw != "" {
+			parts := strings.Split(raw, ",")
+			items := make([]string, 0, len(parts))
+			for _, p := range parts {
+				if p = strings.TrimSpace(p); p != "" {
+					items = append(items, p)
+				}
+			}
+			cfg.Gambling.Items = items
+		} else {
+			cfg.Gambling.Items = []string{}
+		}
 
 		// Cube Recipes
 		cfg.CubeRecipes.Enabled = r.Form.Has("enableCubeRecipes")

@@ -3,6 +3,7 @@ package action
 import (
 	"errors"
 	"log/slog"
+	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -151,23 +152,52 @@ func gambleItems() error {
 
 	var itemBought data.Item
 	var refreshAttempts int
-	var currentItemIndex int
 	const maxRefreshAttempts = 11
+	const maxPurchasesPerItem = 5
+	const coronetCircletGroup = "coronet_circlet_group"
+
+	isGroupItem := func(name string) bool {
+		n := strings.ToLower(name)
+		return n == "coronet" || n == "circlet"
+	}
+
+	getCounterKey := func(itemName string) string {
+		if isGroupItem(itemName) {
+			return coronetCircletGroup
+		}
+		return strings.ToLower(itemName)
+	}
+
+	purchaseCounters := make(map[string]int, len(ctx.Data.CharacterCfg.Gambling.Items))
+	for _, itemName := range ctx.Data.CharacterCfg.Gambling.Items {
+		purchaseCounters[getCounterKey(itemName)] = 0
+	}
+
+	checkAndResetCounters := func() {
+		for _, itemName := range ctx.Data.CharacterCfg.Gambling.Items {
+			if purchaseCounters[getCounterKey(itemName)] < maxPurchasesPerItem {
+				return
+			}
+		}
+		for key := range purchaseCounters {
+			purchaseCounters[key] = 0
+		}
+	}
 
 	for {
 		ctx.PauseIfNotPriority()
 		ctx.RefreshGameData()
 
-		// Check if we should stop gambling due to low gold
 		if ctx.Data.PlayerUnit.TotalPlayerGold() < 500000 {
 			ctx.Logger.Info("Finished gambling - gold below 500k",
 				slog.Int("currentGold", ctx.Data.PlayerUnit.TotalPlayerGold()))
 			return step.CloseAllMenus()
 		}
 
-		// Process bought item if we have one
+		checkAndResetCounters()
+
 		if itemBought.Name != "" {
-			// Find the bought item in inventory
+			originalItemName := string(itemBought.Name)
 			for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 				if itm.UnitID == itemBought.UnitID {
 					itemBought = itm
@@ -176,42 +206,50 @@ func gambleItems() error {
 				}
 			}
 
-			// Check if item matches NIP rules
 			if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAll(itemBought); result == nip.RuleResultFullMatch {
 				ctx.Logger.Info("Found item matching NIP rules, keeping", slog.Any("item", itemBought))
 			} else {
-				// Filter not pass, selling the item
 				ctx.Logger.Debug("Item doesn't match NIP rules, selling", slog.Any("item", itemBought))
 				town.SellItem(itemBought)
 			}
 
-			itemBought = data.Item{} // Reset itemBought after processing
-			refreshAttempts = 0      // Reset refresh counter after successful purchase
-
-			// Move to next item in the gambling list
-			currentItemIndex = (currentItemIndex + 1) % len(ctx.Data.CharacterCfg.Gambling.Items)
+			purchaseCounters[getCounterKey(originalItemName)]++
+			itemBought = data.Item{}
+			refreshAttempts = 0
 			continue
 		}
 
-		// Try to find and buy items
-		itemFound := false
-		if len(ctx.Data.CharacterCfg.Gambling.Items) > 0 {
-			// Get current item to gamble for
-			currentItem := ctx.Data.CharacterCfg.Gambling.Items[currentItemIndex]
-			itm, found := ctx.Data.Inventory.Find(currentItem, item.LocationVendor)
-			if found {
-				town.BuyItem(itm, 1)
-				itemBought = itm
-				itemFound = true
+		var bestItem data.Item
+		vendorItems := ctx.Data.Inventory.ByLocation(item.LocationVendor)
+
+		for _, itemName := range ctx.Data.CharacterCfg.Gambling.Items {
+			if purchaseCounters[getCounterKey(itemName)] >= maxPurchasesPerItem {
+				continue
+			}
+
+			if isGroupItem(itemName) {
+				for _, vendorItem := range vendorItems {
+					if isGroupItem(string(vendorItem.Name)) {
+						bestItem = vendorItem
+						break
+					}
+				}
+			} else {
+				bestItem, _ = ctx.Data.Inventory.Find(item.Name(itemName), item.LocationVendor)
+			}
+
+			if bestItem.Name != "" {
+				break
 			}
 		}
 
-		// If no items found, try refreshing the gambling window
-		if !itemFound {
+		if bestItem.Name != "" {
+			town.BuyItem(bestItem, 1)
+			itemBought = bestItem
+		} else {
 			refreshAttempts++
 			if refreshAttempts >= maxRefreshAttempts {
 				ctx.Logger.Info("Too many refresh attempts without finding items, reopening gambling window")
-				// Close and reopen gambling window
 				if err := step.CloseAllMenus(); err != nil {
 					return err
 				}
@@ -222,7 +260,6 @@ func gambleItems() error {
 					return err
 				}
 
-				// Select gamble option
 				if vendorNPC == npc.Jamella {
 					ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 				} else {
@@ -233,9 +270,7 @@ func gambleItems() error {
 				continue
 			}
 
-			ctx.Logger.Debug("Refreshing.. ",
-				slog.Int("Attempt", refreshAttempts),
-				slog.String("Looking For ", string(ctx.Data.CharacterCfg.Gambling.Items[currentItemIndex])))
+			ctx.Logger.Debug("Refreshing.. ", slog.Int("Attempt", refreshAttempts))
 			RefreshGamblingWindow(ctx)
 			utils.Sleep(500)
 		}
