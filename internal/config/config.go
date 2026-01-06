@@ -321,11 +321,23 @@ type CharacterCfg struct {
 			UsePacketLearning bool `yaml:"use_packet_learning"`
 		} `yaml:"necromancer_leveling"`
 		PaladinLeveling struct {
-			UsePacketLearning bool `yaml:"use_packet_learning"`
+			UsePacketLearning bool   `yaml:"use_packet_learning"`
+			LevelingBuild     string `yaml:"leveling_build"`
 		} `yaml:"paladin_leveling"`
-		Smiter struct {
-			UberMephAura string `yaml:"uber_meph_aura"`
-		} `yaml:"smiter"`
+		Paladin struct {
+			HammerAura               string `yaml:"hammer_aura"`
+			FohAura                  string `yaml:"foh_aura"`
+			HolyBoltAura             string `yaml:"holy_bolt_aura"`
+			MovementAura             string `yaml:"movement_aura"`
+			ZealAura                 string `yaml:"zeal_aura"`
+			SmiteAura                string `yaml:"smite_aura"`
+			UberMephAura             string `yaml:"uber_meph_aura"`
+			UseChargeMovement        bool   `yaml:"use_charge_movement"`
+			UseRedemptionOnRaisers   bool   `yaml:"use_redemption_on_raisers"`
+			UseRedemptionToReplenish bool   `yaml:"use_redemption_to_replenish"`
+			RedemptionHpThreshold    int    `yaml:"redemption_hp_threshold"`
+			RedemptionManaThreshold  int    `yaml:"redemption_mana_threshold"`
+		} `yaml:"paladin"`
 		WarcryBarb struct {
 			FindItemSwitch              bool `yaml:"find_item_switch"`
 			SkipPotionPickupInTravincal bool `yaml:"skip_potion_pickup_in_travincal"`
@@ -625,7 +637,6 @@ func Load() error {
 		_ = r.Close()
 
 		charCfg.ConfigFolderName = entry.Name()
-
 		if charCfg.Game.MaxFailedMenuAttempts == 0 {
 			charCfg.Game.MaxFailedMenuAttempts = 10
 		}
@@ -648,8 +659,7 @@ func Load() error {
 		}
 
 		// Load the leveling pickit rules
-
-		if len(charCfg.Game.Runs) > 0 && (charCfg.Game.Runs[0] == "leveling" || charCfg.Game.Runs[0] == "leveling_sequence") {
+		if hasLevelingRun(charCfg.Game.Runs) {
 			nips := getLevelingNipFiles(&charCfg, entry.Name())
 
 			for _, nipFile := range nips {
@@ -875,6 +885,16 @@ func getAbsPath(relPath string) string {
 		return relPath
 	}
 	return filepath.Join(cwd, relPath)
+}
+
+func hasLevelingRun(runs []Run) bool {
+	for _, run := range runs {
+		runName := strings.ToLower(string(run))
+		if strings.Contains(runName, "leveling") || strings.Contains(runName, "leveling_sequence") {
+			return true
+		}
+	}
+	return false
 }
 
 func getLevelingNipFiles(charCfg *CharacterCfg, entryName string) []string {

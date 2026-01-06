@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/action/step"
@@ -21,10 +22,11 @@ import (
 )
 
 // Positions adapted from kolbot baal.js
-var throneMainPos = data.Position{X: 15095, Y: 5042}
-var throneCenterPos = data.Position{X: 15093, Y: 5029}
+var throneRestingPos = data.Position{X: 15095, Y: 5042}
+var throneWaveCenterPos = data.Position{X: 15093, Y: 5029}
 var casterPrecastPos = data.Position{X: 15094, Y: 5027}
 var hammerPrecastPos = data.Position{X: 15094, Y: 5029}
+var safeHammerPrecastPos = data.Position{X: 15094, Y: 5036}
 var forwardPrecastPos = data.Position{X: 15116, Y: 5026}
 
 type Baal struct {
@@ -91,7 +93,7 @@ func (s *Baal) Run(parameters *RunParameters) error {
 	if err != nil {
 		return err
 	}
-	err = action.MoveToCoords(throneMainPos)
+	err = action.MoveToCoords(throneRestingPos)
 	if err != nil {
 		return err
 	}
@@ -114,7 +116,7 @@ func (s *Baal) Run(parameters *RunParameters) error {
 	action.Buff()
 
 	// Come back to previous position
-	err = action.MoveToCoords(throneMainPos)
+	err = action.MoveToCoords(throneRestingPos)
 	if err != nil {
 		return err
 	}
@@ -154,7 +156,7 @@ func (s *Baal) Run(parameters *RunParameters) error {
 		}
 
 		if !isWaitingForPortal {
-			action.ClearAreaAroundPosition(throneMainPos, 50, data.MonsterAnyFilter())
+			action.ClearAreaAroundPosition(throneRestingPos, 50, data.MonsterAnyFilter())
 			s.preAttackBaalWaves()
 		}
 
@@ -252,7 +254,8 @@ func (s Baal) checkForSoulsOrDolls() bool {
 
 func (s *Baal) preAttackBaalWaves() {
 	// Switch to Cleansing aura if poisoned.
-	if s.ctx.Data.PlayerUnit.States.HasState(state.Poison) && !s.ctx.Data.PlayerUnit.States.HasState(state.Cleansing) {
+	if (s.ctx.Data.PlayerUnit.States.HasState(state.Poison) && !s.ctx.Data.PlayerUnit.States.HasState(state.Cleansing)) || (s.ctx.Data.MercHasState(state.Poison) && !s.ctx.Data.MercHasState(state.Cleansing)) {
+		// TODO: support packet casting?
 		if kb, found := s.ctx.Data.KeyBindings.KeyBindingForSkill(skill.Cleansing); found && s.ctx.Data.PlayerUnit.RightSkill != skill.Cleansing {
 			s.ctx.HID.PressKeyBinding(kb)
 			utils.Sleep(60)         // Allow at least 1 D2R tick
@@ -262,10 +265,16 @@ func (s *Baal) preAttackBaalWaves() {
 	player := s.ctx.Data.PlayerUnit
 
 	// Pre-attack staging position.
-	preAttackPosition := throneMainPos
-	if player.Skills[skill.BlessedHammer].Level > 1 && (player.States.HasState(state.Meditation) || player.Class != data.Paladin) {
-		// Blessed Hammer should be cast from the monster spawn area.
-		preAttackPosition = hammerPrecastPos
+	preAttackPosition := throneRestingPos
+	paladinCastPos := safeHammerPrecastPos // This is valid for both Hammer and FoH
+	if player.Class == data.Paladin {
+		if player.Skills[skill.BlessedHammer].Level >= 2 && player.Skills[skill.FistOfTheHeavens].Level <= 1 && player.States.HasState(state.Meditation) {
+			// By default we use the less efficient but safer HammerPrecastPos unless we are level 90 or above
+			if lvl, found := s.ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found && lvl.Value >= 90 {
+				paladinCastPos = hammerPrecastPos
+			}
+		}
+		preAttackPosition = paladinCastPos
 	}
 	action.MoveToCoords(preAttackPosition)
 
@@ -296,7 +305,7 @@ func (s *Baal) preAttackBaalWaves() {
 	if player.Skills[skill.LightningSentry].Level > 0 {
 		castIssued := false
 		for i := 0; i < 3; i++ {
-			if step.CastAtPosition(skill.LightningSentry, true, throneCenterPos) {
+			if step.CastAtPosition(skill.LightningSentry, true, throneWaveCenterPos) {
 				castIssued = true
 				utils.Sleep(int(s.ctx.Data.PlayerCastDuration().Milliseconds()))
 			}
@@ -308,7 +317,7 @@ func (s *Baal) preAttackBaalWaves() {
 	if player.Skills[skill.DeathSentry].Level > 0 {
 		castIssued := false
 		for i := 0; i < 2; i++ {
-			if step.CastAtPosition(skill.DeathSentry, true, throneCenterPos) {
+			if step.CastAtPosition(skill.DeathSentry, true, throneWaveCenterPos) {
 				castIssued = true
 				utils.Sleep(int(s.ctx.Data.PlayerCastDuration().Milliseconds()))
 			}
@@ -318,13 +327,13 @@ func (s *Baal) preAttackBaalWaves() {
 		}
 	}
 	if player.Skills[skill.ShockWeb].Level > 0 {
-		if step.CastAtPosition(skill.ShockWeb, true, throneCenterPos) {
+		if step.CastAtPosition(skill.ShockWeb, true, throneWaveCenterPos) {
 			return
 		}
 	}
 	// Druid
 	if player.Skills[skill.Tornado].Level > 0 {
-		if step.CastAtPosition(skill.Tornado, true, throneCenterPos) {
+		if step.CastAtPosition(skill.Tornado, true, throneWaveCenterPos) {
 			return
 		}
 	}
@@ -339,23 +348,26 @@ func (s *Baal) preAttackBaalWaves() {
 		}
 	}
 	// Paladin
-	// Paladin pre-casts are only worth it with Meditation active.
-	// Still check non-paladins in case Paladin skills are available via items.
-	if player.States.HasState(state.Meditation) || player.Class != data.Paladin {
-		if player.Skills[skill.BlessedHammer].Level > 1 {
-			// Switch to Concentration if not under Cleansing or no longer poisoned.
-			if kb, found := s.ctx.Data.KeyBindings.KeyBindingForSkill(skill.Concentration); found && player.RightSkill != skill.Concentration && (player.RightSkill != skill.Cleansing || !player.States.HasState(state.Poison)) {
-				s.ctx.HID.PressKeyBinding(kb)
-				utils.Sleep(60) // Allow at least 1 D2R tick
-			}
-			if step.CastAtPosition(skill.BlessedHammer, true, hammerPrecastPos) {
-				return
-			}
+	if player.Skills[skill.FistOfTheHeavens].Level >= 2 {
+		// Switch to Conviction if not under Cleansing or no longer poisoned.
+		// TODO: support packet casting?
+		if kb, found := s.ctx.Data.KeyBindings.KeyBindingForSkill(skill.Conviction); found && player.RightSkill != skill.Conviction && (player.RightSkill != skill.Cleansing || !player.States.HasState(state.Poison)) {
+			s.ctx.HID.PressKeyBinding(kb)
+			utils.Sleep(60) // Allow at least 1 D2R tick
 		}
-		if player.Skills[skill.HolyBolt].Level > 1 {
-			if step.CastAtPosition(skill.HolyBolt, true, hammerPrecastPos) {
-				return
-			}
+		if step.CastAtPosition(skill.FistOfTheHeavens, true, paladinCastPos) {
+			return
+		}
+	}
+	if player.Skills[skill.BlessedHammer].Level >= 2 && player.States.HasState(state.Meditation) {
+		// Switch to Concentration if not under Cleansing or no longer poisoned.
+		// TODO: support packet casting?
+		if kb, found := s.ctx.Data.KeyBindings.KeyBindingForSkill(skill.Concentration); found && player.RightSkill != skill.Concentration && (player.RightSkill != skill.Cleansing || !player.States.HasState(state.Poison)) {
+			s.ctx.HID.PressKeyBinding(kb)
+			utils.Sleep(60) // Allow at least 1 D2R tick
+		}
+		if step.CastAtPosition(skill.BlessedHammer, true, paladinCastPos) {
+			return
 		}
 	}
 	// Necromancer

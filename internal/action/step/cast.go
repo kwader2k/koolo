@@ -1,6 +1,8 @@
 package step
 
 import (
+	"time"
+
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/koolo/internal/context"
@@ -76,5 +78,9 @@ func CastAtPosition(skillID skill.ID, standStill bool, castPos data.Position) bo
 		ctx.HID.Click(game.RightButton, x, y)
 		castIssued = true
 	}
+	if castIssued {
+		ctx.LastCastAt = time.Now()
+	}
+
 	return castIssued
 }

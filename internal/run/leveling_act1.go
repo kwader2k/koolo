@@ -156,7 +156,7 @@ func (a Leveling) act1() error {
 	}
 
 	// Countess farming for runes
-	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && lvl.Value >= 6 && (lvl.Value < 12 || lvl.Value < 16 && (a.ctx.CharacterCfg.Character.Class == "paladin" || a.ctx.CharacterCfg.Character.Class == "necromancer" || a.ctx.CharacterCfg.Character.Class == "barb_leveling")) {
+	if a.ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && lvl.Value >= 6 && (lvl.Value < 12 || lvl.Value < 16 && (a.ctx.CharacterCfg.Character.Class == "paladin_leveling" || a.ctx.CharacterCfg.Character.Class == "necromancer" || a.ctx.CharacterCfg.Character.Class == "barb_leveling")) {
 		// Special case for Barbarian Leveling
 		if a.ctx.CharacterCfg.Character.Class == "barb_leveling" {
 			if a.barbRunewords() {

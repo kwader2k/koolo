@@ -3,7 +3,6 @@ package step
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -11,6 +10,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
@@ -118,7 +118,6 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 	}
 
 	ctx := context.Get()
-	isDragondin := strings.EqualFold(ctx.CharacterCfg.Character.Class, "dragondin")
 	ctx.SetLastStep("MoveTo")
 
 	opts.ignoreShrines = !ctx.CharacterCfg.Game.InteractWithShrines
@@ -329,21 +328,15 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 			if ctx.Data.PlayerUnit.RightSkill != skill.Teleport {
 				ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.Teleport))
 			}
-		} else if isDragondin {
-			// Dragondin: keep Conviction active while moving (instead of Vigor).
-			// Fallback to Vigor if Conviction isn't bound.
-			if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Conviction); found {
-				if ctx.Data.PlayerUnit.RightSkill != skill.Conviction {
-					ctx.HID.PressKeyBinding(kb)
+		} else if currentDistanceToDest >= pather.MovementSkillMinDistance {
+			if movementProvider, ok := ctx.Char.(interface{ MovementSetup() (skill.ID, skill.ID) }); ok {
+				leftSkill, rightSkill := movementProvider.MovementSetup()
+				if leftSkill != 0 {
+					SelectLeftSkill(leftSkill)
 				}
-			} else if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Vigor); found {
-				if ctx.Data.PlayerUnit.RightSkill != skill.Vigor {
-					ctx.HID.PressKeyBinding(kb)
+				if rightSkill != 0 {
+					SelectRightSkill(rightSkill)
 				}
-			}
-		} else if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.Vigor); found {
-			if ctx.Data.PlayerUnit.RightSkill != skill.Vigor {
-				ctx.HID.PressKeyBinding(kb)
 			}
 		}
 

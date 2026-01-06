@@ -51,7 +51,7 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 		// First, clear the room of monsters
 		err := clearRoom(r, filter)
 		if err != nil {
-			ctx.Logger.Warn("Failed to clear room: %v", err)
+			ctx.Logger.Warn("Failed to clear room", slog.Any("error", err))
 		}
 
 		//ctx.Logger.Debug(fmt.Sprintf("Clearing room complete, attempting to pickup items in a radius of %d", pickupRadius))
@@ -144,16 +144,18 @@ func clearRoom(room data.Room, filter data.MonsterFilter) error {
 
 		SortEnemiesByPriority(&monsters)
 
-		// Check if there are monsters that can summon new monsters, and kill them first
+		// Pick the top-priority target after sorting.
 		targetMonster := data.Monster{}
+		targetPathFound := false
+
 		for _, m := range monsters {
-			if !ctx.Char.ShouldIgnoreMonster(m) {
-				if m.IsMonsterRaiser() {
-					targetMonster = m
-					break
-				} else if targetMonster.UnitID == 0 {
-					targetMonster = m
-				}
+			if ctx.Char.ShouldIgnoreMonster(m) {
+				continue
+			}
+			if _, _, foundPath := ctx.PathFinder.GetPath(m.Position); foundPath {
+				targetMonster = m
+				targetPathFound = true
+				break
 			}
 		}
 
@@ -162,8 +164,7 @@ func clearRoom(room data.Room, filter data.MonsterFilter) error {
 			return nil
 		}
 
-		_, _, mPathFound := ctx.PathFinder.GetPath(targetMonster.Position)
-		if mPathFound {
+		if targetPathFound {
 			if !ctx.Data.CanTeleport() {
 				hasDoorBetween, door := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, targetMonster.Position)
 				if hasDoorBetween && door.Selectable {

@@ -7,24 +7,26 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
+// Character interfaces live in context to avoid import cycles with implementations.
 type Character interface {
 	CheckKeyBindings() []skill.ID
 	BuffSkills() []skill.ID
 	PreCTABuffSkills() []skill.ID
+	MainSkillRange() int
 	KillCountess() error
 	KillAndariel() error
 	KillSummoner() error
 	KillDuriel() error
+	KillCouncil() error
 	KillMephisto() error
+	KillIzual() error
+	KillDiablo() error
 	KillPindle() error
 	KillNihlathak() error
-	KillCouncil() error
-	KillDiablo() error
-	KillIzual() error
 	KillBaal() error
-	KillUberIzual() error
-	KillUberDuriel() error
 	KillLilith() error
+	KillUberDuriel() error
+	KillUberIzual() error
 	KillUberMephisto() error
 	KillUberDiablo() error
 	KillUberBaal() error
@@ -34,6 +36,7 @@ type Character interface {
 	) error
 	ShouldIgnoreMonster(m data.Monster) bool
 }
+
 type StatAllocation struct {
 	Stat   stat.ID
 	Points int
@@ -47,7 +50,7 @@ type LevelingCharacter interface {
 	SkillsToBind() (skill.ID, []skill.ID)
 	ShouldResetSkills() bool
 	GetAdditionalRunewords() []string
-	KillAncients() error
 	InitialCharacterConfigSetup()
 	AdjustCharacterConfig()
+	KillAncients() error
 }

@@ -17,22 +17,28 @@ func IsActBoss(m data.Monster) bool {
 	return false
 }
 
-func IsMonsterSealElite(monster data.Monster) bool {
-	return monster.Type == data.MonsterTypeSuperUnique && (monster.Name == npc.OblivionKnight || monster.Name == npc.VenomLord || monster.Name == npc.StormCaster)
+// TODO: Remove as the helper now lives in d2go
+func IsMonsterSealElite(m data.Monster) bool {
+	return m.IsSealElite()
 }
 
 func IsQuestEnemy(m data.Monster) bool {
 	if IsActBoss(m) {
 		return true
 	}
-	if IsMonsterSealElite(m) {
+	if m.IsSealElite() {
 		return true
 	}
 	switch m.Name {
+	case npc.BloodRaven:
+	case npc.Radament:
 	case npc.Summoner:
 	case npc.CouncilMember:
 	case npc.CouncilMember2:
 	case npc.CouncilMember3:
+	case npc.Izual:
+	case npc.Hephasto:
+	case npc.Nihlathak:
 		return true
 	}
 	return false
