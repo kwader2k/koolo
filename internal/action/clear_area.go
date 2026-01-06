@@ -81,6 +81,9 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filters ...data.Mons
 			if distanceToTarget > radius {
 				continue
 			}
+			if ctx.Char.ShouldIgnoreMonster(m) {
+				continue
+			}
 
 			// Special case: Vizier can spawn on weird/off-grid tiles in Chaos Sanctuary.
 			isVizier := m.Type == data.MonsterTypeSuperUnique && m.Name == npc.StormCaster

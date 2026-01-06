@@ -68,7 +68,7 @@ window.onload = function () {
     const buildSelectElement = document.querySelector('select[name="characterClass"]');
     buildSelectElement.addEventListener('change', function () {
         const selectedBuild = buildSelectElement.value;
-        const levelingBuilds = ['paladin', 'sorceress_leveling', 'druid_leveling', 'amazon_leveling', 'necromancer', 'assassin', 'barb_leveling'];
+        const levelingBuilds = ['paladin_leveling', 'sorceress_leveling', 'druid_leveling', 'amazon_leveling', 'necromancer', 'assassin', 'barb_leveling'];
 
         const enabledRunListElement = document.getElementById('enabled_runs');
         if (!enabledRunListElement) return;
@@ -284,7 +284,7 @@ function filterDisabledRuns(searchTerm) {
 function checkLevelingProfile() {
     const levelingProfiles = [
         "sorceress_leveling",
-        "paladin",
+        "paladin_leveling",
         "druid_leveling",
         "amazon_leveling",
         "necromancer",
@@ -399,11 +399,9 @@ document.addEventListener('DOMContentLoaded', function () {
             { value: 'necromancer', label: 'Necromancer (Leveling)' },
         ],
         paladin: [
-            { value: 'paladin', label: 'Paladin (Leveling)' },
-            { value: 'hammerdin', label: 'Hammer Paladin' },
-            { value: 'foh', label: 'FOH Paladin' },
-            { value: 'dragondin', label: 'Dragondin' },
-            { value: 'smiter', label: 'Smiter (Ubers)' },
+            { value: 'paladin_leveling', label: 'Leveling' },
+            { value: 'paladin_default', label: 'Hammer / FoH / Smite' },
+            { value: 'paladin_dragon', label: 'Dragon' },
         ],
         sorceress: [
             { value: 'sorceress', label: 'Blizzard Sorceress' },
@@ -587,7 +585,102 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     }
 
-    function updateCharacterOptions() {
+    function isOptionAllowed(element, selectedClass) {
+        const raw = element.getAttribute('data-option-classes');
+        if (!raw) {
+            return true;
+        }
+        const allowed = raw.split(/\s+/).filter(Boolean);
+        return allowed.includes(selectedClass);
+    }
+
+    function updateOptionGroups(container, selectedClass) {
+        if (!container) {
+            return;
+        }
+        const groups = container.querySelectorAll('[data-option-classes]');
+        groups.forEach(group => {
+            group.style.display = isOptionAllowed(group, selectedClass) ? '' : 'none';
+        });
+    }
+
+    function layoutOptionGrid(container, selectedClass) {
+        if (!container) {
+            return;
+        }
+        const grids = container.querySelectorAll('[data-option-grid]');
+        grids.forEach(grid => {
+            const items = Array.from(grid.querySelectorAll('[data-option-order]'));
+            const allowedItems = [];
+            items.forEach(item => {
+                if (isOptionAllowed(item, selectedClass)) {
+                    allowedItems.push(item);
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+            allowedItems.sort((a, b) => {
+                const aOrder = parseInt(a.getAttribute('data-option-order'), 10);
+                const bOrder = parseInt(b.getAttribute('data-option-order'), 10);
+                if (Number.isNaN(aOrder) && Number.isNaN(bOrder)) {
+                    return 0;
+                }
+                if (Number.isNaN(aOrder)) {
+                    return 1;
+                }
+                if (Number.isNaN(bOrder)) {
+                    return -1;
+                }
+                return aOrder - bOrder;
+            });
+            allowedItems.forEach(item => {
+                item.style.display = '';
+                grid.appendChild(item);
+            });
+        });
+    }
+
+    function resetOptionDefaults(container, selectedClass) {
+        if (!container || container.getAttribute('data-reset-on-class-change') !== 'true') {
+            return;
+        }
+        const fields = container.querySelectorAll('input, select, textarea');
+        fields.forEach(field => {
+            const classDefault = selectedClass ? field.getAttribute(`data-default-${selectedClass}`) : null;
+            const fallbackDefault = field.getAttribute('data-default');
+            const defaultValue = classDefault ?? fallbackDefault;
+            if (defaultValue === null) {
+                return;
+            }
+            if (field.tagName === 'SELECT') {
+                field.value = defaultValue;
+                return;
+            }
+            if (field.tagName === 'INPUT') {
+                if (field.type === 'checkbox') {
+                    field.checked = defaultValue === 'true';
+                } else {
+                    field.value = defaultValue;
+                }
+                return;
+            }
+            field.value = defaultValue;
+        });
+    }
+
+    function showOptions(container, shouldResetOptions, selectedClass) {
+        if (!container) {
+            return;
+        }
+        container.style.display = 'block';
+        updateOptionGroups(container, selectedClass);
+        layoutOptionGrid(container, selectedClass);
+        if (shouldResetOptions) {
+            resetOptionDefaults(container, selectedClass);
+        }
+    }
+
+    function updateCharacterOptions(shouldResetOptions) {
         const selectedClass = characterClassSelect.value;
         const noSettingsMessage = document.getElementById('no-settings-message');
         const berserkerBarbOptions = document.querySelector('.berserker-barb-options');
@@ -604,9 +697,9 @@ document.addEventListener('DOMContentLoaded', function () {
         const amazonLevelingOptions = document.querySelector('.amazon_leveling-options');
         const druidLevelingOptions = document.querySelector('.druid_leveling-options');
         const necromancerLevelingOptions = document.querySelector('.necromancer-options');
-        const paladinLevelingOptions = document.querySelector('.paladin-options');
-        const smiterOptions = document.querySelector('.smiter-options');
         const javazonOptions = document.querySelector('.javazon-options');
+        const paladinLevelingOptions = document.querySelector('.paladin-leveling-options');
+        const paladinAuraOptions = document.querySelector('.paladin-aura-options');
 
         // Hide all options first
         if (berserkerBarbOptions) berserkerBarbOptions.style.display = 'none';
@@ -626,9 +719,9 @@ document.addEventListener('DOMContentLoaded', function () {
         if (amazonLevelingOptions) amazonLevelingOptions.style.display = 'none';
         if (druidLevelingOptions) druidLevelingOptions.style.display = 'none';
         if (necromancerLevelingOptions) necromancerLevelingOptions.style.display = 'none';
-        if (paladinLevelingOptions) paladinLevelingOptions.style.display = 'none';
-        if (smiterOptions) smiterOptions.style.display = 'none';
         if (javazonOptions) javazonOptions.style.display = 'none';
+        if (paladinLevelingOptions) paladinLevelingOptions.style.display = 'none';
+        if (paladinAuraOptions) paladinAuraOptions.style.display = 'none';
         if (noSettingsMessage) noSettingsMessage.style.display = 'none';
 
         // Show relevant options based on class
@@ -661,12 +754,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (druidLevelingOptions) druidLevelingOptions.style.display = 'block';
         } else if (selectedClass === 'necromancer') {
             if (necromancerLevelingOptions) necromancerLevelingOptions.style.display = 'block';
-        } else if (selectedClass === 'paladin') {
-            if (paladinLevelingOptions) paladinLevelingOptions.style.display = 'block';
-        } else if (selectedClass === 'smiter') {
-            if (smiterOptions) smiterOptions.style.display = 'block';
         } else if (selectedClass === 'javazon') {
             if (javazonOptions) javazonOptions.style.display = 'block';
+        } else if (selectedClass === 'paladin_leveling') {
+            showOptions(paladinLevelingOptions, shouldResetOptions, selectedClass);
+        } else if (selectedClass === 'paladin_default') {
+            showOptions(paladinAuraOptions, shouldResetOptions, selectedClass);
+        } else if (selectedClass === 'paladin_dragon') {
+            showOptions(paladinAuraOptions, shouldResetOptions, selectedClass);
         } else {
             if (noSettingsMessage) noSettingsMessage.style.display = 'block';
         }
@@ -796,12 +891,12 @@ document.addEventListener('DOMContentLoaded', function () {
         mainCharacterClassSelect.addEventListener('change', function () {
             const mainClass = mainCharacterClassSelect.value;
             populateBuildSelect(mainClass, '');
-            updateCharacterOptions();
+            updateCharacterOptions(false);
         });
     }
 
     if (characterClassSelect) {
-        characterClassSelect.addEventListener('change', updateCharacterOptions);
+        characterClassSelect.addEventListener('change', () => updateCharacterOptions(true));
     }
     document.getElementById('gameDifficulty').addEventListener('change', function () {
         if (characterClassSelect.value === 'nova' || characterClassSelect.value === 'lightsorc') {
@@ -809,8 +904,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    characterClassSelect.addEventListener('change', updateCharacterOptions);
-    updateCharacterOptions(); // Call this initially to set the correct state
+    updateCharacterOptions(false); // Call this initially to set the correct state
 
     // Set initial state
     toggleSchedulerVisibility();

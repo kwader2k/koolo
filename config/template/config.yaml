@@ -19,7 +19,7 @@ stopLevelingAt: 0
 # Mouse clicking is generally safer and less detectable
 packetCasting:
   useForEntranceInteraction: false # Use packets for entering dungeons/levels
-  useForItemPickup: false          # Use packets for picking up items  
+  useForItemPickup: false          # Use packets for picking up items
   useForTpInteraction: false       # Use packets for using town portals
 
 scheduler:
@@ -65,7 +65,7 @@ inventory:
   rejuvPotionCount: 0     # Number of rejuvenation potions to keep in inventory
 
 character:
-  class: sorceress # Allowed values: sorceress, lightning, hammerdin, foh, dragondin, paladin (leveling only), barb_leveling
+  class: sorceress
   useMerc: true
   stashToShared: false
   useTeleport: true # If set to false, bot will not use teleport skill and will walk to the destination
@@ -81,6 +81,22 @@ character:
     use_battlecry: true # Use Battle Cry skill to reduce enemy damage and defense
     battlecry_cooldown: 6 # Cooldown in seconds between Battle Cry casts
     battlecry_min_monsters: 1 # Minimum number of monsters in range to use Battle Cry
+  paladin:
+    hammer_aura: "concentration" # Any paladin aura
+    foh_aura: "conviction" # Any paladin aura
+    holy_bolt_aura: "cleansing" # Any paladin aura
+    movement_aura: "vigor" # Any paladin aura
+    zeal_aura: "fanaticism" # Any paladin aura
+    smite_aura: "fanaticism" # Any paladin aura
+    uber_meph_aura: "resist_lightning" # Any paladin aura
+    use_charge_movement: false # Use Charge for faster movement when teleport is unavailable
+    use_redemption_on_raisers: false # Use Redemption when raisers are nearby
+    use_redemption_to_replenish: false # Use Redemption when under the configured Life/Mana thresholds
+    redemption_hp_threshold: 50 # HP % threshold to trigger Redemption (1-100)
+    redemption_mana_threshold: 50 # Mana % threshold to trigger Redemption (1-100)
+  paladin_leveling:
+    use_packet_learning: false
+
 
 game:
   minGoldPickupThreshold: 500000 # If total gold amount is less than this, bot will pick up and sell magic+ items
@@ -90,7 +106,7 @@ game:
   # Just add the runs you want to do and they will be executed respecting the order, unless randomizeRuns is set to true
   # Available runs: countess, andariel, ancient_tunnels, summoner, mephisto, council, eldritch, pindleskin, nihlathak,
   #                 tristram, lower_kurast, lower_kurast_chest, stony_tomb, pit, arachnid_lair, tal_rasha_tombs, baal, diablo, cows, terror_zone, development
-  # leveling: there is a "leveling" run, in combination with "sorceress or paladin" class will be able to start leveling character from level 1 (don't expect too much)
+  # leveling: there is a "leveling" run to start leveling character from level 1 (don't expect too much)
   # terror_zone: will detect current TZ and clear it
   # development: keeps the bot attached for manual play/debugging, skips town routines entirely
   runs: [ stony_tomb, pit, arachnid_lair ]
@@ -241,3 +257,4 @@ backtotown:
   noHpPotions: true
   noMpPotions: false
   mercDied: true
+  equipmentBroken: true

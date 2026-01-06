@@ -10,9 +10,12 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
+
+const MovementSkillMinDistance = 7
 
 func (pf *PathFinder) RandomMovement() {
 	midGameX := pf.gr.GameAreaSizeX / 2
@@ -89,11 +92,12 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 
 	// Let's try to calculate how close to the window border we can go
 	screenCords := data.Position{}
+	worldPos := data.Position{}
 	for distance, pos := range p {
 		screenX, screenY := pf.gameCoordsToScreenCords(p.From().X, p.From().Y, pos.X, pos.Y)
 
-		// We reached max distance, let's stop (if we are not teleporting)
-		if !pf.data.CanTeleport() && maxDistance > 0 && distance > maxDistance {
+		// We reached max distance, let's stop
+		if maxDistance > 0 && distance > maxDistance {
 			break
 		}
 
@@ -106,10 +110,12 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 		if screenX < 0 || screenY < 0 || screenX > pf.gr.GameAreaSizeX || screenY > pf.gr.GameAreaSizeY {
 			break
 		}
+
 		screenCords = data.Position{X: screenX, Y: screenY}
+		worldPos = data.Position{X: pos.X + pf.data.AreaOrigin.X, Y: pos.Y + pf.data.AreaOrigin.Y}
 	}
 
-	pf.MoveCharacter(screenCords.X, screenCords.Y)
+	pf.MoveCharacter(screenCords.X, screenCords.Y, worldPos)
 }
 
 func (pf *PathFinder) moveThroughPathTeleport(p Path) {
@@ -125,10 +131,7 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 		}
 
 		if screenX >= 0 && screenY >= 0 && screenX <= pf.gr.GameAreaSizeX && screenY <= pf.gr.GameAreaSizeY {
-			worldPos := data.Position{
-				X: pos.X + pf.data.AreaOrigin.X,
-				Y: pos.Y + pf.data.AreaOrigin.Y,
-			}
+			worldPos := data.Position{X: pos.X + pf.data.AreaOrigin.X, Y: pos.Y + pf.data.AreaOrigin.Y}
 
 			usePacket := pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil
 
@@ -155,6 +158,7 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 			} else {
 				pf.MoveCharacter(screenX, screenY)
 			}
+
 			return
 		}
 	}
@@ -215,9 +219,12 @@ func (pf *PathFinder) isMouseClickTeleportZone() bool {
 	return false
 }
 
-func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
+func (pf *PathFinder) MoveCharacter(x, y int, worldPos ...data.Position) {
+	targetPos, hasTargetPos := firstWorldPos(worldPos)
+
+	// Teleport
 	if pf.data.CanTeleport() {
-		if pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil && len(gamePos) > 0 {
+		if pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil && hasTargetPos {
 			// Ensure Teleport skill is selected on right-click if using packet skill selection
 			if pf.cfg.PacketCasting.UseForSkillSelection && pf.packetSender != nil {
 				if pf.data.PlayerUnit.RightSkill != skill.Teleport {
@@ -227,7 +234,7 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 				}
 			}
 
-			err := pf.packetSender.Teleport(gamePos[0])
+			err := pf.packetSender.Teleport(targetPos)
 			if err != nil {
 				pf.hid.Click(game.RightButton, x, y)
 			} else {
@@ -236,11 +243,80 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 		} else {
 			pf.hid.Click(game.RightButton, x, y)
 		}
-	} else {
-		pf.hid.MovePointer(x, y)
-		pf.hid.PressKeyBinding(pf.data.KeyBindings.ForceMove)
-		utils.Sleep(50)
+
+		return
 	}
+
+	// Paladin Charge
+	if pf.tryChargeMove(x, y, targetPos, hasTargetPos) {
+		return
+	}
+
+	// Force Move
+	pf.hid.MovePointer(x, y)
+	pf.hid.PressKeyBinding(pf.data.KeyBindings.ForceMove)
+	utils.Sleep(50)
+}
+
+func (pf *PathFinder) tryChargeMove(x, y int, targetPos data.Position, hasTargetPos bool) bool {
+	if pf.data.PlayerUnit.LeftSkill != skill.Charge {
+		return false
+	}
+	if pf.data.PlayerUnit.Area.IsTown() || pf.data.PlayerUnit.Area == area.UberTristram {
+		return false
+	}
+
+	if !hasTargetPos {
+		slog.Debug("Charge movement skipped", slog.String("reason", "missing_target_position"))
+		return false
+	}
+
+	distance := DistanceFromPoint(pf.data.PlayerUnit.Position, targetPos)
+	if distance < MovementSkillMinDistance {
+		slog.Debug("Charge movement skipped", slog.String("reason", "distance_too_short"), slog.Int("distance", distance), slog.Int("min_distance", MovementSkillMinDistance))
+		return false
+	}
+
+	if !pf.LineOfSight(pf.data.PlayerUnit.Position, targetPos) {
+		slog.Debug("Charge movement skipped", slog.String("reason", "blocked_path"))
+		return false
+	}
+
+	if doorFound, door := pf.HasDoorBetween(pf.data.PlayerUnit.Position, targetPos); doorFound {
+		slog.Debug("Charge movement skipped", slog.String("reason", "door_in_path"), slog.Int("door_x", door.Position.X), slog.Int("door_y", door.Position.Y))
+		return false
+	}
+
+	mana, manaFound := pf.data.PlayerUnit.FindStat(stat.Mana, 0)
+	if !manaFound {
+		slog.Debug("Charge movement skipped", slog.String("reason", "mana_stat_missing"))
+		return false
+	}
+	const chargeMinMana = 9
+	if mana.Value < chargeMinMana {
+		slog.Debug("Charge movement skipped", slog.String("reason", "mana_too_low"), slog.Int("mana", mana.Value), slog.Int("min_mana", chargeMinMana))
+		return false
+	}
+
+	pf.hid.KeyDown(pf.data.KeyBindings.StandStill)
+	utils.Sleep(25)
+	pf.hid.Click(game.LeftButton, x, y)
+	utils.Sleep(25)
+	pf.hid.KeyUp(pf.data.KeyBindings.StandStill)
+	utils.Sleep(25)
+
+	return true
+}
+
+func firstWorldPos(worldPos []data.Position) (data.Position, bool) {
+	if len(worldPos) == 0 {
+		return data.Position{}, false
+	}
+	if worldPos[0].X == 0 && worldPos[0].Y == 0 {
+		return data.Position{}, false
+	}
+
+	return worldPos[0], true
 }
 
 func (pf *PathFinder) GameCoordsToScreenCords(destinationX, destinationY int) (int, int) {
