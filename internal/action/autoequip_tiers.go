@@ -288,7 +288,8 @@ func calculateGeneralScore(itm data.Item) float64 {
 
 	score := BaseScore
 
-	tierRule, _ := ctx.CharacterCfg.Runtime.Rules.EvaluateTiers(itm, ctx.CharacterCfg.Runtime.TierRules)
+	evalCtx := getEvaluationContext()
+	tierRule, _ := ctx.CharacterCfg.Runtime.Rules.EvaluateTiersWithContext(itm, ctx.CharacterCfg.Runtime.TierRules, evalCtx)
 	if tierRule.Tier() > 0 {
 		score = tierRule.Tier()
 	}

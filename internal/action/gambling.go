@@ -99,7 +99,8 @@ func GambleSingleItem(items []string, desiredQuality item.Quality) error {
 			}
 
 			// Check if the item matches our NIP rules
-			if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAll(itemBought); result == nip.RuleResultFullMatch {
+			evalCtx := getEvaluationContext()
+			if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(itemBought, evalCtx); result == nip.RuleResultFullMatch {
 				// Filter not pass, selling the item
 				ctx.Logger.Info("Found item matching nip rules, will be kept", slog.Any("item", itemBought))
 				itemBought = data.Item{}
@@ -177,7 +178,8 @@ func gambleItems() error {
 			}
 
 			// Check if item matches NIP rules
-			if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAll(itemBought); result == nip.RuleResultFullMatch {
+			evalCtx := getEvaluationContext()
+			if _, result := ctx.Data.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(itemBought, evalCtx); result == nip.RuleResultFullMatch {
 				ctx.Logger.Info("Found item matching NIP rules, keeping", slog.Any("item", itemBought))
 			} else {
 				// Filter not pass, selling the item

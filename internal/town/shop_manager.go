@@ -15,6 +15,15 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
+// Extracts character level from context and returns EvaluationContext
+func getEvaluationContextForShopping(ctx *context.Status) nip.EvaluationContext {
+	charLevel := 0
+	if lvl, ok := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); ok {
+		charLevel = lvl.Value
+	}
+	return nip.EvaluationContext{CharLevel: charLevel}
+}
+
 var questItems = []item.Name{
 	"StaffOfKings",
 	"HoradricStaff",
@@ -379,9 +388,10 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	totalNonNIPJewels := 0
 
 	// Count in stash
+	evalCtx := getEvaluationContextForShopping(ctx)
 	for _, stashed := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
 		if string(stashed.Name) == "Jewel" {
-			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(stashed); res != nip.RuleResultFullMatch {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(stashed, evalCtx); res != nip.RuleResultFullMatch {
 				totalNonNIPJewels++
 			}
 		}
@@ -390,7 +400,7 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	// Count in inventory
 	for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if string(invItem.Name) == "Jewel" {
-			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(invItem); res != nip.RuleResultFullMatch {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(invItem, evalCtx); res != nip.RuleResultFullMatch {
 				totalNonNIPJewels++
 			}
 		}
@@ -417,7 +427,7 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 	// Now subtract inventory jewels as we'll re-evaluate them below
 	for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if string(invItem.Name) == "Jewel" {
-			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(invItem); res != nip.RuleResultFullMatch {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(invItem, evalCtx); res != nip.RuleResultFullMatch {
 				jewelsKeptCount-- // We'll re-count them as we process
 			}
 		}
@@ -449,14 +459,14 @@ func ItemsToBeSold(lockConfig ...[][]int) (items []data.Item) {
 			continue
 		}
 
-		if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllIgnoreTiers(itm); result == nip.RuleResultFullMatch && !itm.IsPotion() {
+		if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllIgnoreTiersWithContext(itm, evalCtx); result == nip.RuleResultFullMatch && !itm.IsPotion() {
 			continue
 		}
 
 		// Handle jewels: keep up to the configured limit of non-NIP jewels
 		if craftingEnabled && string(itm.Name) == "Jewel" {
 			// Only consider jewels that are not covered by a NIP rule
-			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(itm); res != nip.RuleResultFullMatch {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(itm, evalCtx); res != nip.RuleResultFullMatch {
 				if jewelsKeptCount < maxJewelsToKeep {
 					jewelsKeptCount++ // Keep this jewel
 					ctx.Logger.Debug(fmt.Sprintf("Keeping jewel #%d (under limit of %d)", jewelsKeptCount, maxJewelsToKeep))
