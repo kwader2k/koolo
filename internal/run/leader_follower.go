@@ -17,8 +17,6 @@ import (
 const (
 	// LeaderModeHuman indicates the leader is a human player (no D2R instance for leader supervisor)
 	LeaderModeHuman = "human"
-	// LeaderModeBot indicates the leader is a bot that creates games
-	LeaderModeBot = "bot"
 )
 
 // LeaderFollower is a run that coordinates followers to join games with a leader
@@ -61,32 +59,21 @@ func (lf *LeaderFollower) SkipTownRoutines() bool {
 
 // CheckConditions verifies if the run can execute
 func (lf *LeaderFollower) CheckConditions(parameters *RunParameters) SequencerResult {
-	if !lf.ctx.CharacterCfg.LeaderFollower.Enabled {
+	// Must have leader name configured
+	if lf.ctx.CharacterCfg.LeaderFollower.LeaderName == "" {
+		lf.ctx.Logger.Warn("LeaderFollower requires leaderName to be configured")
 		return SequencerSkip
 	}
-
-	mode := lf.ctx.CharacterCfg.LeaderFollower.Mode
-	if mode != LeaderModeHuman && mode != LeaderModeBot {
-		lf.ctx.Logger.Warn("LeaderFollower enabled but invalid mode configured",
-			slog.String("mode", mode))
+	
+	// Must have game pattern configured
+	if lf.ctx.CharacterCfg.LeaderFollower.GameNamePattern == "" {
+		lf.ctx.Logger.Warn("LeaderFollower requires gameNamePattern to be configured")
 		return SequencerSkip
-	}
-
-	// For human mode, must have leader name and game pattern
-	if mode == LeaderModeHuman {
-		if lf.ctx.CharacterCfg.LeaderFollower.LeaderName == "" {
-			lf.ctx.Logger.Warn("Human leader mode requires leaderName to be configured")
-			return SequencerSkip
-		}
-		if lf.ctx.CharacterCfg.LeaderFollower.GameNamePattern == "" {
-			lf.ctx.Logger.Warn("Human leader mode requires gameNamePattern to be configured")
-			return SequencerSkip
-		}
 	}
 
 	// Must have followers configured
 	if len(lf.ctx.CharacterCfg.LeaderFollower.Followers) == 0 {
-		lf.ctx.Logger.Warn("LeaderFollower enabled but no followers configured")
+		lf.ctx.Logger.Warn("LeaderFollower requires at least one follower configured")
 		return SequencerSkip
 	}
 
@@ -95,20 +82,14 @@ func (lf *LeaderFollower) CheckConditions(parameters *RunParameters) SequencerRe
 
 // Run executes the leader-follower coordination logic
 func (lf *LeaderFollower) Run(parameters *RunParameters) error {
-	mode := lf.ctx.CharacterCfg.LeaderFollower.Mode
-
 	lf.ctx.Logger.Info("LeaderFollower run started",
-		slog.String("mode", mode),
 		slog.Int("followers", len(lf.ctx.CharacterCfg.LeaderFollower.Followers)))
 
 	// Subscribe to message bus events
 	lf.subscribeToEvents()
 	defer lf.unsubscribeAll()
 
-	if mode == LeaderModeHuman {
-		return lf.runHumanLeaderMode()
-	}
-	return lf.runBotLeaderMode()
+	return lf.runHumanLeaderMode()
 }
 
 // runHumanLeaderMode runs the coordination for human leader mode
@@ -146,51 +127,10 @@ func (lf *LeaderFollower) runHumanLeaderMode() error {
 	}
 }
 
-// runBotLeaderMode runs the coordination for bot leader mode
-func (lf *LeaderFollower) runBotLeaderMode() error {
-	lf.ctx.Logger.Info("Bot leader mode: creating games and coordinating followers")
-
-	// Notify followers to start
-	lf.notifyFollowersToStart()
-
-	// Main loop - create games and coordinate followers
-	for {
-		if lf.ctx.ExecutionPriority == context.PriorityStop {
-			lf.ctx.Logger.Info("LeaderFollower run stopping")
-			return nil
-		}
-
-		// Wait for game to be created (handled by normal game creation flow)
-		// Then notify followers
-
-		gameName := lf.ctx.Data.Game.LastGameName
-		gamePassword := lf.ctx.Data.Game.LastGamePassword
-
-		if gameName != "" {
-			// Broadcast game available to followers
-			lf.bus.Publish(messagebus.NewGameAvailableMessage(
-				lf.ctx.Name,
-				lf.ctx.CharacterCfg.CharacterName,
-				gameName,
-				gamePassword,
-			))
-
-			lf.ctx.Logger.Info("Notified followers of new game",
-				slog.String("game", gameName))
-		}
-
-		// Wait for leader to finish this game
-		// This will be triggered when the game ends naturally
-		return nil
-	}
-}
 
 // notifyFollowersToStart sends a message to all configured followers to start following
 func (lf *LeaderFollower) notifyFollowersToStart() {
 	leaderName := lf.ctx.CharacterCfg.LeaderFollower.LeaderName
-	if lf.ctx.CharacterCfg.LeaderFollower.Mode == LeaderModeBot {
-		leaderName = lf.ctx.CharacterCfg.CharacterName
-	}
 
 	for _, follower := range lf.ctx.CharacterCfg.LeaderFollower.Followers {
 		lf.ctx.Logger.Debug("Notifying follower to start",

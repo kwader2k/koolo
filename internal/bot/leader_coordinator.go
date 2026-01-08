@@ -245,7 +245,13 @@ func (lc *LeaderCoordinator) GetContext() *ct.Context {
 	return lc.ctx
 }
 
-// IsHumanLeaderMode checks if a config is set up for human leader mode
-func IsHumanLeaderMode(cfg *config.CharacterCfg) bool {
-	return cfg.LeaderFollower.Enabled && cfg.LeaderFollower.Mode == "human"
+// IsLeaderFollowerMode checks if a config has the leader-follower run configured
+func IsLeaderFollowerMode(cfg *config.CharacterCfg) bool {
+	// Check if leader_follower is in the runs list
+	for _, run := range cfg.Game.Runs {
+		if run == config.LeaderFollowerRun {
+			return true
+		}
+	}
+	return false
 }

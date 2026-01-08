@@ -80,8 +80,8 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 		return err
 	}
 
-	// Check if this is a human leader mode - no D2R instance needed
-	if IsHumanLeaderMode(cfg) {
+	// Check if this is a leader-follower coordinator - no D2R instance needed
+	if IsLeaderFollowerMode(cfg) {
 		return mng.startLeaderCoordinator(supervisorName, supervisorLogger, cfg)
 	}
 

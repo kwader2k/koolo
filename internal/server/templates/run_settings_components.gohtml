@@ -433,14 +433,7 @@
 
 {{ define "leader_follower" }}
     <fieldset>
-        <label><input type="checkbox" name="leaderFollowerEnabled" {{ if .Config.LeaderFollower.Enabled }}checked{{ end }}> Enable Leader-Follower Mode</label>
-        
-        <label>Mode
-            <select name="leaderFollowerMode" id="leaderFollowerMode">
-                <option value="human" {{ if or (eq .Config.LeaderFollower.Mode "human") (eq .Config.LeaderFollower.Mode "") }}selected{{ end }}>Human Leader (No D2R spawn)</option>
-                <option value="bot" {{ if eq .Config.LeaderFollower.Mode "bot" }}selected{{ end }}>Bot Leader</option>
-            </select>
-        </label>
+        <small style="opacity:0.7; display:block; margin-bottom:1em;">This run coordinates follower bots to join games with a human leader. No D2R instance is spawned for this supervisor - it just coordinates followers.</small>
         
         <label>Leader Character Name
             <input type="text" name="leaderFollowerLeaderName" value="{{ .Config.LeaderFollower.LeaderName }}" placeholder="Character name to follow">

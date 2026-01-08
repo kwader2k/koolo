@@ -1726,11 +1726,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			cfg.Companion.GamePassword = values.Get("companionGamePassword")
 
 			// LeaderFollower
-			cfg.LeaderFollower.Enabled = values.Has("leaderFollowerEnabled")
-			cfg.LeaderFollower.Mode = values.Get("leaderFollowerMode")
-			if cfg.LeaderFollower.Mode == "" {
-				cfg.LeaderFollower.Mode = "human"
-			}
+			cfg.LeaderFollower.Mode = "human" // Only human leader mode is supported
 			cfg.LeaderFollower.LeaderName = values.Get("leaderFollowerLeaderName")
 			cfg.LeaderFollower.GameNamePattern = values.Get("leaderFollowerGameNamePattern")
 			cfg.LeaderFollower.GamePassword = values.Get("leaderFollowerGamePassword")
@@ -2639,11 +2635,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
 
 		// LeaderFollower config
-		cfg.LeaderFollower.Enabled = r.Form.Has("leaderFollowerEnabled")
-		cfg.LeaderFollower.Mode = r.Form.Get("leaderFollowerMode")
-		if cfg.LeaderFollower.Mode == "" {
-			cfg.LeaderFollower.Mode = "human"
-		}
+		cfg.LeaderFollower.Mode = "human" // Only human leader mode is supported
 		cfg.LeaderFollower.LeaderName = r.Form.Get("leaderFollowerLeaderName")
 		cfg.LeaderFollower.GameNamePattern = r.Form.Get("leaderFollowerGameNamePattern")
 		cfg.LeaderFollower.GamePassword = r.Form.Get("leaderFollowerGamePassword")

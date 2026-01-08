@@ -230,18 +230,17 @@ companion:
   gameNameTemplate: game- # Template for the game name, for example "game-" will lead to "game-1", "game-2", etc.
   gamePassword: xxx
 
-# Leader-Follower settings. Different from companion mode - allows bots to follow a human or bot leader
+# Leader-Follower settings. Allows bots to follow a human leader.
+# Add "leader_follower" run to enable - no D2R instance spawns for this supervisor.
 leaderFollower:
-  enabled: false
-  mode: 'human' # 'human' (no D2R spawned for leader supervisor) or 'bot' (leader is another bot)
-  leaderName: '' # Character name of the leader to follow (human mode)
-  followers: [] # List of supervisor names that follow this leader (bot mode)
+  leaderName: '' # Character name of the human leader to follow
+  followers: [] # List of supervisor names that will follow this leader
   gameNamePattern: 'run-' # Pattern for game names, e.g., "run-" becomes "run-1", "run-2"
   gamePassword: ''
   joinDelayMin: 1000 # Minimum random delay (ms) before joining a new game
   joinDelayMax: 5000 # Maximum random delay (ms) before joining a new game  
   gameSearchTimeout: 60 # Seconds to wait for a game to appear
-  pollInterval: 30000 # How often (ms) to check if leader left the game (human mode only)
+  pollInterval: 30000 # How often (ms) to check if leader left the game
   useLegacyGraphics: false # Use legacy (D2 classic) graphics mode for followers (lower resource usage)
 
 # Gambling settings. If enabled, bot will start gambling when all the gold stash tabs are full.
