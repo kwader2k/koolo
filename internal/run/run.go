@@ -184,6 +184,9 @@ func BuildRun(run string) Run {
 	// Development / Utility runs
 	case string(config.DevelopmentRun):
 		return NewDevRun()
+	// Leader-Follower runs
+	case string(config.LeaderFollowerRun):
+		return NewLeaderFollower()
 	}
 
 	return nil

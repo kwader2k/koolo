@@ -1628,3 +1628,63 @@
 .chest-toggle-option input[type="checkbox"] {
     margin: 0;
 }
+
+/* ========================================
+   LEADER-FOLLOWER RUN SETTINGS
+   ======================================== */
+
+.leader-follower-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.leader-follower-settings .options-group {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.leader-follower-settings .options-group strong {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.leader-follower-settings .helper-text {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: -0.25rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.7;
+}
+
+.leader-follower-settings select[multiple] {
+    min-height: 120px;
+    background: var(--bg-tertiary);
+}
+
+.leader-follower-settings .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.leader-follower-settings input[type="number"] {
+    font-size: 0.85rem;
+}
+
+.leader-follower-settings input[type="text"] {
+    font-size: 0.85rem;
+}
+
+.leader-follower-settings label {
+    margin-bottom: 0.25rem;
+}

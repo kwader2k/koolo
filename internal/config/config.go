@@ -485,6 +485,19 @@ type CharacterCfg struct {
 		CompanionGameName     string `yaml:"companionGameName"`
 		CompanionGamePassword string `yaml:"companionGamePassword"`
 	} `yaml:"companion"`
+	LeaderFollower struct {
+		Enabled           bool     `yaml:"enabled"`
+		Mode              string   `yaml:"mode"`              // "human" or "bot" - human means no D2R spawned for leader
+		LeaderName        string   `yaml:"leaderName"`        // Character name of the leader (for human mode)
+		Followers         []string `yaml:"followers"`         // List of supervisor names that should follow this leader
+		GameNamePattern   string   `yaml:"gameNamePattern"`   // Base pattern for game names (e.g., "run-" becomes "run-1", "run-2")
+		GamePassword      string   `yaml:"gamePassword"`      // Password for games
+		JoinDelayMin      int      `yaml:"joinDelayMin"`      // Minimum random delay before joining (ms)
+		JoinDelayMax      int      `yaml:"joinDelayMax"`      // Maximum random delay before joining (ms)
+		GameSearchTimeout int      `yaml:"gameSearchTimeout"` // Seconds to wait for game to appear
+		PollInterval      int      `yaml:"pollInterval"`      // How often to poll roster for leader (ms) - human mode only
+		CurrentGameNumber int      `yaml:"-"`                 // Runtime: current game number in pattern
+	} `yaml:"leaderFollower"`
 	Gambling struct {
 		Enabled bool        `yaml:"enabled"`
 		Items   []item.Name `yaml:"items"`

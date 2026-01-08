@@ -169,6 +169,15 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 	}
 
+	// Check if this supervisor is a follower (started by a leader coordinator)
+	followerInfo := GetFollowerInfo(s.name)
+	if followerInfo != nil {
+		s.bot.ctx.Logger.Info("Running in follower mode",
+			slog.String("leader", followerInfo.LeaderName),
+			slog.String("gamePattern", followerInfo.GamePattern))
+		return s.runFollowerMode(ctx, followerInfo)
+	}
+
 	// NORMAL MODE: Original code unchanged from here
 	firstRun := true
 	var timeSpentNotInGameStart = time.Now()
@@ -730,4 +739,199 @@ func (s *SinglePlayerSupervisor) createLobbyGame() error {
 	s.bot.ctx.CharacterCfg.Game.PublicGameCounter++
 	s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
 	return nil
+}
+
+// runFollowerMode runs the supervisor in follower mode, following a human leader
+func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerInfo *FollowerInfo) error {
+	s.bot.ctx.Logger.Info("Follower mode: waiting for character selection screen...")
+
+	if err := s.waitUntilCharacterSelectionScreen(); err != nil {
+		return fmt.Errorf("follower mode: error waiting for character selection screen: %w", err)
+	}
+
+	s.bot.ctx.Logger.Info("Follower mode: ready to follow leader",
+		slog.String("leader", followerInfo.LeaderName))
+
+	// Main follower loop
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+
+		// If not in game, try to join the leader's game
+		if !s.bot.ctx.Manager.InGame() {
+			// Ensure we're online first
+			if s.bot.ctx.GameReader.IsInCharacterSelectionScreen() {
+				s.bot.ctx.Logger.Info("Follower mode: ensuring online connection...")
+				if err := s.ensureOnline(); err != nil {
+					s.bot.ctx.Logger.Warn("Follower mode: failed to ensure online",
+						slog.String("error", err.Error()))
+					utils.Sleep(5000)
+					continue
+				}
+			}
+
+			// Enter the lobby if not already there
+			if !s.bot.ctx.GameReader.IsInLobby() {
+				s.bot.ctx.Logger.Info("Follower mode: entering lobby...")
+				if err := s.tryEnterLobby(); err != nil {
+					s.bot.ctx.Logger.Warn("Follower mode: failed to enter lobby",
+						slog.String("error", err.Error()))
+					utils.Sleep(5000)
+					continue
+				}
+			}
+
+			// Get the current game name (pattern + counter)
+			gameName := GetCurrentGameName(s.name)
+			if gameName == "" {
+				gameName = followerInfo.GamePattern + "1" // Fallback
+			}
+
+			s.bot.ctx.Logger.Info("Follower mode: attempting to join leader's game",
+				slog.String("gameName", gameName))
+
+			// Random delay before joining
+			minDelay := followerInfo.JoinDelayMin
+			maxDelay := followerInfo.JoinDelayMax
+			if minDelay < 1000 {
+				minDelay = 1000
+			}
+			if maxDelay < minDelay {
+				maxDelay = minDelay + 1000
+			}
+			delay := time.Duration(minDelay + rand.Intn(maxDelay-minDelay))
+			s.bot.ctx.Logger.Info("Follower mode: waiting before joining", slog.Duration("delay", delay*time.Millisecond))
+			time.Sleep(delay * time.Millisecond)
+
+			// Try to join the game
+			joinGameFunc := func() error {
+				return s.bot.ctx.Manager.JoinOnlineGame(gameName, followerInfo.GamePassword)
+			}
+			err := s.callManagerWithTimeout(joinGameFunc)
+			if err != nil {
+				s.bot.ctx.Logger.Warn("Follower mode: failed to join game, retrying...",
+					slog.String("error", err.Error()),
+					slog.String("gameName", gameName))
+				utils.Sleep(5000)
+				continue
+			}
+
+			s.bot.ctx.Logger.Info("Follower mode: joined game successfully",
+				slog.String("gameName", gameName))
+		}
+
+		// In-game follower behavior
+		if s.bot.ctx.Manager.InGame() {
+			err := s.runFollowerInGame(ctx, followerInfo)
+			if err != nil {
+				s.bot.ctx.Logger.Warn("Follower mode: error in game, leaving...",
+					slog.String("error", err.Error()))
+				s.bot.ctx.Manager.ExitGame()
+				utils.Sleep(3000)
+			}
+		}
+
+		utils.Sleep(1000)
+	}
+}
+
+// runFollowerInGame handles follower behavior while in a game
+func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, followerInfo *FollowerInfo) error {
+	s.bot.ctx.Logger.Info("Follower mode: in game, setting up...")
+
+	// Wait for game to fully load
+	s.bot.ctx.WaitForGameToLoad()
+	s.bot.ctx.RefreshGameData()
+
+	// Try to join the leader's party
+	s.bot.ctx.Logger.Info("Follower mode: looking for leader",
+		slog.String("leader", followerInfo.LeaderName))
+
+	// Wait for leader to appear in roster (with timeout)
+	timeout := 60 * time.Second
+	start := time.Now()
+	leaderFound := false
+	for time.Since(start) < timeout {
+		s.bot.ctx.RefreshGameData()
+		if action.FindPlayerInRoster(followerInfo.LeaderName) {
+			leaderFound = true
+			break
+		}
+		utils.Sleep(2000)
+	}
+
+	if !leaderFound {
+		return fmt.Errorf("leader %s not found in game after %v", followerInfo.LeaderName, timeout)
+	}
+
+	s.bot.ctx.Logger.Info("Follower mode: leader found, joining party")
+
+	// Try to join party
+	if !action.IsInPartyWith(followerInfo.LeaderName) {
+		if err := action.JoinPlayerParty(followerInfo.LeaderName, 3); err != nil {
+			s.bot.ctx.Logger.Warn("Follower mode: failed to join party",
+				slog.String("error", err.Error()))
+		}
+	}
+
+	// Go to town and wait
+	s.bot.ctx.Logger.Info("Follower mode: idling in town, monitoring leader")
+
+	// Poll for leader presence
+	pollInterval := 30 * time.Second
+	if s.bot.ctx.CharacterCfg.LeaderFollower.PollInterval > 0 {
+		pollInterval = time.Duration(s.bot.ctx.CharacterCfg.LeaderFollower.PollInterval) * time.Millisecond
+	}
+
+	ticker := time.NewTicker(pollInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			s.bot.ctx.RefreshGameData()
+
+			// Check if leader is still in game
+			if !action.FindPlayerInRoster(followerInfo.LeaderName) {
+				s.bot.ctx.Logger.Info("Follower mode: leader has left the game, leaving and preparing for next game")
+				
+				// Leave the current game first
+				s.bot.ctx.Logger.Info("Follower mode: exiting current game...")
+				if err := s.bot.ctx.Manager.ExitGame(); err != nil {
+					s.bot.ctx.Logger.Warn("Follower mode: error exiting game",
+						slog.String("error", err.Error()))
+				}
+				
+				// Wait for game exit to complete
+				utils.Sleep(3000)
+				
+				// Increment the game counter for the next game
+				IncrementGameCounter(s.name)
+				nextGame := GetCurrentGameName(s.name)
+				s.bot.ctx.Logger.Info("Follower mode: next game will be",
+					slog.String("gameName", nextGame))
+				
+				// Random delay before rejoining (staggered)
+				minDelay := followerInfo.JoinDelayMin
+				maxDelay := followerInfo.JoinDelayMax
+				if minDelay < 1000 {
+					minDelay = 1000
+				}
+				if maxDelay < minDelay {
+					maxDelay = minDelay + 1000
+				}
+				delay := time.Duration(minDelay + rand.Intn(maxDelay-minDelay))
+				s.bot.ctx.Logger.Info("Follower mode: waiting before rejoining",
+					slog.Duration("delay", delay*time.Millisecond))
+				time.Sleep(delay * time.Millisecond)
+				
+				return nil // Exit in-game loop to rejoin from lobby
+			}
+		}
+	}
 }

@@ -9,6 +9,7 @@ import (
 	"unsafe"
 
 	"github.com/hectorgimenez/koolo/cmd/koolo/log"
+	"github.com/hectorgimenez/koolo/internal/bot/messagebus"
 	"github.com/hectorgimenez/koolo/internal/character"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
@@ -28,10 +29,13 @@ type SupervisorManager struct {
 	supervisors    map[string]Supervisor
 	crashDetectors map[string]*game.CrashDetector
 	eventListener  *event.Listener
-	Drop           *drop.Service // Drop: Service façade to manage Drop domain
+	Drop           *drop.Service    // Drop: Service façade to manage Drop domain
+	MessageBus     *messagebus.Bus  // MessageBus: Inter-bot communication
 }
 
 func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *SupervisorManager {
+	// Initialize the global message bus for inter-bot communication
+	bus := messagebus.InitBus(logger)
 
 	return &SupervisorManager{
 		logger:         logger,
@@ -39,6 +43,7 @@ func NewSupervisorManager(logger *slog.Logger, eventListener *event.Listener) *S
 		crashDetectors: make(map[string]*game.CrashDetector),
 		eventListener:  eventListener,
 		Drop:           drop.NewService(logger),
+		MessageBus:     bus,
 	}
 }
 
@@ -65,9 +70,19 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 		return fmt.Errorf("error loading config: %w", err)
 	}
 
+	cfg, found := config.GetCharacter(supervisorName)
+	if !found {
+		return fmt.Errorf("character %s not found", supervisorName)
+	}
+
 	supervisorLogger, err := log.NewLogger(config.Koolo.Debug.Log, config.Koolo.LogSaveDirectory, supervisorName)
 	if err != nil {
 		return err
+	}
+
+	// Check if this is a human leader mode - no D2R instance needed
+	if IsHumanLeaderMode(cfg) {
+		return mng.startLeaderCoordinator(supervisorName, supervisorLogger, cfg)
 	}
 
 	var optionalPID uint32
@@ -123,6 +138,43 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 	if err != nil {
 		mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
 	}
+
+	return nil
+}
+
+// startLeaderCoordinator starts a leader coordinator for human leader mode (no D2R instance)
+func (mng *SupervisorManager) startLeaderCoordinator(supervisorName string, logger *slog.Logger, cfg *config.CharacterCfg) error {
+	mng.logger.Info("Starting leader coordinator (human leader mode - no D2R)",
+		slog.String("supervisor", supervisorName),
+		slog.String("leader", cfg.LeaderFollower.LeaderName))
+
+	statsHandler := NewStatsHandler(supervisorName, logger)
+	mng.eventListener.Register(statsHandler.Handle)
+
+	// Create functions that the coordinator can use to start/stop followers
+	startFollowerFn := func(followerName string) error {
+		return mng.Start(followerName, false, false)
+	}
+	stopFollowerFn := func(followerName string) {
+		mng.Stop(followerName)
+	}
+
+	coordinator, err := NewLeaderCoordinator(supervisorName, logger, cfg, statsHandler, startFollowerFn, stopFollowerFn)
+	if err != nil {
+		return fmt.Errorf("error creating leader coordinator: %w", err)
+	}
+
+	mng.supervisors[supervisorName] = coordinator
+	// No crash detector needed for coordinator
+
+	go func() {
+		err := coordinator.Start()
+		if err != nil {
+			mng.logger.Error("Leader coordinator error",
+				slog.String("supervisor", supervisorName),
+				slog.String("error", err.Error()))
+		}
+	}()
 
 	return nil
 }

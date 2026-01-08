@@ -431,6 +431,67 @@
     </fieldset>
 {{ end }}
 
+{{ define "leader_follower" }}
+    <fieldset>
+        <label><input type="checkbox" name="leaderFollowerEnabled" {{ if .Config.LeaderFollower.Enabled }}checked{{ end }}> Enable Leader-Follower Mode</label>
+        
+        <label>Mode
+            <select name="leaderFollowerMode" id="leaderFollowerMode">
+                <option value="human" {{ if or (eq .Config.LeaderFollower.Mode "human") (eq .Config.LeaderFollower.Mode "") }}selected{{ end }}>Human Leader (No D2R spawn)</option>
+                <option value="bot" {{ if eq .Config.LeaderFollower.Mode "bot" }}selected{{ end }}>Bot Leader</option>
+            </select>
+        </label>
+        
+        <label>Leader Character Name
+            <input type="text" name="leaderFollowerLeaderName" value="{{ .Config.LeaderFollower.LeaderName }}" placeholder="Character name to follow">
+        </label>
+        
+        <label>Followers (select supervisors to follow this leader)
+            <select name="leaderFollowerFollowers" id="leaderFollowerFollowers" multiple style="min-height:120px;">
+                {{- range .Supervisors -}}
+                {{- if ne . $.Supervisor -}}
+                <option value="{{ . }}" {{ if isInStringSlice $.Config.LeaderFollower.Followers . }}selected{{ end }}>{{ . }}</option>
+                {{- end -}}
+                {{- end -}}
+            </select>
+        </label>
+        <small style="opacity:0.7;">Hold Ctrl/Cmd to select multiple supervisors</small>
+        
+        <label>Game Name Pattern
+            <input type="text" name="leaderFollowerGameNamePattern" id="leaderFollowerGameNamePattern" value="{{ .Config.LeaderFollower.GameNamePattern }}" placeholder="e.g., run-" oninput="updateGameNamePreview()">
+        </label>
+        <small style="opacity:0.7;">First game: <strong id="gameNamePreview">{{ .Config.LeaderFollower.GameNamePattern }}1</strong>, then {{ .Config.LeaderFollower.GameNamePattern }}2, {{ .Config.LeaderFollower.GameNamePattern }}3, etc.</small>
+        <script>
+        function updateGameNamePreview() {
+            var pattern = document.getElementById('leaderFollowerGameNamePattern').value || 'game';
+            document.getElementById('gameNamePreview').textContent = pattern + '1';
+        }
+        </script>
+        
+        <label>Game Password
+            <input type="text" name="leaderFollowerGamePassword" value="{{ .Config.LeaderFollower.GamePassword }}" placeholder="Optional password">
+        </label>
+        
+        <fieldset class="grid">
+            <label>Min Join Delay (ms)
+                <input type="number" name="leaderFollowerJoinDelayMin" value="{{ .Config.LeaderFollower.JoinDelayMin }}" min="0" step="100">
+            </label>
+            <label>Max Join Delay (ms)
+                <input type="number" name="leaderFollowerJoinDelayMax" value="{{ .Config.LeaderFollower.JoinDelayMax }}" min="0" step="100">
+            </label>
+        </fieldset>
+        
+        <fieldset class="grid">
+            <label>Game Search Timeout (sec)
+                <input type="number" name="leaderFollowerGameSearchTimeout" value="{{ .Config.LeaderFollower.GameSearchTimeout }}" min="10" step="5">
+            </label>
+            <label>Poll Interval (ms)
+                <input type="number" name="leaderFollowerPollInterval" value="{{ .Config.LeaderFollower.PollInterval }}" min="1000" step="1000">
+            </label>
+        </fieldset>
+    </fieldset>
+{{ end }}
+
 {{ define "shopping" }}
   <fieldset>
     <legend>Shopping</legend>

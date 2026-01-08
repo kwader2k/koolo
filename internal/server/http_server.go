@@ -214,6 +214,9 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 		"isTZSelected": func(slice []area.ID, value int) bool {
 			return slices.Contains(slice, area.ID(value))
 		},
+		"isInStringSlice": func(slice []string, value string) bool {
+			return slices.Contains(slice, value)
+		},
 		"executeTemplateByName": func(name string, data interface{}) template.HTML {
 			tmpl := templates.Lookup(name)
 			var buf bytes.Buffer
@@ -230,6 +233,8 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 				return "Uber (Organs)"
 			case string(config.PandemoniumRun):
 				return "Uber (Torch)"
+			case string(config.LeaderFollowerRun):
+				return "Leader-Follower"
 			default:
 				return run
 			}
@@ -1720,6 +1725,33 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			cfg.Companion.GameNameTemplate = values.Get("companionGameNameTemplate")
 			cfg.Companion.GamePassword = values.Get("companionGamePassword")
 
+			// LeaderFollower
+			cfg.LeaderFollower.Enabled = values.Has("leaderFollowerEnabled")
+			cfg.LeaderFollower.Mode = values.Get("leaderFollowerMode")
+			if cfg.LeaderFollower.Mode == "" {
+				cfg.LeaderFollower.Mode = "human"
+			}
+			cfg.LeaderFollower.LeaderName = values.Get("leaderFollowerLeaderName")
+			cfg.LeaderFollower.GameNamePattern = values.Get("leaderFollowerGameNamePattern")
+			cfg.LeaderFollower.GamePassword = values.Get("leaderFollowerGamePassword")
+			if followers, ok := values["leaderFollowerFollowers"]; ok {
+				cfg.LeaderFollower.Followers = followers
+			} else {
+				cfg.LeaderFollower.Followers = nil
+			}
+			if v := values.Get("leaderFollowerJoinDelayMin"); v != "" {
+				cfg.LeaderFollower.JoinDelayMin, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderFollowerJoinDelayMax"); v != "" {
+				cfg.LeaderFollower.JoinDelayMax, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderFollowerGameSearchTimeout"); v != "" {
+				cfg.LeaderFollower.GameSearchTimeout, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderFollowerPollInterval"); v != "" {
+				cfg.LeaderFollower.PollInterval, _ = strconv.Atoi(v)
+			}
+
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
 		}
@@ -2604,6 +2636,33 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Companion.LeaderName = r.Form.Get("companionLeaderName")
 		cfg.Companion.GameNameTemplate = r.Form.Get("companionGameNameTemplate")
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
+
+		// LeaderFollower config
+		cfg.LeaderFollower.Enabled = r.Form.Has("leaderFollowerEnabled")
+		cfg.LeaderFollower.Mode = r.Form.Get("leaderFollowerMode")
+		if cfg.LeaderFollower.Mode == "" {
+			cfg.LeaderFollower.Mode = "human"
+		}
+		cfg.LeaderFollower.LeaderName = r.Form.Get("leaderFollowerLeaderName")
+		cfg.LeaderFollower.GameNamePattern = r.Form.Get("leaderFollowerGameNamePattern")
+		cfg.LeaderFollower.GamePassword = r.Form.Get("leaderFollowerGamePassword")
+		if followers, ok := r.Form["leaderFollowerFollowers"]; ok {
+			cfg.LeaderFollower.Followers = followers
+		} else {
+			cfg.LeaderFollower.Followers = nil
+		}
+		if v := r.Form.Get("leaderFollowerJoinDelayMin"); v != "" {
+			cfg.LeaderFollower.JoinDelayMin, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderFollowerJoinDelayMax"); v != "" {
+			cfg.LeaderFollower.JoinDelayMax, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderFollowerGameSearchTimeout"); v != "" {
+			cfg.LeaderFollower.GameSearchTimeout, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderFollowerPollInterval"); v != "" {
+			cfg.LeaderFollower.PollInterval, _ = strconv.Atoi(v)
+		}
 
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
