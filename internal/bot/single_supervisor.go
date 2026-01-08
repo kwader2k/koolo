@@ -125,6 +125,10 @@ func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
 
 // Start will return error if it can be started, otherwise will always return nil
 func (s *SinglePlayerSupervisor) Start() error {
+	// Attach context to this goroutine so context.Get() works
+	s.bot.ctx.AttachRoutine(ct.PriorityNormal)
+	defer s.bot.ctx.Detach()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancelFn = cancel
 
@@ -760,6 +764,12 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 		default:
 		}
 
+		// Refresh followerInfo periodically to get any updates
+		currentInfo := GetFollowerInfo(s.name)
+		if currentInfo != nil {
+			followerInfo = currentInfo
+		}
+
 		// If not in game, try to join the leader's game
 		if !s.bot.ctx.Manager.InGame() {
 			// Ensure we're online first
@@ -768,7 +778,9 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 				if err := s.ensureOnline(); err != nil {
 					s.bot.ctx.Logger.Warn("Follower mode: failed to ensure online",
 						slog.String("error", err.Error()))
-					utils.Sleep(5000)
+					if !s.sleepWithContextCheck(ctx, 5000) {
+						return nil
+					}
 					continue
 				}
 			}
@@ -779,9 +791,26 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 				if err := s.tryEnterLobby(); err != nil {
 					s.bot.ctx.Logger.Warn("Follower mode: failed to enter lobby",
 						slog.String("error", err.Error()))
-					utils.Sleep(5000)
+					if !s.sleepWithContextCheck(ctx, 5000) {
+						return nil
+					}
 					continue
 				}
+			}
+
+			// Double-check we're not in a game before trying to join
+			if s.bot.ctx.Manager.InGame() {
+				s.bot.ctx.Logger.Warn("Follower mode: still in game when trying to join, exiting first",
+					slog.String("supervisor", s.name))
+				if err := s.bot.ctx.Manager.ExitGame(); err != nil {
+					s.bot.ctx.Logger.Warn("Follower mode: error exiting residual game",
+						slog.String("supervisor", s.name),
+						slog.String("error", err.Error()))
+				}
+				if !s.sleepWithContextCheck(ctx, 3000) {
+					return nil
+				}
+				continue
 			}
 
 			// Get the current game name (pattern + counter)
@@ -791,20 +820,25 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 			}
 
 			s.bot.ctx.Logger.Info("Follower mode: attempting to join leader's game",
-				slog.String("gameName", gameName))
+				slog.String("supervisor", s.name),
+				slog.String("gameName", gameName),
+				slog.Int("retryCount", GetJoinRetries(s.name)))
 
-			// Random delay before joining
-			minDelay := followerInfo.JoinDelayMin
-			maxDelay := followerInfo.JoinDelayMax
-			if minDelay < 1000 {
-				minDelay = 1000
+			// Random delay before joining using utility function
+			delay := CalculateRandomDelay(followerInfo.JoinDelayMin, followerInfo.JoinDelayMax)
+			s.bot.ctx.Logger.Info("Follower mode: waiting before joining",
+				slog.String("supervisor", s.name),
+				slog.Int("delayMs", delay))
+			if !s.sleepWithContextCheck(ctx, delay) {
+				return nil
 			}
-			if maxDelay < minDelay {
-				maxDelay = minDelay + 1000
+
+			// Final check before join attempt
+			if s.bot.ctx.Manager.InGame() {
+				s.bot.ctx.Logger.Warn("Follower mode: entered game during delay, skipping join",
+					slog.String("supervisor", s.name))
+				continue
 			}
-			delay := time.Duration(minDelay + rand.Intn(maxDelay-minDelay))
-			s.bot.ctx.Logger.Info("Follower mode: waiting before joining", slog.Duration("delay", delay*time.Millisecond))
-			time.Sleep(delay * time.Millisecond)
 
 			// Try to join the game
 			joinGameFunc := func() error {
@@ -812,14 +846,37 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 			}
 			err := s.callManagerWithTimeout(joinGameFunc)
 			if err != nil {
-				s.bot.ctx.Logger.Warn("Follower mode: failed to join game, retrying...",
+				s.bot.ctx.Logger.Warn("Follower mode: failed to join game",
+					slog.String("supervisor", s.name),
 					slog.String("error", err.Error()),
-					slog.String("gameName", gameName))
-				utils.Sleep(5000)
+					slog.String("gameName", gameName),
+					slog.Int("retryCount", GetJoinRetries(s.name)+1))
+				
+				// Dismiss any modal that might be blocking (e.g., "Game does not exist")
+				s.dismissFollowerModal()
+				
+				// Check if we've hit max retries
+				if IncrementJoinRetries(s.name) {
+					s.bot.ctx.Logger.Warn("Follower mode: max join retries reached, skipping to next game",
+						slog.String("supervisor", s.name),
+						slog.String("currentGame", gameName))
+					IncrementGameCounter(s.name)
+					nextGame := GetCurrentGameName(s.name)
+					s.bot.ctx.Logger.Info("Follower mode: will try next game",
+						slog.String("supervisor", s.name),
+						slog.String("nextGame", nextGame))
+				}
+				
+				if !s.sleepWithContextCheck(ctx, 5000) {
+					return nil
+				}
 				continue
 			}
 
+			// Reset retry count on successful join
+			ResetJoinRetries(s.name)
 			s.bot.ctx.Logger.Info("Follower mode: joined game successfully",
+				slog.String("supervisor", s.name),
 				slog.String("gameName", gameName))
 		}
 
@@ -828,26 +885,90 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 			err := s.runFollowerInGame(ctx, followerInfo)
 			if err != nil {
 				s.bot.ctx.Logger.Warn("Follower mode: error in game, leaving...",
+					slog.String("supervisor", s.name),
 					slog.String("error", err.Error()))
-				s.bot.ctx.Manager.ExitGame()
-				utils.Sleep(3000)
+				// Only try to exit if we're still in game
+				if s.bot.ctx.Manager.InGame() {
+					s.bot.ctx.Manager.ExitGame()
+					// Wait for exit to complete
+					exitDeadline := time.Now().Add(10 * time.Second)
+				exitWaitLoop:
+					for s.bot.ctx.Manager.InGame() {
+						select {
+						case <-ctx.Done():
+							return nil
+						default:
+							if time.Now().After(exitDeadline) {
+								s.bot.ctx.Logger.Error("Follower mode: timeout waiting for error recovery exit",
+									slog.String("supervisor", s.name))
+								break exitWaitLoop
+							}
+							time.Sleep(500 * time.Millisecond)
+						}
+					}
+				}
+				if !s.sleepWithContextCheck(ctx, 3000) {
+					return nil
+				}
 			}
 		}
 
-		utils.Sleep(1000)
+		if !s.sleepWithContextCheck(ctx, 1000) {
+			return nil
+		}
+	}
+}
+
+// sleepWithContextCheck sleeps for the specified duration in milliseconds
+// Returns false if context was cancelled during sleep
+func (s *SinglePlayerSupervisor) sleepWithContextCheck(ctx context.Context, ms int) bool {
+	select {
+	case <-ctx.Done():
+		return false
+	case <-time.After(time.Duration(ms) * time.Millisecond):
+		return true
+	}
+}
+
+// dismissFollowerModal dismisses any modal dialogs that might be blocking follower operations
+func (s *SinglePlayerSupervisor) dismissFollowerModal() {
+	isDismissable, text := s.bot.ctx.GameReader.IsDismissableModalPresent()
+	if isDismissable {
+		s.bot.ctx.Logger.Debug("Follower mode: dismissing modal",
+			slog.String("text", text))
+		s.bot.ctx.HID.PressKey(0x1B) // Escape
+		utils.Sleep(500)
+		
+		// Check if still present and try clicking OK button area
+		stillPresent, _ := s.bot.ctx.GameReader.IsDismissableModalPresent()
+		if stillPresent {
+			s.bot.ctx.Logger.Debug("Follower mode: modal still present, trying click dismiss")
+			// Click center-ish area where OK button typically is
+			s.bot.ctx.HID.Click(game.LeftButton, 640, 400)
+			utils.Sleep(500)
+		}
 	}
 }
 
 // runFollowerInGame handles follower behavior while in a game
 func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, followerInfo *FollowerInfo) error {
-	s.bot.ctx.Logger.Info("Follower mode: in game, setting up...")
+	s.bot.ctx.Logger.Info("Follower mode: in game, setting up...",
+		slog.String("supervisor", s.name))
 
 	// Wait for game to fully load
 	s.bot.ctx.WaitForGameToLoad()
 	s.bot.ctx.RefreshGameData()
 
+	// Enable legacy graphics if configured
+	if followerInfo.UseLegacyGraphics {
+		s.bot.ctx.Logger.Info("Follower mode: enabling legacy graphics",
+			slog.String("supervisor", s.name))
+		action.ForceSwitchToLegacyMode()
+	}
+
 	// Try to join the leader's party
 	s.bot.ctx.Logger.Info("Follower mode: looking for leader",
+		slog.String("supervisor", s.name),
 		slog.String("leader", followerInfo.LeaderName))
 
 	// Wait for leader to appear in roster (with timeout)
@@ -855,80 +976,147 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 	start := time.Now()
 	leaderFound := false
 	for time.Since(start) < timeout {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+		}
+		
+		// Check if we're still in game
+		if !s.bot.ctx.Manager.InGame() {
+			return fmt.Errorf("disconnected from game while searching for leader")
+		}
+		
 		s.bot.ctx.RefreshGameData()
 		if action.FindPlayerInRoster(followerInfo.LeaderName) {
 			leaderFound = true
 			break
 		}
-		utils.Sleep(2000)
+		if !s.sleepWithContextCheck(ctx, 2000) {
+			return nil
+		}
 	}
 
 	if !leaderFound {
 		return fmt.Errorf("leader %s not found in game after %v", followerInfo.LeaderName, timeout)
 	}
 
-	s.bot.ctx.Logger.Info("Follower mode: leader found, joining party")
+	s.bot.ctx.Logger.Info("Follower mode: leader found, joining party",
+		slog.String("supervisor", s.name))
 
 	// Try to join party
 	if !action.IsInPartyWith(followerInfo.LeaderName) {
 		if err := action.JoinPlayerParty(followerInfo.LeaderName, 3); err != nil {
 			s.bot.ctx.Logger.Warn("Follower mode: failed to join party",
+				slog.String("supervisor", s.name),
 				slog.String("error", err.Error()))
 		}
 	}
 
 	// Go to town and wait
-	s.bot.ctx.Logger.Info("Follower mode: idling in town, monitoring leader")
+	s.bot.ctx.Logger.Info("Follower mode: idling in town, monitoring leader",
+		slog.String("supervisor", s.name))
 
-	// Poll for leader presence
+	// Poll for leader presence using followerInfo.PollInterval
 	pollInterval := 30 * time.Second
-	if s.bot.ctx.CharacterCfg.LeaderFollower.PollInterval > 0 {
-		pollInterval = time.Duration(s.bot.ctx.CharacterCfg.LeaderFollower.PollInterval) * time.Millisecond
+	if followerInfo.PollInterval > 0 {
+		pollInterval = time.Duration(followerInfo.PollInterval) * time.Millisecond
 	}
+
+	s.bot.ctx.Logger.Debug("Follower mode: poll interval set",
+		slog.String("supervisor", s.name),
+		slog.Duration("interval", pollInterval))
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+
+	// Maximum time to stay in one game (safeguard against infinite loops)
+	const maxGameDuration = 4 * time.Hour
+	gameStartTime := time.Now()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			// Check maximum game duration
+			if time.Since(gameStartTime) > maxGameDuration {
+				s.bot.ctx.Logger.Warn("Follower mode: max game duration reached, leaving game",
+					slog.Duration("duration", time.Since(gameStartTime)))
+				return fmt.Errorf("max game duration exceeded")
+			}
+
+			// Check if we're still in game
+			if !s.bot.ctx.Manager.InGame() {
+				s.bot.ctx.Logger.Warn("Follower mode: disconnected from game during monitoring")
+				return fmt.Errorf("disconnected from game")
+			}
+
+			// Refresh followerInfo to get any updates
+			currentInfo := GetFollowerInfo(s.name)
+			if currentInfo != nil {
+				followerInfo = currentInfo
+			}
+			
 			s.bot.ctx.RefreshGameData()
 
 			// Check if leader is still in game
 			if !action.FindPlayerInRoster(followerInfo.LeaderName) {
-				s.bot.ctx.Logger.Info("Follower mode: leader has left the game, leaving and preparing for next game")
+				s.bot.ctx.Logger.Info("Follower mode: leader has left the game, leaving and preparing for next game",
+					slog.String("supervisor", s.name))
 				
-				// Leave the current game first
-				s.bot.ctx.Logger.Info("Follower mode: exiting current game...")
-				if err := s.bot.ctx.Manager.ExitGame(); err != nil {
-					s.bot.ctx.Logger.Warn("Follower mode: error exiting game",
-						slog.String("error", err.Error()))
+				// Leave the current game first (only if still in game)
+				if s.bot.ctx.Manager.InGame() {
+					s.bot.ctx.Logger.Info("Follower mode: exiting current game...",
+						slog.String("supervisor", s.name))
+					if err := s.bot.ctx.Manager.ExitGame(); err != nil {
+						s.bot.ctx.Logger.Warn("Follower mode: error exiting game",
+							slog.String("supervisor", s.name),
+							slog.String("error", err.Error()))
+					}
 				}
 				
-				// Wait for game exit to complete
-				utils.Sleep(3000)
+				// Wait for game exit to actually complete (up to 10 seconds)
+				exitDeadline := time.Now().Add(10 * time.Second)
+				for s.bot.ctx.Manager.InGame() {
+					select {
+					case <-ctx.Done():
+						return nil
+					default:
+						if time.Now().After(exitDeadline) {
+							s.bot.ctx.Logger.Error("Follower mode: timeout waiting for game exit, forcing restart",
+								slog.String("supervisor", s.name))
+							// If still in game after timeout, something is very wrong - return error to trigger recovery
+							return fmt.Errorf("timeout waiting for game exit")
+						}
+						s.bot.ctx.RefreshGameData()
+						time.Sleep(500 * time.Millisecond)
+					}
+				}
+				
+				s.bot.ctx.Logger.Info("Follower mode: successfully exited game",
+					slog.String("supervisor", s.name))
+				
+				// Extra wait after confirmed exit for stability
+				if !s.sleepWithContextCheck(ctx, 2000) {
+					return nil
+				}
 				
 				// Increment the game counter for the next game
 				IncrementGameCounter(s.name)
 				nextGame := GetCurrentGameName(s.name)
 				s.bot.ctx.Logger.Info("Follower mode: next game will be",
+					slog.String("supervisor", s.name),
 					slog.String("gameName", nextGame))
 				
-				// Random delay before rejoining (staggered)
-				minDelay := followerInfo.JoinDelayMin
-				maxDelay := followerInfo.JoinDelayMax
-				if minDelay < 1000 {
-					minDelay = 1000
-				}
-				if maxDelay < minDelay {
-					maxDelay = minDelay + 1000
-				}
-				delay := time.Duration(minDelay + rand.Intn(maxDelay-minDelay))
+				// Random delay before rejoining (staggered) using utility function
+				delay := CalculateRandomDelay(followerInfo.JoinDelayMin, followerInfo.JoinDelayMax)
 				s.bot.ctx.Logger.Info("Follower mode: waiting before rejoining",
-					slog.Duration("delay", delay*time.Millisecond))
-				time.Sleep(delay * time.Millisecond)
+					slog.String("supervisor", s.name),
+					slog.Int("delayMs", delay))
+				if !s.sleepWithContextCheck(ctx, delay) {
+					return nil
+				}
 				
 				return nil // Exit in-game loop to rejoin from lobby
 			}

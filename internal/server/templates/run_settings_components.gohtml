@@ -446,16 +446,148 @@
             <input type="text" name="leaderFollowerLeaderName" value="{{ .Config.LeaderFollower.LeaderName }}" placeholder="Character name to follow">
         </label>
         
-        <label>Followers (select supervisors to follow this leader)
-            <select name="leaderFollowerFollowers" id="leaderFollowerFollowers" multiple style="min-height:120px;">
+        <label>Followers (select supervisors to follow this leader)</label>
+        <div class="multi-select-container" id="followersMultiSelect">
+            <select name="leaderFollowerFollowers" id="leaderFollowerFollowers" multiple style="display:none;">
                 {{- range .Supervisors -}}
                 {{- if ne . $.Supervisor -}}
                 <option value="{{ . }}" {{ if isInStringSlice $.Config.LeaderFollower.Followers . }}selected{{ end }}>{{ . }}</option>
                 {{- end -}}
                 {{- end -}}
             </select>
-        </label>
-        <small style="opacity:0.7;">Hold Ctrl/Cmd to select multiple supervisors</small>
+            <div class="multi-select-input-wrapper" id="followersInputWrapper">
+                <input type="text" class="multi-select-search" id="followersSearch" placeholder="Type to search supervisors..." autocomplete="off">
+            </div>
+            <div class="multi-select-dropdown" id="followersDropdown"></div>
+        </div>
+        <script>
+        (function() {
+            const container = document.getElementById('followersMultiSelect');
+            const hiddenSelect = document.getElementById('leaderFollowerFollowers');
+            const inputWrapper = document.getElementById('followersInputWrapper');
+            const searchInput = document.getElementById('followersSearch');
+            const dropdown = document.getElementById('followersDropdown');
+            
+            // Get all available options from hidden select
+            const allOptions = Array.from(hiddenSelect.options).map(opt => ({
+                value: opt.value,
+                label: opt.text,
+                selected: opt.selected
+            }));
+            
+            function getSelectedValues() {
+                return Array.from(hiddenSelect.selectedOptions).map(opt => opt.value);
+            }
+            
+            function setSelectedValues(values) {
+                Array.from(hiddenSelect.options).forEach(opt => {
+                    opt.selected = values.includes(opt.value);
+                });
+            }
+            
+            function renderTags() {
+                // Remove existing tags
+                inputWrapper.querySelectorAll('.multi-select-tag').forEach(tag => tag.remove());
+                
+                const selected = getSelectedValues();
+                selected.forEach(val => {
+                    const opt = allOptions.find(o => o.value === val);
+                    if (opt) {
+                        const tag = document.createElement('span');
+                        tag.className = 'multi-select-tag';
+                        tag.innerHTML = `${opt.label}<button type="button" class="multi-select-tag-remove" data-value="${val}">&times;</button>`;
+                        inputWrapper.insertBefore(tag, searchInput);
+                    }
+                });
+            }
+            
+            function renderDropdown(filter = '') {
+                const selected = getSelectedValues();
+                const filtered = allOptions.filter(opt => 
+                    opt.label.toLowerCase().includes(filter.toLowerCase())
+                );
+                
+                if (filtered.length === 0) {
+                    dropdown.innerHTML = '<div class="multi-select-no-results">No supervisors found</div>';
+                } else {
+                    dropdown.innerHTML = filtered.map(opt => 
+                        `<div class="multi-select-option${selected.includes(opt.value) ? ' selected' : ''}" data-value="${opt.value}">${opt.label}</div>`
+                    ).join('');
+                }
+            }
+            
+            function openDropdown() {
+                renderDropdown(searchInput.value);
+                dropdown.classList.add('open');
+            }
+            
+            function closeDropdown() {
+                dropdown.classList.remove('open');
+            }
+            
+            function toggleOption(value) {
+                const selected = getSelectedValues();
+                if (selected.includes(value)) {
+                    setSelectedValues(selected.filter(v => v !== value));
+                } else {
+                    setSelectedValues([...selected, value]);
+                }
+                renderTags();
+                renderDropdown(searchInput.value);
+                searchInput.focus();
+            }
+            
+            // Event listeners
+            inputWrapper.addEventListener('click', (e) => {
+                if (e.target === inputWrapper || e.target === searchInput) {
+                    searchInput.focus();
+                    openDropdown();
+                }
+            });
+            
+            inputWrapper.addEventListener('click', (e) => {
+                if (e.target.classList.contains('multi-select-tag-remove')) {
+                    e.stopPropagation();
+                    toggleOption(e.target.dataset.value);
+                }
+            });
+            
+            searchInput.addEventListener('input', () => {
+                renderDropdown(searchInput.value);
+                openDropdown();
+            });
+            
+            searchInput.addEventListener('focus', openDropdown);
+            
+            dropdown.addEventListener('click', (e) => {
+                if (e.target.classList.contains('multi-select-option')) {
+                    toggleOption(e.target.dataset.value);
+                }
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+            
+            // Handle backspace to remove last tag
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && searchInput.value === '') {
+                    const selected = getSelectedValues();
+                    if (selected.length > 0) {
+                        toggleOption(selected[selected.length - 1]);
+                    }
+                }
+                if (e.key === 'Escape') {
+                    closeDropdown();
+                }
+            });
+            
+            // Initialize
+            renderTags();
+        })();
+        </script>
         
         <label>Game Name Pattern
             <input type="text" name="leaderFollowerGameNamePattern" id="leaderFollowerGameNamePattern" value="{{ .Config.LeaderFollower.GameNamePattern }}" placeholder="e.g., run-" oninput="updateGameNamePreview()">
@@ -489,6 +621,9 @@
                 <input type="number" name="leaderFollowerPollInterval" value="{{ .Config.LeaderFollower.PollInterval }}" min="1000" step="1000">
             </label>
         </fieldset>
+        
+        <label><input type="checkbox" name="leaderFollowerUseLegacyGraphics" {{ if .Config.LeaderFollower.UseLegacyGraphics }}checked{{ end }}> Use Legacy Graphics for Followers</label>
+        <small style="opacity:0.7;">Followers will use legacy (D2 classic) graphics mode for lower resource usage.</small>
     </fieldset>
 {{ end }}
 

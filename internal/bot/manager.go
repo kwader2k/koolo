@@ -134,10 +134,14 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 	// Start the Crash Detector in a thread to avoid blocking and speed up start
 	go crashDetector.Start()
 
-	err = supervisor.Start()
-	if err != nil {
-		mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
-	}
+	// Run supervisor in a goroutine so Start() doesn't block
+	// This allows leader coordinators to start multiple followers
+	go func() {
+		err = supervisor.Start()
+		if err != nil {
+			mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
+		}
+	}()
 
 	return nil
 }
@@ -301,7 +305,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 		}
 	} else {
 		var err error
-		pid, hwnd, err = game.StartGame(cfg.Username, cfg.Password, cfg.AuthMethod, cfg.AuthToken, cfg.Realm, cfg.CommandLineArgs, config.Koolo.UseCustomSettings)
+		pid, hwnd, err = game.StartGame(cfg.Username, cfg.Password, cfg.AuthMethod, cfg.AuthToken, cfg.Realm, cfg.CommandLineArgs, config.Koolo.UseCustomSettings, supervisorName)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error starting game: %w", err)
 		}

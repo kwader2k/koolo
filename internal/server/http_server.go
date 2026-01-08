@@ -1751,6 +1751,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			if v := values.Get("leaderFollowerPollInterval"); v != "" {
 				cfg.LeaderFollower.PollInterval, _ = strconv.Atoi(v)
 			}
+			cfg.LeaderFollower.UseLegacyGraphics = values.Has("leaderFollowerUseLegacyGraphics")
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
@@ -2663,6 +2664,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		if v := r.Form.Get("leaderFollowerPollInterval"); v != "" {
 			cfg.LeaderFollower.PollInterval, _ = strconv.Atoi(v)
 		}
+		cfg.LeaderFollower.UseLegacyGraphics = r.Form.Has("leaderFollowerUseLegacyGraphics")
 
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
