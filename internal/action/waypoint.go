@@ -5,12 +5,23 @@ import (
 	"log/slog"
 	"slices"
 
+	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
+
+// townWaypointPositions contains approximate waypoint locations for each town
+// These are used to move close enough to find the waypoint object
+var townWaypointPositions = map[area.ID]data.Position{
+	area.RogueEncampment:       {X: 5104, Y: 5062},
+	area.LutGholein:            {X: 5070, Y: 5083},
+	area.KurastDocks:           {X: 5048, Y: 5031},
+	area.ThePandemoniumFortress: {X: 5101, Y: 5025},
+	area.Harrogath:             {X: 5110, Y: 5067},
+}
 
 func WayPoint(dest area.ID) error {
 	ctx := context.Get()
@@ -32,26 +43,91 @@ func WayPoint(dest area.ID) error {
 		return fmt.Errorf("area destination %s is not mapped to a WayPoint (waypoint.go)", area.Areas[dest].Name)
 	}
 
-	for _, o := range ctx.Data.Objects {
-		if o.IsWaypoint() {
-
-			err := InteractObject(o, func() bool {
-				return ctx.Data.OpenMenus.Waypoint
-			})
-			if err != nil {
-				return err
+	// If we're in a town and don't see the waypoint, move toward it first
+	if ctx.Data.PlayerUnit.Area.IsTown() {
+		if wpPos, hasKnownPos := townWaypointPositions[ctx.Data.PlayerUnit.Area]; hasKnownPos {
+			// Check if waypoint is already visible
+			wpVisible := false
+			for _, o := range ctx.Data.Objects {
+				if o.IsWaypoint() {
+					wpVisible = true
+					break
+				}
 			}
-			if ctx.Data.LegacyGraphics {
-				actTabX := ui.WpTabStartXClassic + (wpCoords.Tab-1)*ui.WpTabSizeXClassic + (ui.WpTabSizeXClassic / 2)
-				ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartYClassic)
-			} else {
-				actTabX := ui.WpTabStartX + (wpCoords.Tab-1)*ui.WpTabSizeX + (ui.WpTabSizeX / 2)
-				ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartY)
+			
+			if !wpVisible {
+				ctx.Logger.Debug("Moving to known waypoint position",
+					slog.String("area", ctx.Data.PlayerUnit.Area.Area().Name),
+					slog.Int("x", wpPos.X),
+					slog.Int("y", wpPos.Y))
+				
+				// Try to move closer to the waypoint - use simple movement since MoveToCoords might fail
+				for i := 0; i < 5; i++ {
+					screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(wpPos.X, wpPos.Y)
+					ctx.HID.Click(game.LeftButton, screenX, screenY)
+					utils.Sleep(800)
+					ctx.RefreshGameData()
+					
+					// Check if we can see the waypoint now
+					for _, o := range ctx.Data.Objects {
+						if o.IsWaypoint() {
+							wpVisible = true
+							break
+						}
+					}
+					if wpVisible {
+						break
+					}
+				}
 			}
-			utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for waypoint tab to load
-			// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
-			ClearMessages()
 		}
+	}
+
+	// Try to find and interact with waypoint with retries
+	waypointFound := false
+	for attempts := 0; attempts < 5; attempts++ {
+		ctx.RefreshGameData()
+		
+		for _, o := range ctx.Data.Objects {
+			if o.IsWaypoint() {
+				waypointFound = true
+				ctx.Logger.Debug("Found waypoint object, interacting",
+					slog.Int("attempt", attempts+1),
+					slog.Int("x", o.Position.X),
+					slog.Int("y", o.Position.Y))
+
+				err := InteractObject(o, func() bool {
+					return ctx.Data.OpenMenus.Waypoint
+				})
+				if err != nil {
+					ctx.Logger.Debug("Failed to interact with waypoint", slog.String("error", err.Error()))
+					waypointFound = false
+					continue
+				}
+				if ctx.Data.LegacyGraphics {
+					actTabX := ui.WpTabStartXClassic + (wpCoords.Tab-1)*ui.WpTabSizeXClassic + (ui.WpTabSizeXClassic / 2)
+					ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartYClassic)
+				} else {
+					actTabX := ui.WpTabStartX + (wpCoords.Tab-1)*ui.WpTabSizeX + (ui.WpTabSizeX / 2)
+					ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartY)
+				}
+				utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for waypoint tab to load
+				// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
+				ClearMessages()
+				break
+			}
+		}
+		
+		if waypointFound {
+			break
+		}
+		
+		ctx.Logger.Debug("No waypoint found in objects, retrying", slog.Int("attempt", attempts+1))
+		utils.Sleep(500)
+	}
+	
+	if !waypointFound {
+		return fmt.Errorf("could not find waypoint object in current area %s", ctx.Data.PlayerUnit.Area.Area().Name)
 	}
 
 	err := useWP(dest)

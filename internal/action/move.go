@@ -28,8 +28,8 @@ import (
 )
 
 const (
-	maxAreaSyncAttempts   = 10
-	areaSyncDelay         = 100 * time.Millisecond
+	maxAreaSyncAttempts   = 30                     // Increased from 10 for slower loading scenarios
+	areaSyncDelay         = 200 * time.Millisecond // Increased from 100ms
 	monsterHandleCooldown = 500 * time.Millisecond // Reduced cooldown for more immediate re-engagement
 	lootAfterCombatRadius = 25                     // Define a radius for looting after combat
 )
@@ -90,7 +90,13 @@ func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
 		}
 
 		if ctx.Data.PlayerUnit.Area == expectedArea {
-			// Area ID matches, now verify collision data is loaded
+			// For town areas, we can be more lenient - just verify player is in the expected town
+			// No need for collision grid in towns since they're safe zones
+			if expectedArea.IsTown() {
+				return nil
+			}
+
+			// For non-town areas, verify collision data is loaded
 			if ctx.Data.AreaData.Grid != nil &&
 				ctx.Data.AreaData.Grid.CollisionGrid != nil &&
 				len(ctx.Data.AreaData.Grid.CollisionGrid) > 0 {

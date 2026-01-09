@@ -15,6 +15,8 @@ const (
 	TopicGameCoordination Topic = "game_coordination"
 	// TopicBotStatus is used for bot status updates
 	TopicBotStatus Topic = "bot_status"
+	// TopicLeecherCommand is used for leecher control commands (come, stay, tp, exit)
+	TopicLeecherCommand Topic = "leecher_command"
 )
 
 // Message is the interface all message types must implement

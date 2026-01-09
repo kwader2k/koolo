@@ -187,6 +187,9 @@ func BuildRun(run string) Run {
 	// Leader-Follower runs
 	case string(config.LeaderFollowerRun):
 		return NewLeaderFollower()
+	// Leader-Leecher runs
+	case string(config.LeaderLeecherRun):
+		return NewLeaderLeecher()
 	}
 
 	return nil

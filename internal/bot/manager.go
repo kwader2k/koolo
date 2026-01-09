@@ -85,6 +85,11 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 		return mng.startLeaderCoordinator(supervisorName, supervisorLogger, cfg)
 	}
 
+	// Check if this is a leader-leecher coordinator - no D2R instance needed
+	if IsLeaderLeecherMode(cfg) {
+		return mng.startLeecherCoordinator(supervisorName, supervisorLogger, cfg)
+	}
+
 	var optionalPID uint32
 	var optionalHWND win.HWND
 
@@ -175,6 +180,43 @@ func (mng *SupervisorManager) startLeaderCoordinator(supervisorName string, logg
 		err := coordinator.Start()
 		if err != nil {
 			mng.logger.Error("Leader coordinator error",
+				slog.String("supervisor", supervisorName),
+				slog.String("error", err.Error()))
+		}
+	}()
+
+	return nil
+}
+
+// startLeecherCoordinator starts a leecher coordinator for human leader mode (no D2R instance)
+func (mng *SupervisorManager) startLeecherCoordinator(supervisorName string, logger *slog.Logger, cfg *config.CharacterCfg) error {
+	mng.logger.Info("Starting leecher coordinator (human leader mode - no D2R)",
+		slog.String("supervisor", supervisorName),
+		slog.String("leader", cfg.LeaderLeecher.LeaderName))
+
+	statsHandler := NewStatsHandler(supervisorName, logger)
+	mng.eventListener.Register(statsHandler.Handle)
+
+	// Create functions that the coordinator can use to start/stop leechers
+	startLeecherFn := func(leecherName string) error {
+		return mng.Start(leecherName, false, false)
+	}
+	stopLeecherFn := func(leecherName string) {
+		mng.Stop(leecherName)
+	}
+
+	coordinator, err := NewLeecherCoordinator(supervisorName, logger, cfg, statsHandler, startLeecherFn, stopLeecherFn)
+	if err != nil {
+		return fmt.Errorf("error creating leecher coordinator: %w", err)
+	}
+
+	mng.supervisors[supervisorName] = coordinator
+	// No crash detector needed for coordinator
+
+	go func() {
+		err := coordinator.Start()
+		if err != nil {
+			mng.logger.Error("Leecher coordinator error",
 				slog.String("supervisor", supervisorName),
 				slog.String("error", err.Error()))
 		}

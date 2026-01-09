@@ -243,6 +243,18 @@ leaderFollower:
   pollInterval: 30000 # How often (ms) to check if leader left the game
   useLegacyGraphics: false # Use legacy (D2 classic) graphics mode for followers (lower resource usage)
 
+leaderLeecher:
+  leaderName: '' # Character name of the leader to follow through portals
+  leechers: [] # List of supervisor names that will leech from this leader
+  gameNamePattern: 'run-' # Pattern for game names, e.g., "run-" becomes "run-1", "run-2"
+  gamePassword: ''
+  joinDelayMin: 1000 # Minimum random delay (ms) before joining a new game
+  joinDelayMax: 3000 # Maximum random delay (ms) before joining a new game
+  portalEntryDelay: 2 # Seconds to wait after "come" command before entering portal
+  maxLeaderDistance: 35 # Max distance from leader for XP sharing (~35 game units)
+  pollInterval: 2000 # How often (ms) to poll for portals and leader position
+  useLegacyGraphics: false # Use legacy (D2 classic) graphics mode for leechers
+
 # Gambling settings. If enabled, bot will start gambling when all the gold stash tabs are full.
 # While gold > 500k it will iterate over the items list trying to buy one of each item type.
 # Item filtering will be done via the same pickup configuration, discarded items will be sold to vendor

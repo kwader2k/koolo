@@ -45,6 +45,7 @@ type IndexData struct {
 	GlobalAutoStartEnabled      bool
 	GlobalAutoStartDelaySeconds int
 	ShowAutoStartPrompt         bool
+	OpenLeecherControlPanel     bool `json:"openLeecherControlPanel,omitempty"`
 }
 
 type DropData struct {

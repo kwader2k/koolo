@@ -620,6 +620,188 @@
     </fieldset>
 {{ end }}
 
+{{ define "leader_leecher" }}
+    <fieldset>
+        <small style="opacity:0.7; display:block; margin-bottom:1em;">This run coordinates leecher bots to follow a human leader through portals, maintaining XP range distance. The Leecher Control Panel will open automatically when you start this supervisor.</small>
+        
+        <label>Leader Character Name
+            <input type="text" name="leaderLeecherLeaderName" value="{{ .Config.LeaderLeecher.LeaderName }}" placeholder="Character name to follow">
+        </label>
+        
+        <label>Leechers (select supervisors to leech from this leader)</label>
+        <div class="multi-select-container" id="leechersMultiSelect">
+            <select name="leaderLeecherLeechers" id="leaderLeecherLeechers" multiple style="display:none;">
+                {{- range .Supervisors -}}
+                {{- if ne . $.Supervisor -}}
+                <option value="{{ . }}" {{ if isInStringSlice $.Config.LeaderLeecher.Leechers . }}selected{{ end }}>{{ . }}</option>
+                {{- end -}}
+                {{- end -}}
+            </select>
+            <div class="multi-select-input-wrapper" id="leechersInputWrapper">
+                <input type="text" class="multi-select-search" id="leechersSearch" placeholder="Type to search supervisors..." autocomplete="off">
+            </div>
+            <div class="multi-select-dropdown" id="leechersDropdown"></div>
+        </div>
+        <script>
+        (function() {
+            const container = document.getElementById('leechersMultiSelect');
+            const hiddenSelect = document.getElementById('leaderLeecherLeechers');
+            const inputWrapper = document.getElementById('leechersInputWrapper');
+            const searchInput = document.getElementById('leechersSearch');
+            const dropdown = document.getElementById('leechersDropdown');
+            
+            const allOptions = Array.from(hiddenSelect.options).map(opt => ({
+                value: opt.value,
+                label: opt.text,
+                selected: opt.selected
+            }));
+            
+            function getSelectedValues() {
+                return Array.from(hiddenSelect.selectedOptions).map(opt => opt.value);
+            }
+            
+            function setSelectedValues(values) {
+                Array.from(hiddenSelect.options).forEach(opt => {
+                    opt.selected = values.includes(opt.value);
+                });
+            }
+            
+            function renderTags() {
+                inputWrapper.querySelectorAll('.multi-select-tag').forEach(tag => tag.remove());
+                const selected = getSelectedValues();
+                selected.forEach(val => {
+                    const opt = allOptions.find(o => o.value === val);
+                    if (opt) {
+                        const tag = document.createElement('span');
+                        tag.className = 'multi-select-tag';
+                        tag.innerHTML = `${opt.label}<button type="button" class="multi-select-tag-remove" data-value="${val}">&times;</button>`;
+                        inputWrapper.insertBefore(tag, searchInput);
+                    }
+                });
+            }
+            
+            function renderDropdown(filter = '') {
+                const selected = getSelectedValues();
+                const filtered = allOptions.filter(opt => 
+                    opt.label.toLowerCase().includes(filter.toLowerCase())
+                );
+                
+                if (filtered.length === 0) {
+                    dropdown.innerHTML = '<div class="multi-select-no-results">No supervisors found</div>';
+                } else {
+                    dropdown.innerHTML = filtered.map(opt => 
+                        `<div class="multi-select-option${selected.includes(opt.value) ? ' selected' : ''}" data-value="${opt.value}">${opt.label}</div>`
+                    ).join('');
+                }
+            }
+            
+            function openDropdown() {
+                renderDropdown(searchInput.value);
+                dropdown.classList.add('open');
+            }
+            
+            function closeDropdown() {
+                dropdown.classList.remove('open');
+            }
+            
+            function toggleOption(value) {
+                const selected = getSelectedValues();
+                if (selected.includes(value)) {
+                    setSelectedValues(selected.filter(v => v !== value));
+                } else {
+                    setSelectedValues([...selected, value]);
+                }
+                renderTags();
+                renderDropdown(searchInput.value);
+                searchInput.focus();
+            }
+            
+            inputWrapper.addEventListener('click', (e) => {
+                if (e.target.classList.contains('multi-select-tag-remove')) {
+                    e.stopPropagation();
+                    toggleOption(e.target.dataset.value);
+                }
+            });
+            
+            searchInput.addEventListener('input', () => {
+                renderDropdown(searchInput.value);
+                openDropdown();
+            });
+            
+            searchInput.addEventListener('focus', openDropdown);
+            
+            dropdown.addEventListener('click', (e) => {
+                if (e.target.classList.contains('multi-select-option')) {
+                    toggleOption(e.target.dataset.value);
+                }
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+            
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && searchInput.value === '') {
+                    const selected = getSelectedValues();
+                    if (selected.length > 0) {
+                        toggleOption(selected[selected.length - 1]);
+                    }
+                }
+                if (e.key === 'Escape') {
+                    closeDropdown();
+                }
+            });
+            
+            renderTags();
+        })();
+        </script>
+        
+        <label>Game Name Pattern
+            <input type="text" name="leaderLeecherGameNamePattern" id="leaderLeecherGameNamePattern" value="{{ .Config.LeaderLeecher.GameNamePattern }}" placeholder="e.g., run-" oninput="updateLeecherGameNamePreview()">
+        </label>
+        <small style="opacity:0.7;">First game: <strong id="leecherGameNamePreview">{{ .Config.LeaderLeecher.GameNamePattern }}1</strong>, then {{ .Config.LeaderLeecher.GameNamePattern }}2, etc.</small>
+        <script>
+        function updateLeecherGameNamePreview() {
+            var pattern = document.getElementById('leaderLeecherGameNamePattern').value || 'game';
+            document.getElementById('leecherGameNamePreview').textContent = pattern + '1';
+        }
+        </script>
+        
+        <label>Game Password
+            <input type="text" name="leaderLeecherGamePassword" value="{{ .Config.LeaderLeecher.GamePassword }}" placeholder="Optional password">
+        </label>
+        
+        <fieldset class="grid">
+            <label>Min Join Delay (ms)
+                <input type="number" name="leaderLeecherJoinDelayMin" value="{{ .Config.LeaderLeecher.JoinDelayMin }}" min="0" step="100">
+            </label>
+            <label>Max Join Delay (ms)
+                <input type="number" name="leaderLeecherJoinDelayMax" value="{{ .Config.LeaderLeecher.JoinDelayMax }}" min="0" step="100">
+            </label>
+        </fieldset>
+        
+        <fieldset class="grid">
+            <label>Portal Entry Delay (sec)
+                <input type="number" name="leaderLeecherPortalEntryDelay" value="{{ .Config.LeaderLeecher.PortalEntryDelay }}" min="0" step="1">
+                <small style="opacity:0.7;">Delay after "come" command before entering portal</small>
+            </label>
+            <label>Max Leader Distance
+                <input type="number" name="leaderLeecherMaxLeaderDistance" value="{{ .Config.LeaderLeecher.MaxLeaderDistance }}" min="10" max="100" step="5">
+                <small style="opacity:0.7;">Distance to maintain from leader for XP sharing (~35)</small>
+            </label>
+        </fieldset>
+        
+        <label>Poll Interval (ms)
+            <input type="number" name="leaderLeecherPollInterval" value="{{ .Config.LeaderLeecher.PollInterval }}" min="1000" step="500">
+        </label>
+        
+        <label><input type="checkbox" name="leaderLeecherUseLegacyGraphics" {{ if .Config.LeaderLeecher.UseLegacyGraphics }}checked{{ end }}> Use Legacy Graphics for Leechers</label>
+        <small style="opacity:0.7;">Leechers will use legacy (D2 classic) graphics mode for lower resource usage.</small>
+    </fieldset>
+{{ end }}
+
 {{ define "shopping" }}
   <fieldset>
     <legend>Shopping</legend>

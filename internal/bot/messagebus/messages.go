@@ -200,3 +200,134 @@ func NewFollowerStopMessage(sender, followerName, leaderName string) FollowerSto
 	}
 }
 
+// LeecherCommandType represents the type of leecher command
+type LeecherCommandType string
+
+const (
+	LeecherCmdCome LeecherCommandType = "come" // Signal leechers to enter portal
+	LeecherCmdStay LeecherCommandType = "stay" // Signal leechers to wait
+	LeecherCmdTP   LeecherCommandType = "tp"   // Signal leechers to use town portal
+	LeecherCmdExit LeecherCommandType = "exit" // Signal leechers to exit game
+)
+
+// LeecherCommandMessage is sent to control leecher behavior
+type LeecherCommandMessage struct {
+	BaseMessage
+	Command    LeecherCommandType
+	LeaderName string
+}
+
+// NewLeecherCommandMessage creates a new leecher command message
+func NewLeecherCommandMessage(sender string, command LeecherCommandType, leaderName string) LeecherCommandMessage {
+	return LeecherCommandMessage{
+		BaseMessage: NewBaseMessage(sender, TopicLeecherCommand),
+		Command:     command,
+		LeaderName:  leaderName,
+	}
+}
+
+// LeecherComeMessage is sent to signal leechers to enter the portal
+type LeecherComeMessage struct {
+	BaseMessage
+	LeaderName string
+}
+
+// NewLeecherComeMessage creates a new leecher come message
+func NewLeecherComeMessage(sender, leaderName string) LeecherComeMessage {
+	return LeecherComeMessage{
+		BaseMessage: NewBaseMessage(sender, TopicLeecherCommand),
+		LeaderName:  leaderName,
+	}
+}
+
+// LeecherStayMessage is sent to signal leechers to wait
+type LeecherStayMessage struct {
+	BaseMessage
+	LeaderName string
+}
+
+// NewLeecherStayMessage creates a new leecher stay message
+func NewLeecherStayMessage(sender, leaderName string) LeecherStayMessage {
+	return LeecherStayMessage{
+		BaseMessage: NewBaseMessage(sender, TopicLeecherCommand),
+		LeaderName:  leaderName,
+	}
+}
+
+// LeecherTPMessage is sent to signal leechers to use town portal
+type LeecherTPMessage struct {
+	BaseMessage
+	LeaderName string
+}
+
+// NewLeecherTPMessage creates a new leecher TP message
+func NewLeecherTPMessage(sender, leaderName string) LeecherTPMessage {
+	return LeecherTPMessage{
+		BaseMessage: NewBaseMessage(sender, TopicLeecherCommand),
+		LeaderName:  leaderName,
+	}
+}
+
+// LeecherExitMessage is sent to signal leechers to exit the game
+type LeecherExitMessage struct {
+	BaseMessage
+	LeaderName string
+}
+
+// NewLeecherExitMessage creates a new leecher exit message
+func NewLeecherExitMessage(sender, leaderName string) LeecherExitMessage {
+	return LeecherExitMessage{
+		BaseMessage: NewBaseMessage(sender, TopicLeecherCommand),
+		LeaderName:  leaderName,
+	}
+}
+
+// LeecherStartMessage is sent by a leader to instruct a leecher to start
+type LeecherStartMessage struct {
+	BaseMessage
+	LeecherName       string // Target leecher supervisor name
+	LeaderName        string // Name of the leader character
+	GamePattern       string // Game name pattern
+	GamePassword      string // Password for games
+	JoinDelayMin      int    // Minimum join delay in ms
+	JoinDelayMax      int    // Maximum join delay in ms
+	PollInterval      int    // How often to poll (ms)
+	PortalEntryDelay  int    // Seconds to wait after "come"
+	MaxLeaderDistance int    // Max distance for XP
+	UseLegacyGraphics bool   // Use legacy graphics
+}
+
+// NewLeecherStartMessage creates a new leecher start message
+func NewLeecherStartMessage(sender, leecherName, leaderName, gamePattern, gamePassword string,
+	joinDelayMin, joinDelayMax, pollInterval, portalEntryDelay, maxLeaderDistance int, useLegacyGraphics bool) LeecherStartMessage {
+	return LeecherStartMessage{
+		BaseMessage:       NewBaseMessage(sender, TopicGameCoordination),
+		LeecherName:       leecherName,
+		LeaderName:        leaderName,
+		GamePattern:       gamePattern,
+		GamePassword:      gamePassword,
+		JoinDelayMin:      joinDelayMin,
+		JoinDelayMax:      joinDelayMax,
+		PollInterval:      pollInterval,
+		PortalEntryDelay:  portalEntryDelay,
+		MaxLeaderDistance: maxLeaderDistance,
+		UseLegacyGraphics: useLegacyGraphics,
+	}
+}
+
+// LeecherStopMessage is sent by a leader to instruct a leecher to stop
+type LeecherStopMessage struct {
+	BaseMessage
+	LeecherName string
+	LeaderName  string
+}
+
+// NewLeecherStopMessage creates a new leecher stop message
+func NewLeecherStopMessage(sender, leecherName, leaderName string) LeecherStopMessage {
+	return LeecherStopMessage{
+		BaseMessage: NewBaseMessage(sender, TopicGameCoordination),
+		LeecherName: leecherName,
+		LeaderName:  leaderName,
+	}
+}
+
