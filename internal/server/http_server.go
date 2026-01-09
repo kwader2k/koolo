@@ -1704,6 +1704,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 
 			cfg.Game.CreateLobbyGames = values.Has("createLobbyGames")
 			cfg.Game.IsNonLadderChar = values.Has("isNonLadderChar")
+			cfg.Game.IsHardCoreChar = values.Has("isHardCoreChar")
 			cfg.Game.Difficulty = difficulty.Difficulty(values.Get("gameDifficulty"))
 			cfg.Game.RandomizeRuns = values.Has("gameRandomizeRuns")
 
@@ -2444,6 +2445,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.InteractWithSuperChests = r.Form.Has("interactWithSuperChests")
 		cfg.Game.StopLevelingAt, _ = strconv.Atoi(r.Form.Get("stopLevelingAt"))
 		cfg.Game.IsNonLadderChar = r.Form.Has("isNonLadderChar")
+		cfg.Game.IsHardCoreChar = r.Form.Has("isHardCoreChar")
 
 		if v := r.Form.Get("maxGameLength"); v != "" {
 			cfg.MaxGameLength, _ = strconv.Atoi(v)

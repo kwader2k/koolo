@@ -73,14 +73,26 @@ func AutoCreateCharacter(class, name string) error {
 		utils.Sleep(300)
 	}
 
-	// 4. Input Name
+	// 4. Toggle Hardcore
+	if ctx.CharacterCfg.Game.IsHardCoreChar {
+		ctx.HID.Click(game.LeftButton, ui.CharHardcoreBtnX, ui.CharHardcoreBtnY)
+		utils.Sleep(300)
+	}
+
+	// 5. Input Name
 	if err := inputCharacterName(ctx, name); err != nil {
 		return err
 	}
 
-	// 5. Click Create Button
+	// 6. Click Create Button
 	ctx.HID.Click(game.LeftButton, ui.CharCreateBtnX, ui.CharCreateBtnY)
 	utils.Sleep(1500)
+
+	// 7. Confirm hardcore warning dialog
+	if ctx.CharacterCfg.Game.IsHardCoreChar {
+		ctx.HID.PressKey(win.VK_RETURN)
+		utils.Sleep(500)
+	}
 
 	// Wait for character selection screen and confirm the new character is visible/selected
 	for i := 0; i < 5; i++ {
