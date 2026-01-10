@@ -67,6 +67,13 @@ func IdentifyAll(skipIdentify bool) error {
 	}
 
 	if st, statFound := idTome.FindStat(stat.Quantity, 0); !statFound || st.Value < len(items) {
+		// Check if DisableIdentifyTome is enabled before forcing a refill
+		_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+		if ctx.CharacterCfg.Game.DisableIdentifyTome && !isLevelingChar {
+			ctx.Logger.Warn("Not enough ID scrolls but DisableIdentifyTome is enabled - skipping identification")
+			return nil
+		}
+		
 		ctx.Logger.Info("Not enough ID scrolls, refilling...")
 		VendorRefill(true, false)
 	}
