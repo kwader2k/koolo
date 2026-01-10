@@ -171,11 +171,11 @@ func (m *Manager) ReportResult(room, result string, itemsDroppered int, duration
 // Filter helpers ----------------------------------------------------------------
 
 // ShouldDropperItem reports whether the given item name/type/quality should be Droppered under current filters.
-func (m *Manager) ShouldDropperItem(name string, quality item.Quality, itemType string) bool {
+func (m *Manager) ShouldDropperItem(name string, quality item.Quality, itemType string, isRuneword bool) bool {
 	if m == nil || m.filters == nil {
 		return false
 	}
-	return m.filters.ShouldDropperItem(name, quality, itemType)
+	return m.filters.ShouldDropperItem(name, quality, itemType, isRuneword)
 }
 
 // HasRemainingDropQuota reports whether there is remaining quota for the given item.

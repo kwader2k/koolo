@@ -160,7 +160,7 @@ func PreRun(firstRun bool) error {
 	ReviveMerc()
 	HireMerc()
 
-	return Repair()
+	return RepairTownRoutine()
 }
 
 func InRunReturnTownRoutine() error {
@@ -253,8 +253,10 @@ func InRunReturnTownRoutine() error {
 	ctx.PauseIfNotPriority() // Check after ReviveMerc
 	HireMerc()
 	ctx.PauseIfNotPriority() // Check after HireMerc
-	Repair()
-	ctx.PauseIfNotPriority() // Check after Repair
+	if err := RepairTownRoutine(); err != nil {
+		return err
+	}
+	ctx.PauseIfNotPriority() // Check after RepairTownRoutine
 
 	if ctx.CharacterCfg.Companion.Leader {
 		UsePortalInTown()

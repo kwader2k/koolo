@@ -74,6 +74,8 @@ func BuildRun(run string) Run {
 		return NewMephisto(nil)
 	case string(config.TravincalRun):
 		return NewTravincal()
+	case string(config.RiverOfFlameRun):
+		return NewRiverOfFlame()
 	case string(config.DiabloRun):
 		return NewDiablo()
 	case string(config.EldritchRun):
@@ -94,6 +96,8 @@ func BuildRun(run string) Run {
 		return NewArachnidLair()
 	case string(config.TristramRun):
 		return NewTristram()
+	case string(config.FlayerJungleRun):
+		return NewFlayerJungle()
 	case string(config.LowerKurastRun):
 		return NewLowerKurast()
 	case string(config.LowerKurastChestRun):

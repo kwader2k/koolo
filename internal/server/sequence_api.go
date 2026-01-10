@@ -433,6 +433,117 @@ func (api *SequenceAPI) normalizeSettings(settings *run.LevelingSequenceSettings
 	normalizeDifficulty(&settings.Normal)
 	normalizeDifficulty(&settings.Nightmare)
 	normalizeDifficulty(&settings.Hell)
+
+	// Synchronize difficulty transition conditions to prevent mismatches (bidirectional):
+	// Normal's next conditions ↔ Nightmare's stay conditions
+	if settings.Normal.NextDifficultyConditions != nil && settings.Nightmare.StayDifficultyConditions != nil {
+		// Both exist - check for conflicts
+		if !api.conditionsEqual(settings.Normal.NextDifficultyConditions, settings.Nightmare.StayDifficultyConditions) {
+			api.logger.Warn("Difficulty condition mismatch detected between Normal's next and Nightmare's stay - using Normal's next as source of truth")
+		}
+		settings.Nightmare.StayDifficultyConditions = api.copyConditions(settings.Normal.NextDifficultyConditions)
+	} else if settings.Normal.NextDifficultyConditions != nil {
+		// Only Normal's next exists
+		settings.Nightmare.StayDifficultyConditions = api.copyConditions(settings.Normal.NextDifficultyConditions)
+	} else if settings.Nightmare.StayDifficultyConditions != nil {
+		// Only Nightmare's stay exists
+		settings.Normal.NextDifficultyConditions = api.copyConditions(settings.Nightmare.StayDifficultyConditions)
+	}
+
+	// Nightmare's next conditions ↔ Hell's stay conditions
+	if settings.Nightmare.NextDifficultyConditions != nil && settings.Hell.StayDifficultyConditions != nil {
+		// Both exist - check for conflicts
+		if !api.conditionsEqual(settings.Nightmare.NextDifficultyConditions, settings.Hell.StayDifficultyConditions) {
+			api.logger.Warn("Difficulty condition mismatch detected between Nightmare's next and Hell's stay - using Nightmare's next as source of truth")
+		}
+		settings.Hell.StayDifficultyConditions = api.copyConditions(settings.Nightmare.NextDifficultyConditions)
+	} else if settings.Nightmare.NextDifficultyConditions != nil {
+		// Only Nightmare's next exists
+		settings.Hell.StayDifficultyConditions = api.copyConditions(settings.Nightmare.NextDifficultyConditions)
+	} else if settings.Hell.StayDifficultyConditions != nil {
+		// Only Hell's stay exists
+		settings.Nightmare.NextDifficultyConditions = api.copyConditions(settings.Hell.StayDifficultyConditions)
+	}
+}
+
+// conditionsEqual checks if two difficulty conditions are equal
+func (api *SequenceAPI) conditionsEqual(a, b *run.DifficultyConditionsSettings) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	// Compare boolean fields
+	if a.AboveLowGold != b.AboveLowGold || a.AboveGoldThreshold != b.AboveGoldThreshold {
+		return false
+	}
+
+	// Compare pointer fields (int values)
+	if !intPtrEqual(a.Level, b.Level) {
+		return false
+	}
+	if !intPtrEqual(a.FireRes, b.FireRes) {
+		return false
+	}
+	if !intPtrEqual(a.ColdRes, b.ColdRes) {
+		return false
+	}
+	if !intPtrEqual(a.LightRes, b.LightRes) {
+		return false
+	}
+	if !intPtrEqual(a.PoisonRes, b.PoisonRes) {
+		return false
+	}
+
+	return true
+}
+
+// intPtrEqual compares two int pointers for equality
+func intPtrEqual(a, b *int) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+// copyConditions creates a deep copy of DifficultyConditionsSettings
+func (api *SequenceAPI) copyConditions(src *run.DifficultyConditionsSettings) *run.DifficultyConditionsSettings {
+	if src == nil {
+		return nil
+	}
+
+	dst := &run.DifficultyConditionsSettings{
+		AboveLowGold:       src.AboveLowGold,
+		AboveGoldThreshold: src.AboveGoldThreshold,
+	}
+
+	if src.Level != nil {
+		level := *src.Level
+		dst.Level = &level
+	}
+	if src.FireRes != nil {
+		fireRes := *src.FireRes
+		dst.FireRes = &fireRes
+	}
+	if src.ColdRes != nil {
+		coldRes := *src.ColdRes
+		dst.ColdRes = &coldRes
+	}
+	if src.LightRes != nil {
+		lightRes := *src.LightRes
+		dst.LightRes = &lightRes
+	}
+	if src.PoisonRes != nil {
+		poisonRes := *src.PoisonRes
+		dst.PoisonRes = &poisonRes
+	}
+
+	return dst
 }
 
 func (api *SequenceAPI) writeJSON(w http.ResponseWriter, status int, payload any) {

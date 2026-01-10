@@ -13,16 +13,17 @@ func CloseAllMenus() error {
 	ctx.SetLastStep("CloseAllMenus")
 
 	attempts := 0
+	ctx.RefreshGameData()
 	for ctx.Data.OpenMenus.IsMenuOpen() {
 		// Pause the execution if the priority is not the same as the execution priority
 		ctx.PauseIfNotPriority()
 
-		ctx.RefreshGameData()
 		if attempts > 10 {
 			return errors.New("failed closing game menu")
 		}
 		ctx.HID.PressKey(win.VK_ESCAPE)
 		utils.Sleep(200)
+		ctx.RefreshGameData()
 		attempts++
 	}
 

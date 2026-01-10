@@ -56,6 +56,7 @@ type KooloCfg struct {
 		EnableDiscordChickenMessages bool     `yaml:"enableDiscordChickenMessages"`
 		EnableDiscordErrorMessages   bool     `yaml:"enableDiscordErrorMessages"`
 		DisableItemStashScreenshots  bool     `yaml:"disableItemStashScreenshots"`
+		IncludePickitInfoInItemText  bool     `yaml:"includePickitInfoInItemText"`
 		BotAdmins                    []string `yaml:"botAdmins"`
 		ChannelID                    string   `yaml:"channelId"`
 		ItemChannelID                string   `yaml:"itemChannelId"`
@@ -302,6 +303,13 @@ type CharacterCfg struct {
 		AmazonLeveling struct {
 			UsePacketLearning bool `yaml:"use_packet_learning"`
 		} `yaml:"amazon_leveling"`
+		Javazon struct {
+			DensityKillerEnabled           bool `yaml:"density_killer_enabled"`
+			DensityKillerIgnoreWhitesBelow int  `yaml:"density_killer_ignore_whites_below"`
+			// Force a vendor "Repair All" to replenish javelins in town when quantity is below this % threshold.
+			// Only applied for the Javazon build when DensityKillerEnabled is true.
+			DensityKillerForceRefillBelowPercent int `yaml:"density_killer_force_refill_below_percent"`
+		} `yaml:"javazon"`
 		DruidLeveling struct {
 			UsePacketLearning bool `yaml:"use_packet_learning"`
 		} `yaml:"druid_leveling"`
@@ -331,22 +339,22 @@ type CharacterCfg struct {
 	} `yaml:"character"`
 
 	Game struct {
-		MinGoldPickupThreshold int                   `yaml:"minGoldPickupThreshold"`
-		UseCainIdentify        bool                  `yaml:"useCainIdentify"`
-		DisableIdentifyTome    bool                  `yaml:"disableIdentifyTome"`
-		InteractWithShrines    bool                  `yaml:"interactWithShrines"`
-		InteractWithChests     bool                  `yaml:"interactWithChests"`
-		InteractWithSuperChests bool                 `yaml:"interactWithSuperChests"`
-		StopLevelingAt         int                   `yaml:"stopLevelingAt"`
-		IsNonLadderChar        bool                  `yaml:"isNonLadderChar"`
-		ClearTPArea            bool                  `yaml:"clearTPArea"`
-		Difficulty             difficulty.Difficulty `yaml:"difficulty"`
-		RandomizeRuns          bool                  `yaml:"randomizeRuns"`
-		Runs                   []Run                 `yaml:"runs"`
-		CreateLobbyGames       bool                  `yaml:"createLobbyGames"`
-		PublicGameCounter      int                   `yaml:"-"`
-		MaxFailedMenuAttempts  int                   `yaml:"maxFailedMenuAttempts"`
-		Pindleskin             struct {
+		MinGoldPickupThreshold  int                   `yaml:"minGoldPickupThreshold"`
+		UseCainIdentify         bool                  `yaml:"useCainIdentify"`
+		DisableIdentifyTome     bool                  `yaml:"disableIdentifyTome"`
+		InteractWithShrines     bool                  `yaml:"interactWithShrines"`
+		InteractWithChests      bool                  `yaml:"interactWithChests"`
+		InteractWithSuperChests bool                  `yaml:"interactWithSuperChests"`
+		StopLevelingAt          int                   `yaml:"stopLevelingAt"`
+		IsNonLadderChar         bool                  `yaml:"isNonLadderChar"`
+		ClearTPArea             bool                  `yaml:"clearTPArea"`
+		Difficulty              difficulty.Difficulty `yaml:"difficulty"`
+		RandomizeRuns           bool                  `yaml:"randomizeRuns"`
+		Runs                    []Run                 `yaml:"runs"`
+		CreateLobbyGames        bool                  `yaml:"createLobbyGames"`
+		PublicGameCounter       int                   `yaml:"-"`
+		MaxFailedMenuAttempts   int                   `yaml:"maxFailedMenuAttempts"`
+		Pindleskin              struct {
 			SkipOnImmunities []stat.Resist `yaml:"skipOnImmunities"`
 		} `yaml:"pindleskin"`
 		Cows struct {
@@ -664,7 +672,7 @@ func Load() error {
 
 		// Load the leveling pickit rules
 
-		if len(charCfg.Game.Runs) > 0 && charCfg.Game.Runs[0] == "leveling" || charCfg.Game.Runs[0] == "leveling_sequence" {
+		if len(charCfg.Game.Runs) > 0 && (charCfg.Game.Runs[0] == "leveling" || charCfg.Game.Runs[0] == "leveling_sequence") {
 			nips := getLevelingNipFiles(&charCfg, entry.Name())
 
 			for _, nipFile := range nips {

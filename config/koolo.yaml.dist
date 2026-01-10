@@ -26,6 +26,7 @@ discord:
   enableDiscordChickenMessages: true
   enableDiscordErrorMessages: true
   disableItemStashScreenshots: false
+  includePickitInfoInItemText: false
 
 telegram:
   enabled: false
