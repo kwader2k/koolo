@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
@@ -350,7 +351,17 @@ func HireMerc() error {
 		}
 
 		// Only hire in Normal difficulty
-		if ctx.CharacterCfg.Game.Difficulty == difficulty.Normal && ctx.Data.PlayerUnit.TotalPlayerGold() > 5000 && ctx.Data.PlayerUnit.Area == area.LutGholein {
+		if ctx.CharacterCfg.Game.Difficulty == difficulty.Normal {
+			if ctx.Data.PlayerUnit.Area != area.LutGholein {
+				if err := WayPoint(area.LutGholein); err != nil {
+					if strings.Contains(err.Error(), "no available waypoint found to reach destination") {
+						ctx.Logger.Debug("Lut Gholein waypoint not unlocked, skipping merc hire.")
+						return nil
+					}
+					return err
+				}
+			}
+
 			ctx.Logger.Info("Attempting to hire 'Prayer' mercenary...")
 
 			isLegacy := ctx.Data.LegacyGraphics
@@ -378,14 +389,19 @@ func HireMerc() error {
 			}
 
 			if mercToHire != nil {
-				ctx.Logger.Info(fmt.Sprintf("Hiring merc: %s with skill %s", mercToHire.Name, mercToHire.Skill.Name))
-				keySequence := []byte{win.VK_HOME}
-				for i := 0; i < mercToHire.Index; i++ {
-					keySequence = append(keySequence, win.VK_DOWN)
+				currentGold := ctx.Data.PlayerUnit.TotalPlayerGold()
+				if currentGold < mercToHire.Cost {
+					ctx.Logger.Info(fmt.Sprintf("Not enough gold to hire merc (gold: %d, cost: %d).", currentGold, mercToHire.Cost))
+				} else {
+					ctx.Logger.Info(fmt.Sprintf("Hiring merc: %s with skill %s", mercToHire.Name, mercToHire.Skill.Name))
+					keySequence := []byte{win.VK_HOME}
+					for i := 0; i < mercToHire.Index; i++ {
+						keySequence = append(keySequence, win.VK_DOWN)
+					}
+					keySequence = append(keySequence, win.VK_RETURN, win.VK_UP, win.VK_RETURN)
+					ctx.HID.KeySequence(keySequence...)
+					utils.Sleep(1000)
 				}
-				keySequence = append(keySequence, win.VK_RETURN, win.VK_UP, win.VK_RETURN)
-				ctx.HID.KeySequence(keySequence...)
-				utils.Sleep(1000)
 			} else {
 				ctx.Logger.Info("No merc with Prayer found.")
 				utils.Sleep(1000)
