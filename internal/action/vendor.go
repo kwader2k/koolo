@@ -82,15 +82,22 @@ func BuyAtVendor(vendor npc.ID, items ...VendorItemRequest) error {
 		return err
 	}
 
-	// Jamella trade button is the first one
+	// Jamella: HOME, ENTER (trade is first option)
+	// Other vendors: HOME, DOWN, ENTER (trade is second option)
 	if vendor == npc.Jamella {
-		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
+		ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
 	} else {
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 	}
 
+	// Wait for shop menu to open
+	utils.Sleep(500)
+	ctx.RefreshGameData()
+
 	for _, i := range items {
 		SwitchVendorTab(i.Tab)
+		utils.Sleep(300)      // Wait for tab to load
+		ctx.RefreshGameData() // Refresh to see vendor items on this tab
 		itm, found := ctx.Data.Inventory.Find(i.Item, item.LocationVendor)
 		if found {
 			town.BuyItem(itm, i.Quantity)

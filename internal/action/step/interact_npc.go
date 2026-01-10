@@ -18,7 +18,7 @@ func InteractNPC(npcID npc.ID) error {
 
 	const (
 		maxAttempts     = 8
-		minMenuOpenWait = 300 * time.Millisecond
+		minMenuOpenWait = 500 * time.Millisecond // Wait for menu to open after click
 		maxDistance     = 15
 		hoverWait       = 800 * time.Millisecond
 	)
@@ -72,15 +72,34 @@ func InteractNPC(npcID npc.ID) error {
 		// Move mouse and wait for hover
 		ctx.HID.MovePointer(x, y)
 		hoverStart := time.Now()
+		clicked := false
 
 		for time.Since(hoverStart) < hoverWait {
+			// Only refresh occasionally to avoid performance issues
+			if time.Since(hoverStart)%200 < 50 {
+				ctx.RefreshGameData()
+			}
 			if currentNPC, found := ctx.Data.Monsters.FindOne(npcID, data.MonsterTypeNone); found && currentNPC.IsHovered {
 				targetNPCID = currentNPC.UnitID
 				ctx.HID.Click(game.LeftButton, x, y)
-				time.Sleep(minMenuOpenWait)
+				clicked = true
 				break
 			}
 			time.Sleep(50 * time.Millisecond)
+		}
+
+		// Fallback: click anyway if hover wasn't detected
+		if !clicked {
+			ctx.HID.Click(game.LeftButton, x, y)
+		}
+
+		// Wait for menu to open and refresh game data
+		time.Sleep(minMenuOpenWait)
+		ctx.RefreshGameData()
+
+		// Check if interaction succeeded
+		if ctx.Data.OpenMenus.NPCInteract || ctx.Data.OpenMenus.NPCShop {
+			return nil
 		}
 	}
 

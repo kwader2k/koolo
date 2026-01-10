@@ -9,7 +9,9 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -151,6 +153,218 @@ func FollowPlayer(playerName string, maxDistance int) error {
 	return err
 }
 
+// Screen distance constants for D2R
+// 1 screen ≈ 40 game units
+const (
+	OneScreenDistance    = 40 // ~1 screen in game units
+	SafeMonsterDistance  = 40 // Stay at least 1 screen from monsters
+	ConsumableLootRadius = 20 // Pick up consumables within ~0.5 screen
+)
+
+// FollowPlayerWithLoot follows the leader with priority-based behavior:
+// Priority 1: Stay safe distance from enemies (flee if too close - 1 screen / 40 units)
+// Priority 2: Stay within 1 screen of the leader for XP
+// Priority 3: Pick up consumables (potions, TP scrolls) when safe and in range
+// Uses screen-based distances: 1 screen ≈ 40 game units
+func FollowPlayerWithLoot(playerName string) error {
+	ctx := context.Get()
+	ctx.SetLastAction("FollowPlayerWithLoot")
+
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
+
+	ctx.RefreshGameData()
+
+	leaderPos, leaderArea, found := GetLeaderPosition(playerName)
+	if !found {
+		return fmt.Errorf("leader %s not found in roster", playerName)
+	}
+
+	myPos := ctx.Data.PlayerUnit.Position
+	myArea := ctx.Data.PlayerUnit.Area
+
+	if myArea != leaderArea {
+		return fmt.Errorf("not in same area as leader")
+	}
+
+	// Calculate distance to leader (squared for efficiency)
+	dx := myPos.X - leaderPos.X
+	dy := myPos.Y - leaderPos.Y
+	distToLeaderSq := dx*dx + dy*dy
+
+	// Use squared distances for efficiency
+	safeDistSq := SafeMonsterDistance * SafeMonsterDistance
+	maxDistSq := OneScreenDistance * OneScreenDistance // Stay within 1 screen of leader
+
+	// PRIORITY 1: Check if any monsters are too close - flee AWAY from monster
+	closestMonsterDistSq, monsterPos := findClosestMonsterDistanceAndPos(myPos)
+	if closestMonsterDistSq < safeDistSq {
+		// Calculate approximate actual distance for logging
+		approxDist := 0
+		for d := 0; d*d <= closestMonsterDistSq; d++ {
+			approxDist = d
+		}
+		ctx.Logger.Debug("Leecher: monster too close, fleeing away",
+			slog.Int("monsterDist", approxDist),
+			slog.Int("safeDist", SafeMonsterDistance))
+
+		// Calculate flee position - move away from the monster
+		fleePos := calculateFleePosition(myPos, monsterPos)
+		return MoveToCoords(fleePos, step.WithIgnoreMonsters(), step.WithIgnoreItems())
+	}
+
+	// PRIORITY 2: Stay within 1 screen of leader
+	if distToLeaderSq > maxDistSq {
+		ctx.Logger.Debug("Leecher: too far from leader, moving closer",
+			slog.Int("distToLeaderSq", distToLeaderSq),
+			slog.Int("maxDistSq", maxDistSq))
+		// Move toward leader
+		return MoveToCoords(leaderPos, step.WithIgnoreMonsters(), step.WithIgnoreItems())
+	}
+
+	// PRIORITY 3: Pick up consumables if safe and in range
+	consumable, found := findNearbyConsumable(myPos, ConsumableLootRadius)
+	if found {
+		// Double-check safety before looting
+		consumableMonsterDistSq, _ := findClosestMonsterDistanceAndPos(consumable.Position)
+		if consumableMonsterDistSq >= safeDistSq {
+			ctx.Logger.Debug("Leecher: picking up consumable",
+				slog.String("item", string(consumable.Name)),
+				slog.Int("x", consumable.Position.X),
+				slog.Int("y", consumable.Position.Y))
+
+			// Move to item and pick it up
+			if err := MoveToCoords(consumable.Position, step.WithIgnoreMonsters()); err != nil {
+				return err
+			}
+			return step.PickupItem(consumable, 1)
+		}
+	}
+
+	// All priorities satisfied, stay in place
+	return nil
+}
+
+// calculateFleePosition calculates a position to flee to, directly away from the monster
+// The flee distance is normalized to SafeMonsterDistance units
+func calculateFleePosition(myPos, monsterPos data.Position) data.Position {
+	// Vector from monster to me (flee direction)
+	fleeX := myPos.X - monsterPos.X
+	fleeY := myPos.Y - monsterPos.Y
+
+	// If monster is on top of us, pick an arbitrary direction
+	if fleeX == 0 && fleeY == 0 {
+		return data.Position{X: myPos.X + SafeMonsterDistance, Y: myPos.Y}
+	}
+
+	// Calculate the distance (approximate sqrt using integer math)
+	distSq := fleeX*fleeX + fleeY*fleeY
+	dist := 1
+	for dist*dist < distSq {
+		dist++
+	}
+
+	// Normalize and scale to SafeMonsterDistance
+	if dist > 0 {
+		fleeX = (fleeX * SafeMonsterDistance) / dist
+		fleeY = (fleeY * SafeMonsterDistance) / dist
+	}
+
+	return data.Position{X: myPos.X + fleeX, Y: myPos.Y + fleeY}
+}
+
+// findClosestMonsterDistanceAndPos returns the squared distance to the closest monster and its position
+func findClosestMonsterDistanceAndPos(pos data.Position) (int, data.Position) {
+	ctx := context.Get()
+	closestDistSq := 999999
+	closestPos := data.Position{}
+
+	for _, m := range ctx.Data.Monsters {
+		// Skip dead monsters
+		if m.Stats[stat.Life] <= 0 {
+			continue
+		}
+
+		// Skip friendly NPCs (town NPCs have MonsterType = 0)
+		if m.Type == data.MonsterTypeNone {
+			continue
+		}
+
+		dx := pos.X - m.Position.X
+		dy := pos.Y - m.Position.Y
+		distSq := dx*dx + dy*dy
+
+		if distSq < closestDistSq {
+			closestDistSq = distSq
+			closestPos = m.Position
+		}
+	}
+
+	return closestDistSq, closestPos
+}
+
+// findNearbyConsumable finds the closest consumable (potion or TP scroll) within radius
+func findNearbyConsumable(pos data.Position, radius int) (data.Item, bool) {
+	ctx := context.Get()
+	radiusSq := radius * radius
+
+	var closestItem data.Item
+	closestDistSq := radiusSq + 1
+	found := false
+
+	// Check for potions and TP scrolls on the ground
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationGround) {
+		// Only pick up consumables
+		if !isLeecherConsumable(itm) {
+			continue
+		}
+
+		dx := pos.X - itm.Position.X
+		dy := pos.Y - itm.Position.Y
+		distSq := dx*dx + dy*dy
+
+		if distSq <= radiusSq && distSq < closestDistSq {
+			closestItem = itm
+			closestDistSq = distSq
+			found = true
+		}
+	}
+
+	return closestItem, found
+}
+
+// isLeecherConsumable returns true if the item is a consumable the leecher should pick up
+func isLeecherConsumable(itm data.Item) bool {
+	ctx := context.Get()
+
+	// TP scrolls - always pick up if we need them
+	if itm.Name == item.ScrollOfTownPortal {
+		// Check if we need TP scrolls
+		if town.ShouldBuyTPs() {
+			return true
+		}
+	}
+
+	// Potions - pick up if belt/inventory needs them
+	if itm.IsPotion() {
+		if itm.IsHealingPotion() {
+			missing := ctx.BeltManager.GetMissingCount(data.HealingPotion)
+			return missing > 0
+		}
+		if itm.IsManaPotion() {
+			missing := ctx.BeltManager.GetMissingCount(data.ManaPotion)
+			return missing > 0
+		}
+		if itm.IsRejuvPotion() {
+			missing := ctx.BeltManager.GetMissingCount(data.RejuvenationPotion)
+			return missing > 0
+		}
+	}
+
+	return false
+}
+
 // getTownWaypointForAct returns a waypoint area ID that can be used to travel to an act's town
 func getTownWaypointForAct(act int) area.ID {
 	switch act {
@@ -264,10 +478,10 @@ func GoToAct(targetAct int) error {
 		ctx.Logger.Warn("Failed to open waypoint menu, continuing anyway",
 			slog.String("error", err.Error()))
 	}
-	
+
 	// Refresh game data after opening/closing menu
 	ctx.RefreshGameData()
-	
+
 	ctx.Logger.Debug("Available waypoints after menu open",
 		slog.Int("count", len(ctx.Data.PlayerUnit.AvailableWaypoints)))
 
@@ -279,7 +493,7 @@ func GoToAct(targetAct int) error {
 			slog.Int("targetAct", targetAct))
 		return WayPoint(targetTown)
 	}
-	
+
 	// No waypoint available - check for special transitions
 	// Special case: Act 4 → Act 5 can use red portal if waypoint not available
 	if currentAct == 4 && targetAct == 5 {
@@ -297,32 +511,32 @@ func GoToAct(targetAct int) error {
 func UseAct4ToAct5Portal() error {
 	ctx := context.Get()
 	ctx.SetLastAction("UseAct4ToAct5Portal")
-	
+
 	// Check if bot is stopping to avoid panic
 	if ctx.ExecutionPriority == context.PriorityStop {
 		return fmt.Errorf("bot is stopping")
 	}
-	
+
 	// Make sure we're in Act 4
 	if ctx.Data.PlayerUnit.Area != area.ThePandemoniumFortress {
 		ctx.Logger.Warn("Not in Pandemonium Fortress, cannot use Act 4→5 portal")
 		return fmt.Errorf("not in pandemonium fortress")
 	}
-	
+
 	// Refresh game data
 	ctx.RefreshGameData()
-	
+
 	// Find the portal to Harrogath (LastLastPortal)
 	harrogathPortal, found := ctx.Data.Objects.FindOne(object.LastLastPortal)
 	if !found {
 		ctx.Logger.Warn("Act 4→5 portal not found in Pandemonium Fortress")
 		return fmt.Errorf("harrogath portal not found")
 	}
-	
+
 	ctx.Logger.Info("Using portal to Harrogath",
 		slog.Int("portalX", harrogathPortal.Position.X),
 		slog.Int("portalY", harrogathPortal.Position.Y))
-	
+
 	// Interact with the portal
 	return InteractObject(harrogathPortal, func() bool {
 		// Check if we successfully traveled to Harrogath
@@ -334,12 +548,12 @@ func UseAct4ToAct5Portal() error {
 // openWaypointMenuToRefreshData opens the waypoint menu briefly to populate AvailableWaypoints data
 func openWaypointMenuToRefreshData() error {
 	ctx := context.Get()
-	
+
 	// Make sure we're in town
 	if !ctx.Data.PlayerUnit.Area.IsTown() {
 		return fmt.Errorf("not in town")
 	}
-	
+
 	// Find the waypoint in current town
 	var wp data.Object
 	found := false
@@ -350,7 +564,7 @@ func openWaypointMenuToRefreshData() error {
 			break
 		}
 	}
-	
+
 	if !found {
 		// Try to move toward known waypoint position
 		if wpPos, hasPos := townWaypointPositions[ctx.Data.PlayerUnit.Area]; hasPos {
@@ -370,12 +584,12 @@ func openWaypointMenuToRefreshData() error {
 				}
 			}
 		}
-		
+
 		if !found {
 			return fmt.Errorf("waypoint not found in town")
 		}
 	}
-	
+
 	// Move close to waypoint if needed
 	distance := ctx.PathFinder.DistanceFromMe(wp.Position)
 	if distance > 10 {
@@ -385,7 +599,7 @@ func openWaypointMenuToRefreshData() error {
 			return fmt.Errorf("failed to move to waypoint: %w", err)
 		}
 	}
-	
+
 	// Interact with waypoint to open menu
 	ctx.Logger.Debug("Opening waypoint menu")
 	if err := step.InteractObject(wp, func() bool {
@@ -394,12 +608,12 @@ func openWaypointMenuToRefreshData() error {
 	}); err != nil {
 		return fmt.Errorf("failed to open waypoint menu: %w", err)
 	}
-	
+
 	// Menu is now open, AvailableWaypoints should be populated
 	ctx.RefreshGameData()
 	ctx.Logger.Debug("Waypoint menu opened, waypoints refreshed",
 		slog.Int("availableCount", len(ctx.Data.PlayerUnit.AvailableWaypoints)))
-	
+
 	// Close the menu
 	utils.Sleep(300) // Brief delay to ensure data is populated
 	return step.CloseAllMenus()
@@ -586,4 +800,3 @@ func ReturnThroughPortal() error {
 
 	return fmt.Errorf("no portal found in current area")
 }
-

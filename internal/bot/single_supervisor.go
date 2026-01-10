@@ -22,6 +22,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/run"
+	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -1397,15 +1398,31 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 			tpCount = qty.Value
 		}
 	}
-	
+
 	// Only buy if we have 0-1 TPs or no tome at all
-	criticallyLow := !hasTome || tpCount <= 1
+	criticallyLow := !hasTome || tpCount <= 10
 	if s.bot.ctx.Data.PlayerUnit.Area.IsTown() && criticallyLow {
 		s.bot.ctx.Logger.Info("Leecher mode: critically low on TP scrolls, buying",
 			slog.String("supervisor", s.name),
 			slog.Int("currentTPs", tpCount),
 			slog.Bool("hasTome", hasTome))
-		if err := action.VendorRefill(true, false); err != nil {
+
+		// Use BuyAtVendor for more direct control
+		vendorNPC := town.GetTownByArea(s.bot.ctx.Data.PlayerUnit.Area).RefillNPC()
+		// Calculate how many scrolls we need to fill the tome (max 20)
+		scrollsNeeded := 20 - tpCount
+		if scrollsNeeded <= 0 {
+			scrollsNeeded = 1 // Buy at least 1 if somehow we got here
+		}
+		tpRequest := action.VendorItemRequest{
+			Item:     item.ScrollOfTownPortal,
+			Quantity: scrollsNeeded,
+			Tab:      4, // Misc tab
+		}
+		s.bot.ctx.Logger.Debug("Leecher mode: buying TP scrolls",
+			slog.Int("currentTPs", tpCount),
+			slog.Int("scrollsNeeded", scrollsNeeded))
+		if err := action.BuyAtVendor(vendorNPC, tpRequest); err != nil {
 			s.bot.ctx.Logger.Warn("Leecher mode: failed to buy TPs, continuing anyway",
 				slog.String("supervisor", s.name),
 				slog.String("error", err.Error()))
@@ -1538,7 +1555,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 
 	inDungeon := false
 	var entryPortalPos data.Position // Track the portal we entered through
-	lastActMismatchAct := 0           // Track last act we couldn't reach to avoid log spam
+	lastActMismatchAct := 0          // Track last act we couldn't reach to avoid log spam
 
 	for {
 		select {
@@ -1683,7 +1700,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 					// Don't try to go to portal area or anything - just wait for leader to come back or for us to get waypoint
 					continue
 				}
-				
+
 				// Successfully changed acts - reset mismatch tracker and go to portal waiting area
 				lastActMismatchAct = 0
 				if err := action.WaitAtPortalArea(); err != nil {
@@ -1703,14 +1720,14 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 
 				myArea := s.bot.ctx.Data.PlayerUnit.Area
 				myPos := s.bot.ctx.Data.PlayerUnit.Position
-				
+
 				// Verify we're actually in a dungeon (not town)
 				if myArea.IsTown() {
 					s.bot.ctx.Logger.Info("Leecher mode: we're in town but inDungeon flag is set, resetting",
 						slog.String("supervisor", s.name))
 					inDungeon = false
 					SetLeecherState(s.name, LeecherStateInPortalArea)
-					
+
 					// Go back to portal waiting area
 					if err := action.WaitAtPortalArea(); err != nil {
 						s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area",
@@ -1719,7 +1736,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 					}
 					continue
 				}
-				
+
 				s.bot.ctx.Logger.Debug("Leecher mode: in dungeon loop",
 					slog.String("supervisor", s.name),
 					slog.String("myArea", myArea.Area().Name),
@@ -1831,17 +1848,23 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				}
 
 				// Follow the leader at max distance for XP
+				// Priority order: 1) Stay safe from monsters, 2) Maintain XP range, 3) Loot consumables
 				s.bot.ctx.Logger.Debug("Leecher mode: attempting to follow leader",
 					slog.String("supervisor", s.name),
 					slog.String("leader", leecherInfo.LeaderName),
 					slog.Int("maxDistance", leecherInfo.MaxLeaderDistance))
 
-				if err := action.FollowPlayer(leecherInfo.LeaderName, leecherInfo.MaxLeaderDistance); err != nil {
+				// Use FollowPlayerWithLoot for priority-based following with consumable pickup
+				// Uses screen-based distances: 1 screen ≈ 40 units
+				// - Stay 1 screen away from monsters
+				// - Stay ~1.5 screens from leader (within 2 screens for XP)
+				// - Pick up consumables when safe
+				if err := action.FollowPlayerWithLoot(leecherInfo.LeaderName); err != nil {
 					// Check if leader moved to a different area
 					s.bot.ctx.RefreshGameData()
 					myArea := s.bot.ctx.Data.PlayerUnit.Area
 					myPos := s.bot.ctx.Data.PlayerUnit.Position
-					
+
 					// Get fresh leader position
 					leaderPos, currentLeaderArea, leaderFound := action.GetLeaderPosition(leecherInfo.LeaderName)
 					if !leaderFound {
@@ -1850,32 +1873,32 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 						continue
 					}
 					leaderArea = currentLeaderArea
-					
-				// Calculate distance to leader
-				dx := float64(myPos.X - leaderPos.X)
-				dy := float64(myPos.Y - leaderPos.Y)
-				distanceToLeader := int(dx*dx + dy*dy)
-				
-				// Check if leader is in town while we're in dungeon
-				// This happens when leader TPs back - we should wait for explicit command
-				if leaderArea.IsTown() {
-					s.bot.ctx.Logger.Debug("Leecher mode: leader in town while we're in dungeon, waiting for command",
-						slog.String("supervisor", s.name),
-						slog.String("leaderArea", leaderArea.Area().Name))
-					// Don't try to follow or navigate - just wait
-					continue
-				}
-				
-				// If leader is very close (within ~100 units) even if different area ID, it might be same physical area
-				// This handles cases like Tal Rasha's Tombs where each tomb has a different area ID
-				const closeProximityThresholdSq = 10000 // 100^2
-				if distanceToLeader < closeProximityThresholdSq {
-					s.bot.ctx.Logger.Debug("Leecher mode: leader close by despite different area ID, continuing to follow",
-						slog.String("supervisor", s.name),
-						slog.Int("distanceSq", distanceToLeader))
-					continue
-				}
-					
+
+					// Calculate distance to leader
+					dx := float64(myPos.X - leaderPos.X)
+					dy := float64(myPos.Y - leaderPos.Y)
+					distanceToLeader := int(dx*dx + dy*dy)
+
+					// Check if leader is in town while we're in dungeon
+					// This happens when leader TPs back - we should wait for explicit command
+					if leaderArea.IsTown() {
+						s.bot.ctx.Logger.Debug("Leecher mode: leader in town while we're in dungeon, waiting for command",
+							slog.String("supervisor", s.name),
+							slog.String("leaderArea", leaderArea.Area().Name))
+						// Don't try to follow or navigate - just wait
+						continue
+					}
+
+					// If leader is very close (within ~100 units) even if different area ID, it might be same physical area
+					// This handles cases like Tal Rasha's Tombs where each tomb has a different area ID
+					const closeProximityThresholdSq = 10000 // 100^2
+					if distanceToLeader < closeProximityThresholdSq {
+						s.bot.ctx.Logger.Debug("Leecher mode: leader close by despite different area ID, continuing to follow",
+							slog.String("supervisor", s.name),
+							slog.Int("distanceSq", distanceToLeader))
+						continue
+					}
+
 					if leaderArea != myArea {
 						s.bot.ctx.Logger.Info("Leecher mode: leader in different area",
 							slog.String("supervisor", s.name),
@@ -1886,12 +1909,12 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 						// Keep following through adjacent areas until we reach the leader or they're no longer adjacent
 						const maxAdjacentHops = 10 // Safety limit to prevent infinite loops
 						adjacentHops := 0
-						
+
 						for adjacentHops < maxAdjacentHops {
 							// Refresh game data to get current state
 							s.bot.ctx.RefreshGameData()
 							myArea = s.bot.ctx.Data.PlayerUnit.Area
-							
+
 							// Check if we've reached the leader's area
 							if myArea == leaderArea {
 								s.bot.ctx.Logger.Info("Leecher mode: reached leader's area",
@@ -1899,7 +1922,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 									slog.String("area", myArea.Area().Name))
 								break
 							}
-							
+
 							// Get updated leader position
 							_, newLeaderArea, leaderFound := action.GetLeaderPosition(leecherInfo.LeaderName)
 							if !leaderFound {
@@ -1908,7 +1931,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 								break
 							}
 							leaderArea = newLeaderArea
-							
+
 							// Check if leader's current area is adjacent to us
 							isAdjacent := false
 							for _, adj := range s.bot.ctx.Data.AdjacentLevels {
@@ -1931,7 +1954,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 										slog.String("error", err.Error()))
 									break
 								}
-								
+
 								adjacentHops++
 								utils.Sleep(500) // Brief pause after area transition
 							} else {
@@ -1946,7 +1969,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 									s.bot.ctx.Logger.Warn("Leecher mode: failed to return to town with TP",
 										slog.String("supervisor", s.name),
 										slog.String("error", err.Error()))
-									
+
 									// Recovery: Try to find and use any nearby portal (leader's or our old one)
 									s.bot.ctx.Logger.Info("Leecher mode: attempting portal recovery",
 										slog.String("supervisor", s.name))
@@ -1957,7 +1980,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 										// Stay in dungeon and keep trying to follow - leader might come back
 										continue
 									}
-									
+
 									// Successfully used a portal
 									s.bot.ctx.Logger.Info("Leecher mode: portal recovery successful",
 										slog.String("supervisor", s.name))
@@ -1978,7 +2001,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 								break
 							}
 						}
-						
+
 						if adjacentHops >= maxAdjacentHops {
 							s.bot.ctx.Logger.Warn("Leecher mode: reached max adjacent hops, stopping navigation",
 								slog.String("supervisor", s.name))
@@ -1989,7 +2012,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 						if strings.Contains(err.Error(), "town portal") || strings.Contains(err.Error(), "TP") {
 							s.bot.ctx.Logger.Info("Leecher mode: out of TP scrolls, checking for nearby portal or close leader",
 								slog.String("supervisor", s.name))
-							
+
 							// Check if leader is very close - if so, keep following without TP
 							if distanceToLeader < closeProximityThresholdSq {
 								s.bot.ctx.Logger.Info("Leecher mode: leader still close, continuing to follow despite TP issue",
@@ -1997,7 +2020,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 									slog.Int("distanceSq", distanceToLeader))
 								continue
 							}
-							
+
 							// Try to find and use any nearby portal
 							s.bot.ctx.Logger.Info("Leecher mode: attempting to use nearby portal",
 								slog.String("supervisor", s.name))
@@ -2007,13 +2030,13 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 								// Just wait here - leader might come back or open a portal
 								continue
 							}
-							
+
 							// Successfully used a portal - return to town
 							s.bot.ctx.Logger.Info("Leecher mode: used portal to return to town",
 								slog.String("supervisor", s.name))
 							inDungeon = false
 							SetLeecherState(s.name, LeecherStateInPortalArea)
-							
+
 							// Go to portal waiting area
 							if err := action.WaitAtPortalArea(); err != nil {
 								s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area",
@@ -2022,7 +2045,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 							}
 							continue
 						}
-						
+
 						// Log the error and try again next tick
 						s.bot.ctx.Logger.Warn("Leecher mode: failed to follow leader in same area",
 							slog.String("supervisor", s.name),
@@ -2095,7 +2118,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 						slog.Int("x", entryPortalPos.X),
 						slog.Int("y", entryPortalPos.Y))
 				}
-				
+
 				// Wait a moment for area transition to stabilize
 				utils.Sleep(1000)
 			}

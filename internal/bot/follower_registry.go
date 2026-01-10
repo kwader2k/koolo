@@ -299,6 +299,6 @@ func CalculateExponentialBackoff(baseDelayMs, maxDelayMs, retryCount int) int {
 	if delay > maxDelayMs {
 		delay = maxDelayMs
 	}
+
 	return delay
 }
-

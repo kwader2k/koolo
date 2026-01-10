@@ -142,10 +142,10 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 	// Run supervisor in a goroutine so Start() doesn't block
 	// This allows leader coordinators to start multiple followers
 	go func() {
-		err = supervisor.Start()
-		if err != nil {
-			mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
-		}
+	err = supervisor.Start()
+	if err != nil {
+		mng.logger.Error(fmt.Sprintf("error running supervisor %s: %s", supervisorName, err.Error()))
+	}
 	}()
 
 	return nil
