@@ -360,10 +360,22 @@ main {
   min-width: 0;
 }
 
+.row-title-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 .row-title {
   font-size: 0.88rem;
   font-weight: 600;
   color: #d9e3fd;
+}
+
+.row-subtitle {
+  font-size: 0.72rem;
+  font-weight: 400;
+  font-style: italic;
 }
 
 .row-summary {

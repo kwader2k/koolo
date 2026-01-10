@@ -166,89 +166,153 @@ func EnsureSkillBindings() error {
 	}
 	mainSkill, skillsToBind := char.SkillsToBind()
 
-	notBoundSkills := make([]skill.ID, 0)
+	notBoundSkills := make([]skill.ID, 0, len(skillsToBind))
 	for _, sk := range skillsToBind {
 		// Only add skills that are not already bound AND are either TomeOfTownPortal or the player has learned them.
 		// The check for skill.TomeOfTownPortal ensures it's considered even if not "learned" via skill points.
 		if _, found := ctx.Data.KeyBindings.KeyBindingForSkill(sk); !found && (sk == skill.TomeOfTownPortal || ctx.Data.PlayerUnit.Skills[sk].Level > 0) {
 			notBoundSkills = append(notBoundSkills, sk)
-			slices.Sort(notBoundSkills)
-			notBoundSkills = slices.Compact(notBoundSkills) // In case we have duplicates (tp tome)
+		}
+	}
+	if len(notBoundSkills) > 1 {
+		slices.Sort(notBoundSkills)
+		notBoundSkills = slices.Compact(notBoundSkills) // In case we have duplicates (tp tome)
+	}
+
+	legacyGraphics := ctx.GameReader.LegacyGraphics()
+	menuOpen := false
+	menuIsMain := false
+	openSkillMenu := func(bindOnLeft bool) {
+		if menuOpen && menuIsMain == bindOnLeft {
+			return
+		}
+		if legacyGraphics {
+			if bindOnLeft {
+				ctx.HID.Click(game.LeftButton, ui.MainSkillButtonXClassic, ui.MainSkillButtonYClassic)
+			} else {
+				ctx.HID.Click(game.LeftButton, ui.SecondarySkillButtonXClassic, ui.SecondarySkillButtonYClassic)
+			}
+		} else {
+			if bindOnLeft {
+				ctx.HID.Click(game.LeftButton, ui.MainSkillButtonX, ui.MainSkillButtonY)
+			} else {
+				ctx.HID.Click(game.LeftButton, ui.SecondarySkillButtonX, ui.SecondarySkillButtonY)
+			}
+		}
+		utils.Sleep(300)
+		menuOpen = true
+		menuIsMain = bindOnLeft
+	}
+	closeSkillMenu := func() {
+		if !menuOpen {
+			return
+		}
+		step.CloseAllMenus()
+		utils.Sleep(300)
+		menuOpen = false
+	}
+	resolveBindOnLeft := func(skillID skill.ID) (bool, bool) {
+		if skillID == skill.TomeOfTownPortal {
+			return false, true
+		}
+		skillDesc, found := skill.Skills[skillID]
+		if !found {
+			ctx.Logger.Error(fmt.Sprintf("Skill metadata not found for binding: %v", skillID))
+			return false, false
+		}
+		switch {
+		case skillDesc.LeftSkill:
+			return true, true
+		case skillDesc.RightSkill:
+			return false, true
+		default:
+			ctx.Logger.Warn(fmt.Sprintf("Skill cannot be bound to left or right: %v", skill.SkillNames[skillID]))
+			return false, false
 		}
 	}
 
 	// This block handles binding skills to F-keys if they are not already bound.
 	if len(notBoundSkills) > 0 {
 		ctx.Logger.Debug("Unbound skills found, trying to bind")
-		if ctx.GameReader.LegacyGraphics() {
-			ctx.HID.Click(game.LeftButton, ui.SecondarySkillButtonXClassic, ui.SecondarySkillButtonYClassic)
-		} else {
-			ctx.HID.Click(game.LeftButton, ui.SecondarySkillButtonX, ui.SecondarySkillButtonY)
-		}
-		utils.Sleep(300) // Give time for the secondary skill menu to open
-
 		availableKB := getAvailableSkillKB()
 		ctx.Logger.Debug(fmt.Sprintf("Available KB: %v", availableKB))
-		if len(notBoundSkills) > 0 {
-			for i, sk := range notBoundSkills {
-				if i >= len(availableKB) { // Prevent out-of-bounds if more skills than available keybindings
-					ctx.Logger.Warn(fmt.Sprintf("Not enough available keybindings for skill %v", skill.SkillNames[sk]))
-					break
-				}
-				skillPosition, found := calculateSkillPositionInUI(false, sk)
-				if !found {
-					ctx.Logger.Error(fmt.Sprintf("Skill %v UI position not found for binding.", skill.SkillNames[sk]))
-					continue
-				}
 
-				if sk == skill.TomeOfTownPortal {
-					gfx := "D2R"
-					if ctx.GameReader.LegacyGraphics() {
-						gfx = "Legacy"
-					}
-					ctx.Logger.Info(fmt.Sprintf("TomeOfTownPortal will be bound now at (%d,%d) [%s]", skillPosition.X, skillPosition.Y, gfx))
-					ctx.Logger.Info(fmt.Sprintf("EnsureSkillBindings Tome coords (secondary): X=%d Y=%d [Legacy=%v]", skillPosition.X, skillPosition.Y, ctx.GameReader.LegacyGraphics()))
-				}
-
-				ctx.HID.MovePointer(skillPosition.X, skillPosition.Y)
-				utils.Sleep(100)
-				ctx.HID.PressKeyBinding(availableKB[i])
-				utils.Sleep(300)
-				if sk == skill.TomeOfTownPortal {
-					ctx.GameReader.GetData()
-					utils.Sleep(150)
-					if _, ok := ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); ok {
-						ctx.Logger.Info("TomeOfTownPortal binding verified")
-					} else {
-						ctx.Logger.Warn("TomeOfTownPortal binding verification failed after click")
-					}
-				}
+		for i, sk := range notBoundSkills {
+			if i >= len(availableKB) { // Prevent out-of-bounds if more skills than available keybindings
+				ctx.Logger.Warn(fmt.Sprintf("Not enough available keybindings for skill %v", skill.SkillNames[sk]))
+				break
 			}
-		} else {
-			if _, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FireBolt); !found {
-				ctx.Logger.Debug("Lvl 1 sorc found - forcing fire bolt bind")
-				if ctx.GameReader.LegacyGraphics() {
-					ctx.HID.MovePointer(1000, 530) // Position for Fire Bolt in Legacy
-				} else {
-					ctx.HID.MovePointer(685, 545) // Position for Fire Bolt in Resurrected
+
+			bindOnLeft, ok := resolveBindOnLeft(sk)
+			if !ok {
+				continue
+			}
+
+			openSkillMenu(bindOnLeft)
+			skillPosition, found := calculateSkillPositionInUI(bindOnLeft, sk)
+			if !found {
+				ctx.Logger.Error(fmt.Sprintf("Skill %v UI position not found for binding.", skill.SkillNames[sk]))
+				continue
+			}
+
+			if sk == skill.TomeOfTownPortal {
+				gfx := "D2R"
+				if legacyGraphics {
+					gfx = "Legacy"
 				}
-				utils.Sleep(100)
-				// Assuming availableKB[0] is the first available F-key for Fire Bolt
-				if len(availableKB) > 0 {
-					ctx.HID.PressKeyBinding(availableKB[0])
-					utils.Sleep(300)
+				ctx.Logger.Info(fmt.Sprintf("TomeOfTownPortal will be bound now at (%d,%d) [%s]", skillPosition.X, skillPosition.Y, gfx))
+				ctx.Logger.Info(fmt.Sprintf("EnsureSkillBindings Tome coords (secondary): X=%d Y=%d [Legacy=%v]", skillPosition.X, skillPosition.Y, legacyGraphics))
+			}
+
+			ctx.HID.MovePointer(skillPosition.X, skillPosition.Y)
+			utils.Sleep(100)
+			ctx.HID.PressKeyBinding(availableKB[i])
+			utils.Sleep(300)
+			if sk == skill.TomeOfTownPortal {
+				ctx.GameReader.GetData()
+				utils.Sleep(150)
+				if _, ok := ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); ok {
+					ctx.Logger.Info("TomeOfTownPortal binding verified")
 				} else {
-					ctx.Logger.Warn("No available keybindings to bind Fire Bolt for level 1 sorceress.")
+					ctx.Logger.Warn("TomeOfTownPortal binding verification failed after click")
 				}
 			}
 		}
 		// Close the skill assignment menu if it was opened for binding F-keys
-		step.CloseAllMenus()
-		utils.Sleep(300)
+		closeSkillMenu()
+	} else {
+		if _, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FireBolt); !found {
+			if _, known := ctx.Data.PlayerUnit.Skills[skill.FireBolt]; !known {
+				ctx.Logger.Debug("Fire Bolt not learned; skipping Fire Bolt binding.")
+			} else {
+				ctx.Logger.Debug("Fire Bolt not bound; attempting to bind.")
+				availableKB := getAvailableSkillKB()
+				if len(availableKB) == 0 {
+					ctx.Logger.Warn("No available keybindings to bind Fire Bolt.")
+				} else {
+					bindOnLeft, ok := resolveBindOnLeft(skill.FireBolt)
+					if ok {
+						openSkillMenu(bindOnLeft)
+						skillPosition, found := calculateSkillPositionInUI(bindOnLeft, skill.FireBolt)
+						if !found {
+							ctx.Logger.Error("Fire Bolt UI position not found for binding.")
+						} else {
+							ctx.HID.MovePointer(skillPosition.X, skillPosition.Y)
+							utils.Sleep(100)
+							// Assuming availableKB[0] is the first available F-key for Fire Bolt
+							ctx.HID.PressKeyBinding(availableKB[0])
+							utils.Sleep(300)
+						}
+
+						closeSkillMenu()
+					}
+				}
+			}
+		}
 	}
 
 	// Set left (main) skill
-	if ctx.GameReader.LegacyGraphics() {
+	if legacyGraphics {
 		ctx.HID.Click(game.LeftButton, ui.MainSkillButtonXClassic, ui.MainSkillButtonYClassic)
 	} else {
 		ctx.HID.Click(game.LeftButton, ui.MainSkillButtonX, ui.MainSkillButtonY)
@@ -287,17 +351,17 @@ func calculateSkillPositionInUI(mainSkill bool, skillID skill.ID) (data.Position
 
 	for skID := range ctx.Data.PlayerUnit.Skills {
 		sk := skill.Skills[skID]
-		// Skip skills that can not be bind
+		// Skip skills that cannot be bound
 		if sk.Desc().ListRow < 0 {
 			continue
 		}
 
-		// Skip skills that can not be bind to current mouse button
+		// Skip skills that cannot be bound to the current mouse button
 		if (mainSkill && !sk.LeftSkill) || (!mainSkill && !sk.RightSkill) {
 			continue
 		}
 
-		//Skip skills with charges
+		// Skip skills with charges
 		if ctx.Data.PlayerUnit.Skills[skID].Charges > 0 {
 			continue
 		}

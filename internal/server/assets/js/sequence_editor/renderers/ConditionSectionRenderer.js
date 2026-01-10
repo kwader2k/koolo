@@ -23,6 +23,7 @@ export class ConditionSectionRenderer {
     this.isConditionEditing = isConditionEditing;
     this.setConditionEditing = setConditionEditing;
     this.domTargets = domTargets;
+    this._isSyncing = false; // Guard flag to prevent infinite re-render loops
 
     if (!this.domTargets) {
       throw new Error("ConditionSectionRenderer requires a domTargets resolver instance");
@@ -54,7 +55,7 @@ export class ConditionSectionRenderer {
       return;
     }
 
-    sections.forEach(({ key, title }) => {
+    sections.forEach(({ key, title, autoSyncInfo }) => {
       const condition = difficultyData[key];
       const enabled = Boolean(condition);
       const editing = enabled && this.isConditionEditing(difficulty, key);
@@ -67,10 +68,22 @@ export class ConditionSectionRenderer {
       const rowMain = document.createElement("div");
       rowMain.className = "row-main";
 
+      const titleContainer = document.createElement("div");
+      titleContainer.className = "row-title-container";
+
       const titleEl = document.createElement("div");
       titleEl.className = "row-title";
       titleEl.textContent = title;
-      rowMain.appendChild(titleEl);
+      titleContainer.appendChild(titleEl);
+
+      if (autoSyncInfo) {
+        const infoEl = document.createElement("div");
+        infoEl.className = "row-subtitle muted";
+        infoEl.textContent = autoSyncInfo;
+        titleContainer.appendChild(infoEl);
+      }
+
+      rowMain.appendChild(titleContainer);
 
       const summary = document.createElement("div");
       summary.className = "row-summary";
@@ -96,6 +109,7 @@ export class ConditionSectionRenderer {
           difficultyData[key] = undefined;
           this.setConditionEditing(difficulty, key, false);
         }
+        this.syncDifficultyConditions(difficulty, key);
         this.markDirty();
         this.render(difficulty);
       });
@@ -137,7 +151,8 @@ export class ConditionSectionRenderer {
    * @returns {HTMLDivElement}
    */
   buildEditor(difficulty, key, summary) {
-    const condition = this.state.data[difficulty]?.[key];
+    const difficultyData = this.state.data?.[difficulty];
+    const condition = difficultyData?.[key];
     if (!condition) {
       return document.createElement("div");
     }
@@ -164,6 +179,7 @@ export class ConditionSectionRenderer {
         const target = /** @type {HTMLInputElement} */ (event.target);
         condition[field] = parseOptionalNumber(target.value);
         this.updateSummary(summary, difficulty, key);
+        this.syncDifficultyConditions(difficulty, key);
         this.markDirty();
       });
       grid.appendChild(buildField(label, input, "condition-editor-field"));
@@ -189,6 +205,7 @@ export class ConditionSectionRenderer {
         const target = /** @type {HTMLInputElement} */ (event.target);
         condition[field] = target.checked;
         this.updateSummary(summary, difficulty, key);
+        this.syncDifficultyConditions(difficulty, key);
         this.markDirty();
       });
       const span = document.createElement("span");
@@ -203,12 +220,98 @@ export class ConditionSectionRenderer {
   }
 
   /**
+   * Synchronizes difficulty conditions between difficulties to prevent mismatches.
+   * Bidirectional sync:
+   * - Normal's nextDifficultyConditions ↔ Nightmare's stayDifficultyConditions
+   * - Nightmare's nextDifficultyConditions ↔ Hell's stayDifficultyConditions
+   * @param {DifficultyKey} difficulty
+   * @param {string} key
+   */
+  syncDifficultyConditions(difficulty, key) {
+    if (!this.state.data || this._isSyncing) {
+      return;
+    }
+
+    // Prevent cascading re-renders and infinite loops
+    this._isSyncing = true;
+
+    try {
+      // Normal's next conditions ↔ Nightmare's stay conditions
+      if (difficulty === "normal" && key === "nextDifficultyConditions") {
+        const normalNext = this.state.data.normal?.nextDifficultyConditions;
+        if (this.state.data.nightmare) {
+          // Propagate both set and unset (undefined) values
+          this.state.data.nightmare.stayDifficultyConditions = normalNext 
+            ? this.copyCondition(normalNext) 
+            : undefined;
+          this.render("nightmare");
+        }
+      }
+      
+      if (difficulty === "nightmare" && key === "stayDifficultyConditions") {
+        const nightmareStay = this.state.data.nightmare?.stayDifficultyConditions;
+        if (this.state.data.normal) {
+          // Propagate both set and unset (undefined) values
+          this.state.data.normal.nextDifficultyConditions = nightmareStay 
+            ? this.copyCondition(nightmareStay) 
+            : undefined;
+          this.render("normal");
+        }
+      }
+
+      // Nightmare's next conditions ↔ Hell's stay conditions
+      if (difficulty === "nightmare" && key === "nextDifficultyConditions") {
+        const nightmareNext = this.state.data.nightmare?.nextDifficultyConditions;
+        if (this.state.data.hell) {
+          // Propagate both set and unset (undefined) values
+          this.state.data.hell.stayDifficultyConditions = nightmareNext 
+            ? this.copyCondition(nightmareNext) 
+            : undefined;
+          this.render("hell");
+        }
+      }
+      
+      if (difficulty === "hell" && key === "stayDifficultyConditions") {
+        const hellStay = this.state.data.hell?.stayDifficultyConditions;
+        if (this.state.data.nightmare) {
+          // Propagate both set and unset (undefined) values
+          this.state.data.nightmare.nextDifficultyConditions = hellStay 
+            ? this.copyCondition(hellStay) 
+            : undefined;
+          this.render("nightmare");
+        }
+      }
+    } finally {
+      // Always reset the sync flag, even if an error occurs
+      this._isSyncing = false;
+    }
+  }
+
+  /**
+   * Creates a deep copy of a condition entry
+   * @param {SequenceConditionEntry} condition
+   * @returns {SequenceConditionEntry}
+   */
+  copyCondition(condition) {
+    return {
+      level: condition.level,
+      fireRes: condition.fireRes,
+      coldRes: condition.coldRes,
+      lightRes: condition.lightRes,
+      poisonRes: condition.poisonRes,
+      aboveLowGold: condition.aboveLowGold,
+      aboveGoldThreshold: condition.aboveGoldThreshold,
+    };
+  }
+
+  /**
    * @param {HTMLElement} summaryElement
    * @param {DifficultyKey} difficulty
    * @param {string} key
    */
   updateSummary(summaryElement, difficulty, key) {
-    const condition = this.state.data[difficulty]?.[key];
+    const difficultyData = this.state.data?.[difficulty];
+    const condition = difficultyData?.[key];
     if (!condition) {
       summaryElement.textContent = "Disabled";
       summaryElement.classList.add("empty");

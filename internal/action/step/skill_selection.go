@@ -4,6 +4,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -53,6 +54,53 @@ func SelectLeftSkill(skillID skill.ID) error {
 
 	// When not using packets, keybinding is required
 	return selectSkillViaHIDIfAvailable(skillID)
+}
+
+// SelectSkill selects a skill and returns the mouse button it was assigned to.
+// Prefer left when both buttons are available, but return whichever is already selected.
+func SelectSkill(skillID skill.ID) (game.MouseButton, bool) {
+	ctx := context.Get()
+
+	if ctx.Data.PlayerUnit.LeftSkill == skillID {
+		return game.LeftButton, true
+	}
+	if ctx.Data.PlayerUnit.RightSkill == skillID {
+		return game.RightButton, true
+	}
+
+	skillDesc, found := skill.Skills[skillID]
+	if !found {
+		return game.LeftButton, false
+	}
+
+	selectAndCheck := func(useLeft bool) (game.MouseButton, bool) {
+		if useLeft {
+			_ = SelectLeftSkill(skillID)
+		} else {
+			_ = SelectRightSkill(skillID)
+		}
+		ctx.RefreshGameData()
+		if ctx.Data.PlayerUnit.LeftSkill == skillID {
+			return game.LeftButton, true
+		}
+		if ctx.Data.PlayerUnit.RightSkill == skillID {
+			return game.RightButton, true
+		}
+		return game.LeftButton, false
+	}
+
+	if skillDesc.LeftSkill {
+		if button, ok := selectAndCheck(true); ok {
+			return button, true
+		}
+	}
+	if skillDesc.RightSkill {
+		if button, ok := selectAndCheck(false); ok {
+			return button, true
+		}
+	}
+
+	return game.LeftButton, false
 }
 
 // selectSkillViaHIDIfAvailable attempts to select skill via HID if keybinding exists

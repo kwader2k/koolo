@@ -145,11 +145,13 @@ func DropInventoryItem(i data.Item) error {
 	closeAttempts := 0
 
 	// Check if any other menu is open, except the inventory
+	ctx.RefreshGameData()
 	for ctx.Data.OpenMenus.IsMenuOpen() {
 
 		// Press escape to close it
 		ctx.HID.PressKey(0x1B) // ESC
 		utils.Sleep(500)
+		ctx.RefreshGameData()
 		closeAttempts++
 
 		if closeAttempts >= 5 {

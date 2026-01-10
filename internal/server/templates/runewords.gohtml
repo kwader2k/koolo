@@ -306,46 +306,43 @@
     </div>
     <div id="rwToast" class="rw-toast">Settings saved.</div>
 
-    <div style="margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #4a4a4a; background: rgba(30, 35, 45, 0.9); display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-        <div style="font-size: 0.85rem; color: #f5f7ff;">
-            Enable this to prioritize Runeword Maker and reroll before Cube Recipes.
-        </div>
-        <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
-            <input type="checkbox"
-                   name="rwPrioritizeBeforeCubing"
-                   form="runeword-settings-form"
-                   {{ if .Config.CubeRecipes.PrioritizeRunewords }}checked{{ end }}/>
-            <span style="white-space: nowrap; color: #f5f7ff;">Prioritize Runewords</span>
-        </label>
-    </div>
-
     <!-- Runeword Maker Global Options -->
-    <div style="margin-bottom: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid #4a4a4a; background: rgba(30, 35, 45, 0.9);">
-        <div style="font-size: 0.85rem; color: #aab; margin-bottom: 8px;">
-            <strong>Runeword Maker Options</strong>
+    <div style="margin-bottom: 12px; border-radius: 6px; border: 1px solid #4a4a4a; background: rgba(30, 35, 45, 0.9);">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px;">
+            <strong style="font-size: 0.8rem; color: #aab;">Runeword Maker Options</strong>
+            <button type="button" id="rwOptionsToggle" class="secondary" style="padding: 0.2rem 0.5rem; min-height: 0; font-size: 0.8rem; margin-bottom: 0; background: #3b82f6; border-color: #60a5fa; color: #fff;">Show</button>
         </div>
-        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-            <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
-                <input type="checkbox"
-                       name="rwAutoUpgrade"
-                       form="runeword-settings-form"
-                       {{ if .Config.Game.RunewordMaker.AutoUpgrade }}checked{{ end }}/>
-                <span style="white-space: nowrap; color: #f5f7ff;" title="Automatically upgrade to a better tier base when found (e.g., replace normal Spirit with exceptional)">Auto Upgrade Tiers</span>
-            </label>
-            <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
-                <input type="checkbox"
-                       name="rwOnlyIfWearable"
-                       form="runeword-settings-form"
-                       {{ if .Config.Game.RunewordMaker.OnlyIfWearable }}checked{{ end }}/>
-                <span style="white-space: nowrap; color: #f5f7ff;" title="Only make runewords if the character meets the strength/dexterity requirements to wear the item">Only If Wearable</span>
-            </label>
-            <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
-                <input type="checkbox"
-                       name="rwAutoTierByDifficulty"
-                       form="runeword-settings-form"
-                       {{ if .Config.Game.RunewordMaker.AutoTierByDifficulty }}checked{{ end }}/>
-                <span style="white-space: nowrap; color: #f5f7ff;" title="Auto-select base tier based on difficulty: Normal=Normal, Nightmare=Exceptional, Hell=Elite">Auto Tier by Difficulty</span>
-            </label>
+        <div id="rwOptionsPanel" style="display: none; padding: 6px 10px 8px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwPrioritizeBeforeCubing"
+                           form="runeword-settings-form"
+                           {{ if .Config.CubeRecipes.PrioritizeRunewords }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Enable this to prioritize Runeword Maker and reroll before Cube Recipes.">Prioritize Runewords</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwAutoUpgrade"
+                           form="runeword-settings-form"
+                           {{ if .Config.Game.RunewordMaker.AutoUpgrade }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Automatically upgrade to a better tier base when found (e.g., replace normal Spirit with exceptional)">Auto Upgrade Tiers</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwOnlyIfWearable"
+                           form="runeword-settings-form"
+                           {{ if .Config.Game.RunewordMaker.OnlyIfWearable }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Only make runewords if the character meets the strength/dexterity requirements to wear the item">Only If Wearable</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwAutoTierByDifficulty"
+                           form="runeword-settings-form"
+                           {{ if .Config.Game.RunewordMaker.AutoTierByDifficulty }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Auto-select base tier based on difficulty: Normal=Normal, Nightmare=Exceptional, Hell=Elite">Auto Tier by Difficulty</span>
+                </label>
+            </div>
         </div>
     </div>
 
@@ -447,9 +444,17 @@
                             </label>
                         </div>
                         <div class="grid">
-                            <label>
-                                Base types <span style="font-size: 0.8em; color: #888;">(select multiple for runewords like Spirit)</span>
-                                <div id="rwBaseTypeContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; min-height: 32px;"></div>
+                            <label style="display: block; width: 100%;">
+                                Base types <span style="font-size: 0.8em; color: #888;">(multi-select)</span>
+                                <div style="margin-top: 4px; width: 100%; display: block;">
+                                    <button type="button" id="rwBaseTypeToggle" style="display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; gap: 6px; padding: 0.45rem 0.6rem; min-height: 2.4rem; font-size: 0.9rem; margin-bottom: 0; border: 1px solid #3a3f4f; border-radius: 6px; background: rgba(15, 18, 28, 0.6); color: #f5f7ff;">
+                                        <span id="rwBaseTypeSummary">Any</span>
+                                        <span style="opacity: 0.7;">&#9662;</span>
+                                    </button>
+                                    <div id="rwBaseTypePanel" style="display: none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid #333; max-height: 220px; overflow: auto;">
+                                        <div id="rwBaseTypeContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                                    </div>
+                                </div>
                                 <input type="hidden" id="rwBaseType" name="rwBaseType" value=""/>
                             </label>
                             <label>
@@ -644,6 +649,9 @@
             const targetStatsContainer = null; // Legacy placeholder, reroll handled below
             const baseTypeContainer = document.getElementById('rwBaseTypeContainer');
             const baseTypeInput = document.getElementById('rwBaseType');
+            const baseTypeToggle = document.getElementById('rwBaseTypeToggle');
+            const baseTypePanel = document.getElementById('rwBaseTypePanel');
+            const baseTypeSummary = document.getElementById('rwBaseTypeSummary');
             const baseTierSelect = document.getElementById('rwBaseTier');
             const baseNameInput = document.getElementById('rwBaseName');
             const baseNameSelect = document.getElementById('rwBaseNameSelect');
@@ -667,6 +675,8 @@
             const historyClearBtn = document.getElementById('rwHistoryClear');
             const toast = document.getElementById('rwToast');
             const saveBtn = document.getElementById('rwSaveBtn');
+            const optionsToggle = document.getElementById('rwOptionsToggle');
+            const optionsPanel = document.getElementById('rwOptionsPanel');
             const historyStorageKey = 'koolo.runewordHistory.' + (supervisorName || 'default');
             let rerollHistoryCache = [];
             let rerollHistoryLoaded = false;
@@ -704,6 +714,43 @@
                 if (detailFavBtn && currentNameInput && currentNameInput.value === name) {
                     setFavButtonState(detailFavBtn, isFav);
                 }
+            }
+
+            function updateBaseTypeSummary(checked) {
+                if (!baseTypeSummary) {
+                    return;
+                }
+                if (!checked || checked.length === 0) {
+                    baseTypeSummary.textContent = 'Any';
+                    return;
+                }
+                const labels = Array.from(checked).map(function (cb) {
+                    return cb.dataset.label || cb.value;
+                });
+                if (labels.length <= 2) {
+                    baseTypeSummary.textContent = labels.join(', ');
+                    return;
+                }
+                baseTypeSummary.textContent = String(labels.length) + ' selected';
+            }
+
+            function setOptionsPanelOpen(open) {
+                if (!optionsPanel || !optionsToggle) {
+                    return;
+                }
+                optionsPanel.style.display = open ? '' : 'none';
+                optionsToggle.textContent = open ? 'Hide' : 'Show';
+                optionsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+
+            function shouldAutoOpenOptions() {
+                if (!optionsPanel) {
+                    return false;
+                }
+                const inputs = optionsPanel.querySelectorAll('input[type="checkbox"]');
+                return Array.from(inputs).some(function (input) {
+                    return input.checked;
+                });
             }
             if (rerollRulesContainer) {
                 rerollRulesContainer.addEventListener('input', function(event) {
@@ -1316,7 +1363,71 @@
                 row2.className = 'grid';
 
                 const typeLabel = document.createElement('label');
-                typeLabel.innerHTML = 'Base type<select class="rr-base-type"><option value="">Any</option></select>';
+                typeLabel.style.display = 'block';
+                typeLabel.style.width = '100%';
+                typeLabel.style.minWidth = '0';
+                typeLabel.innerHTML = 'Base types <span style="font-size: 0.8em; color: #888;">(multi-select)</span>';
+
+                const typeWrap = document.createElement('div');
+                typeWrap.style.marginTop = '4px';
+                typeWrap.style.width = '100%';
+                typeWrap.style.display = 'block';
+
+                const typeToggle = document.createElement('button');
+                typeToggle.type = 'button';
+                typeToggle.className = 'secondary';
+                typeToggle.style.display = 'flex';
+                typeToggle.style.alignItems = 'center';
+                typeToggle.style.justifyContent = 'space-between';
+                typeToggle.style.width = '100%';
+                typeToggle.style.boxSizing = 'border-box';
+                typeToggle.style.flex = '1 1 auto';
+                typeToggle.style.gap = '6px';
+                typeToggle.style.padding = '0.45rem 0.6rem';
+                typeToggle.style.minHeight = '2.4rem';
+                typeToggle.style.fontSize = '0.9rem';
+                typeToggle.style.marginBottom = '0';
+                typeToggle.style.border = '1px solid #3a3f4f';
+                typeToggle.style.borderRadius = '6px';
+                typeToggle.style.background = 'rgba(15, 18, 28, 0.6)';
+                typeToggle.style.color = '#f5f7ff';
+
+                const typeSummary = document.createElement('span');
+                typeSummary.textContent = 'Any';
+
+                const typeCaret = document.createElement('span');
+                typeCaret.style.opacity = '0.7';
+                typeCaret.innerHTML = '&#9662;';
+
+                typeToggle.appendChild(typeSummary);
+                typeToggle.appendChild(typeCaret);
+
+                const typePanel = document.createElement('div');
+                typePanel.style.display = 'none';
+                typePanel.style.marginTop = '6px';
+                typePanel.style.padding = '6px';
+                typePanel.style.background = 'rgba(0,0,0,0.2)';
+                typePanel.style.borderRadius = '4px';
+                typePanel.style.border = '1px solid #333';
+                typePanel.style.maxHeight = '220px';
+                typePanel.style.overflow = 'auto';
+
+                const typeContainer = document.createElement('div');
+                typeContainer.className = 'rr-base-type-container';
+                typeContainer.style.display = 'flex';
+                typeContainer.style.flexWrap = 'wrap';
+                typeContainer.style.gap = '8px';
+
+                typePanel.appendChild(typeContainer);
+                typeWrap.appendChild(typeToggle);
+                typeWrap.appendChild(typePanel);
+                typeLabel.appendChild(typeWrap);
+
+                const typeHidden = document.createElement('input');
+                typeHidden.type = 'hidden';
+                typeHidden.className = 'rr-base-type';
+                typeLabel.appendChild(typeHidden);
+
                 row2.appendChild(typeLabel);
 
                 const tierLabel = document.createElement('label');
@@ -1330,17 +1441,73 @@
 
                 body.appendChild(row2);
 
-                const baseTypeSelectEl = typeLabel.querySelector('select.rr-base-type');
+                const initialTypeCSV = rule && rule.BaseType ? rule.BaseType : '';
+                const savedTypes = initialTypeCSV
+                    .split(',')
+                    .map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+                typeHidden.value = savedTypes.join(',');
+
+                function updateTypeSummary(checked) {
+                    if (!typeSummary) {
+                        return;
+                    }
+                    if (!checked || checked.length === 0) {
+                        typeSummary.textContent = 'Any';
+                        return;
+                    }
+                    const labels = Array.from(checked).map(function (cb) {
+                        return cb.dataset.label || cb.value;
+                    });
+                    if (labels.length <= 2) {
+                        typeSummary.textContent = labels.join(', ');
+                        return;
+                    }
+                    typeSummary.textContent = String(labels.length) + ' selected';
+                }
+
+                function updateTypeHiddenFromChecks() {
+                    const checked = typeContainer.querySelectorAll('input[type="checkbox"]:checked');
+                    const values = Array.from(checked).map(function (cb) { return cb.value; });
+                    typeHidden.value = values.join(',');
+                    updateTypeSummary(checked);
+                    refreshBaseSelect();
+                }
+
+                typeToggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const open = typePanel.style.display === 'none';
+                    typePanel.style.display = open ? '' : 'none';
+                });
+                document.addEventListener('click', function (e) {
+                    if (typePanel.style.display === 'none') {
+                        return;
+                    }
+                    if (typePanel.contains(e.target) || typeToggle.contains(e.target)) {
+                        return;
+                    }
+                    typePanel.style.display = 'none';
+                });
+
                 if (Array.isArray(baseTypes)) {
                     baseTypes.forEach(function(bt) {
-                        const opt = document.createElement('option');
-                        opt.value = bt.code;
-                        opt.textContent = bt.label;
-                        baseTypeSelectEl.appendChild(opt);
+                        const label = document.createElement('label');
+                        label.style.cssText = 'display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85em; cursor: pointer; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px;';
+
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.value = bt.code;
+                        cb.dataset.label = bt.label;
+                        cb.checked = savedTypes.indexOf(bt.code) !== -1;
+                        cb.addEventListener('change', updateTypeHiddenFromChecks);
+
+                        const span = document.createElement('span');
+                        span.textContent = bt.label;
+
+                        label.appendChild(cb);
+                        label.appendChild(span);
+                        typeContainer.appendChild(label);
                     });
-                }
-                if (rule && rule.BaseType) {
-                    baseTypeSelectEl.value = rule.BaseType;
                 }
 
                 const tierSelect = tierLabel.querySelector('select.rr-base-tier');
@@ -1446,7 +1613,8 @@
                 }
 
                 function refreshBaseSelect() {
-                    const selectedType = baseTypeSelectEl ? baseTypeSelectEl.value : '';
+                    const selectedTypeCSV = typeHidden ? typeHidden.value : '';
+                    const selectedType = selectedTypeCSV.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; })[0] || '';
                     const selectedTier = tierSelect ? tierSelect.value : '';
 
                     baseSelect.innerHTML = '';
@@ -1475,9 +1643,6 @@
                     });
                 }
 
-                if (baseTypeSelectEl) {
-                    baseTypeSelectEl.addEventListener('change', refreshBaseSelect);
-                }
                 if (tierSelect) {
                     tierSelect.addEventListener('change', refreshBaseSelect);
                 }
@@ -1497,7 +1662,7 @@
                     });
                 }
 
-                refreshBaseSelect();
+                updateTypeHiddenFromChecks();
 
                 // Stats grid
                 const statsWrapper = document.createElement('div');
@@ -1598,13 +1763,13 @@
                 blocks.forEach(function(block) {
                     const ethSelect = block.querySelector('select.rr-eth-mode');
                     const qualSelect = block.querySelector('select.rr-quality-mode');
-                    const baseTypeSelectEl = block.querySelector('select.rr-base-type');
+                    const baseTypeHidden = block.querySelector('input.rr-base-type');
                     const tierSelect = block.querySelector('select.rr-base-tier');
                     const baseHidden = block.querySelector('input.rr-base-name');
 
                     const ethMode = ethSelect ? ethSelect.value : '';
                     const qualityMode = qualSelect ? qualSelect.value : '';
-                    const baseType = baseTypeSelectEl ? baseTypeSelectEl.value : '';
+                    const baseType = baseTypeHidden ? baseTypeHidden.value : '';
                     const baseTier = tierSelect ? tierSelect.value : '';
                     const baseName = baseHidden ? baseHidden.value : '';
 
@@ -1735,6 +1900,31 @@
                 });
             }
 
+            if (baseTypeToggle && baseTypePanel) {
+                baseTypeToggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const open = baseTypePanel.style.display === 'none';
+                    baseTypePanel.style.display = open ? '' : 'none';
+                });
+                document.addEventListener('click', function (e) {
+                    if (baseTypePanel.style.display === 'none') {
+                        return;
+                    }
+                    if (baseTypePanel.contains(e.target) || baseTypeToggle.contains(e.target)) {
+                        return;
+                    }
+                    baseTypePanel.style.display = 'none';
+                });
+            }
+
+            if (optionsToggle) {
+                setOptionsPanelOpen(shouldAutoOpenOptions());
+                optionsToggle.addEventListener('click', function () {
+                    const open = optionsPanel && optionsPanel.style.display === 'none';
+                    setOptionsPanelOpen(!!open);
+                });
+            }
+
             items.forEach((el) => {
                 const checkbox = el.querySelector('input[type="checkbox"]');
                 const favBtn = el.querySelector('.rw-fav-btn');
@@ -1850,6 +2040,7 @@
                             baseTypeInput.value = values.join(',');
                             // Update base names when selection changes
                             updateBaseNames();
+                            updateBaseTypeSummary(checked);
                         }
 
                         fetch('/api/runewords/base-types?name=' + encodeURIComponent(name))
@@ -1857,6 +2048,7 @@
                             .then(function(bases) {
                                 if (!Array.isArray(bases) || bases.length === 0) {
                                     baseTypeContainer.innerHTML = '<span style="color: #888; font-size: 0.85em;">No base types available</span>';
+                                    updateBaseTypeSummary([]);
                                     return;
                                 }
 
@@ -1870,6 +2062,7 @@
                                     var cb = document.createElement('input');
                                     cb.type = 'checkbox';
                                     cb.value = bt.code;
+                                    cb.dataset.label = bt.label;
                                     cb.checked = savedBaseTypes.indexOf(bt.code) !== -1;
                                     cb.addEventListener('change', updateBaseTypeInput);
 
@@ -1886,6 +2079,7 @@
                             })
                             .catch(function() {
                                 baseTypeContainer.innerHTML = '<span style="color: #888; font-size: 0.85em;">Failed to load base types</span>';
+                                updateBaseTypeSummary([]);
                             });
                     }
                     // TODO: load saved override values for this runeword into the fields.

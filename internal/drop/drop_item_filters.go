@@ -23,7 +23,7 @@ type Filters struct {
 	SelectedGems        []ItemQuantity `json:"selectedGems"`
 	SelectedKeyTokens   []ItemQuantity `json:"selectedKeyTokens"`
 	CustomItems         []string       `json:"customItems"`      // Legacy: simple names without quantity information
-	AllowedQualities    []string       `json:"allowedQualities"` // e.g., base, magic, rare, set, unique, crafted
+	AllowedQualities    []string       `json:"allowedQualities"` // e.g., base, magic, rare, set, unique, crafted, runeword
 }
 
 // Normalize trims whitespace, removes empty values and duplicates, and returns
@@ -161,7 +161,7 @@ func (s *ContextFilters) UpdateFilters(filters Filters) {
 }
 
 // ShouldDropperItem reports whether the given item name/type/quality should be Droppered.
-func (s *ContextFilters) ShouldDropperItem(name string, quality item.Quality, itemType string) bool {
+func (s *ContextFilters) ShouldDropperItem(name string, quality item.Quality, itemType string, isRuneword bool) bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	if !s.filters.Enabled || s.filterSet == nil {
@@ -176,7 +176,11 @@ func (s *ContextFilters) ShouldDropperItem(name string, quality item.Quality, it
 
 	qualityMatch := false
 	if len(s.filters.AllowedQualities) > 0 {
-		if s.qualityAllowed(quality) && !isRuneOrGem(name) && !isRuneOrGemType(itemType) {
+		if isRuneword {
+			if s.qualityGroupAllowed("runeword") {
+				qualityMatch = true
+			}
+		} else if s.qualityAllowed(quality) && !isRuneOrGem(name) && !isRuneOrGemType(itemType) {
 			qualityMatch = true
 		}
 	}
@@ -313,6 +317,10 @@ func (s *ContextFilters) qualityAllowed(q item.Quality) bool {
 	if group == "" {
 		return false
 	}
+	return s.qualityGroupAllowed(group)
+}
+
+func (s *ContextFilters) qualityGroupAllowed(group string) bool {
 	for _, allowed := range s.filters.AllowedQualities {
 		if strings.EqualFold(allowed, group) {
 			return true

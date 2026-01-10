@@ -294,6 +294,23 @@ func burstAttack(settings attackSettings) error {
 	}
 }
 
+func selectSecondarySkillButton(ctx *context.Status, skillID skill.ID) (game.MouseButton, bool) {
+	if skillID == 0 {
+		return game.RightButton, false
+	}
+	if ctx.Data.PlayerUnit.LeftSkill == skillID {
+		return game.LeftButton, false
+	}
+	if ctx.Data.PlayerUnit.RightSkill == skillID {
+		return game.RightButton, false
+	}
+	button, ok := SelectSkill(skillID)
+	if !ok {
+		return game.RightButton, false
+	}
+	return button, true
+}
+
 func performAttack(ctx *context.Status, settings attackSettings, targetID data.UnitID, x, y int) {
 	monsterPos := data.Position{X: x, Y: y}
 	if !ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, monsterPos) && !ctx.ForceAttack {
@@ -346,18 +363,28 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 				time.Sleep(ctx.Data.PlayerCastDuration())
 			}
 		} else {
-			if settings.skill != 0 && ctx.Data.PlayerUnit.RightSkill != settings.skill {
-				SelectRightSkill(settings.skill)
+			selectedButton, selected := selectSecondarySkillButton(ctx, settings.skill)
+			if selected {
 				time.Sleep(time.Millisecond * 10)
 			}
-			// Send right-click entity skill packet
-			castPacket := packet.NewCastSkillEntityRight(targetID)
-			if err := ctx.PacketSender.SendPacket(castPacket.GetPayload()); err != nil {
-				ctx.Logger.Warn("Failed to cast entity skill via packet (right), falling back to mouse", "error", err)
-				performMouseAttack(ctx, settings, x, y)
+			if selectedButton == game.LeftButton {
+				castPacket := packet.NewCastSkillEntityLeft(targetID)
+				if err := ctx.PacketSender.SendPacket(castPacket.GetPayload()); err != nil {
+					ctx.Logger.Warn("Failed to cast entity skill via packet (left), falling back to mouse", "error", err)
+					performMouseAttack(ctx, settings, x, y)
+				} else {
+					// Respect cast duration to avoid spamming server
+					time.Sleep(ctx.Data.PlayerCastDuration())
+				}
 			} else {
-				// Respect cast duration to avoid spamming server
-				time.Sleep(ctx.Data.PlayerCastDuration())
+				castPacket := packet.NewCastSkillEntityRight(targetID)
+				if err := ctx.PacketSender.SendPacket(castPacket.GetPayload()); err != nil {
+					ctx.Logger.Warn("Failed to cast entity skill via packet (right), falling back to mouse", "error", err)
+					performMouseAttack(ctx, settings, x, y)
+				} else {
+					// Respect cast duration to avoid spamming server
+					time.Sleep(ctx.Data.PlayerCastDuration())
+				}
 			}
 		}
 		return
@@ -368,10 +395,15 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 }
 
 func performMouseAttack(ctx *context.Status, settings attackSettings, x, y int) {
-	// Ensure we have the skill selected
-	if settings.skill != 0 && ctx.Data.PlayerUnit.RightSkill != settings.skill {
-		SelectRightSkill(settings.skill)
-		time.Sleep(time.Millisecond * 10)
+	selectedButton := game.RightButton
+	if settings.primaryAttack {
+		selectedButton = game.LeftButton
+	} else {
+		var selected bool
+		selectedButton, selected = selectSecondarySkillButton(ctx, settings.skill)
+		if selected {
+			time.Sleep(time.Millisecond * 10)
+		}
 	}
 
 	if settings.shouldStandStill {
@@ -379,11 +411,7 @@ func performMouseAttack(ctx *context.Status, settings attackSettings, x, y int) 
 	}
 
 	x, y = ctx.PathFinder.GameCoordsToScreenCords(x, y)
-	if settings.primaryAttack {
-		ctx.HID.Click(game.LeftButton, x, y)
-	} else {
-		ctx.HID.Click(game.RightButton, x, y)
-	}
+	ctx.HID.Click(selectedButton, x, y)
 
 	if settings.shouldStandStill {
 		ctx.HID.KeyUp(ctx.Data.KeyBindings.StandStill)

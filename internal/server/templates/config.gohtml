@@ -373,8 +373,12 @@
                         Enable Error Messages
                     </label>
                     <label>
-                        <input type="checkbox" name="discord_disable_item_stash_screenshots" value="{{ .Discord.DisableItemStashScreenshots }}" {{ if .Discord.DisableItemStashScreenshots }} checked="checked" {{ end }} />
+                        <input type="checkbox" id="discord-disable-item-stash-screenshots" name="discord_disable_item_stash_screenshots" value="{{ .Discord.DisableItemStashScreenshots }}" {{ if .Discord.DisableItemStashScreenshots }} checked="checked" {{ end }} />
                         Disable Item Stash Screenshots (send text only)
+                    </label>
+                    <label>
+                        <input type="checkbox" id="discord-include-pickit-info" name="discord_include_pickit_info_in_item_text" value="{{ .Discord.IncludePickitInfoInItemText }}" {{ if .Discord.IncludePickitInfoInItemText }} checked="checked" {{ end }} {{ if not .Discord.DisableItemStashScreenshots }} disabled="disabled" {{ end }} />
+                        Show NIP rule (send text only)
                     </label>
                 </fieldset>
                 <h4>Telegram integration</h4>
@@ -565,6 +569,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     webhookCheckbox.addEventListener("change", updateDiscordFields);
     updateDiscordFields();
+
+    const disableItemStashScreenshots = document.getElementById("discord-disable-item-stash-screenshots");
+    const includePickitInfo = document.getElementById("discord-include-pickit-info");
+    if (disableItemStashScreenshots && includePickitInfo) {
+        function updatePickitInfoOption() {
+            const allowPickitInfo = disableItemStashScreenshots.checked;
+            includePickitInfo.disabled = !allowPickitInfo;
+            if (!allowPickitInfo) {
+                includePickitInfo.checked = false;
+            }
+        }
+
+        disableItemStashScreenshots.addEventListener("change", updatePickitInfoOption);
+        updatePickitInfoOption();
+    }
 
     if (!ngrokEnabled || !ngrokConfig) {
         return;

@@ -98,7 +98,7 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 		}
 
 		// Prevent mouse overlap the HUD
-		if screenY > int(float32(pf.gr.GameAreaSizeY)/1.19) {
+		if screenY > int(float32(pf.gr.GameAreaSizeY)/1.21) {
 			break
 		}
 
@@ -113,7 +113,7 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 }
 
 func (pf *PathFinder) moveThroughPathTeleport(p Path) {
-	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.19)
+	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.21)
 	fromX, fromY := p.From().X, p.From().Y
 
 	for i := len(p) - 1; i >= 0; i-- {
@@ -161,7 +161,7 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 }
 
 func (pf *PathFinder) GetLastPathIndexOnScreen(p Path) int {
-	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.19)
+	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.21)
 	fromX, fromY := p.From().X, p.From().Y
 
 	for i := len(p) - 1; i >= 0; i-- {
