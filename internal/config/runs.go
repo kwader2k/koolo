@@ -69,6 +69,8 @@ const (
 	LilithRun                Run = "lilith"
 	// Development / Utility runs
 	DevelopmentRun Run = "development"
+	// Leader-Follower runs
+	LeaderFollowerRun Run = "leader_follower"
 )
 
 type LevelingRunInfo struct {
@@ -116,6 +118,7 @@ var AvailableRuns = map[Run]interface{}{
 	OrgansRun:           nil,
 	PandemoniumRun:      nil,
 	DevelopmentRun:      nil,
+	LeaderFollowerRun:   nil,
 }
 
 var SequencerQuests = []LevelingRunInfo{

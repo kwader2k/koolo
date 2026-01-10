@@ -1811,3 +1811,189 @@
 .chest-toggle-option input[type="checkbox"] {
     margin: 0;
 }
+
+/* ========================================
+   LEADER-FOLLOWER RUN SETTINGS
+   ======================================== */
+
+.leader-follower-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.leader-follower-settings .options-group {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+}
+
+.leader-follower-settings .options-group strong {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.leader-follower-settings .helper-text {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: -0.25rem;
+    margin-bottom: 0.75rem;
+    opacity: 0.7;
+}
+
+.leader-follower-settings select[multiple] {
+    min-height: 120px;
+    background: var(--bg-tertiary);
+}
+
+.leader-follower-settings .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.leader-follower-settings input[type="number"] {
+    font-size: 0.85rem;
+}
+
+.leader-follower-settings input[type="text"] {
+    font-size: 0.85rem;
+}
+
+.leader-follower-settings label {
+    margin-bottom: 0.25rem;
+}
+
+/* ========================================
+   SEARCHABLE MULTI-SELECT
+   ======================================== */
+
+.multi-select-container {
+    position: relative;
+    width: 100%;
+}
+
+.multi-select-input-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.6rem;
+    min-height: 42px;
+    background: var(--pico-form-element-background-color, #1a1f2e);
+    border: 1px solid var(--pico-form-element-border-color, #374151);
+    border-radius: var(--pico-border-radius, 4px);
+    cursor: text;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.multi-select-input-wrapper:focus-within {
+    border-color: var(--pico-primary, #0089eb);
+    box-shadow: 0 0 0 3px rgba(0, 137, 235, 0.2);
+}
+
+.multi-select-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    background: var(--pico-primary, #0089eb);
+    color: #fff;
+    border-radius: 3px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.multi-select-tag-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    padding: 0;
+    margin-left: 0.15rem;
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 2px;
+    color: #fff;
+    font-size: 0.75rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.multi-select-tag-remove:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.multi-select-search {
+    flex: 1;
+    min-width: 80px;
+    padding: 0.1rem 0;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--pico-form-element-color, #e3e8ff);
+    font-size: 0.85rem;
+}
+
+.multi-select-search::placeholder {
+    color: var(--pico-form-element-placeholder-color, #6b7280);
+}
+
+.multi-select-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 2px;
+    background: var(--pico-form-element-background-color, #1a1f2e);
+    border: 1px solid var(--pico-form-element-border-color, #374151);
+    border-radius: var(--pico-border-radius, 4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.multi-select-dropdown.open {
+    display: block;
+}
+
+.multi-select-option {
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--pico-form-element-color, #e3e8ff);
+    transition: background 0.1s ease;
+}
+
+.multi-select-option:hover {
+    background: rgba(0, 137, 235, 0.15);
+}
+
+.multi-select-option.selected {
+    background: rgba(0, 137, 235, 0.25);
+    font-weight: 500;
+}
+
+.multi-select-option.highlighted {
+    background: rgba(0, 137, 235, 0.3);
+}
+
+.multi-select-no-results {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--pico-form-element-placeholder-color, #6b7280);
+    font-style: italic;
+}

@@ -431,6 +431,195 @@
     </fieldset>
 {{ end }}
 
+{{ define "leader_follower" }}
+    <fieldset>
+        <small style="opacity:0.7; display:block; margin-bottom:1em;">This run coordinates follower bots to join games with a human leader. No D2R instance is spawned for this supervisor - it just coordinates followers.</small>
+        
+        <label>Leader Character Name
+            <input type="text" name="leaderFollowerLeaderName" value="{{ .Config.LeaderFollower.LeaderName }}" placeholder="Character name to follow">
+        </label>
+        
+        <label>Followers (select supervisors to follow this leader)</label>
+        <div class="multi-select-container" id="followersMultiSelect">
+            <select name="leaderFollowerFollowers" id="leaderFollowerFollowers" multiple style="display:none;">
+                {{- range .Supervisors -}}
+                {{- if ne . $.Supervisor -}}
+                <option value="{{ . }}" {{ if isInStringSlice $.Config.LeaderFollower.Followers . }}selected{{ end }}>{{ . }}</option>
+                {{- end -}}
+                {{- end -}}
+            </select>
+            <div class="multi-select-input-wrapper" id="followersInputWrapper">
+                <input type="text" class="multi-select-search" id="followersSearch" placeholder="Type to search supervisors..." autocomplete="off">
+            </div>
+            <div class="multi-select-dropdown" id="followersDropdown"></div>
+        </div>
+        <script>
+        (function() {
+            const container = document.getElementById('followersMultiSelect');
+            const hiddenSelect = document.getElementById('leaderFollowerFollowers');
+            const inputWrapper = document.getElementById('followersInputWrapper');
+            const searchInput = document.getElementById('followersSearch');
+            const dropdown = document.getElementById('followersDropdown');
+            
+            // Get all available options from hidden select
+            const allOptions = Array.from(hiddenSelect.options).map(opt => ({
+                value: opt.value,
+                label: opt.text,
+                selected: opt.selected
+            }));
+            
+            function getSelectedValues() {
+                return Array.from(hiddenSelect.selectedOptions).map(opt => opt.value);
+            }
+            
+            function setSelectedValues(values) {
+                Array.from(hiddenSelect.options).forEach(opt => {
+                    opt.selected = values.includes(opt.value);
+                });
+            }
+            
+            function renderTags() {
+                // Remove existing tags
+                inputWrapper.querySelectorAll('.multi-select-tag').forEach(tag => tag.remove());
+                
+                const selected = getSelectedValues();
+                selected.forEach(val => {
+                    const opt = allOptions.find(o => o.value === val);
+                    if (opt) {
+                        const tag = document.createElement('span');
+                        tag.className = 'multi-select-tag';
+                        tag.innerHTML = `${opt.label}<button type="button" class="multi-select-tag-remove" data-value="${val}">&times;</button>`;
+                        inputWrapper.insertBefore(tag, searchInput);
+                    }
+                });
+            }
+            
+            function renderDropdown(filter = '') {
+                const selected = getSelectedValues();
+                const filtered = allOptions.filter(opt => 
+                    opt.label.toLowerCase().includes(filter.toLowerCase())
+                );
+                
+                if (filtered.length === 0) {
+                    dropdown.innerHTML = '<div class="multi-select-no-results">No supervisors found</div>';
+                } else {
+                    dropdown.innerHTML = filtered.map(opt => 
+                        `<div class="multi-select-option${selected.includes(opt.value) ? ' selected' : ''}" data-value="${opt.value}">${opt.label}</div>`
+                    ).join('');
+                }
+            }
+            
+            function openDropdown() {
+                renderDropdown(searchInput.value);
+                dropdown.classList.add('open');
+            }
+            
+            function closeDropdown() {
+                dropdown.classList.remove('open');
+            }
+            
+            function toggleOption(value) {
+                const selected = getSelectedValues();
+                if (selected.includes(value)) {
+                    setSelectedValues(selected.filter(v => v !== value));
+                } else {
+                    setSelectedValues([...selected, value]);
+                }
+                renderTags();
+                renderDropdown(searchInput.value);
+                searchInput.focus();
+            }
+            
+            // Event listeners
+            inputWrapper.addEventListener('click', (e) => {
+                if (e.target === inputWrapper || e.target === searchInput) {
+                    searchInput.focus();
+                    openDropdown();
+                }
+            });
+            
+            inputWrapper.addEventListener('click', (e) => {
+                if (e.target.classList.contains('multi-select-tag-remove')) {
+                    e.stopPropagation();
+                    toggleOption(e.target.dataset.value);
+                }
+            });
+            
+            searchInput.addEventListener('input', () => {
+                renderDropdown(searchInput.value);
+                openDropdown();
+            });
+            
+            searchInput.addEventListener('focus', openDropdown);
+            
+            dropdown.addEventListener('click', (e) => {
+                if (e.target.classList.contains('multi-select-option')) {
+                    toggleOption(e.target.dataset.value);
+                }
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!container.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+            
+            // Handle backspace to remove last tag
+            searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && searchInput.value === '') {
+                    const selected = getSelectedValues();
+                    if (selected.length > 0) {
+                        toggleOption(selected[selected.length - 1]);
+                    }
+                }
+                if (e.key === 'Escape') {
+                    closeDropdown();
+                }
+            });
+            
+            // Initialize
+            renderTags();
+        })();
+        </script>
+        
+        <label>Game Name Pattern
+            <input type="text" name="leaderFollowerGameNamePattern" id="leaderFollowerGameNamePattern" value="{{ .Config.LeaderFollower.GameNamePattern }}" placeholder="e.g., run-" oninput="updateGameNamePreview()">
+        </label>
+        <small style="opacity:0.7;">First game: <strong id="gameNamePreview">{{ .Config.LeaderFollower.GameNamePattern }}1</strong>, then {{ .Config.LeaderFollower.GameNamePattern }}2, {{ .Config.LeaderFollower.GameNamePattern }}3, etc.</small>
+        <script>
+        function updateGameNamePreview() {
+            var pattern = document.getElementById('leaderFollowerGameNamePattern').value || 'game';
+            document.getElementById('gameNamePreview').textContent = pattern + '1';
+        }
+        </script>
+        
+        <label>Game Password
+            <input type="text" name="leaderFollowerGamePassword" value="{{ .Config.LeaderFollower.GamePassword }}" placeholder="Optional password">
+        </label>
+        
+        <fieldset class="grid">
+            <label>Min Join Delay (ms)
+                <input type="number" name="leaderFollowerJoinDelayMin" value="{{ .Config.LeaderFollower.JoinDelayMin }}" min="0" step="100">
+            </label>
+            <label>Max Join Delay (ms)
+                <input type="number" name="leaderFollowerJoinDelayMax" value="{{ .Config.LeaderFollower.JoinDelayMax }}" min="0" step="100">
+            </label>
+        </fieldset>
+        
+        <fieldset class="grid">
+            <label>Game Search Timeout (sec)
+                <input type="number" name="leaderFollowerGameSearchTimeout" value="{{ .Config.LeaderFollower.GameSearchTimeout }}" min="10" step="5">
+            </label>
+            <label>Poll Interval (ms)
+                <input type="number" name="leaderFollowerPollInterval" value="{{ .Config.LeaderFollower.PollInterval }}" min="1000" step="1000">
+            </label>
+        </fieldset>
+        
+        <label><input type="checkbox" name="leaderFollowerUseLegacyGraphics" {{ if .Config.LeaderFollower.UseLegacyGraphics }}checked{{ end }}> Use Legacy Graphics for Followers</label>
+        <small style="opacity:0.7;">Followers will use legacy (D2 classic) graphics mode for lower resource usage.</small>
+    </fieldset>
+{{ end }}
+
 {{ define "shopping" }}
   <fieldset>
     <legend>Shopping</legend>
