@@ -67,7 +67,7 @@ func (a TalRashaTombs) Run(parameters *RunParameters) error {
 			if parameters != nil && parameters.SequenceSettings != nil && parameters.SequenceSettings.MaxLevel != nil {
 				ctx := context.Get()
 				if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
-					return lvl.Value >= *parameters.SequenceSettings.MaxLevel
+					return lvl.Value > *parameters.SequenceSettings.MaxLevel
 				}
 			}
 			return false
