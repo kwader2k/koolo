@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action"
@@ -21,7 +22,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/run"
-	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -1387,16 +1387,35 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 	// Update leecher state
 	SetLeecherState(s.name, LeecherStateWaiting)
 
-	// Check if we need to buy TP scrolls (if less than 5 in tome)
+	// Check if we critically need TP scrolls (0-1 in tome)
+	// Don't risk dying trying to buy if we have a few already
 	s.bot.ctx.RefreshGameData()
-	if s.bot.ctx.Data.PlayerUnit.Area.IsTown() && town.ShouldBuyTPs() {
-		s.bot.ctx.Logger.Info("Leecher mode: buying TP scrolls",
-			slog.String("supervisor", s.name))
+	portalTome, hasTome := s.bot.ctx.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
+	tpCount := 0
+	if hasTome {
+		if qty, found := portalTome.FindStat(stat.Quantity, 0); found {
+			tpCount = qty.Value
+		}
+	}
+	
+	// Only buy if we have 0-1 TPs or no tome at all
+	criticallyLow := !hasTome || tpCount <= 1
+	if s.bot.ctx.Data.PlayerUnit.Area.IsTown() && criticallyLow {
+		s.bot.ctx.Logger.Info("Leecher mode: critically low on TP scrolls, buying",
+			slog.String("supervisor", s.name),
+			slog.Int("currentTPs", tpCount),
+			slog.Bool("hasTome", hasTome))
 		if err := action.VendorRefill(true, false); err != nil {
 			s.bot.ctx.Logger.Warn("Leecher mode: failed to buy TPs, continuing anyway",
 				slog.String("supervisor", s.name),
 				slog.String("error", err.Error()))
+			// Don't let vendor failures block us - we can try later or use portals
 		}
+	} else {
+		s.bot.ctx.Logger.Debug("Leecher mode: skipping TP purchase",
+			slog.String("supervisor", s.name),
+			slog.Int("currentTPs", tpCount),
+			slog.Bool("hasTome", hasTome))
 	}
 
 	// Try to join the leader's party
@@ -1519,6 +1538,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 
 	inDungeon := false
 	var entryPortalPos data.Position // Track the portal we entered through
+	lastActMismatchAct := 0           // Track last act we couldn't reach to avoid log spam
 
 	for {
 		select {
@@ -1644,26 +1664,37 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 			// If leader is in a different act and we're not in a dungeon, follow them
 			// But NOT if STAY is active
 			if !inDungeon && myAct != leaderAct && !GetLeecherStayReceived(s.name) {
-				s.bot.ctx.Logger.Info("Leecher mode: leader moved to different act, following",
-					slog.String("supervisor", s.name),
-					slog.Int("myAct", myAct),
-					slog.Int("leaderAct", leaderAct),
-					slog.String("leaderArea", leaderArea.Area().Name))
+				// Only log if this is a new act mismatch (different from last time)
+				if lastActMismatchAct != leaderAct {
+					s.bot.ctx.Logger.Info("Leecher mode: leader in different act",
+						slog.String("supervisor", s.name),
+						slog.Int("myAct", myAct),
+						slog.Int("leaderAct", leaderAct),
+						slog.String("leaderArea", leaderArea.Area().Name))
+					lastActMismatchAct = leaderAct
+				}
 
-				// Navigate to leader's act
+				// Try to navigate to leader's act
 				if err := action.GoToAct(leaderAct); err != nil {
-					s.bot.ctx.Logger.Warn("Leecher mode: failed to go to leader's act",
+					// If we can't reach the act (no waypoint), just wait - don't spam retries
+					s.bot.ctx.Logger.Debug("Leecher mode: cannot reach leader's act, waiting",
 						slog.String("supervisor", s.name),
 						slog.String("error", err.Error()))
-				} else {
-					// After changing acts, go to portal waiting area
-					if err := action.WaitAtPortalArea(); err != nil {
-						s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area after act change",
-							slog.String("supervisor", s.name),
-							slog.String("error", err.Error()))
-					}
+					// Don't try to go to portal area or anything - just wait for leader to come back or for us to get waypoint
+					continue
+				}
+				
+				// Successfully changed acts - reset mismatch tracker and go to portal waiting area
+				lastActMismatchAct = 0
+				if err := action.WaitAtPortalArea(); err != nil {
+					s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area after act change",
+						slog.String("supervisor", s.name),
+						slog.String("error", err.Error()))
 				}
 				continue
+			} else if myAct == leaderAct {
+				// We're in the same act now - reset the tracker
+				lastActMismatchAct = 0
 			}
 
 			// If in dungeon, follow the leader
@@ -1672,6 +1703,23 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 
 				myArea := s.bot.ctx.Data.PlayerUnit.Area
 				myPos := s.bot.ctx.Data.PlayerUnit.Position
+				
+				// Verify we're actually in a dungeon (not town)
+				if myArea.IsTown() {
+					s.bot.ctx.Logger.Info("Leecher mode: we're in town but inDungeon flag is set, resetting",
+						slog.String("supervisor", s.name))
+					inDungeon = false
+					SetLeecherState(s.name, LeecherStateInPortalArea)
+					
+					// Go back to portal waiting area
+					if err := action.WaitAtPortalArea(); err != nil {
+						s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area",
+							slog.String("supervisor", s.name),
+							slog.String("error", err.Error()))
+					}
+					continue
+				}
+				
 				s.bot.ctx.Logger.Debug("Leecher mode: in dungeon loop",
 					slog.String("supervisor", s.name),
 					slog.String("myArea", myArea.Area().Name),
@@ -1726,16 +1774,27 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 						slog.String("supervisor", s.name),
 						slog.String("reason", returnReason))
 
-					// Try to use portal to return to town
-					if err := action.ReturnThroughPortal(); err != nil {
-						s.bot.ctx.Logger.Warn("Leecher mode: failed to return through portal, using TP",
-							slog.String("supervisor", s.name),
-							slog.String("error", err.Error()))
-						// Fallback: use own TP
+					// If TP command was received, use own TP scroll
+					// If portal detected, try to use that portal
+					if returnReason == "TP command received" {
+						// Use own TP scroll
 						if err := action.ReturnTown(); err != nil {
-							s.bot.ctx.Logger.Warn("Leecher mode: failed to return to town",
+							s.bot.ctx.Logger.Warn("Leecher mode: failed to use TP scroll",
 								slog.String("supervisor", s.name),
 								slog.String("error", err.Error()))
+						}
+					} else {
+						// Try to use portal to return to town
+						if err := action.ReturnThroughPortal(); err != nil {
+							s.bot.ctx.Logger.Warn("Leecher mode: failed to return through portal, using TP",
+								slog.String("supervisor", s.name),
+								slog.String("error", err.Error()))
+							// Fallback: use own TP
+							if err := action.ReturnTown(); err != nil {
+								s.bot.ctx.Logger.Warn("Leecher mode: failed to return to town",
+									slog.String("supervisor", s.name),
+									slog.String("error", err.Error()))
+							}
 						}
 					}
 
@@ -1779,70 +1838,191 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 
 				if err := action.FollowPlayer(leecherInfo.LeaderName, leecherInfo.MaxLeaderDistance); err != nil {
 					// Check if leader moved to a different area
+					s.bot.ctx.RefreshGameData()
 					myArea := s.bot.ctx.Data.PlayerUnit.Area
+					myPos := s.bot.ctx.Data.PlayerUnit.Position
+					
+					// Get fresh leader position
+					leaderPos, currentLeaderArea, leaderFound := action.GetLeaderPosition(leecherInfo.LeaderName)
+					if !leaderFound {
+						s.bot.ctx.Logger.Debug("Leecher mode: leader not found after follow error",
+							slog.String("supervisor", s.name))
+						continue
+					}
+					leaderArea = currentLeaderArea
+					
+				// Calculate distance to leader
+				dx := float64(myPos.X - leaderPos.X)
+				dy := float64(myPos.Y - leaderPos.Y)
+				distanceToLeader := int(dx*dx + dy*dy)
+				
+				// Check if leader is in town while we're in dungeon
+				// This happens when leader TPs back - we should wait for explicit command
+				if leaderArea.IsTown() {
+					s.bot.ctx.Logger.Debug("Leecher mode: leader in town while we're in dungeon, waiting for command",
+						slog.String("supervisor", s.name),
+						slog.String("leaderArea", leaderArea.Area().Name))
+					// Don't try to follow or navigate - just wait
+					continue
+				}
+				
+				// If leader is very close (within ~100 units) even if different area ID, it might be same physical area
+				// This handles cases like Tal Rasha's Tombs where each tomb has a different area ID
+				const closeProximityThresholdSq = 10000 // 100^2
+				if distanceToLeader < closeProximityThresholdSq {
+					s.bot.ctx.Logger.Debug("Leecher mode: leader close by despite different area ID, continuing to follow",
+						slog.String("supervisor", s.name),
+						slog.Int("distanceSq", distanceToLeader))
+					continue
+				}
+					
 					if leaderArea != myArea {
 						s.bot.ctx.Logger.Info("Leecher mode: leader in different area",
 							slog.String("supervisor", s.name),
 							slog.String("myArea", myArea.Area().Name),
-							slog.String("leaderArea", leaderArea.Area().Name))
+							slog.String("leaderArea", leaderArea.Area().Name),
+							slog.Int("distanceSq", distanceToLeader))
 
-						// Check if leader's area is adjacent (directly connected)
-						isAdjacent := false
-						for _, adj := range s.bot.ctx.Data.AdjacentLevels {
-							if adj.Area == leaderArea {
-								isAdjacent = true
+						// Keep following through adjacent areas until we reach the leader or they're no longer adjacent
+						const maxAdjacentHops = 10 // Safety limit to prevent infinite loops
+						adjacentHops := 0
+						
+						for adjacentHops < maxAdjacentHops {
+							// Refresh game data to get current state
+							s.bot.ctx.RefreshGameData()
+							myArea = s.bot.ctx.Data.PlayerUnit.Area
+							
+							// Check if we've reached the leader's area
+							if myArea == leaderArea {
+								s.bot.ctx.Logger.Info("Leecher mode: reached leader's area",
+									slog.String("supervisor", s.name),
+									slog.String("area", myArea.Area().Name))
+								break
+							}
+							
+							// Get updated leader position
+							_, newLeaderArea, leaderFound := action.GetLeaderPosition(leecherInfo.LeaderName)
+							if !leaderFound {
+								s.bot.ctx.Logger.Debug("Leecher mode: leader not found in roster during area navigation",
+									slog.String("supervisor", s.name))
+								break
+							}
+							leaderArea = newLeaderArea
+							
+							// Check if leader's current area is adjacent to us
+							isAdjacent := false
+							for _, adj := range s.bot.ctx.Data.AdjacentLevels {
+								if adj.Area == leaderArea {
+									isAdjacent = true
+									break
+								}
+							}
+
+							if isAdjacent {
+								s.bot.ctx.Logger.Info("Leecher mode: moving to adjacent area",
+									slog.String("supervisor", s.name),
+									slog.String("targetArea", leaderArea.Area().Name),
+									slog.Int("hop", adjacentHops+1))
+
+								// Move to adjacent area
+								if err := action.MoveToArea(leaderArea); err != nil {
+									s.bot.ctx.Logger.Debug("Leecher mode: error moving to area",
+										slog.String("supervisor", s.name),
+										slog.String("error", err.Error()))
+									break
+								}
+								
+								adjacentHops++
+								utils.Sleep(500) // Brief pause after area transition
+							} else {
+								// Leader is not in an adjacent area - they used waypoint/portal
+								// Return to town and wait for commands
+								s.bot.ctx.Logger.Info("Leecher mode: leader not in adjacent area, returning to town",
+									slog.String("supervisor", s.name),
+									slog.String("myArea", myArea.Area().Name),
+									slog.String("leaderArea", leaderArea.Area().Name))
+
+								if err := action.ReturnTown(); err != nil {
+									s.bot.ctx.Logger.Warn("Leecher mode: failed to return to town with TP",
+										slog.String("supervisor", s.name),
+										slog.String("error", err.Error()))
+									
+									// Recovery: Try to find and use any nearby portal (leader's or our old one)
+									s.bot.ctx.Logger.Info("Leecher mode: attempting portal recovery",
+										slog.String("supervisor", s.name))
+									if portalErr := action.ReturnThroughPortal(); portalErr != nil {
+										s.bot.ctx.Logger.Warn("Leecher mode: portal recovery also failed, staying in dungeon",
+											slog.String("supervisor", s.name),
+											slog.String("error", portalErr.Error()))
+										// Stay in dungeon and keep trying to follow - leader might come back
+										continue
+									}
+									
+									// Successfully used a portal
+									s.bot.ctx.Logger.Info("Leecher mode: portal recovery successful",
+										slog.String("supervisor", s.name))
+									inDungeon = false
+									SetLeecherState(s.name, LeecherStateInPortalArea)
+								} else {
+									inDungeon = false
+									SetLeecherState(s.name, LeecherStateInPortalArea)
+									SetLeecherComeReceived(s.name, false)
+
+									// Go to portal waiting area
+									if err := action.WaitAtPortalArea(); err != nil {
+										s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area",
+											slog.String("supervisor", s.name),
+											slog.String("error", err.Error()))
+									}
+								}
 								break
 							}
 						}
-
-						if isAdjacent {
-							s.bot.ctx.Logger.Info("Leecher mode: moving to adjacent area",
-								slog.String("supervisor", s.name),
-								slog.String("targetArea", leaderArea.Area().Name))
-
-							// Move to adjacent area
-							if err := action.MoveToArea(leaderArea); err != nil {
-								s.bot.ctx.Logger.Debug("Leecher mode: error moving to area",
-									slog.String("supervisor", s.name),
-									slog.String("error", err.Error()))
-							}
-
-							// Verify we made it
-							s.bot.ctx.RefreshGameData()
-							if s.bot.ctx.Data.PlayerUnit.Area == leaderArea {
-								s.bot.ctx.Logger.Info("Leecher mode: successfully moved to leader's area",
-									slog.String("supervisor", s.name))
-							}
-						} else {
-							// Leader is not in an adjacent area - they used waypoint/portal
-							// TP back to town and wait at portal area
-							s.bot.ctx.Logger.Info("Leecher mode: leader not in adjacent area, returning to town",
-								slog.String("supervisor", s.name),
-								slog.String("myArea", myArea.Area().Name),
-								slog.String("leaderArea", leaderArea.Area().Name))
-
-							if err := action.ReturnTown(); err != nil {
-								s.bot.ctx.Logger.Warn("Leecher mode: failed to return to town",
-									slog.String("supervisor", s.name),
-									slog.String("error", err.Error()))
-								// Even if TP failed, we might be stuck - reset state to try recovery
-								inDungeon = false
-								SetLeecherState(s.name, LeecherStateInPortalArea)
-							} else {
-								inDungeon = false
-								SetLeecherState(s.name, LeecherStateInPortalArea)
-								SetLeecherComeReceived(s.name, false)
-
-								// Go to portal waiting area
-								if err := action.WaitAtPortalArea(); err != nil {
-									s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area",
-										slog.String("supervisor", s.name),
-										slog.String("error", err.Error()))
-								}
-							}
+						
+						if adjacentHops >= maxAdjacentHops {
+							s.bot.ctx.Logger.Warn("Leecher mode: reached max adjacent hops, stopping navigation",
+								slog.String("supervisor", s.name))
 						}
 					} else {
 						// Leader is in the same area but FollowPlayer failed for another reason
+						// Check if it's a TP scroll issue and if leader is close
+						if strings.Contains(err.Error(), "town portal") || strings.Contains(err.Error(), "TP") {
+							s.bot.ctx.Logger.Info("Leecher mode: out of TP scrolls, checking for nearby portal or close leader",
+								slog.String("supervisor", s.name))
+							
+							// Check if leader is very close - if so, keep following without TP
+							if distanceToLeader < closeProximityThresholdSq {
+								s.bot.ctx.Logger.Info("Leecher mode: leader still close, continuing to follow despite TP issue",
+									slog.String("supervisor", s.name),
+									slog.Int("distanceSq", distanceToLeader))
+								continue
+							}
+							
+							// Try to find and use any nearby portal
+							s.bot.ctx.Logger.Info("Leecher mode: attempting to use nearby portal",
+								slog.String("supervisor", s.name))
+							if portalErr := action.ReturnThroughPortal(); portalErr != nil {
+								s.bot.ctx.Logger.Warn("Leecher mode: no portal found, will wait here",
+									slog.String("supervisor", s.name))
+								// Just wait here - leader might come back or open a portal
+								continue
+							}
+							
+							// Successfully used a portal - return to town
+							s.bot.ctx.Logger.Info("Leecher mode: used portal to return to town",
+								slog.String("supervisor", s.name))
+							inDungeon = false
+							SetLeecherState(s.name, LeecherStateInPortalArea)
+							
+							// Go to portal waiting area
+							if err := action.WaitAtPortalArea(); err != nil {
+								s.bot.ctx.Logger.Warn("Leecher mode: failed to go to portal area",
+									slog.String("supervisor", s.name),
+									slog.String("error", err.Error()))
+							}
+							continue
+						}
+						
 						// Log the error and try again next tick
 						s.bot.ctx.Logger.Warn("Leecher mode: failed to follow leader in same area",
 							slog.String("supervisor", s.name),
@@ -1915,6 +2095,9 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 						slog.Int("x", entryPortalPos.X),
 						slog.Int("y", entryPortalPos.Y))
 				}
+				
+				// Wait a moment for area transition to stabilize
+				utils.Sleep(1000)
 			}
 		}
 	}

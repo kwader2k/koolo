@@ -257,17 +257,152 @@ func GoToAct(targetAct int) error {
 		slog.Int("currentAct", currentAct),
 		slog.Int("targetAct", targetAct))
 
+	// Before checking waypoint availability, we need to populate the AvailableWaypoints data
+	// by actually opening the waypoint menu in our current town
+	ctx.Logger.Debug("Opening waypoint menu to refresh available waypoints")
+	if err := openWaypointMenuToRefreshData(); err != nil {
+		ctx.Logger.Warn("Failed to open waypoint menu, continuing anyway",
+			slog.String("error", err.Error()))
+	}
+	
+	// Refresh game data after opening/closing menu
+	ctx.RefreshGameData()
+	
+	ctx.Logger.Debug("Available waypoints after menu open",
+		slog.Int("count", len(ctx.Data.PlayerUnit.AvailableWaypoints)))
+
 	targetTown := getTownWaypointForAct(targetAct)
 
 	// Check if we have a waypoint to this act
-	if !hasWaypointForAct(targetAct) {
-		ctx.Logger.Warn("No waypoint available for target act",
+	if hasWaypointForAct(targetAct) {
+		ctx.Logger.Info("Using waypoint to travel to act",
 			slog.Int("targetAct", targetAct))
-		return fmt.Errorf("no waypoint available for act %d", targetAct)
+		return WayPoint(targetTown)
+	}
+	
+	// No waypoint available - check for special transitions
+	// Special case: Act 4 → Act 5 can use red portal if waypoint not available
+	if currentAct == 4 && targetAct == 5 {
+		ctx.Logger.Info("No waypoint for Act 5, trying Act 4→5 portal")
+		return UseAct4ToAct5Portal()
 	}
 
-	// Use waypoint to travel
-	return WayPoint(targetTown)
+	ctx.Logger.Debug("No waypoint available for target act (will wait for leader)",
+		slog.Int("targetAct", targetAct),
+		slog.Int("availableWaypointsCount", len(ctx.Data.PlayerUnit.AvailableWaypoints)))
+	return fmt.Errorf("no waypoint available for act %d", targetAct)
+}
+
+// UseAct4ToAct5Portal uses the red portal in Pandemonium Fortress to travel to Harrogath
+func UseAct4ToAct5Portal() error {
+	ctx := context.Get()
+	ctx.SetLastAction("UseAct4ToAct5Portal")
+	
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
+	
+	// Make sure we're in Act 4
+	if ctx.Data.PlayerUnit.Area != area.ThePandemoniumFortress {
+		ctx.Logger.Warn("Not in Pandemonium Fortress, cannot use Act 4→5 portal")
+		return fmt.Errorf("not in pandemonium fortress")
+	}
+	
+	// Refresh game data
+	ctx.RefreshGameData()
+	
+	// Find the portal to Harrogath (LastLastPortal)
+	harrogathPortal, found := ctx.Data.Objects.FindOne(object.LastLastPortal)
+	if !found {
+		ctx.Logger.Warn("Act 4→5 portal not found in Pandemonium Fortress")
+		return fmt.Errorf("harrogath portal not found")
+	}
+	
+	ctx.Logger.Info("Using portal to Harrogath",
+		slog.Int("portalX", harrogathPortal.Position.X),
+		slog.Int("portalY", harrogathPortal.Position.Y))
+	
+	// Interact with the portal
+	return InteractObject(harrogathPortal, func() bool {
+		// Check if we successfully traveled to Harrogath
+		ctx.RefreshGameData()
+		return ctx.Data.PlayerUnit.Area == area.Harrogath
+	})
+}
+
+// openWaypointMenuToRefreshData opens the waypoint menu briefly to populate AvailableWaypoints data
+func openWaypointMenuToRefreshData() error {
+	ctx := context.Get()
+	
+	// Make sure we're in town
+	if !ctx.Data.PlayerUnit.Area.IsTown() {
+		return fmt.Errorf("not in town")
+	}
+	
+	// Find the waypoint in current town
+	var wp data.Object
+	found := false
+	for _, o := range ctx.Data.Objects {
+		if o.IsWaypoint() {
+			wp = o
+			found = true
+			break
+		}
+	}
+	
+	if !found {
+		// Try to move toward known waypoint position
+		if wpPos, hasPos := townWaypointPositions[ctx.Data.PlayerUnit.Area]; hasPos {
+			ctx.Logger.Debug("Waypoint not visible, moving toward it",
+				slog.Int("x", wpPos.X),
+				slog.Int("y", wpPos.Y))
+			if err := MoveToCoords(wpPos); err != nil {
+				return fmt.Errorf("failed to move to waypoint: %w", err)
+			}
+			// Refresh and try to find it again
+			ctx.RefreshGameData()
+			for _, o := range ctx.Data.Objects {
+				if o.IsWaypoint() {
+					wp = o
+					found = true
+					break
+				}
+			}
+		}
+		
+		if !found {
+			return fmt.Errorf("waypoint not found in town")
+		}
+	}
+	
+	// Move close to waypoint if needed
+	distance := ctx.PathFinder.DistanceFromMe(wp.Position)
+	if distance > 10 {
+		ctx.Logger.Debug("Moving closer to waypoint",
+			slog.Int("distance", distance))
+		if err := MoveToCoords(wp.Position); err != nil {
+			return fmt.Errorf("failed to move to waypoint: %w", err)
+		}
+	}
+	
+	// Interact with waypoint to open menu
+	ctx.Logger.Debug("Opening waypoint menu")
+	if err := step.InteractObject(wp, func() bool {
+		ctx.RefreshGameData()
+		return ctx.Data.OpenMenus.Waypoint
+	}); err != nil {
+		return fmt.Errorf("failed to open waypoint menu: %w", err)
+	}
+	
+	// Menu is now open, AvailableWaypoints should be populated
+	ctx.RefreshGameData()
+	ctx.Logger.Debug("Waypoint menu opened, waypoints refreshed",
+		slog.Int("availableCount", len(ctx.Data.PlayerUnit.AvailableWaypoints)))
+	
+	// Close the menu
+	utils.Sleep(300) // Brief delay to ensure data is populated
+	return step.CloseAllMenus()
 }
 
 // WaitAtPortalArea moves to and waits at the portal waiting area for the current act

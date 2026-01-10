@@ -20,23 +20,14 @@ func VendorRefill(forceRefill bool, sellJunk bool, tempLock ...[][]int) (err err
 	ctx := botCtx.Get()
 	ctx.SetLastAction("VendorRefill")
 
-	// Check if bot is stopping to avoid panic
-	if ctx.ExecutionPriority == botCtx.PriorityStop {
-		return nil
-	}
-
 	// This is a special case, we want to sell junk, but we don't have enough space to unequip items
 	if !forceRefill && !shouldVisitVendor() && len(tempLock) == 0 {
 		return nil
 	}
 
-	ctx.Logger.Info("Visiting vendor...",
-		slog.Bool("forceRefill", forceRefill),
-		slog.String("area", ctx.Data.PlayerUnit.Area.Area().Name))
+	ctx.Logger.Info("Visiting vendor...", slog.Bool("forceRefill", forceRefill))
 
 	vendorNPC := town.GetTownByArea(ctx.Data.PlayerUnit.Area).RefillNPC()
-	ctx.Logger.Debug("Target vendor NPC",
-		slog.Int("npcID", int(vendorNPC)))
 	if vendorNPC == npc.Drognan {
 		_, needsBuy := town.ShouldBuyKeys()
 		if needsBuy && ctx.Data.PlayerUnit.Class != data.Assassin {
@@ -56,12 +47,8 @@ func VendorRefill(forceRefill bool, sellJunk bool, tempLock ...[][]int) (err err
 
 	err = InteractNPC(vendorNPC)
 	if err != nil {
-		ctx.Logger.Warn("Failed to interact with vendor NPC",
-			slog.Int("npcID", int(vendorNPC)),
-			slog.String("error", err.Error()))
 		return err
 	}
-	ctx.Logger.Debug("Successfully interacted with vendor NPC")
 
 	// Jamella trade button is the first one
 	if vendorNPC == npc.Jamella {
