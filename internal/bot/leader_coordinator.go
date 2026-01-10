@@ -105,13 +105,13 @@ func (lc *LeaderCoordinator) validateConfig() error {
 
 // startFollowerSupervisors starts each follower supervisor with a delay between them
 func (lc *LeaderCoordinator) startFollowerSupervisors(ctx context.Context) error {
-	// Use configured delay or default to 10 seconds
-	delayBetweenStarts := 10 * time.Second
+	// Use configured delay or default to 3 seconds
+	delayBetweenStarts := 3 * time.Second
 	if lc.cfg.LeaderFollower.JoinDelayMin > 0 {
-		// Use half of min join delay for start staggering (sensible default)
+		// Use half of min join delay for start staggering
 		delayBetweenStarts = time.Duration(lc.cfg.LeaderFollower.JoinDelayMin/2) * time.Millisecond
-		if delayBetweenStarts < 5*time.Second {
-			delayBetweenStarts = 5 * time.Second
+		if delayBetweenStarts < 2*time.Second {
+			delayBetweenStarts = 2 * time.Second
 		}
 	}
 	

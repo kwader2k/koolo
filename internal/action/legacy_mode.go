@@ -60,8 +60,8 @@ func ForceSwitchToLegacyMode() {
 		ctx.RefreshGameData()
 	}
 
-	// Extra delay for UI to be fully ready
-	utils.Sleep(5000)
+	// Short delay for UI to be ready (map data is now fetched separately)
+	utils.Sleep(1000)
 
 	// Get the legacy toggle key - use 'G' (0x47) as fallback if not bound
 	legacyKey := ctx.Data.KeyBindings.LegacyToggle.Key1[0]
@@ -93,7 +93,7 @@ func ForceSwitchToLegacyMode() {
 
 		if attempt < maxRetries {
 			ctx.Logger.Warn("Legacy mode switch not detected, retrying...", "attempt", attempt)
-			utils.Sleep(1000) // Wait before retry
+			utils.Sleep(500) // Wait before retry
 		}
 	}
 

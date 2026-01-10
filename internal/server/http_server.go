@@ -1789,11 +1789,19 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			} else {
 				cfg.LeaderLeecher.Leechers = nil
 			}
+			if followers, ok := values["leaderLeecherFollowers"]; ok {
+				cfg.LeaderLeecher.Followers = followers
+			} else {
+				cfg.LeaderLeecher.Followers = nil
+			}
 			if v := values.Get("leaderLeecherJoinDelayMin"); v != "" {
 				cfg.LeaderLeecher.JoinDelayMin, _ = strconv.Atoi(v)
 			}
 			if v := values.Get("leaderLeecherJoinDelayMax"); v != "" {
 				cfg.LeaderLeecher.JoinDelayMax, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderLeecherStartInstanceDelay"); v != "" {
+				cfg.LeaderLeecher.StartInstanceDelay, _ = strconv.Atoi(v)
 			}
 			if v := values.Get("leaderLeecherPortalEntryDelay"); v != "" {
 				cfg.LeaderLeecher.PortalEntryDelay, _ = strconv.Atoi(v)
@@ -2724,11 +2732,19 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		} else {
 			cfg.LeaderLeecher.Leechers = nil
 		}
+		if followers, ok := r.Form["leaderLeecherFollowers"]; ok {
+			cfg.LeaderLeecher.Followers = followers
+		} else {
+			cfg.LeaderLeecher.Followers = nil
+		}
 		if v := r.Form.Get("leaderLeecherJoinDelayMin"); v != "" {
 			cfg.LeaderLeecher.JoinDelayMin, _ = strconv.Atoi(v)
 		}
 		if v := r.Form.Get("leaderLeecherJoinDelayMax"); v != "" {
 			cfg.LeaderLeecher.JoinDelayMax, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderLeecherStartInstanceDelay"); v != "" {
+			cfg.LeaderLeecher.StartInstanceDelay, _ = strconv.Atoi(v)
 		}
 		if v := r.Form.Get("leaderLeecherPortalEntryDelay"); v != "" {
 			cfg.LeaderLeecher.PortalEntryDelay, _ = strconv.Atoi(v)
@@ -2860,7 +2876,20 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		if err := config.SaveKooloConfig(config.Koolo); err != nil {
 			s.logger.Error("Failed to save run favorites", slog.Any("error", err))
 		}
-		config.SaveSupervisorConfig(supervisorName, cfg)
+		if err := config.SaveSupervisorConfig(supervisorName, cfg); err != nil {
+			s.logger.Error("Failed to save supervisor config",
+				slog.String("supervisor", supervisorName),
+				slog.Any("error", err))
+			s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+				Version:               config.Version,
+				ErrorMessage:          "Failed to save configuration: " + err.Error(),
+				Supervisor:            supervisorName,
+				Config:                cfg,
+				LevelingSequenceFiles: sequenceFiles,
+				RunFavoriteRuns:       config.Koolo.RunFavoriteRuns,
+			})
+			return
+		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}

@@ -19,16 +19,18 @@ type LeecherStopFunc func(supervisorName string)
 
 // LeecherCoordinator is a special supervisor for human leader mode (leecher)
 // It doesn't spawn D2R - it just coordinates leecher bots via the control panel
+// It also supports "followers" - simpler bots that just join and idle for XP boost
 type LeecherCoordinator struct {
-	name           string
-	logger         *slog.Logger
-	cfg            *config.CharacterCfg
-	statsHandler   *StatsHandler
-	cancelFn       context.CancelFunc
-	ctx            *ct.Context
-	startLeecher   LeecherStartFunc
-	stopLeecher    LeecherStopFunc
-	startedLeechers []string
+	name             string
+	logger           *slog.Logger
+	cfg              *config.CharacterCfg
+	statsHandler     *StatsHandler
+	cancelFn         context.CancelFunc
+	ctx              *ct.Context
+	startLeecher     LeecherStartFunc
+	stopLeecher      LeecherStopFunc
+	startedLeechers  []string
+	startedFollowers []string
 }
 
 // NewLeecherCoordinator creates a new leecher coordinator for human leader mode
@@ -39,14 +41,15 @@ func NewLeecherCoordinator(name string, logger *slog.Logger, cfg *config.Charact
 	ctxStatus.Logger = logger
 
 	return &LeecherCoordinator{
-		name:           name,
-		logger:         logger,
-		cfg:            cfg,
-		statsHandler:   statsHandler,
-		ctx:            ctxStatus.Context,
-		startLeecher:   startFn,
-		stopLeecher:    stopFn,
-		startedLeechers: make([]string, 0),
+		name:             name,
+		logger:           logger,
+		cfg:              cfg,
+		statsHandler:     statsHandler,
+		ctx:              ctxStatus.Context,
+		startLeecher:     startFn,
+		stopLeecher:      stopFn,
+		startedLeechers:  make([]string, 0),
+		startedFollowers: make([]string, 0),
 	}, nil
 }
 
@@ -63,37 +66,62 @@ func (lc *LeecherCoordinator) Start() error {
 	lc.logger.Info("Leecher coordinator starting (human leader mode - no D2R instance)",
 		slog.String("supervisor", lc.name),
 		slog.String("leader", lc.cfg.LeaderLeecher.LeaderName),
-		slog.Int("leechers", len(lc.cfg.LeaderLeecher.Leechers)))
+		slog.Int("leechers", len(lc.cfg.LeaderLeecher.Leechers)),
+		slog.Int("followers", len(lc.cfg.LeaderLeecher.Followers)))
 
 	// Actually start all leecher supervisors with delays (pass context for cancellation)
 	if err := lc.startLeecherSupervisors(ctx); err != nil {
 		if ctx.Err() != nil {
 			// Context was cancelled during startup
 			lc.logger.Info("Leecher coordinator cancelled during leecher startup")
-			lc.stopLeecherSupervisors()
+			lc.stopAllSupervisors()
 			return nil
 		}
 		lc.logger.Error("Failed to start some leechers", slog.String("error", err.Error()))
+	}
+
+	// Start followers (simpler bots that just idle for XP boost)
+	if len(lc.cfg.LeaderLeecher.Followers) > 0 {
+		if err := lc.startFollowerSupervisors(ctx); err != nil {
+			if ctx.Err() != nil {
+				lc.logger.Info("Leecher coordinator cancelled during follower startup")
+				lc.stopAllSupervisors()
+				return nil
+			}
+			lc.logger.Error("Failed to start some followers", slog.String("error", err.Error()))
+		}
 	}
 
 	// Wait for shutdown signal - leechers handle their own game detection
 	// Commands are sent via the web control panel
 	<-ctx.Done()
 	lc.logger.Info("Leecher coordinator stopping")
-	lc.stopLeecherSupervisors()
+	lc.stopAllSupervisors()
 	return nil
 }
 
 // validateConfig validates the leader-leecher configuration
 func (lc *LeecherCoordinator) validateConfig() error {
-	if len(lc.cfg.LeaderLeecher.Leechers) == 0 {
-		return fmt.Errorf("no leechers configured")
+	// Must have at least one leecher or follower
+	if len(lc.cfg.LeaderLeecher.Leechers) == 0 && len(lc.cfg.LeaderLeecher.Followers) == 0 {
+		return fmt.Errorf("no leechers or followers configured")
 	}
 	if lc.cfg.LeaderLeecher.LeaderName == "" {
 		return fmt.Errorf("leader character name is required")
 	}
 	if lc.cfg.LeaderLeecher.GameNamePattern == "" {
 		return fmt.Errorf("game name pattern is required")
+	}
+	
+	// Check for duplicates between leechers and followers
+	leecherSet := make(map[string]bool)
+	for _, leecher := range lc.cfg.LeaderLeecher.Leechers {
+		leecherSet[leecher] = true
+	}
+	for _, follower := range lc.cfg.LeaderLeecher.Followers {
+		if leecherSet[follower] {
+			return fmt.Errorf("supervisor '%s' is configured as both a leecher and follower - each supervisor can only be one", follower)
+		}
 	}
 	if lc.cfg.LeaderLeecher.JoinDelayMin < 0 {
 		return fmt.Errorf("join delay min cannot be negative")
@@ -106,14 +134,11 @@ func (lc *LeecherCoordinator) validateConfig() error {
 
 // startLeecherSupervisors starts each leecher supervisor with a delay between them
 func (lc *LeecherCoordinator) startLeecherSupervisors(ctx context.Context) error {
-	// Use configured delay or default to 10 seconds
-	delayBetweenStarts := 10 * time.Second
-	if lc.cfg.LeaderLeecher.JoinDelayMin > 0 {
-		// Use half of min join delay for start staggering (sensible default)
-		delayBetweenStarts = time.Duration(lc.cfg.LeaderLeecher.JoinDelayMin/2) * time.Millisecond
-		if delayBetweenStarts < 5*time.Second {
-			delayBetweenStarts = 5 * time.Second
-		}
+	// Use configured start instance delay, with sensible defaults
+	delayBetweenStarts := time.Duration(lc.cfg.LeaderLeecher.StartInstanceDelay) * time.Millisecond
+	if delayBetweenStarts <= 0 {
+		// Default to 500ms if not configured
+		delayBetweenStarts = 500 * time.Millisecond
 	}
 
 	var lastErr error
@@ -190,8 +215,81 @@ func (lc *LeecherCoordinator) startLeecherSupervisors(ctx context.Context) error
 	return nil
 }
 
-// stopLeecherSupervisors stops all started leecher supervisors
-func (lc *LeecherCoordinator) stopLeecherSupervisors() {
+// startFollowerSupervisors starts each follower supervisor (idle XP bots)
+func (lc *LeecherCoordinator) startFollowerSupervisors(ctx context.Context) error {
+	// Use configured start instance delay, with sensible defaults
+	delayBetweenStarts := time.Duration(lc.cfg.LeaderLeecher.StartInstanceDelay) * time.Millisecond
+	if delayBetweenStarts <= 0 {
+		// Default to 500ms if not configured
+		delayBetweenStarts = 500 * time.Millisecond
+	}
+
+	var lastErr error
+
+	for i, follower := range lc.cfg.LeaderLeecher.Followers {
+		// Check for context cancellation before each follower
+		select {
+		case <-ctx.Done():
+			lc.logger.Info("Follower startup cancelled")
+			return ctx.Err()
+		default:
+		}
+
+		// Add delay before starting (except for first follower, and after leechers)
+		if i > 0 || len(lc.startedLeechers) > 0 {
+			lc.logger.Info("Waiting before starting next follower",
+				slog.String("nextFollower", follower),
+				slog.Duration("delay", delayBetweenStarts))
+
+			select {
+			case <-ctx.Done():
+				lc.logger.Info("Follower startup cancelled during delay")
+				return ctx.Err()
+			case <-time.After(delayBetweenStarts):
+			}
+		}
+
+		lc.logger.Info("Starting follower supervisor (idle XP bot)",
+			slog.String("follower", follower),
+			slog.String("leader", lc.cfg.LeaderLeecher.LeaderName),
+			slog.Int("index", i+1),
+			slog.Int("total", len(lc.cfg.LeaderLeecher.Followers)))
+
+		// Calculate poll interval with sensible default
+		pollInterval := lc.cfg.LeaderLeecher.PollInterval
+		if pollInterval <= 0 {
+			pollInterval = 30000 // Default 30 seconds for followers (less responsive needed)
+		}
+
+		// Register as follower (simpler than leecher - just idles in town)
+		RegisterFollower(follower, lc.name, lc.cfg.LeaderLeecher.LeaderName,
+			lc.cfg.LeaderLeecher.GameNamePattern, lc.cfg.LeaderLeecher.GamePassword,
+			lc.cfg.LeaderLeecher.JoinDelayMin, lc.cfg.LeaderLeecher.JoinDelayMax,
+			pollInterval, lc.cfg.LeaderLeecher.UseLegacyGraphics)
+
+		if err := lc.startLeecher(follower); err != nil {
+			lc.logger.Error("Failed to start follower",
+				slog.String("follower", follower),
+				slog.String("error", err.Error()))
+			lastErr = err
+			UnregisterFollower(follower)
+			continue
+		}
+
+		lc.startedFollowers = append(lc.startedFollowers, follower)
+		lc.logger.Info("Follower supervisor started successfully",
+			slog.String("follower", follower))
+	}
+
+	if lastErr != nil {
+		return fmt.Errorf("one or more followers failed to start: %w", lastErr)
+	}
+	return nil
+}
+
+// stopAllSupervisors stops all started leecher and follower supervisors
+func (lc *LeecherCoordinator) stopAllSupervisors() {
+	// Stop leechers
 	for _, leecher := range lc.startedLeechers {
 		func(l string) {
 			defer func() {
@@ -211,6 +309,27 @@ func (lc *LeecherCoordinator) stopLeecherSupervisors() {
 		}(leecher)
 	}
 	lc.startedLeechers = nil
+
+	// Stop followers
+	for _, follower := range lc.startedFollowers {
+		func(f string) {
+			defer func() {
+				if r := recover(); r != nil {
+					lc.logger.Error("Panic while stopping follower",
+						slog.String("follower", f),
+						slog.Any("panic", r))
+				}
+			}()
+
+			lc.logger.Info("Stopping follower supervisor",
+				slog.String("follower", f))
+			UnregisterFollower(f)
+			if lc.stopLeecher != nil {
+				lc.stopLeecher(f)
+			}
+		}(follower)
+	}
+	lc.startedFollowers = nil
 }
 
 // Stop stops the leecher coordinator

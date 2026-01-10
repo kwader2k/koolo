@@ -318,12 +318,7 @@ func StartGame(username string, password string, authmethod string, authToken st
 
 	// Let's use the mod directory for storing the settings, so we stop overwriting the default config
 	if useCustomSettings {
-		// Use supervisor-specific mod name to avoid conflicts when running multiple instances
 		modName := "koolo"
-		if supervisorName != "" {
-			modName = "koolo_" + supervisorName
-		}
-		
 		found := false
 		for i, arg := range additionalArguments {
 			if arg == "-mod" {
@@ -336,9 +331,9 @@ func StartGame(username string, password string, authmethod string, authToken st
 			additionalArguments = append(additionalArguments, "-mod", modName)
 		}
 
-		// If there is no real mod (user-specified), let's create a koolo mod so we can store our own config
-		if strings.HasPrefix(modName, "koolo") {
-			err = config.InstallMod(modName)
+		// If there is no real mod, let's create a fake mod called "koolo" so we can store our own config
+		if modName == "koolo" {
+			err = config.InstallMod()
 			if err != nil {
 				return 0, 0, err
 			}

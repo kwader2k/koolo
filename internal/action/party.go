@@ -175,18 +175,15 @@ func DeclinePartyInvite() error {
 	return nil
 }
 
-// IsInPartyWith checks if we're in the same party as the specified player
-// Since PartyID may not be available, we check if both players are in the same roster
-// and assume party membership if they are in the same game
-// A more robust check would require game-specific party state data
+// IsInPartyWith checks if we're in the same game as the specified player
+// Note: d2go's RosterMember doesn't expose PartyID directly, so we can only
+// verify both players are in the same game (same roster). For leecher mode,
+// this is sufficient since we just need to be in the same game for XP sharing.
+// A proper party check would require additional game memory reading.
 func IsInPartyWith(playerName string) bool {
 	ctx := context.Get()
 	ctx.RefreshGameData()
 
-	// For now, we consider being in the same roster as a proxy for party membership
-	// This works because in most cases, if we've requested to join a party
-	// and both players are in the roster, we're likely in the same party
-	// A more accurate check would require parsing party-specific game data
 	foundSelf := false
 	foundTarget := false
 
@@ -199,7 +196,9 @@ func IsInPartyWith(playerName string) bool {
 		}
 	}
 
-	// Both players in roster - assume party membership after join request
+	// If both players are in the roster, they're in the same game
+	// For leecher/follower purposes, this is sufficient - we'll request party join
+	// even if already in party (the game will handle it gracefully)
 	return foundSelf && foundTarget
 }
 

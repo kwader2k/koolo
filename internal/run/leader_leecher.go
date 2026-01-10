@@ -57,9 +57,9 @@ func (ll *LeaderLeecher) CheckConditions(parameters *RunParameters) SequencerRes
 		return SequencerSkip
 	}
 
-	// Must have leechers configured
-	if len(ll.ctx.CharacterCfg.LeaderLeecher.Leechers) == 0 {
-		ll.ctx.Logger.Warn("LeaderLeecher requires at least one leecher configured")
+	// Must have at least one leecher or follower configured
+	if len(ll.ctx.CharacterCfg.LeaderLeecher.Leechers) == 0 && len(ll.ctx.CharacterCfg.LeaderLeecher.Followers) == 0 {
+		ll.ctx.Logger.Warn("LeaderLeecher requires at least one leecher or follower configured")
 		return SequencerSkip
 	}
 

@@ -16,6 +16,11 @@ func InteractNPC(npcID npc.ID) error {
 	ctx := context.Get()
 	ctx.SetLastStep("InteractNPC")
 
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
+
 	const (
 		maxAttempts     = 8
 		minMenuOpenWait = 300 * time.Millisecond
@@ -26,6 +31,11 @@ func InteractNPC(npcID npc.ID) error {
 	var targetNPCID data.UnitID
 
 	for attempts := 0; attempts < maxAttempts; attempts++ {
+		// Check if bot is stopping
+		if ctx.ExecutionPriority == context.PriorityStop {
+			return fmt.Errorf("bot is stopping")
+		}
+
 		// Pause the execution if the priority is not the same as the execution priority
 		ctx.PauseIfNotPriority()
 

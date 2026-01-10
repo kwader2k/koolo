@@ -34,6 +34,19 @@ const (
 	maxStuckDuration      = 3 * time.Minute
 )
 
+// Define constants for leecher/follower mode
+const (
+	leecherMaxGameDuration   = 4 * time.Hour    // Maximum time to stay in one game
+	leecherLeaderTimeout     = 60 * time.Second // How long to wait for leader to appear
+	leecherExitTimeout       = 10 * time.Second // Timeout when waiting for game exit
+	leecherRosterPollDelay   = 2 * time.Second  // Delay between roster poll attempts
+	leecherDefaultPollMs     = 2000             // Default poll interval in milliseconds
+	leecherBackoffBaseMs     = 2000             // Base delay for exponential backoff
+	leecherBackoffMaxMs      = 30000            // Maximum backoff delay
+	followerDefaultPollMs    = 30000            // Default poll interval for followers
+	leecherLeaderAreaRetries = 10               // Retries to get leader's area
+)
+
 type SinglePlayerSupervisor struct {
 	*baseSupervisor
 }
@@ -867,6 +880,7 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 				s.dismissFollowerModal()
 
 				// Check if we've hit max retries
+				retryCount := GetJoinRetries(s.name)
 				if IncrementJoinRetries(s.name) {
 					s.bot.ctx.Logger.Warn("Follower mode: max join retries reached, skipping to next game",
 						slog.String("supervisor", s.name),
@@ -876,9 +890,17 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 					s.bot.ctx.Logger.Info("Follower mode: will try next game",
 						slog.String("supervisor", s.name),
 						slog.String("nextGame", nextGame))
+					// Reset retry count after skipping to next game
+					retryCount = 0
 				}
 
-				if !s.sleepWithContextCheck(ctx, 5000) {
+				// Use exponential backoff for rate limit protection
+				backoffDelay := CalculateExponentialBackoff(leecherBackoffBaseMs, leecherBackoffMaxMs, retryCount)
+				s.bot.ctx.Logger.Debug("Follower mode: waiting before retry",
+					slog.String("supervisor", s.name),
+					slog.Int("backoffMs", backoffDelay),
+					slog.Int("retryCount", retryCount))
+				if !s.sleepWithContextCheck(ctx, backoffDelay) {
 					return nil
 				}
 				continue
@@ -902,7 +924,7 @@ func (s *SinglePlayerSupervisor) runFollowerMode(ctx context.Context, followerIn
 				if s.bot.ctx.Manager.InGame() {
 					s.bot.ctx.Manager.ExitGame()
 					// Wait for exit to complete
-					exitDeadline := time.Now().Add(10 * time.Second)
+					exitDeadline := time.Now().Add(leecherExitTimeout)
 				exitWaitLoop:
 					for s.bot.ctx.Manager.InGame() {
 						select {
@@ -968,6 +990,14 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 
 	// Wait for game to fully load
 	s.bot.ctx.WaitForGameToLoad()
+
+	// Fetch map data for consistency (even though followers don't navigate much)
+	// This ensures area data and collision grid are available if needed
+	if err := s.bot.ctx.GameReader.FetchMapData(); err != nil {
+		s.bot.ctx.Logger.Warn("Follower mode: failed to fetch map data, continuing anyway",
+			slog.String("supervisor", s.name),
+			slog.String("error", err.Error()))
+	}
 	s.bot.ctx.RefreshGameData()
 
 	// Enable legacy graphics if configured
@@ -983,10 +1013,9 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 		slog.String("leader", followerInfo.LeaderName))
 
 	// Wait for leader to appear in roster (with timeout)
-	timeout := 60 * time.Second
 	start := time.Now()
 	leaderFound := false
-	for time.Since(start) < timeout {
+	for time.Since(start) < leecherLeaderTimeout {
 		select {
 		case <-ctx.Done():
 			return nil
@@ -1003,13 +1032,13 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 			leaderFound = true
 			break
 		}
-		if !s.sleepWithContextCheck(ctx, 2000) {
+		if !s.sleepWithContextCheck(ctx, int(leecherRosterPollDelay.Milliseconds())) {
 			return nil
 		}
 	}
 
 	if !leaderFound {
-		return fmt.Errorf("leader %s not found in game after %v", followerInfo.LeaderName, timeout)
+		return fmt.Errorf("leader %s not found in game after %v", followerInfo.LeaderName, leecherLeaderTimeout)
 	}
 
 	s.bot.ctx.Logger.Info("Follower mode: leader found, joining party",
@@ -1029,7 +1058,7 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 		slog.String("supervisor", s.name))
 
 	// Poll for leader presence using followerInfo.PollInterval
-	pollInterval := 30 * time.Second
+	pollInterval := time.Duration(followerDefaultPollMs) * time.Millisecond
 	if followerInfo.PollInterval > 0 {
 		pollInterval = time.Duration(followerInfo.PollInterval) * time.Millisecond
 	}
@@ -1041,8 +1070,6 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
-	// Maximum time to stay in one game (safeguard against infinite loops)
-	const maxGameDuration = 4 * time.Hour
 	gameStartTime := time.Now()
 
 	for {
@@ -1050,8 +1077,8 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			// Check maximum game duration
-			if time.Since(gameStartTime) > maxGameDuration {
+			// Check maximum game duration (safeguard against infinite loops)
+			if time.Since(gameStartTime) > leecherMaxGameDuration {
 				s.bot.ctx.Logger.Warn("Follower mode: max game duration reached, leaving game",
 					slog.Duration("duration", time.Since(gameStartTime)))
 				return fmt.Errorf("max game duration exceeded")
@@ -1087,8 +1114,8 @@ func (s *SinglePlayerSupervisor) runFollowerInGame(ctx context.Context, follower
 					}
 				}
 
-				// Wait for game exit to actually complete (up to 10 seconds)
-				exitDeadline := time.Now().Add(10 * time.Second)
+				// Wait for game exit to actually complete
+				exitDeadline := time.Now().Add(leecherExitTimeout)
 				for s.bot.ctx.Manager.InGame() {
 					select {
 					case <-ctx.Done():
@@ -1238,17 +1265,41 @@ func (s *SinglePlayerSupervisor) runLeecherMode(ctx context.Context, leecherInfo
 				s.bot.ctx.Logger.Warn("Leecher mode: failed to join game",
 					slog.String("supervisor", s.name),
 					slog.String("error", err.Error()),
-					slog.String("gameName", gameName))
+					slog.String("gameName", gameName),
+					slog.Int("retryCount", GetLeecherJoinRetries(s.name)+1))
 
 				// Dismiss any modal that might be blocking
 				s.dismissFollowerModal()
 
-				if !s.sleepWithContextCheck(ctx, 5000) {
+				// Check if we've hit max retries
+				retryCount := GetLeecherJoinRetries(s.name)
+				if IncrementLeecherJoinRetries(s.name) {
+					s.bot.ctx.Logger.Warn("Leecher mode: max join retries reached, skipping to next game",
+						slog.String("supervisor", s.name),
+						slog.String("currentGame", gameName))
+					IncrementLeecherGameCounter(s.name)
+					nextGame := GetLeecherGameName(s.name)
+					s.bot.ctx.Logger.Info("Leecher mode: will try next game",
+						slog.String("supervisor", s.name),
+						slog.String("nextGame", nextGame))
+					// Reset retry count after skipping to next game
+					retryCount = 0
+				}
+
+				// Use exponential backoff for rate limit protection
+				backoffDelay := CalculateExponentialBackoff(leecherBackoffBaseMs, leecherBackoffMaxMs, retryCount)
+				s.bot.ctx.Logger.Debug("Leecher mode: waiting before retry",
+					slog.String("supervisor", s.name),
+					slog.Int("backoffMs", backoffDelay),
+					slog.Int("retryCount", retryCount))
+				if !s.sleepWithContextCheck(ctx, backoffDelay) {
 					return nil
 				}
 				continue
 			}
 
+			// Reset retry count on successful join
+			ResetLeecherJoinRetries(s.name)
 			s.bot.ctx.Logger.Info("Leecher mode: joined game successfully",
 				slog.String("supervisor", s.name),
 				slog.String("gameName", gameName))
@@ -1265,7 +1316,7 @@ func (s *SinglePlayerSupervisor) runLeecherMode(ctx context.Context, leecherInfo
 				if s.bot.ctx.Manager.InGame() {
 					s.bot.ctx.Manager.ExitGame()
 					// Wait for exit to complete
-					exitDeadline := time.Now().Add(10 * time.Second)
+					exitDeadline := time.Now().Add(leecherExitTimeout)
 				exitWaitLoop:
 					for s.bot.ctx.Manager.InGame() {
 						select {
@@ -1301,8 +1352,8 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 	// Wait for game to fully load
 	s.bot.ctx.WaitForGameToLoad()
 
-	// Give extra time for all game data (roster, etc.) to fully populate
-	if !s.sleepWithContextCheck(ctx, 2000) {
+	// Brief wait for roster data to populate
+	if !s.sleepWithContextCheck(ctx, 500) {
 		return nil
 	}
 
@@ -1324,17 +1375,12 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 		s.bot.ctx.Logger.Info("Leecher mode: enabling legacy graphics",
 			slog.String("supervisor", s.name))
 		action.ForceSwitchToLegacyMode()
-		// Give extra time for graphics mode change to settle and data to reload
-		if !s.sleepWithContextCheck(ctx, 3000) {
+		// Brief wait for graphics mode change to settle
+		if !s.sleepWithContextCheck(ctx, 500) {
 			return nil
 		}
-		// Multiple refreshes to ensure data is fully loaded
-		for i := 0; i < 5; i++ {
-			s.bot.ctx.RefreshGameData()
-			if !s.sleepWithContextCheck(ctx, 500) {
-				return nil
-			}
-		}
+		// Quick refresh to ensure data is current
+		s.bot.ctx.RefreshGameData()
 		s.bot.ctx.Logger.Debug("Game data refreshed after legacy graphics switch")
 	}
 
@@ -1359,10 +1405,9 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 		slog.String("leader", leecherInfo.LeaderName))
 
 	// Wait for leader to appear in roster (with timeout)
-	timeout := 60 * time.Second
 	start := time.Now()
 	leaderFound := false
-	for time.Since(start) < timeout {
+	for time.Since(start) < leecherLeaderTimeout {
 		select {
 		case <-ctx.Done():
 			return nil
@@ -1379,19 +1424,19 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 			leaderFound = true
 			break
 		}
-		if !s.sleepWithContextCheck(ctx, 2000) {
+		if !s.sleepWithContextCheck(ctx, int(leecherRosterPollDelay.Milliseconds())) {
 			return nil
 		}
 	}
 
 	if !leaderFound {
-		return fmt.Errorf("leader %s not found in game after %v", leecherInfo.LeaderName, timeout)
+		return fmt.Errorf("leader %s not found in game after %v", leecherInfo.LeaderName, leecherLeaderTimeout)
 	}
 
 	// Get the leader's area - retry a few times if area is 0 (data not fully loaded)
 	var leaderArea area.ID
 	var leaderAct int
-	for i := 0; i < 10; i++ {
+	for i := 0; i < leecherLeaderAreaRetries; i++ {
 		s.bot.ctx.RefreshGameData()
 		_, leaderArea, _ = action.GetLeaderPosition(leecherInfo.LeaderName)
 		leaderAct = action.GetActFromArea(leaderArea)
@@ -1460,7 +1505,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 	// Main leecher loop - wait for portal and "come" command
 	pollInterval := time.Duration(leecherInfo.PollInterval) * time.Millisecond
 	if pollInterval == 0 {
-		pollInterval = 2 * time.Second
+		pollInterval = time.Duration(leecherDefaultPollMs) * time.Millisecond
 	}
 
 	s.bot.ctx.Logger.Info("Leecher mode: entering command polling loop",
@@ -1470,12 +1515,10 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 
-	// Maximum time to stay in one game
-	const maxGameDuration = 4 * time.Hour
 	gameStartTime := time.Now()
 
-	var enteredPortalPos data.Position
 	inDungeon := false
+	var entryPortalPos data.Position // Track the portal we entered through
 
 	for {
 		select {
@@ -1483,7 +1526,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 			return nil
 		case <-ticker.C:
 			// Check maximum game duration
-			if time.Since(gameStartTime) > maxGameDuration {
+			if time.Since(gameStartTime) > leecherMaxGameDuration {
 				s.bot.ctx.Logger.Warn("Leecher mode: max game duration reached, leaving game",
 					slog.String("supervisor", s.name))
 				return fmt.Errorf("max game duration reached")
@@ -1508,7 +1551,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				}
 
 				// Wait for exit and return
-				exitDeadline := time.Now().Add(10 * time.Second)
+				exitDeadline := time.Now().Add(leecherExitTimeout)
 				for s.bot.ctx.Manager.InGame() {
 					if time.Now().After(exitDeadline) {
 						break
@@ -1524,7 +1567,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 			s.bot.ctx.RefreshGameData()
 
 			// Check if leader is still in game and get their current location
-			leaderPos, leaderArea, leaderFound := action.GetLeaderPosition(leecherInfo.LeaderName)
+			_, leaderArea, leaderFound := action.GetLeaderPosition(leecherInfo.LeaderName)
 			if !leaderFound {
 				s.bot.ctx.Logger.Info("Leecher mode: leader left game, preparing to exit",
 					slog.String("supervisor", s.name))
@@ -1537,7 +1580,7 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				}
 
 				// Wait for exit to complete
-				exitDeadline := time.Now().Add(10 * time.Second)
+				exitDeadline := time.Now().Add(leecherExitTimeout)
 			leaderLeftExitLoop:
 				for s.bot.ctx.Manager.InGame() {
 					select {
@@ -1586,14 +1629,26 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 			myAct := action.GetActFromArea(myArea)
 			leaderAct := action.GetActFromArea(leaderArea)
 
-			// If leader is in a different act's town and we're not in a dungeon, follow them
+			// Debug logging for act tracking
+			if myAct != leaderAct {
+				s.bot.ctx.Logger.Debug("Leecher mode: act mismatch detected",
+					slog.String("supervisor", s.name),
+					slog.Int("myAct", myAct),
+					slog.Int("leaderAct", leaderAct),
+					slog.String("myArea", myArea.Area().Name),
+					slog.String("leaderArea", leaderArea.Area().Name),
+					slog.Bool("inDungeon", inDungeon),
+					slog.Bool("stayReceived", GetLeecherStayReceived(s.name)))
+			}
+
+			// If leader is in a different act and we're not in a dungeon, follow them
 			// But NOT if STAY is active
-			if !inDungeon && leaderArea.IsTown() && myAct != leaderAct && !GetLeecherStayReceived(s.name) {
+			if !inDungeon && myAct != leaderAct && !GetLeecherStayReceived(s.name) {
 				s.bot.ctx.Logger.Info("Leecher mode: leader moved to different act, following",
 					slog.String("supervisor", s.name),
 					slog.Int("myAct", myAct),
 					slog.Int("leaderAct", leaderAct),
-					slog.Int("leaderArea", int(leaderArea)))
+					slog.String("leaderArea", leaderArea.Area().Name))
 
 				// Navigate to leader's act
 				if err := action.GoToAct(leaderAct); err != nil {
@@ -1611,16 +1666,24 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				continue
 			}
 
-			// Log leader position for debugging (useful to see where leader is)
-			_ = leaderPos // Silence unused variable warning - position may be used later for more precise following
-
 			// If in dungeon, follow the leader
 			if inDungeon {
 				SetLeecherState(s.name, LeecherStateInDungeon)
 
+				myArea := s.bot.ctx.Data.PlayerUnit.Area
+				myPos := s.bot.ctx.Data.PlayerUnit.Position
+				s.bot.ctx.Logger.Debug("Leecher mode: in dungeon loop",
+					slog.String("supervisor", s.name),
+					slog.String("myArea", myArea.Area().Name),
+					slog.Int("myX", myPos.X),
+					slog.Int("myY", myPos.Y),
+					slog.String("leaderArea", leaderArea.Area().Name),
+					slog.Bool("inDungeon", inDungeon))
+
 				// Check if we should return to town:
 				// 1. TP button was pressed (TPReceived flag) - always obey
-				// 2. Leader went back to town - only if STAY is not active
+				// 2. A new town portal appeared near us (leader opened one)
+				// NOTE: We do NOT return just because leader went to town - only explicit TP command or portal
 				shouldReturnToTown := false
 				returnReason := ""
 
@@ -1631,10 +1694,31 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 					SetLeecherTPReceived(s.name, false) // Reset the flag
 				}
 
-				// Check if leader is in town - but respect STAY flag
-				if leaderArea.IsTown() && !GetLeecherStayReceived(s.name) {
-					shouldReturnToTown = true
-					returnReason = "leader returned to town"
+				// Check if a NEW portal appeared near us (leader opened one for us)
+				// Only check this if we haven't already decided to return
+				// A "new" portal is one that's NOT at the same position as our entry portal
+				if !shouldReturnToTown {
+					portal, found := action.FindLeaderPortal(leecherInfo.LeaderName)
+					if found {
+						// Check if this is a DIFFERENT portal from our entry portal
+						dx := portal.Position.X - entryPortalPos.X
+						dy := portal.Position.Y - entryPortalPos.Y
+						portalDistSq := dx*dx + dy*dy
+						if portalDistSq > 100 { // More than 10 units away = different portal
+							// Check if new portal is within reasonable distance (100 units) from us
+							myPos := s.bot.ctx.Data.PlayerUnit.Position
+							dx := myPos.X - portal.Position.X
+							dy := myPos.Y - portal.Position.Y
+							distSq := dx*dx + dy*dy
+							if distSq < 10000 { // 100^2 = 10000
+								shouldReturnToTown = true
+								returnReason = "new portal detected nearby"
+								s.bot.ctx.Logger.Info("Leecher mode: detected new portal from leader",
+									slog.Int("portalX", portal.Position.X),
+									slog.Int("portalY", portal.Position.Y))
+							}
+						}
+					}
 				}
 
 				if shouldReturnToTown {
@@ -1688,6 +1772,11 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				}
 
 				// Follow the leader at max distance for XP
+				s.bot.ctx.Logger.Debug("Leecher mode: attempting to follow leader",
+					slog.String("supervisor", s.name),
+					slog.String("leader", leecherInfo.LeaderName),
+					slog.Int("maxDistance", leecherInfo.MaxLeaderDistance))
+
 				if err := action.FollowPlayer(leecherInfo.LeaderName, leecherInfo.MaxLeaderDistance); err != nil {
 					// Check if leader moved to a different area
 					myArea := s.bot.ctx.Data.PlayerUnit.Area
@@ -1752,7 +1841,18 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 								}
 							}
 						}
+					} else {
+						// Leader is in the same area but FollowPlayer failed for another reason
+						// Log the error and try again next tick
+						s.bot.ctx.Logger.Warn("Leecher mode: failed to follow leader in same area",
+							slog.String("supervisor", s.name),
+							slog.String("error", err.Error()),
+							slog.String("area", myArea.Area().Name))
 					}
+				} else {
+					// Successfully following leader (or already in range)
+					s.bot.ctx.Logger.Debug("Leecher mode: following leader successfully",
+						slog.String("supervisor", s.name))
 				}
 				continue
 			}
@@ -1784,15 +1884,13 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				}
 
 				// Find and enter leader's portal
-				portal, found := action.FindLeaderPortal(leecherInfo.LeaderName)
+				_, found := action.FindLeaderPortal(leecherInfo.LeaderName)
 				if !found {
 					s.bot.ctx.Logger.Warn("Leecher mode: no portal found to enter",
 						slog.String("supervisor", s.name))
 					SetLeecherComeReceived(s.name, false) // Reset for retry
 					continue
 				}
-
-				enteredPortalPos = portal.Position
 
 				if err := action.EnterPlayerPortal(leecherInfo.LeaderName); err != nil {
 					s.bot.ctx.Logger.Warn("Leecher mode: failed to enter portal",
@@ -1807,14 +1905,15 @@ func (s *SinglePlayerSupervisor) runLeecherInGame(ctx context.Context, leecherIn
 				inDungeon = true
 				SetLeecherState(s.name, LeecherStateFollowing)
 
-				// After entering dungeon, capture the dungeon-side portal position
-				// This is the portal we came through - we only want to return if a NEW portal appears
+				// Refresh game data after portal entry to ensure area is synced
 				s.bot.ctx.RefreshGameData()
+
+				// Record the entry portal position so we can detect NEW portals later
 				if dungeonPortal, found := action.FindLeaderPortal(leecherInfo.LeaderName); found {
-					enteredPortalPos = dungeonPortal.Position
-					s.bot.ctx.Logger.Debug("Leecher mode: recorded dungeon entry portal position",
-						slog.Int("x", enteredPortalPos.X),
-						slog.Int("y", enteredPortalPos.Y))
+					entryPortalPos = dungeonPortal.Position
+					s.bot.ctx.Logger.Debug("Leecher mode: recorded entry portal position",
+						slog.Int("x", entryPortalPos.X),
+						slog.Int("y", entryPortalPos.Y))
 				}
 			}
 		}

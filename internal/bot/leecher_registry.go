@@ -37,6 +37,7 @@ type LeecherInfo struct {
 	TPReceived        bool         // Whether a "TP back to town" command has been received
 	StayReceived      bool         // Whether a "stay" command has been received (pause following)
 	ExitReceived      bool         // Whether an "exit game" command has been received
+	JoinRetries       int          // Number of failed join attempts for current game
 }
 
 var (
@@ -295,12 +296,19 @@ func GetLeecherStatuses() map[string]LeecherState {
 }
 
 // CalculateLeecherJoinDelay calculates a random delay between min and max for leecher joining
+// If both min and max are 0, returns 0 (no delay)
 func CalculateLeecherJoinDelay(minDelay, maxDelay int) int {
-	if minDelay < 1000 {
-		minDelay = 1000
+	// Allow 0 delay if user explicitly sets both to 0
+	if minDelay == 0 && maxDelay == 0 {
+		return 0
+	}
+
+	// Otherwise use sensible minimums
+	if minDelay < 500 {
+		minDelay = 500
 	}
 	if maxDelay < minDelay {
-		maxDelay = minDelay + 1000
+		maxDelay = minDelay
 	}
 
 	spread := maxDelay - minDelay
@@ -341,5 +349,42 @@ func ResetAllLeechersCome(leaderName string) {
 			info.ComeReceived = false
 			slog.Debug("Reset leecher COME flag", slog.String("leecher", name))
 		}
+	}
+}
+
+// GetLeecherJoinRetries returns the number of join retries for a leecher
+func GetLeecherJoinRetries(supervisorName string) int {
+	leecherMutex.RLock()
+	defer leecherMutex.RUnlock()
+
+	if info, ok := leecherRegistry[supervisorName]; ok {
+		return info.JoinRetries
+	}
+	return 0
+}
+
+// IncrementLeecherJoinRetries increments the join retry counter and returns true if max retries reached
+func IncrementLeecherJoinRetries(supervisorName string) bool {
+	leecherMutex.Lock()
+	defer leecherMutex.Unlock()
+
+	const maxRetries = 5
+	if info, ok := leecherRegistry[supervisorName]; ok {
+		info.JoinRetries++
+		if info.JoinRetries >= maxRetries {
+			info.JoinRetries = 0 // Reset for next game
+			return true
+		}
+	}
+	return false
+}
+
+// ResetLeecherJoinRetries resets the join retry counter for a leecher
+func ResetLeecherJoinRetries(supervisorName string) {
+	leecherMutex.Lock()
+	defer leecherMutex.Unlock()
+
+	if info, ok := leecherRegistry[supervisorName]; ok {
+		info.JoinRetries = 0
 	}
 }

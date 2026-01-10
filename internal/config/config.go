@@ -500,16 +500,18 @@ type CharacterCfg struct {
 		CurrentGameNumber  int      `yaml:"-"`                 // Runtime: current game number in pattern
 	} `yaml:"leaderFollower"`
 	LeaderLeecher struct {
-		LeaderName        string   `yaml:"leaderName"`        // Character name of the leader to follow
-		Leechers          []string `yaml:"leechers"`          // List of supervisor names that should leech from this leader
-		GameNamePattern   string   `yaml:"gameNamePattern"`   // Base pattern for game names (e.g., "run-" becomes "run-1", "run-2")
-		GamePassword      string   `yaml:"gamePassword"`      // Password for games
-		JoinDelayMin      int      `yaml:"joinDelayMin"`      // Minimum random delay before joining (ms)
-		JoinDelayMax      int      `yaml:"joinDelayMax"`      // Maximum random delay before joining (ms)
-		PortalEntryDelay  int      `yaml:"portalEntryDelay"`  // Seconds to wait after "come" command before entering portal
-		MaxLeaderDistance int      `yaml:"maxLeaderDistance"` // Max distance from leader for XP sharing (~35)
-		PollInterval      int      `yaml:"pollInterval"`      // How often to poll for leader/portal (ms)
-		UseLegacyGraphics bool     `yaml:"useLegacyGraphics"` // Use legacy graphics mode for leechers
+		LeaderName         string   `yaml:"leaderName"`         // Character name of the leader to follow
+		Leechers           []string `yaml:"leechers"`           // List of supervisor names that should leech from this leader
+		Followers          []string `yaml:"followers"`          // List of supervisor names that join games but stay in town (for XP boost)
+		GameNamePattern    string   `yaml:"gameNamePattern"`    // Base pattern for game names (e.g., "run-" becomes "run-1", "run-2")
+		GamePassword       string   `yaml:"gamePassword"`       // Password for games
+		JoinDelayMin       int      `yaml:"joinDelayMin"`       // Minimum random delay before joining (ms)
+		JoinDelayMax       int      `yaml:"joinDelayMax"`       // Maximum random delay before joining (ms)
+		StartInstanceDelay int      `yaml:"startInstanceDelay"` // Delay in ms between starting each leecher/follower instance (0 = 500ms default)
+		PortalEntryDelay   int      `yaml:"portalEntryDelay"`   // Seconds to wait after "come" command before entering portal
+		MaxLeaderDistance  int      `yaml:"maxLeaderDistance"`  // Max distance from leader for XP sharing (~35)
+		PollInterval       int      `yaml:"pollInterval"`       // How often to poll for leader/portal (ms)
+		UseLegacyGraphics  bool     `yaml:"useLegacyGraphics"`  // Use legacy graphics mode for leechers/followers
 	} `yaml:"leaderLeecher"`
 	Gambling struct {
 		Enabled bool        `yaml:"enabled"`

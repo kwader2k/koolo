@@ -10,6 +10,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/object"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/town"
@@ -83,9 +84,15 @@ func IsWithinDistance(playerName string, maxDistance int) bool {
 }
 
 // FollowPlayer moves toward a player while maintaining a safe distance
+// The leecher will NOT attack monsters, NOT loot items, and will avoid combat
 func FollowPlayer(playerName string, maxDistance int) error {
 	ctx := context.Get()
 	ctx.SetLastAction("FollowPlayer")
+
+	// Check if bot is stopping to avoid panic in MoveTo
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
 
 	ctx.RefreshGameData()
 
@@ -94,24 +101,54 @@ func FollowPlayer(playerName string, maxDistance int) error {
 		return fmt.Errorf("leader %s not found in roster", playerName)
 	}
 
+	myPos := ctx.Data.PlayerUnit.Position
+	myArea := ctx.Data.PlayerUnit.Area
+
 	// Must be in the same area
-	if ctx.Data.PlayerUnit.Area != leaderArea {
-		return fmt.Errorf("not in same area as leader")
+	if myArea != leaderArea {
+		return fmt.Errorf("not in same area as leader (my area: %s, leader area: %s)",
+			myArea.Area().Name, leaderArea.Area().Name)
 	}
 
-	// Calculate distance
-	myPos := ctx.Data.PlayerUnit.Position
-	dx := float64(myPos.X - leaderPos.X)
-	dy := float64(myPos.Y - leaderPos.Y)
+	// Calculate distance (squared for efficiency)
+	dx := myPos.X - leaderPos.X
+	dy := myPos.Y - leaderPos.Y
 	distanceSquared := dx*dx + dy*dy
+	maxDistSq := maxDistance * maxDistance
 
 	// If within range, no need to move
-	if int(distanceSquared) <= maxDistance*maxDistance {
+	if distanceSquared <= maxDistSq {
+		ctx.Logger.Debug("Following leader: in range",
+			slog.String("leader", playerName),
+			slog.Int("distanceSq", distanceSquared),
+			slog.Int("maxDistSq", maxDistSq))
 		return nil
 	}
 
+	// Log that we're moving to catch up with detailed position info
+	ctx.Logger.Debug("Following leader: moving closer",
+		slog.String("leader", playerName),
+		slog.Int("myX", myPos.X),
+		slog.Int("myY", myPos.Y),
+		slog.Int("leaderX", leaderPos.X),
+		slog.Int("leaderY", leaderPos.Y),
+		slog.Int("distanceSq", distanceSquared))
+
+	// Check again before movement in case priority changed
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
+
 	// Move toward the leader using pathfinding
-	return MoveToCoords(leaderPos)
+	// Use WithIgnoreMonsters() to avoid attacking/engaging monsters
+	// Use WithIgnoreItems() to avoid looting which would distract from following
+	err := MoveToCoords(leaderPos, step.WithIgnoreMonsters(), step.WithIgnoreItems())
+	if err != nil {
+		ctx.Logger.Warn("Following leader: movement failed",
+			slog.String("leader", playerName),
+			slog.String("error", err.Error()))
+	}
+	return err
 }
 
 // getTownWaypointForAct returns a waypoint area ID that can be used to travel to an act's town
@@ -132,7 +169,8 @@ func getTownWaypointForAct(act int) area.ID {
 	}
 }
 
-// hasWaypointForAct checks if the player has any waypoint that can reach the target act
+// hasWaypointForAct checks if the player has a waypoint that can reach the target act
+// It checks for the town waypoint directly, or any waypoint in that act
 func hasWaypointForAct(act int) bool {
 	ctx := context.Get()
 	targetTown := getTownWaypointForAct(act)
@@ -142,9 +180,16 @@ func hasWaypointForAct(act int) bool {
 		return true
 	}
 
-	// For towns, they're typically available if we've been there
-	// This is a simplified check - the WayPoint function will handle traversal
-	return true
+	// Check if we have any waypoint in the target act
+	// If so, WayPoint() can use it as a starting point
+	for _, wp := range ctx.Data.PlayerUnit.AvailableWaypoints {
+		wpAct := GetActFromArea(wp)
+		if wpAct == act {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GoToLeaderAct navigates to the town of the leader's act
@@ -152,6 +197,11 @@ func hasWaypointForAct(act int) bool {
 func GoToLeaderAct(playerName string) error {
 	ctx := context.Get()
 	ctx.SetLastAction("GoToLeaderAct")
+
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
 
 	// Get leader info without refreshing (should already be fresh from caller)
 	_, leaderArea, found := GetLeaderPosition(playerName)
@@ -192,6 +242,11 @@ func GoToAct(targetAct int) error {
 	ctx := context.Get()
 	ctx.SetLastAction("GoToAct")
 
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
+
 	currentAct := GetActFromArea(ctx.Data.PlayerUnit.Area)
 	if currentAct == targetAct {
 		ctx.Logger.Debug("Already in target act", slog.Int("act", currentAct))
@@ -220,6 +275,11 @@ func GoToAct(targetAct int) error {
 func WaitAtPortalArea() error {
 	ctx := context.Get()
 	ctx.SetLastAction("WaitAtPortalArea")
+
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
 
 	ctx.RefreshGameData()
 
@@ -288,35 +348,18 @@ func WaitAtPortalArea() error {
 }
 
 // FindLeaderPortal finds a town portal in the current area
+// Note: This function is called frequently, so logging is minimal to reduce spam
+// FindLeaderPortal finds any town portal in the current area
+// NOTE: This does NOT refresh game data - caller should ensure data is fresh
 func FindLeaderPortal(playerName string) (data.Object, bool) {
 	ctx := context.Get()
 	ctx.SetLastAction("FindLeaderPortal")
 
-	ctx.RefreshGameData()
-
-	ctx.Logger.Debug("Searching for portal",
-		slog.Int("totalObjects", len(ctx.Data.Objects)),
-		slog.String("currentArea", ctx.Data.PlayerUnit.Area.Area().Name))
-
-	// Look for any town portal
+	// Look for any town portal (no refresh needed, caller should have done it)
 	for _, obj := range ctx.Data.Objects {
 		if obj.Name == object.TownPortal || obj.Name == object.PermanentTownPortal {
-			ctx.Logger.Debug("Found portal",
-				slog.String("name", string(obj.Name)),
-				slog.Int("x", obj.Position.X),
-				slog.Int("y", obj.Position.Y))
 			return obj, true
 		}
-	}
-
-	// Debug log what objects we DO see (only in towns to avoid spam)
-	if ctx.Data.PlayerUnit.Area.IsTown() && len(ctx.Data.Objects) > 0 {
-		objectTypes := make(map[object.Name]int)
-		for _, obj := range ctx.Data.Objects {
-			objectTypes[obj.Name]++
-		}
-		ctx.Logger.Debug("Objects in area (no portal found)",
-			slog.Any("objectCounts", objectTypes))
 	}
 
 	return data.Object{}, false
@@ -326,6 +369,11 @@ func FindLeaderPortal(playerName string) (data.Object, bool) {
 func EnterPlayerPortal(playerName string) error {
 	ctx := context.Get()
 	ctx.SetLastAction("EnterPlayerPortal")
+
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
 
 	portal, found := FindLeaderPortal(playerName)
 	if !found {
@@ -377,6 +425,11 @@ func ReturnThroughPortal() error {
 	ctx := context.Get()
 	ctx.SetLastAction("ReturnThroughPortal")
 
+	// Check if bot is stopping to avoid panic
+	if ctx.ExecutionPriority == context.PriorityStop {
+		return fmt.Errorf("bot is stopping")
+	}
+
 	ctx.RefreshGameData()
 
 	// Find any portal in current area
@@ -399,21 +452,3 @@ func ReturnThroughPortal() error {
 	return fmt.Errorf("no portal found in current area")
 }
 
-// DetectNewPortal checks if a new portal has appeared (different from the one we came through)
-func DetectNewPortal(originalPortalPos data.Position) bool {
-	ctx := context.Get()
-	ctx.SetLastAction("DetectNewPortal")
-
-	ctx.RefreshGameData()
-
-	for _, obj := range ctx.Data.Objects {
-		if obj.Name == object.TownPortal {
-			// Check if this portal is at a different position
-			if obj.Position.X != originalPortalPos.X || obj.Position.Y != originalPortalPos.Y {
-				return true
-			}
-		}
-	}
-
-	return false
-}
