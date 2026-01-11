@@ -26,7 +26,7 @@ func (pf *PathFinder) renderMap(grid *game.Grid, from, to data.Position, path Pa
 			if pathLocs[fmt.Sprintf("%d,%d", x, y)] {
 				img.Set(x, y, color.RGBA{R: 36, G: 255, B: 0, A: 255})
 			} else {
-				switch grid.CollisionGrid[y][x] {
+				switch grid.Get(x, y) {
 				case game.CollisionTypeNonWalkable:
 					img.Set(x, y, color.Black)
 				case game.CollisionTypeWalkable:
