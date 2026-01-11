@@ -183,6 +183,44 @@ func DropInventoryItem(i data.Item) error {
 
 	return nil
 }
+
+// EnsureItemNotEquipped moves an equipped item to inventory (or stash if open) and returns its updated state.
+func EnsureItemNotEquipped(itm data.Item) (data.Item, error) {
+	if itm.Location.LocationType != item.LocationEquipped {
+		return itm, nil
+	}
+
+	ctx := context.Get()
+	ctx.SetLastAction("EnsureItemNotEquipped")
+
+	if err := step.OpenInventory(); err != nil {
+		return itm, err
+	}
+
+	slotPos := ui.GetEquipCoords(itm.Location.BodyLocation, item.LocationEquipped)
+	if slotPos.X == 0 && slotPos.Y == 0 {
+		return itm, fmt.Errorf("failed to resolve equip slot for %s", itm.Name)
+	}
+
+	ctx.Logger.Debug("Unequipping item", "item", itm.Name, "slot", itm.Location.BodyLocation)
+	ctx.HID.ClickWithModifier(game.LeftButton, slotPos.X, slotPos.Y, game.CtrlKey)
+	utils.Sleep(300)
+	ctx.RefreshGameData()
+
+	updated, found := ctx.Data.Inventory.FindByID(itm.UnitID)
+	if !found {
+		return itm, fmt.Errorf("failed to find %s after unequipping", itm.Name)
+	}
+
+	switch updated.Location.LocationType {
+	case item.LocationInventory, item.LocationStash, item.LocationSharedStash:
+		return updated, nil
+	default:
+		return itm, fmt.Errorf("failed to unequip %s from slot %v", itm.Name, itm.Location.BodyLocation)
+	}
+
+}
+
 func IsInLockedInventorySlot(itm data.Item) bool {
 	// Check if item is in inventory
 	if itm.Location.LocationType != item.LocationInventory {

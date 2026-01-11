@@ -551,7 +551,17 @@ func (a Leveling) prepareStaff() error {
 		return nil
 	}
 
-	err := action.CubeAddItems(staff, amulet)
+	staff, err := action.EnsureItemNotEquipped(staff)
+	if err != nil {
+		return err
+	}
+
+	amulet, err = action.EnsureItemNotEquipped(amulet)
+	if err != nil {
+		return err
+	}
+
+	err = action.CubeAddItems(staff, amulet)
 	if err != nil {
 		return err
 	}
