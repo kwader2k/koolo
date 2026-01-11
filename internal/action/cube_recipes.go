@@ -483,7 +483,8 @@ func CubeRecipes() error {
 							for _, stashItem := range itemsInStash {
 								// Skip non‑magic grand charms (e.g., Gheeds Fortune) when checking for a reroll candidate
 								if stashItem.Name == "GrandCharm" && stashItem.Quality == item.QualityMagic {
-									if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(stashItem); result != nip.RuleResultFullMatch {
+									evalCtx := getEvaluationContext()
+									if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(stashItem, evalCtx); result != nip.RuleResultFullMatch {
 										hasUnmatchedGrandCharm = true
 										break
 									}
@@ -552,7 +553,8 @@ func hasItemsForRecipe(ctx *context.Status, recipe CubeRecipe) ([]data.Item, boo
 
 			// Let's make sure we don't use an item we don't want to. Add more if needed (depending on the recipes we have)
 			if item.Name == "Jewel" {
-				if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(item); result == nip.RuleResultFullMatch {
+				evalCtx := getEvaluationContext()
+				if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(item, evalCtx); result == nip.RuleResultFullMatch {
 					continue
 				}
 			}
@@ -702,9 +704,10 @@ func hasItemsForGrandCharmReroll(ctx *context.Status, items []data.Item) ([]data
 	var grandCharm data.Item
 	perfectGems := make([]data.Item, 0, 3)
 
+	evalCtx := getEvaluationContext()
 	for _, itm := range items {
 		if itm.Name == "GrandCharm" {
-			if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(itm); result != nip.RuleResultFullMatch && itm.Quality == item.QualityMagic {
+			if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(itm, evalCtx); result != nip.RuleResultFullMatch && itm.Quality == item.QualityMagic {
 				grandCharm = itm
 			}
 		} else if isPerfectGem(itm) && len(perfectGems) < 3 {

@@ -30,8 +30,9 @@ func doesExceedQuantity(rule nip.Rule) bool {
 
 	matchedItemsInStash := 0
 
+	evalCtx := getEvaluationContext()
 	for _, stashItem := range stashItems {
-		res, _ := rule.Evaluate(stashItem)
+		res, _ := rule.EvaluateWithContext(stashItem, evalCtx)
 		if res == nip.RuleResultFullMatch {
 			matchedItemsInStash += 1
 		}

@@ -15,7 +15,8 @@ func getMercenaryMetaItemScore(it data.Item) (float64, bool) {
 
 	totalScore := 0.0
 
-	_, tierRule := ctx.CharacterCfg.Runtime.Rules.EvaluateTiers(it, ctx.CharacterCfg.Runtime.TierRules)
+	evalCtx := getEvaluationContext()
+	_, tierRule := ctx.CharacterCfg.Runtime.Rules.EvaluateTiersWithContext(it, ctx.CharacterCfg.Runtime.TierRules, evalCtx)
 	if tierRule.MercTier() > 0 {
 		totalScore = tierRule.MercTier()
 	}
