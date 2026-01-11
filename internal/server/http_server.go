@@ -34,6 +34,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/bot"
+	"github.com/hectorgimenez/koolo/internal/character/paladin"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/drop"
@@ -1803,12 +1804,8 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 }
 
 func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.CharacterCfg) {
-	// Smiter specific options
-	if cfg.Character.Class == "smiter" {
-		cfg.Character.Smiter.UberMephAura = values.Get("smiterUberMephAura")
-		if cfg.Character.Smiter.UberMephAura == "" {
-			cfg.Character.Smiter.UberMephAura = "resist_lightning"
-		}
+	if paladin.IsClass(cfg.Character.Class) {
+		paladin.ApplyUI(values, cfg)
 	}
 
 	// Berserker Barb specific options
@@ -2001,7 +1998,7 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 	}
 
 	// Paladin Leveling specific options
-	if cfg.Character.Class == "paladin" {
+	if cfg.Character.Class == "paladin_leveling" {
 		cfg.Character.PaladinLeveling.UsePacketLearning = values.Has("usePacketLearning")
 	}
 
@@ -2236,12 +2233,8 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.ClearPathDist = 7
 		}
 
-		// Smiter specific options
-		if cfg.Character.Class == "smiter" {
-			cfg.Character.Smiter.UberMephAura = r.Form.Get("smiterUberMephAura")
-			if cfg.Character.Smiter.UberMephAura == "" {
-				cfg.Character.Smiter.UberMephAura = "resist_lightning"
-			}
+		if paladin.IsClass(cfg.Character.Class) {
+			paladin.ApplyUI(r.Form, cfg)
 		}
 
 		// Berserker Barb specific options
@@ -2438,7 +2431,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// Paladin Leveling specific options
-		if cfg.Character.Class == "paladin" {
+		if cfg.Character.Class == "paladin_leveling" {
 			cfg.Character.PaladinLeveling.UsePacketLearning = r.Form.Has("usePacketLearning")
 		}
 

@@ -51,6 +51,7 @@ func WayPoint(dest area.ID) error {
 			utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for waypoint tab to load
 			// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
 			ClearMessages()
+			ctx.RefreshGameData()
 		}
 	}
 
@@ -110,6 +111,7 @@ func FieldWayPoint(dest area.ID) error {
 			utils.Sleep(200)
 			// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
 			ClearMessages()
+			ctx.RefreshGameData()
 		}
 	}
 

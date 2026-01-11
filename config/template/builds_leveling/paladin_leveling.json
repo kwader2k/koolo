@@ -1,6 +1,6 @@
 {
 	"nips" : [
-		"paladin.nip",
+		"paladin_leveling.nip",
 		"common.nip",
 		"common-caster.nip"
 	]
