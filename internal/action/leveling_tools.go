@@ -267,7 +267,7 @@ func getAvailableSkillKB() []data.KeyBinding {
 	ctx.SetLastAction("getAvailableSkillKB")
 
 	for _, sb := range ctx.Data.KeyBindings.Skills {
-		if sb.SkillID == -1 && (sb.Key1[0] != 0 && sb.Key1[0] != 255) || (sb.Key2[0] != 0 && sb.Key2[0] != 255) {
+		if sb.SkillID == -1 && ((sb.Key1[0] != 0 && sb.Key1[0] != 255) || (sb.Key2[0] != 0 && sb.Key2[0] != 255)) {
 			availableSkillKB = append(availableSkillKB, sb.KeyBinding)
 		}
 	}
