@@ -716,6 +716,19 @@
   accent-color: var(--primary);
 }
 
+/* Keep ladder/hardcore toggles tight to free space in the grid row */
+.ladder-toggle-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.9rem;
+}
+
+.ladder-toggle-group .non-ladder-checkbox-container {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
 /* ========================================
    SCHEDULER SETTINGS
    ======================================== */

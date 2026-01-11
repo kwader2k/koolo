@@ -347,6 +347,7 @@ type CharacterCfg struct {
 		InteractWithSuperChests bool                  `yaml:"interactWithSuperChests"`
 		StopLevelingAt          int                   `yaml:"stopLevelingAt"`
 		IsNonLadderChar         bool                  `yaml:"isNonLadderChar"`
+		IsHardCoreChar          bool                  `yaml:"isHardCoreChar"`
 		ClearTPArea             bool                  `yaml:"clearTPArea"`
 		Difficulty              difficulty.Difficulty `yaml:"difficulty"`
 		RandomizeRuns           bool                  `yaml:"randomizeRuns"`

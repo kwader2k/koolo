@@ -142,15 +142,22 @@
                 <label>
                     Character name
                    <input name="characterName" placeholder="{{ .Config.CharacterName }}" value="{{ .Config.CharacterName }}" data-last-valid="{{ .Config.CharacterName }}" minlength="2" maxlength="16" oninput="validateCharacterName(this)"/>                </label>
-                <label class="non-ladder-checkbox-container">
-                    <input type="checkbox" name="isNonLadderChar" {{ if .Config.Game.IsNonLadderChar }}checked{{ end }}/>
-                    Non-Ladder
-                </label>
+                <div class="ladder-toggle-group">
+                    <label class="non-ladder-checkbox-container">
+                        <input type="checkbox" name="isNonLadderChar" {{ if .Config.Game.IsNonLadderChar }}checked{{ end }}/>
+                        Non-Ladder
+                    </label>
+                    <label class="non-ladder-checkbox-container">
+                        <input type="checkbox" name="isHardCoreChar" {{ if .Config.Game.IsHardCoreChar }}checked{{ end }}/>
+                        H.C
+                    </label>
+                </div>
+                
             </fieldset>
                 <label style="margin-top: 0px; margin-bottom: 5px;">
                     <input type="checkbox" name="autoCreateCharacter" {{ if .Config.AutoCreateCharacter }}checked{{ end }}/>
                     Auto-create character (one-time)
-                    <br><small>If enabled, Koolo will automatically create this character once when no character with this name exists, using the selected class and ladder type.</small>
+                                        <br><small>If enabled, Koolo creates this character once (if missing) with the selected class, ladder type, and HARD CORE. ⚠️ Keep focus during creation.</small>
                 </label>
             <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">
                 <h5>Class-Specific Settings</h5>
