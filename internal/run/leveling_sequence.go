@@ -690,7 +690,7 @@ func (ls LevelingSequence) setupLevelOneConfig() {
 	ls.ctx.CharacterCfg.Character.UseMerc = false
 	ls.ctx.CharacterCfg.Character.StashToShared = false
 	ls.ctx.CharacterCfg.Game.UseCainIdentify = true
-	ls.ctx.CharacterCfg.CloseMiniPanel = false
+	ls.ctx.CharacterCfg.CloseMiniPanel = true
 	ls.ctx.CharacterCfg.Gambling.Enabled = true
 	ls.ctx.CharacterCfg.MaxGameLength = 1200
 	ls.ctx.CharacterCfg.CubeRecipes.Enabled = true

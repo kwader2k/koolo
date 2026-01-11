@@ -161,7 +161,7 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Character.UseMerc = false
 	a.ctx.CharacterCfg.Character.StashToShared = false
 	a.ctx.CharacterCfg.Game.UseCainIdentify = true
-	a.ctx.CharacterCfg.CloseMiniPanel = false
+	a.ctx.CharacterCfg.CloseMiniPanel = true
 	a.ctx.CharacterCfg.Health.HealingPotionAt = 40
 	a.ctx.CharacterCfg.Health.ManaPotionAt = 25
 	a.ctx.CharacterCfg.Health.RejuvPotionAtLife = 0
