@@ -52,7 +52,7 @@ func EnsureSkillKeyBindings(cfg *CharacterCfg, useCustomSettings bool) (KeyBindi
 		return result, nil
 	}
 
-	path := filepath.Join(saveDir, characterName+".key")
+	path := filepath.Join(saveDir, keyBindingFilename(characterName, cfg.AuthMethod))
 	result.Files = []string{path}
 
 	if _, err := os.Stat(path); err != nil {
@@ -90,7 +90,15 @@ func resolveSaveDir(commandLineArgs string, useCustomSettings bool) string {
 	return filepath.Join(settingsPath, "mods", modName)
 }
 
-func WaitForKeyBindings(saveDir, characterName string, timeout time.Duration) error {
+func keyBindingFilename(characterName, authMethod string) string {
+	authMethod = strings.TrimSpace(authMethod)
+	if authMethod == "" || strings.EqualFold(authMethod, "None") {
+		return characterName + ".key"
+	}
+	return characterName + ".keyo"
+}
+
+func WaitForKeyBindings(saveDir, characterName, authMethod string, timeout time.Duration) error {
 	if saveDir == "" {
 		return fmt.Errorf("save dir is empty")
 	}
@@ -100,7 +108,7 @@ func WaitForKeyBindings(saveDir, characterName string, timeout time.Duration) er
 	}
 
 	deadline := time.Now().Add(timeout)
-	path := filepath.Join(saveDir, characterName+".key")
+	path := filepath.Join(saveDir, keyBindingFilename(characterName, authMethod))
 	for time.Now().Before(deadline) {
 		if _, err := os.Stat(path); err == nil {
 			return nil
