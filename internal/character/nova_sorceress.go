@@ -1,6 +1,7 @@
 package character
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -34,6 +35,16 @@ const (
 
 	// Pack construction radius (tiles) around a seed/anchor.
 	NovaPackRadius = 15
+
+	// Pre-computed squared radii to avoid repeated multiplications in hot paths
+	novaSpellRadiusSq = NovaSpellRadius * NovaSpellRadius
+	novaPackRadiusSq  = NovaPackRadius * NovaPackRadius
+
+	// Tuning constants for aggressive Nova positioning
+	repositionCooldown      = 650 * time.Millisecond // Cooldown between repositions to prevent wall-fail spam
+	maxTeleportDistance     = 18                     // Don't teleport further than this unless we reach desired hits
+	monsterProximityPenalty = 1.2                    // Score penalty for standing on top of monsters
+	killSequenceTimeout     = 120 * time.Second      // Safety timeout for KillMonsterSequence to prevent infinite loops
 )
 
 // -------------------------------------------------------------------------------------
@@ -77,13 +88,12 @@ func packKey(pos data.Position) int64 {
 
 // countHitsAt counts how many monsters are within NovaSpellRadius from `pos`.
 func countHitsAt(pos data.Position, pack []data.Monster) int {
-	r2 := NovaSpellRadius * NovaSpellRadius
 	hits := 0
-	for _, m := range pack {
-		if m.Stats[stat.Life] <= 0 {
+	for i := range pack {
+		if pack[i].Stats[stat.Life] <= 0 {
 			continue
 		}
-		if squaredDistance(pos, m.Position) <= r2 {
+		if squaredDistance(pos, pack[i].Position) <= novaSpellRadiusSq {
 			hits++
 		}
 	}
@@ -109,9 +119,6 @@ func desiredHitsForPack(packSize int) int {
 	// big 10+, medium 7+, small 3+
 	switch {
 	case packSize >= 10:
-		if packSize < 10 {
-			return packSize
-		}
 		return 10
 	case packSize >= 7:
 		return 7
@@ -139,9 +146,9 @@ func maxRepositionsForPack(packSize int) int {
 // We don't want the entire screen; we want the current "engagement area".
 func pickDenseSeed(playerPos, targetPos data.Position, enemies []data.Monster) (seed data.Position, ok bool) {
 	alive := make([]data.Monster, 0, len(enemies))
-	for _, m := range enemies {
-		if m.Stats[stat.Life] > 0 {
-			alive = append(alive, m)
+	for i := range enemies {
+		if enemies[i].Stats[stat.Life] > 0 {
+			alive = append(alive, enemies[i])
 		}
 	}
 	if len(alive) == 0 {
@@ -152,16 +159,16 @@ func pickDenseSeed(playerPos, targetPos data.Position, enemies []data.Monster) (
 	const focusRadius = 22
 	const densityRadius = 8
 
-	focusR2 := focusRadius * focusRadius
-	densityR2 := densityRadius * densityRadius
+	const focusR2 = focusRadius * focusRadius
+	const densityR2 = densityRadius * densityRadius
 
 	bestIdx := -1
 	bestNeighbors := -1
 	bestTie := 1 << 30
 
 	for i := range alive {
-		c := alive[i]
-		if squaredDistance(c.Position, targetPos) > focusR2 {
+		cPos := alive[i].Position
+		if squaredDistance(cPos, targetPos) > focusR2 {
 			continue
 		}
 
@@ -170,13 +177,13 @@ func pickDenseSeed(playerPos, targetPos data.Position, enemies []data.Monster) (
 			if i == j {
 				continue
 			}
-			if squaredDistance(c.Position, alive[j].Position) <= densityR2 {
+			if squaredDistance(cPos, alive[j].Position) <= densityR2 {
 				neighbors++
 			}
 		}
 
 		// Tie-break: closer to target, then closer to player (stable).
-		tie := gridDistance(c.Position, targetPos)*10 + gridDistance(c.Position, playerPos)
+		tie := gridDistance(cPos, targetPos)*10 + gridDistance(cPos, playerPos)
 		if neighbors > bestNeighbors || (neighbors == bestNeighbors && tie < bestTie) {
 			bestNeighbors = neighbors
 			bestIdx = i
@@ -203,13 +210,12 @@ func pickDenseSeed(playerPos, targetPos data.Position, enemies []data.Monster) (
 // buildPack builds a pack around a seed (NovaPackRadius).
 func buildPack(seed data.Position, enemies []data.Monster) []data.Monster {
 	pack := make([]data.Monster, 0, len(enemies))
-	r2 := NovaPackRadius * NovaPackRadius
-	for _, m := range enemies {
-		if m.Stats[stat.Life] <= 0 {
+	for i := range enemies {
+		if enemies[i].Stats[stat.Life] <= 0 {
 			continue
 		}
-		if squaredDistance(seed, m.Position) <= r2 {
-			pack = append(pack, m)
+		if squaredDistance(seed, enemies[i].Position) <= novaPackRadiusSq {
+			pack = append(pack, enemies[i])
 		}
 	}
 	return pack
@@ -221,12 +227,12 @@ func centroidOf(pack []data.Monster) data.Position {
 	}
 	sumX, sumY := 0, 0
 	n := 0
-	for _, m := range pack {
-		if m.Stats[stat.Life] <= 0 {
+	for i := range pack {
+		if pack[i].Stats[stat.Life] <= 0 {
 			continue
 		}
-		sumX += m.Position.X
-		sumY += m.Position.Y
+		sumX += pack[i].Position.X
+		sumY += pack[i].Position.Y
 		n++
 	}
 	if n == 0 {
@@ -239,9 +245,9 @@ func centroidOf(pack []data.Monster) data.Position {
 // - For big packs (>=10): anchor on an elite/champion inside the pack if possible
 // - Otherwise anchor on target if it's elite
 // - Otherwise anchor on the densest seed
-func chooseAnchorForPack(target data.Monster, pack []data.Monster, seed data.Position) data.Position {
+// Note: cent (centroid) is passed in to avoid recalculating it later
+func chooseAnchorForPack(target data.Monster, pack []data.Monster, seed data.Position, cent data.Position) data.Position {
 	packSize := len(pack)
-	cent := centroidOf(pack)
 
 	// If big pack, elite anchor is king.
 	if packSize >= 10 {
@@ -249,17 +255,17 @@ func chooseAnchorForPack(target data.Monster, pack []data.Monster, seed data.Pos
 		bestTie := 1 << 30
 
 		for i := range pack {
-			m := pack[i]
-			if m.Stats[stat.Life] <= 0 {
+			if pack[i].Stats[stat.Life] <= 0 {
 				continue
 			}
-			if !m.IsElite() {
+			if !pack[i].IsElite() {
 				continue
 			}
 
 			// Prefer elite closer to centroid (more "center of pack")
-			tie := gridDistance(m.Position, cent)
+			tie := gridDistance(pack[i].Position, cent)
 			if bestElite == nil || tie < bestTie {
+				m := pack[i]
 				bestElite = &m
 				bestTie = tie
 			}
@@ -277,12 +283,11 @@ func chooseAnchorForPack(target data.Monster, pack []data.Monster, seed data.Pos
 
 	// Otherwise: if any elite exists in pack, anchor to it.
 	for i := range pack {
-		m := pack[i]
-		if m.Stats[stat.Life] <= 0 {
+		if pack[i].Stats[stat.Life] <= 0 {
 			continue
 		}
-		if m.IsElite() {
-			return m.Position
+		if pack[i].IsElite() {
+			return pack[i].Position
 		}
 	}
 
@@ -324,7 +329,9 @@ func (s NovaSorceress) evalAggressiveNovaPosition(target data.Monster) novaPosEv
 		return novaPosEval{}
 	}
 
-	anchor := chooseAnchorForPack(target, pack, seed)
+	// Calculate centroid once and pass it to chooseAnchorForPack
+	cent := centroidOf(pack)
+	anchor := chooseAnchorForPack(target, pack, seed, cent)
 	key := packKey(anchor)
 
 	packSize := len(pack)
@@ -340,9 +347,6 @@ func (s NovaSorceress) evalAggressiveNovaPosition(target data.Monster) novaPosEv
 			anchorPos:   anchor,
 		}
 	}
-
-	// Candidate generation: mostly around anchor (elite center), some around centroid.
-	cent := centroidOf(pack)
 
 	// Radii based on pack size (big packs allow slightly larger search).
 	anchorRadius := 7
@@ -479,18 +483,17 @@ func (s NovaSorceress) evalAggressiveNovaPosition(target data.Monster) novaPosEv
 
 		// Slight penalty if standing on top of monsters (micro bump issues).
 		// Approx: if we are within 1 tile of any monster, subtract a bit.
-		for _, m := range pack {
-			if m.Stats[stat.Life] <= 0 {
+		for i := range pack {
+			if pack[i].Stats[stat.Life] <= 0 {
 				continue
 			}
-			if gridDistance(p, m.Position) <= 1 {
-				score -= 1.2
+			if gridDistance(p, pack[i].Position) <= 1 {
+				score -= monsterProximityPenalty
 				break
 			}
 		}
 
 		if score > bestScore {
-			bestScore = score
 			bestScore = score
 			bestPos = p
 			bestHits = hits
@@ -563,7 +566,17 @@ func (s NovaSorceress) KillMonsterSequence(
 	attackedThisEngagement := false
 	lastRepositionAt := time.Time{}
 
+	// Safety timeout to prevent infinite loops
+	startTime := time.Now()
+
 	for {
+		// Safety check: prevent infinite loop if something goes wrong
+		if time.Since(startTime) > killSequenceTimeout {
+			s.Logger.Error("KillMonsterSequence timeout reached, breaking loop to prevent crash",
+				slog.Duration("elapsed", time.Since(startTime)))
+			return fmt.Errorf("kill sequence timeout after %v", killSequenceTimeout)
+		}
+
 		ctx.PauseIfNotPriority()
 
 		id, found := monsterSelector(*s.Data)
@@ -583,57 +596,76 @@ func (s NovaSorceress) KillMonsterSequence(
 		// Aggressive Nova positioning:
 		// One decisive reposition per pack, anchored to elite center (when available),
 		// then "nova bum bum" without dancing.
+		//
+		// OPTIMIZATION: Once we start attacking, skip expensive evalAggressiveNovaPosition()
+		// and just spam Nova as fast as possible. Only do lightweight pack-change detection.
 		if ctx.CharacterCfg.Character.NovaSorceress.AggressiveNovaPositioning {
-			ev := s.evalAggressiveNovaPosition(monster)
+			// Lightweight pack-change detection based on target position
+			// If target moved significantly, we might be engaging a new pack
+			currentTargetKey := packKey(monster.Position)
 
-			if ev.engKey != 0 && ev.engKey != lastEngKey {
-				lastEngKey = ev.engKey
-				repositionCount = 0
-				attackedThisEngagement = false
-				lastRepositionAt = time.Time{}
-			}
+			if attackedThisEngagement {
+				// Already attacking - only check if we switched to a completely different pack
+				if currentTargetKey != lastEngKey && gridDistance(monster.Position, ctx.Data.PlayerUnit.Position) > NovaSpellRadius {
+					// Target is far and in different grid bucket - likely new pack, reset state
+					lastEngKey = currentTargetKey
+					repositionCount = 0
+					attackedThisEngagement = false
+					lastRepositionAt = time.Time{}
+				}
+				// Otherwise skip expensive evaluation and continue spamming Nova
+			} else {
+				// Not yet attacking - do full evaluation to find best position
+				ev := s.evalAggressiveNovaPosition(monster)
 
-			if ev.ok && !attackedThisEngagement {
-				need := desiredHitsForPack(ev.packSize)
-				maxRep := maxRepositionsForPack(ev.packSize)
+				if ev.engKey != 0 && ev.engKey != lastEngKey {
+					lastEngKey = ev.engKey
+					repositionCount = 0
+					lastRepositionAt = time.Time{}
+				}
 
-				if need > 0 && repositionCount < maxRep && ev.currentHits < need {
-					// Cooldown prevents wall-fail spam.
-					if lastRepositionAt.IsZero() || time.Since(lastRepositionAt) > 650*time.Millisecond {
-						gain := ev.bestHits - ev.currentHits
+				if ev.ok {
+					need := desiredHitsForPack(ev.packSize)
+					maxRep := maxRepositionsForPack(ev.packSize)
 
-						// Big packs: demand meaningful improvement.
-						worthIt := false
-						if ev.bestHits > ev.currentHits {
-							if ev.bestHits >= need {
-								worthIt = true
-							} else {
-								if ev.packSize >= 10 {
-									worthIt = gain >= 2
+					if need > 0 && repositionCount < maxRep && ev.currentHits < need {
+						// Cooldown prevents wall-fail spam.
+						if lastRepositionAt.IsZero() || time.Since(lastRepositionAt) > repositionCooldown {
+							gain := ev.bestHits - ev.currentHits
+
+							// Big packs: demand meaningful improvement.
+							worthIt := false
+							if ev.bestHits > ev.currentHits {
+								if ev.bestHits >= need {
+									worthIt = true
 								} else {
-									worthIt = gain >= 1
+									if ev.packSize >= 10 {
+										worthIt = gain >= 2
+									} else {
+										worthIt = gain >= 1
+									}
 								}
 							}
-						}
 
-						// Do not waste time on long teleports unless it reaches desired hits.
-						dist := gridDistance(ctx.Data.PlayerUnit.Position, ev.bestPos)
-						if dist >= 18 && ev.bestHits < need {
-							worthIt = false
-						}
+							// Do not waste time on long teleports unless it reaches desired hits.
+							dist := gridDistance(ctx.Data.PlayerUnit.Position, ev.bestPos)
+							if dist >= maxTeleportDistance && ev.bestHits < need {
+								worthIt = false
+							}
 
-						// Don't bother if position is basically the same.
-						if dist == 0 {
-							worthIt = false
-						}
+							// Don't bother if position is basically the same.
+							if dist == 0 {
+								worthIt = false
+							}
 
-						if worthIt {
-							if err := step.MoveTo(ev.bestPos); err != nil {
-								s.Logger.Debug("Aggressive Nova reposition failed", slog.String("error", err.Error()))
-								repositionCount++
-							} else {
-								lastRepositionAt = time.Now()
-								repositionCount++
+							if worthIt {
+								if err := step.MoveTo(ev.bestPos); err != nil {
+									s.Logger.Debug("Aggressive Nova reposition failed", slog.String("error", err.Error()))
+									repositionCount++
+								} else {
+									lastRepositionAt = time.Now()
+									repositionCount++
+								}
 							}
 						}
 					}
@@ -679,12 +711,12 @@ func (s NovaSorceress) KillMonsterSequence(
 }
 
 func (s NovaSorceress) shouldCastStaticField(monster data.Monster) bool {
-	maxLife := float64(monster.Stats[stat.MaxLife])
+	maxLife := monster.Stats[stat.MaxLife]
 	if maxLife == 0 {
 		return false
 	}
-	hpPercentage := (float64(monster.Stats[stat.Life]) / maxLife) * 100
-	return hpPercentage > StaticFieldThreshold
+	// Integer comparison - mathematically equivalent to float division
+	return monster.Stats[stat.Life]*100 > maxLife*StaticFieldThreshold
 }
 
 func (s NovaSorceress) killBossWithStatic(bossID npc.ID, monsterType data.MonsterType) error {
@@ -698,11 +730,13 @@ func (s NovaSorceress) killBossWithStatic(bossID npc.ID, monsterType data.Monste
 			return nil
 		}
 
-		bossHPPercent := (float64(boss.Stats[stat.Life]) / float64(boss.Stats[stat.MaxLife])) * 100
-		thresholdFloat := float64(ctx.CharacterCfg.Character.NovaSorceress.BossStaticThreshold)
+		bossHP := boss.Stats[stat.Life]
+		bossMaxHP := boss.Stats[stat.MaxLife]
+		threshold := ctx.CharacterCfg.Character.NovaSorceress.BossStaticThreshold
 
 		// Cast Static Field until boss HP is below threshold.
-		if bossHPPercent > thresholdFloat {
+		// Integer comparison - mathematically equivalent to float division
+		if bossHP*100 > bossMaxHP*threshold {
 			staticOpts := []step.AttackOption{
 				step.Distance(StaticMinDistance, StaticMaxDistance),
 			}
@@ -775,8 +809,9 @@ func (s NovaSorceress) ShouldIgnoreMonster(m data.Monster) bool {
 	}
 
 	// Count how many normal (non-elite) monsters are within Nova radius around this monster.
-	radius := NovaSpellRadius
+	// Early exit optimization - stop counting once threshold reached (same result, less iterations)
 	normalCount := 0
+	mPos := m.Position
 
 	for _, other := range ctx.Data.Monsters.Enemies() {
 		if other.Stats[stat.Life] <= 0 || other.Stats[stat.MaxLife] <= 0 {
@@ -785,8 +820,11 @@ func (s NovaSorceress) ShouldIgnoreMonster(m data.Monster) bool {
 		if other.IsElite() {
 			continue
 		}
-		if gridDistance(m.Position, other.Position) <= radius {
+		if gridDistance(mPos, other.Position) <= NovaSpellRadius {
 			normalCount++
+			if normalCount >= 3 {
+				return false // Early exit - same result as original
+			}
 		}
 	}
 
