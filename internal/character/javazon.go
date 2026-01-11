@@ -214,7 +214,7 @@ func (s Javazon) ShouldIgnoreMonster(m data.Monster) bool {
 }
 
 func (s Javazon) CheckKeyBindings() []skill.ID {
-	requireKeybindings := []skill.ID{skill.LightningFury, skill.ChargedStrike, skill.TomeOfTownPortal}
+	requireKeybindings := []skill.ID{skill.ChargedStrike, skill.LightningStrike, skill.LightningFury, skill.TomeOfTownPortal}
 	missingKeybindings := []skill.ID{}
 
 	for _, cskill := range requireKeybindings {
@@ -248,6 +248,8 @@ func (s Javazon) killMonsterSequenceSafe(
 	previousUnitID := 0
 	const numOfAttacks = 5
 
+	ctx := context.Get()
+
 	for {
 		context.Get().PauseIfNotPriority()
 
@@ -273,30 +275,29 @@ func (s Javazon) killMonsterSequenceSafe(
 			return nil
 		}
 
-		closeMonsters := 0
+		closePackMonsters := 0
 		for _, mob := range s.Data.Monsters {
-			if mob.IsPet() || mob.IsMerc() || mob.IsGoodNPC() || mob.IsSkip() {
+			if mob.IsPet() || mob.IsMerc() || mob.IsGoodNPC() || mob.IsSkip() || monster.Stats[stat.Life] <= 0 && mob.UnitID != monster.UnitID {
 				continue
 			}
-			if !jzAliveMonster(mob) {
-				continue
+			dist := pather.DistanceFromPoint(mob.Position, monster.Position)
+			if dist <= 20 && dist >= 10 {
+				closePackMonsters++
 			}
-			if pather.DistanceFromPoint(mob.Position, monster.Position) <= 15 {
-				closeMonsters++
-			}
-			if closeMonsters >= 3 {
+			if closePackMonsters >= 8 {
 				break
 			}
 		}
 
-		if closeMonsters >= 3 {
+		if closePackMonsters >= 8 {
 			step.SecondaryAttack(skill.LightningFury, id, numOfAttacks, step.Distance(minJavazonDistance, maxJavazonDistance))
 		} else {
-			if s.Data.PlayerUnit.Skills[skill.ChargedStrike].Level > 0 {
-				s.chargedStrikeAccurate(id, numOfAttacks)
-			} else {
-				step.PrimaryAttack(id, numOfAttacks, false, step.Distance(1, 1))
+			csKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.LightningStrike)
+			if found && s.Data.PlayerUnit.RightSkill != skill.LightningStrike {
+				ctx.HID.PressKeyBinding(csKey)
+				utils.Sleep(jzDkMinSkillSwapDelayMS)
 			}
+			step.PrimaryAttack(id, numOfAttacks, false, step.Distance(1, 1))
 		}
 
 		completedAttackLoops++
