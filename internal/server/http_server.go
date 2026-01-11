@@ -34,6 +34,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/bot"
+	"github.com/hectorgimenez/koolo/internal/bot/messagebus"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/drop"
@@ -214,6 +215,9 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 		"isTZSelected": func(slice []area.ID, value int) bool {
 			return slices.Contains(slice, area.ID(value))
 		},
+		"isInStringSlice": func(slice []string, value string) bool {
+			return slices.Contains(slice, value)
+		},
 		"executeTemplateByName": func(name string, data interface{}) template.HTML {
 			tmpl := templates.Lookup(name)
 			var buf bytes.Buffer
@@ -230,6 +234,10 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 				return "Uber (Organs)"
 			case string(config.PandemoniumRun):
 				return "Uber (Torch)"
+			case string(config.LeaderFollowerRun):
+				return "Leader-Follower"
+			case string(config.LeaderLeecherRun):
+				return "Leader-Leecher"
 			default:
 				return run
 			}
@@ -443,6 +451,10 @@ func containss(slice []string, item string) bool {
 }
 
 func (s *HttpServer) initialData(w http.ResponseWriter, r *http.Request) {
+	s.initialDataWithLeecherFlag(w, r, false)
+}
+
+func (s *HttpServer) initialDataWithLeecherFlag(w http.ResponseWriter, r *http.Request, openLeecherPanel bool) {
 	data := s.getStatusData()
 
 	skipPrompt := r.URL.Query().Get("skipAutoStartPrompt") == "true"
@@ -463,6 +475,7 @@ func (s *HttpServer) initialData(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	data.ShowAutoStartPrompt = showPrompt
+	data.OpenLeecherControlPanel = openLeecherPanel
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(data)
@@ -728,6 +741,14 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/companion-join", s.companionJoin) // Companion join handler
 	http.HandleFunc("/reset-muling", s.resetMuling)
 
+	// Leecher Control Panel routes
+	http.HandleFunc("/leecher-control", s.leecherControlPage)
+	http.HandleFunc("/api/leecher/come", s.leecherCome)
+	http.HandleFunc("/api/leecher/stay", s.leecherStay)
+	http.HandleFunc("/api/leecher/tp", s.leecherTP)
+	http.HandleFunc("/api/leecher/exit", s.leecherExit)
+	http.HandleFunc("/api/leecher/status", s.leecherStatus)
+
 	// Pickit Editor routes
 	http.HandleFunc("/pickit-editor", s.pickitEditorPage)
 	http.HandleFunc("/sequence-editor", s.sequenceEditorPage)
@@ -941,11 +962,26 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if this is a leader-leecher supervisor
+	isLeaderLeecher := false
+	for _, run := range supCfg.Game.Runs {
+		if run == config.LeaderLeecherRun {
+			isLeaderLeecher = true
+			break
+		}
+	}
+
 	go func(name string, manual bool) {
 		if err := s.manager.Start(name, false, manual); err != nil {
 			s.logger.Error("Failed to start supervisor", slog.String("supervisor", name), slog.Any("error", err))
 		}
 	}(supervisor, manualMode)
+
+	// For leader-leecher supervisors, return special response to trigger control panel
+	if isLeaderLeecher {
+		s.initialDataWithLeecherFlag(w, r, true)
+		return
+	}
 
 	s.initialData(w, r)
 }
@@ -1720,6 +1756,64 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			cfg.Companion.LeaderName = values.Get("companionLeaderName")
 			cfg.Companion.GameNameTemplate = values.Get("companionGameNameTemplate")
 			cfg.Companion.GamePassword = values.Get("companionGamePassword")
+
+			// LeaderFollower
+			cfg.LeaderFollower.Mode = "human" // Only human leader mode is supported
+			cfg.LeaderFollower.LeaderName = values.Get("leaderFollowerLeaderName")
+			cfg.LeaderFollower.GameNamePattern = values.Get("leaderFollowerGameNamePattern")
+			cfg.LeaderFollower.GamePassword = values.Get("leaderFollowerGamePassword")
+			if followers, ok := values["leaderFollowerFollowers"]; ok {
+				cfg.LeaderFollower.Followers = followers
+			} else {
+				cfg.LeaderFollower.Followers = nil
+			}
+			if v := values.Get("leaderFollowerJoinDelayMin"); v != "" {
+				cfg.LeaderFollower.JoinDelayMin, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderFollowerJoinDelayMax"); v != "" {
+				cfg.LeaderFollower.JoinDelayMax, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderFollowerGameSearchTimeout"); v != "" {
+				cfg.LeaderFollower.GameSearchTimeout, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderFollowerPollInterval"); v != "" {
+				cfg.LeaderFollower.PollInterval, _ = strconv.Atoi(v)
+			}
+			cfg.LeaderFollower.UseLegacyGraphics = values.Has("leaderFollowerUseLegacyGraphics")
+
+			// LeaderLeecher
+			cfg.LeaderLeecher.LeaderName = values.Get("leaderLeecherLeaderName")
+			cfg.LeaderLeecher.GameNamePattern = values.Get("leaderLeecherGameNamePattern")
+			cfg.LeaderLeecher.GamePassword = values.Get("leaderLeecherGamePassword")
+			if leechers, ok := values["leaderLeecherLeechers"]; ok {
+				cfg.LeaderLeecher.Leechers = leechers
+			} else {
+				cfg.LeaderLeecher.Leechers = nil
+			}
+			if followers, ok := values["leaderLeecherFollowers"]; ok {
+				cfg.LeaderLeecher.Followers = followers
+			} else {
+				cfg.LeaderLeecher.Followers = nil
+			}
+			if v := values.Get("leaderLeecherJoinDelayMin"); v != "" {
+				cfg.LeaderLeecher.JoinDelayMin, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderLeecherJoinDelayMax"); v != "" {
+				cfg.LeaderLeecher.JoinDelayMax, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderLeecherStartInstanceDelay"); v != "" {
+				cfg.LeaderLeecher.StartInstanceDelay, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderLeecherPortalEntryDelay"); v != "" {
+				cfg.LeaderLeecher.PortalEntryDelay, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderLeecherMaxLeaderDistance"); v != "" {
+				cfg.LeaderLeecher.MaxLeaderDistance, _ = strconv.Atoi(v)
+			}
+			if v := values.Get("leaderLeecherPollInterval"); v != "" {
+				cfg.LeaderLeecher.PollInterval, _ = strconv.Atoi(v)
+			}
+			cfg.LeaderLeecher.UseLegacyGraphics = values.Has("leaderLeecherUseLegacyGraphics")
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
@@ -2664,6 +2758,64 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Companion.GameNameTemplate = r.Form.Get("companionGameNameTemplate")
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
 
+		// LeaderFollower config
+		cfg.LeaderFollower.Mode = "human" // Only human leader mode is supported
+		cfg.LeaderFollower.LeaderName = r.Form.Get("leaderFollowerLeaderName")
+		cfg.LeaderFollower.GameNamePattern = r.Form.Get("leaderFollowerGameNamePattern")
+		cfg.LeaderFollower.GamePassword = r.Form.Get("leaderFollowerGamePassword")
+		if followers, ok := r.Form["leaderFollowerFollowers"]; ok {
+			cfg.LeaderFollower.Followers = followers
+		} else {
+			cfg.LeaderFollower.Followers = nil
+		}
+		if v := r.Form.Get("leaderFollowerJoinDelayMin"); v != "" {
+			cfg.LeaderFollower.JoinDelayMin, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderFollowerJoinDelayMax"); v != "" {
+			cfg.LeaderFollower.JoinDelayMax, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderFollowerGameSearchTimeout"); v != "" {
+			cfg.LeaderFollower.GameSearchTimeout, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderFollowerPollInterval"); v != "" {
+			cfg.LeaderFollower.PollInterval, _ = strconv.Atoi(v)
+		}
+		cfg.LeaderFollower.UseLegacyGraphics = r.Form.Has("leaderFollowerUseLegacyGraphics")
+
+		// LeaderLeecher config
+		cfg.LeaderLeecher.LeaderName = r.Form.Get("leaderLeecherLeaderName")
+		cfg.LeaderLeecher.GameNamePattern = r.Form.Get("leaderLeecherGameNamePattern")
+		cfg.LeaderLeecher.GamePassword = r.Form.Get("leaderLeecherGamePassword")
+		if leechers, ok := r.Form["leaderLeecherLeechers"]; ok {
+			cfg.LeaderLeecher.Leechers = leechers
+		} else {
+			cfg.LeaderLeecher.Leechers = nil
+		}
+		if followers, ok := r.Form["leaderLeecherFollowers"]; ok {
+			cfg.LeaderLeecher.Followers = followers
+		} else {
+			cfg.LeaderLeecher.Followers = nil
+		}
+		if v := r.Form.Get("leaderLeecherJoinDelayMin"); v != "" {
+			cfg.LeaderLeecher.JoinDelayMin, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderLeecherJoinDelayMax"); v != "" {
+			cfg.LeaderLeecher.JoinDelayMax, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderLeecherStartInstanceDelay"); v != "" {
+			cfg.LeaderLeecher.StartInstanceDelay, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderLeecherPortalEntryDelay"); v != "" {
+			cfg.LeaderLeecher.PortalEntryDelay, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderLeecherMaxLeaderDistance"); v != "" {
+			cfg.LeaderLeecher.MaxLeaderDistance, _ = strconv.Atoi(v)
+		}
+		if v := r.Form.Get("leaderLeecherPollInterval"); v != "" {
+			cfg.LeaderLeecher.PollInterval, _ = strconv.Atoi(v)
+		}
+		cfg.LeaderLeecher.UseLegacyGraphics = r.Form.Has("leaderLeecherUseLegacyGraphics")
+
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
 		cfg.BackToTown.NoMpPotions = r.Form.Has("noMpPotions")
@@ -2783,7 +2935,20 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		if err := config.SaveKooloConfig(config.Koolo); err != nil {
 			s.logger.Error("Failed to save run favorites", slog.Any("error", err))
 		}
-		config.SaveSupervisorConfig(supervisorName, cfg)
+		if err := config.SaveSupervisorConfig(supervisorName, cfg); err != nil {
+			s.logger.Error("Failed to save supervisor config",
+				slog.String("supervisor", supervisorName),
+				slog.Any("error", err))
+			s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
+				Version:               config.Version,
+				ErrorMessage:          "Failed to save configuration: " + err.Error(),
+				Supervisor:            supervisorName,
+				Config:                cfg,
+				LevelingSequenceFiles: sequenceFiles,
+				RunFavoriteRuns:       config.Koolo.RunFavoriteRuns,
+			})
+			return
+		}
 		http.Redirect(w, r, "/", http.StatusSeeOther)
 		return
 	}
@@ -2935,6 +3100,155 @@ func (s *HttpServer) companionJoin(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// leecherControlPage serves the leecher control panel
+func (s *HttpServer) leecherControlPage(w http.ResponseWriter, r *http.Request) {
+	data := struct {
+		LeecherCount int
+		Statuses     map[string]bot.LeecherState
+	}{
+		LeecherCount: bot.GetConnectedLeecherCount(),
+		Statuses:     bot.GetLeecherStatuses(),
+	}
+
+	err := s.templates.ExecuteTemplate(w, "leecher_control.gohtml", data)
+	if err != nil {
+		s.logger.Error("Failed to render leecher control template", slog.Any("error", err))
+		http.Error(w, "Failed to render page", http.StatusInternalServerError)
+	}
+}
+
+// leecherCome sends a "come" command to all leechers
+func (s *HttpServer) leecherCome(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	leaderName := r.URL.Query().Get("leader")
+	if leaderName == "" {
+		leaderName = "human_leader"
+	}
+
+	// Notify all leechers via the registry
+	bot.NotifyAllLeechersCome(leaderName)
+
+	// Also publish to message bus for any listeners
+	bus := s.manager.MessageBus
+	if bus != nil {
+		msg := messagebus.NewLeecherComeMessage("control_panel", leaderName)
+		bus.Publish(msg)
+	}
+
+	s.logger.Info("Leecher COME command sent", slog.String("leader", leaderName))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"command": "come",
+		"count":   bot.GetConnectedLeecherCount(),
+	})
+}
+
+// leecherStay sends a "stay" command to all leechers
+func (s *HttpServer) leecherStay(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	leaderName := r.URL.Query().Get("leader")
+	if leaderName == "" {
+		leaderName = "human_leader"
+	}
+
+	// Set stay flag in leecher registry (this also resets come flag)
+	bot.NotifyAllLeechersStay(leaderName)
+
+	s.logger.Info("Leecher STAY command sent", slog.String("leader", leaderName))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"command": "stay",
+		"count":   bot.GetConnectedLeecherCount(),
+	})
+}
+
+// leecherTP sends a "town portal" command to all leechers
+func (s *HttpServer) leecherTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	leaderName := r.URL.Query().Get("leader")
+	if leaderName == "" {
+		leaderName = "human_leader"
+	}
+
+	// Set TP flag in leecher registry
+	bot.NotifyAllLeechersTP(leaderName)
+
+	// Publish TP command to message bus
+	bus := s.manager.MessageBus
+	if bus != nil {
+		msg := messagebus.NewLeecherTPMessage("control_panel", leaderName)
+		bus.Publish(msg)
+	}
+
+	s.logger.Info("Leecher TP command sent", slog.String("leader", leaderName))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"command": "tp",
+		"count":   bot.GetConnectedLeecherCount(),
+	})
+}
+
+// leecherExit sends an "exit game" command to all leechers
+func (s *HttpServer) leecherExit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	leaderName := r.URL.Query().Get("leader")
+	if leaderName == "" {
+		leaderName = "human_leader"
+	}
+
+	// Set exit flag in leecher registry
+	bot.NotifyAllLeechersExit(leaderName)
+
+	// Publish exit command to message bus
+	bus := s.manager.MessageBus
+	if bus != nil {
+		msg := messagebus.NewLeecherExitMessage("control_panel", leaderName)
+		bus.Publish(msg)
+	}
+
+	s.logger.Info("Leecher EXIT command sent", slog.String("leader", leaderName))
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"command": "exit",
+		"count":   bot.GetConnectedLeecherCount(),
+	})
+}
+
+// leecherStatus returns the current status of all leechers
+func (s *HttpServer) leecherStatus(w http.ResponseWriter, r *http.Request) {
+	statuses := bot.GetLeecherStatuses()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"count":    bot.GetConnectedLeecherCount(),
+		"statuses": statuses,
+	})
 }
 
 // applyShoppingFromForm parses shopping-specific fields (used in updateConfigFromForm)

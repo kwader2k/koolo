@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leecher Control Panel</title>
+    <link href="/assets/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/assets/css/custom.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+        }
+        
+        .control-panel {
+            max-width: 500px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .panel-title {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: #ffd700;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        
+        .status-bar {
+            text-align: center;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .status-count {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #4ade80;
+        }
+        
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .control-btn {
+            padding: 2rem 1rem;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-come {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            color: white;
+            grid-column: span 2;
+        }
+        
+        .btn-come:hover {
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+        }
+        
+        .btn-stay {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .btn-stay:hover {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+        
+        .btn-tp {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        
+        .btn-tp:hover {
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+        }
+        
+        .btn-exit {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            grid-column: span 2;
+        }
+        
+        .btn-exit:hover {
+            background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+        }
+        
+        .leecher-list {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        
+        .leecher-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .leecher-item:last-child {
+            border-bottom: none;
+        }
+        
+        .leecher-name {
+            font-weight: 500;
+        }
+        
+        .leecher-state {
+            padding: 0.2rem 0.6rem;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        
+        .state-waiting {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+        }
+        
+        .state-following {
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+        }
+        
+        .state-idle {
+            background: rgba(156, 163, 175, 0.2);
+            color: #9ca3af;
+        }
+        
+        .state-in_portal_area {
+            background: rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+        
+        .state-in_dungeon {
+            background: rgba(168, 85, 247, 0.2);
+            color: #a855f7;
+        }
+        
+        .feedback {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 1rem 2rem;
+            background: rgba(34, 197, 94, 0.9);
+            color: white;
+            border-radius: 10px;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+        
+        .feedback.show {
+            opacity: 1;
+        }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            color: #9ca3af;
+            text-decoration: none;
+        }
+        
+        .back-link:hover {
+            color: #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <h1 class="panel-title">Leecher Control</h1>
+        
+        <div class="status-bar">
+            <div>Connected Leechers</div>
+            <div class="status-count" id="leecherCount">{{ .LeecherCount }}</div>
+        </div>
+        
+        <div class="control-buttons">
+            <button class="control-btn btn-come" onclick="sendCommand('come')">
+                ▶ Come
+            </button>
+            
+            <button class="control-btn btn-stay" onclick="sendCommand('stay')">
+                ⏸ Stay
+            </button>
+            
+            <button class="control-btn btn-tp" onclick="sendCommand('tp')">
+                🏠 TP
+            </button>
+            
+            <button class="control-btn btn-exit" onclick="sendCommand('exit')">
+                ✖ Exit Game
+            </button>
+        </div>
+        
+        {{ if .Statuses }}
+        <div class="leecher-list">
+            <h3 style="margin-bottom: 1rem; font-size: 1rem; color: #9ca3af;">Active Leechers</h3>
+            {{ range $name, $state := .Statuses }}
+            <div class="leecher-item">
+                <span class="leecher-name">{{ $name }}</span>
+                <span class="leecher-state state-{{ $state }}">{{ $state }}</span>
+            </div>
+            {{ end }}
+        </div>
+        {{ end }}
+        
+        <a href="/" class="back-link">← Back to Dashboard</a>
+    </div>
+    
+    <div class="feedback" id="feedback"></div>
+    
+    <script>
+        async function sendCommand(cmd) {
+            try {
+                const response = await fetch(`/api/leecher/${cmd}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showFeedback(`${cmd.toUpperCase()} command sent to ${data.count} leechers`);
+                } else {
+                    showFeedback('Command failed', true);
+                }
+                
+                // Refresh status after command
+                refreshStatus();
+            } catch (err) {
+                showFeedback('Error sending command', true);
+                console.error(err);
+            }
+        }
+        
+        function showFeedback(message, isError = false) {
+            const feedback = document.getElementById('feedback');
+            feedback.textContent = message;
+            feedback.style.background = isError 
+                ? 'rgba(239, 68, 68, 0.9)' 
+                : 'rgba(34, 197, 94, 0.9)';
+            feedback.classList.add('show');
+            
+            setTimeout(() => {
+                feedback.classList.remove('show');
+            }, 2000);
+        }
+        
+        async function refreshStatus() {
+            try {
+                const response = await fetch('/api/leecher/status');
+                const data = await response.json();
+                
+                document.getElementById('leecherCount').textContent = data.count;
+            } catch (err) {
+                console.error('Failed to refresh status:', err);
+            }
+        }
+        
+        // Auto-refresh status every 5 seconds
+        setInterval(refreshStatus, 5000);
+    </script>
+</body>
+</html>

@@ -65,16 +65,22 @@ func InteractEntranceMouse(targetArea area.ID) error {
 	for {
 		ctx.PauseIfNotPriority()
 
-		if ctx.Data.AreaData.Area == targetArea && time.Since(lastRun) > time.Millisecond*500 && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position) {
+		// If waiting for interaction and within 500ms, don't spam refresh - just wait
+		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*500 {
+			time.Sleep(50 * time.Millisecond) // Prevent tight loop
+			continue
+		}
+
+		// Refresh game data before checking if we've transitioned - this is critical
+		// because the area data won't update without a refresh
+		ctx.RefreshGameData()
+
+		if ctx.Data.AreaData.Area == targetArea && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position) {
 			return nil
 		}
 
 		if interactionAttempts > maxInteractionAttempts {
 			return fmt.Errorf("area %s [%d] could not be interacted", targetArea.Area().Name, targetArea)
-		}
-
-		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*500 {
-			continue
 		}
 
 		lastRun = time.Now()

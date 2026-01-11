@@ -83,6 +83,11 @@ function updateDashboard(data) {
       container.removeChild(card);
     }
   });
+
+  // Open leecher control panel in new window if flagged
+  if (data.openLeecherControlPanel) {
+    window.open('/leecher-control', '_blank', 'width=800,height=600');
+  }
 }
 
 function createCharacterCard(key) {

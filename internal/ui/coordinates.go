@@ -291,4 +291,49 @@ const (
 
 	CharDruidX = 970
 	CharDruidY = 470
+
+	// Party/Social screen coordinates (D2R Resurrected)
+	// The party screen is opened by pressing 'P' key
+	PartyScreenX        = 640 // Center X of party screen
+	PartyScreenY        = 360 // Center Y of party screen
+	PartyScreenWidth    = 400 // Width of party panel
+	PartyScreenHeight   = 500 // Height of party panel
+
+	// Player list in party screen - first player entry position
+	PartyPlayerListStartX = 540  // X position of player name in list
+	PartyPlayerListStartY = 180  // Y position of first player entry
+	PartyPlayerListOffsetY = 30  // Vertical offset between player entries
+
+	// Party action buttons (relative to player entry)
+	PartyInviteButtonOffsetX = 180 // Offset from player name to invite/join button
+	PartyHostileButtonOffsetX = 220 // Offset from player name to hostile button
+
+	// Accept/Decline party invite buttons (when invite popup appears)
+	PartyAcceptBtnX = 590
+	PartyAcceptBtnY = 400
+	PartyDeclineBtnX = 690
+	PartyDeclineBtnY = 400
+
+	// Loot button in party screen (to toggle free-for-all vs assigned)
+	PartyLootBtnX = 640
+	PartyLootBtnY = 480
+
+	// Close party screen button
+	PartyCloseBtnX = 780
+	PartyCloseBtnY = 120
+
+	// Party/Social screen coordinates (Classic/Legacy)
+	PartyScreenXClassic        = 400
+	PartyScreenYClassic        = 300
+	PartyPlayerListStartXClassic = 300
+	PartyPlayerListStartYClassic = 150
+	PartyPlayerListOffsetYClassic = 25
+	PartyInviteButtonOffsetXClassic = 150
+	PartyHostileButtonOffsetXClassic = 180
+	PartyAcceptBtnXClassic = 350
+	PartyAcceptBtnYClassic = 350
+	PartyDeclineBtnXClassic = 450
+	PartyDeclineBtnYClassic = 350
+	PartyCloseBtnXClassic = 530
+	PartyCloseBtnYClassic = 100
 )

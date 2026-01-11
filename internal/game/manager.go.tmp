@@ -40,7 +40,6 @@ func (gm *Manager) ExitGame() error {
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		if !gm.gr.InGame() {
 			return nil
-		}
 
 		// First, try pressing ESC to open the quit menu
 		fmt.Printf("Attempt %d: Pressing ESC to open quit menu...\n", attempt+1)
@@ -49,7 +48,6 @@ func (gm *Manager) ExitGame() error {
 
 		if !gm.gr.InGame() {
 			return nil
-		}
 
 		// Check if the Quit Menu is open
 		data := gm.gr.GetData()
@@ -72,7 +70,6 @@ func (gm *Manager) ExitGame() error {
 
 			if !gm.gr.InGame() {
 				return nil
-			}
 
 			// Method 2: If keyboard didn't work, try clicking at different Y positions
 			yPos := exitButtonYPositions[attempt%len(exitButtonYPositions)]
@@ -85,13 +82,11 @@ func (gm *Manager) ExitGame() error {
 
 			if !gm.gr.InGame() {
 				return nil
-			}
+
 		} else {
 			// Menu didn't open - might have closed another panel, wait and retry
 			fmt.Println("Quit menu not detected after ESC")
 			utils.Sleep(200)
-		}
-	}
 
 	return errors.New("error exiting game! Timeout after multiple attempts")
 }
@@ -99,15 +94,12 @@ func (gm *Manager) ExitGame() error {
 func (gm *Manager) NewGame() error {
 	if gm.gr.InGame() {
 		return errors.New("character still in a game")
-	}
 
 	for range 30 {
 		if gm.gr.IsInCharacterSelectionScreen() {
 			break
 		} else {
 			utils.Sleep(500)
-		}
-	}
 
 	difficultyPosition := map[difficulty.Difficulty]struct {
 		X, Y int
@@ -115,7 +107,6 @@ func (gm *Manager) NewGame() error {
 		difficulty.Normal:    {X: 640, Y: 311},
 		difficulty.Nightmare: {X: 640, Y: 355},
 		difficulty.Hell:      {X: 640, Y: 403},
-	}
 
 	cfg, _ := config.GetCharacter(gm.supervisorName)
 	createX := difficultyPosition[cfg.Game.Difficulty].X
@@ -127,9 +118,8 @@ func (gm *Manager) NewGame() error {
 	for range 12 {
 		if gm.gr.InGame() {
 			return nil
-		}
+
 		utils.Sleep(500)
-	}
 
 	return errors.New("timeout")
 }
@@ -137,7 +127,7 @@ func (gm *Manager) NewGame() error {
 func (gm *Manager) clearGameNameOrPasswordField() {
 	for range 16 {
 		gm.hid.PressKey(win.VK_BACK)
-	}
+
 }
 
 func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
@@ -152,7 +142,6 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 		difficulty.Normal:    {X: 900, Y: 252},
 		difficulty.Nightmare: {X: 980, Y: 252},
 		difficulty.Hell:      {X: 1065, Y: 252},
-	}
 
 	cfg, _ := config.GetCharacter(gm.supervisorName)
 	difficultyPos := difficultyPosition[cfg.Game.Difficulty]
@@ -165,7 +154,6 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 	gameName := cfg.Companion.GameNameTemplate + fmt.Sprintf("%d", gameCounter)
 	for _, ch := range gameName {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
-	}
 
 	// Same for password
 	gm.hid.Click(LeftButton, 1000, 161)
@@ -175,14 +163,13 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 		gm.clearGameNameOrPasswordField()
 		for _, ch := range gamePassword {
 			gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
-		}
-	}
+
 	gm.hid.PressKey(win.VK_RETURN)
 
 	for range 15 {
 		if gm.gr.InGame() {
 			return gameName, nil
-		}
+
 		utils.Sleep(1000)
 
 		panel := gm.gr.GetPanel("DismissableModal")
@@ -190,8 +177,6 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 			gm.hid.PressKey(win.VK_ESCAPE)
 			utils.Sleep(1000)
 			return gameName, errors.New("error creating game! Got error message")
-		}
-	}
 
 	return gameName, errors.New("error creating game! Timeout")
 }
@@ -209,7 +194,6 @@ func (gm *Manager) JoinOnlineGame(gameName, password string) error {
 	utils.Sleep(200)
 	for _, ch := range gameName {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
-	}
 
 	// Same for password
 	gm.hid.Click(LeftButton, 1130, 100)
@@ -218,13 +202,13 @@ func (gm *Manager) JoinOnlineGame(gameName, password string) error {
 	utils.Sleep(200)
 	for _, ch := range password {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
-	}
+
 	gm.hid.PressKey(win.VK_RETURN)
 
 	for range 15 {
 		if gm.gr.InGame() {
 			return nil
-		}
+
 		utils.Sleep(1000)
 
 		// Check if we got an error message while trying to join the game
@@ -233,8 +217,6 @@ func (gm *Manager) JoinOnlineGame(gameName, password string) error {
 			gm.hid.PressKey(win.VK_ESCAPE)
 			utils.Sleep(1000)
 			return errors.New("error joining game! Got error message")
-		}
-	}
 
 	return errors.New("error joining game! Timeout")
 }
@@ -263,7 +245,7 @@ func isGPUErrorWindow(hwnd windows.HWND) bool {
 		if strings.Contains(windowText, "Failed to initialize graphics") {
 			foundError = true
 			return 0 // Stop enumeration
-		}
+
 		return 1 // Continue enumeration
 	})
 
@@ -287,7 +269,7 @@ func closeWindowAndTerminateProcess(hwnd windows.HWND, pid uint32) {
 	if err == nil {
 		windows.TerminateProcess(handle, 1)
 		windows.CloseHandle(handle)
-	}
+
 }
 
 func StartGame(username string, password string, authmethod string, authToken string, realm string, arguments string, useCustomSettings bool, supervisorName string) (uint32, win.HWND, error) {
@@ -297,7 +279,6 @@ func StartGame(username string, password string, authmethod string, authToken st
 	err := KillAllClientHandles()
 	if err != nil {
 		return 0, 0, err
-	}
 
 	// Depending on the authentication method set base arguments
 	var baseArgs []string
@@ -311,40 +292,38 @@ func StartGame(username string, password string, authmethod string, authToken st
 	} else {
 		// Default to no auth method
 		baseArgs = []string{}
-	}
 
 	// Parse the provided additional arguments
 	additionalArguments := strings.Fields(arguments)
 
 	// Let's use the mod directory for storing the settings, so we stop overwriting the default config
 	if useCustomSettings {
+		// Use supervisor-specific mod name to avoid conflicts when running multiple instances
 		modName := "koolo"
+		if supervisorName != "" {
+			modName = "koolo_" + supervisorName
+
+		
 		found := false
 		for i, arg := range additionalArguments {
 			if arg == "-mod" {
 				modName = additionalArguments[i+1]
 				found = true
 				break
-			}
-		}
+
 		if !found {
 			additionalArguments = append(additionalArguments, "-mod", modName)
-		}
 
-		// If there is no real mod, let's create a fake mod called "koolo" so we can store our own config
-		if modName == "koolo" {
-			err = config.InstallMod()
+		// If there is no real mod (user-specified), let's create a koolo mod so we can store our own config
+		if strings.HasPrefix(modName, "koolo") {
+			err = config.InstallMod(modName)
 			if err != nil {
 				return 0, 0, err
-			}
-		}
 
 		// Replace game mod settings with the custom ones
 		err = config.ReplaceGameSettings(modName)
 		if err != nil {
 			return 0, 0, err
-		}
-	}
 
 	// Add them to the full argument list
 	fullArgs := append(baseArgs, additionalArguments...)
@@ -357,13 +336,12 @@ func StartGame(username string, password string, authmethod string, authToken st
 		encryptedToken, err := dpapi.EncryptBytesEntropy(tokenBytes, entropy)
 		if err != nil {
 			return 0, 0, fmt.Errorf("failed to encrypt auth token: %v", err)
-		}
 
 		// Create or Open the OSI registry folder
 		key, _, err := registry.CreateKey(registry.CURRENT_USER, `SOFTWARE\Blizzard Entertainment\Battle.net\Launch Options\OSI`, registry.ALL_ACCESS)
 		if err != nil {
 			return 0, 0, fmt.Errorf("failed to open registry key: %v", err)
-		}
+
 		defer key.Close()
 
 		region := "EU"
@@ -376,21 +354,17 @@ func StartGame(username string, password string, authmethod string, authToken st
 			region = "KR"
 		default:
 			region = "EU"
-		}
 
 		// Update the region registry
 		err = key.SetStringValue("REGION", region)
 		if err != nil {
 			return 0, 0, fmt.Errorf("failed to set REGION registry value: %v", err)
-		}
 
 		err = key.SetBinaryValue("WEB_TOKEN", encryptedToken)
 		if err != nil {
 			return 0, 0, fmt.Errorf("failed to set WEB_TOKEN registry value: %v", err)
-		}
 
 		// If we got to here we've successfully updated the auth token :)
-	}
 
 	// Start the game with retry logic for GPU initialization errors
 	for attempt := 0; attempt < maxGPURetries; attempt++ {
@@ -398,7 +372,6 @@ func StartGame(username string, password string, authmethod string, authToken st
 		err = cmd.Start()
 		if err != nil {
 			return 0, 0, err
-		}
 
 		var foundHwnd windows.HWND
 		cb := syscall.NewCallback(func(hwnd windows.HWND, lParam uintptr) uintptr {
@@ -407,7 +380,7 @@ func StartGame(username string, password string, authmethod string, authToken st
 			if pid == uint32(cmd.Process.Pid) {
 				foundHwnd = hwnd
 				return 0
-			}
+
 			return 1
 		})
 		for {
@@ -417,8 +390,6 @@ func StartGame(username string, password string, authmethod string, authToken st
 				time.Sleep(time.Second)
 				windows.EnumWindows(cb, unsafe.Pointer(&cmd.Process.Pid))
 				break
-			}
-		}
 
 		// Check if the window is a GPU error dialog
 		if isGPUErrorWindow(foundHwnd) {
@@ -426,16 +397,13 @@ func StartGame(username string, password string, authmethod string, authToken st
 			closeWindowAndTerminateProcess(foundHwnd, uint32(cmd.Process.Pid))
 			time.Sleep(2 * time.Second)
 			continue // Retry
-		}
 
 		// Close the handle for the new process, it will allow the user to open another instance of the game
 		err = KillAllClientHandles()
 		if err != nil {
 			return 0, 0, err
-		}
 
 		return uint32(cmd.Process.Pid), win.HWND(foundHwnd), nil
-	}
 
 	return 0, 0, errors.New("GPU initialization failed after maximum retries")
 }
