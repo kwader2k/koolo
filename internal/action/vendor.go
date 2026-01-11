@@ -6,6 +6,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	botCtx "github.com/hectorgimenez/koolo/internal/context"
@@ -111,6 +112,12 @@ type VendorItemRequest struct {
 func shouldVisitVendor() bool {
 	ctx := botCtx.Get()
 	ctx.SetLastStep("shouldVisitVendor")
+
+	if ctx.Data.PlayerUnit.TotalPlayerGold() <= 100 && ctx.Data.IsLevelingCharacter {
+		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found && lvl.Value <= 1 {
+			return false
+		}
+	}
 
 	if len(town.ItemsToBeSold()) > 0 {
 		return true
