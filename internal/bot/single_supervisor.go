@@ -548,7 +548,7 @@ func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
 		utils.Sleep(100)
 	}
 
-	if waitErr := config.WaitForKeyBindings(kbResult.SaveDir, characterName, 45*time.Second); waitErr != nil {
+	if waitErr := config.WaitForKeyBindings(kbResult.SaveDir, characterName, cfg.AuthMethod, 45*time.Second); waitErr != nil {
 		s.bot.ctx.Logger.Warn("Timed out waiting for key binding file", slog.Any("error", waitErr))
 	}
 
