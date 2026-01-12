@@ -116,7 +116,7 @@
 }
 
 .settings-nav-toggle {
-  margin-top: 0.1rem;
+  margin-top: 0.9rem;
   padding-top: 0;
 }
 
@@ -180,9 +180,15 @@
 }
 
 .settings-nav a.active {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.08);
-  box-shadow: inset 0 0 0 2px var(--primary);
+  color: #1d4ed8 !important;
+  background: transparent;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.settings-nav a.active i {
+  color: #1d4ed8 !important;
+  font-weight: 800;
 }
 
 .settings-content {
@@ -422,6 +428,7 @@
 .run-list {
   padding: 0;
   list-style: none;
+  touch-action: pan-y;
 }
 
 .run-list li {
@@ -453,6 +460,7 @@
   border: none;
   cursor: pointer;
   gap: var(--spacing-md);
+  touch-action: pan-y;
 }
 
 .run-list li summary:hover {
@@ -695,14 +703,12 @@
 .non-ladder-checkbox-container {
   display: flex;
   align-items: center;
-  padding-top: var(--spacing-md);
   gap: var(--spacing-sm);
-}
-
-.non-ladder-checkbox-container label {
   color: var(--text-primary);
   font-weight: 600;
   cursor: pointer;
+  align-self: center;
+  margin-top: 0.9rem;
 }
 
 .non-ladder-checkbox-container input[type="checkbox"] {
@@ -966,17 +972,77 @@
    RESPONSIVE DESIGN
    ======================================== */
 @media (max-width: 768px) {
+  body,
+  .settings-page {
+    overflow-x: clip;
+  }
+
   .settings-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 0.6rem;
   }
 
   .settings-nav {
-    position: static;
-    max-height: none;
+    position: sticky;
+    top: 0.6rem;
+    height: calc(100vh - 1.2rem);
+    flex-direction: column;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    width: 44px;
+    overflow-y: hidden;
+    overflow-x: hidden;
+    gap: 0;
+  }
+
+  .settings-nav.icon-only {
+    width: 44px;
+  }
+
+  .settings-nav.icon-only a {
+    justify-content: center;
+    padding: 0.35rem 0;
+    min-width: 0;
+  }
+
+  .settings-nav a {
+    flex: 1 1 0;
+  }
+
+  .settings-nav.hover-expand.icon-only:hover {
+    width: 44px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .settings-nav.hover-expand.icon-only:hover .nav-text {
+    opacity: 0;
+    max-width: 0;
+    margin-left: 0;
+  }
+
+  .settings-nav-toggle {
+    display: none;
+  }
+
+  .sticky-bottom {
+    display: flex;
     flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    height: auto;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex-wrap: nowrap;
+    overflow-x: hidden;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .sticky-bottom > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .sticky-bottom > :last-child {
+    flex: 1 1 0;
   }
 
   #scheduler-settings {
@@ -1611,6 +1677,123 @@
     border: 1px solid #444;
     border-radius: 6px;
     font-size: 0.85rem;
+    width: 100%;
+    max-width: 320px;
+    justify-self: end;
+}
+
+.general-settings-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+}
+
+.general-settings-grid .chest-toggle-group {
+    grid-row: span 2;
+    align-self: start;
+}
+
+.packet-settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.6rem 1.2rem;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+  .packet-settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.health-settings-grid {
+  grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+  align-items: start;
+}
+
+.health-settings-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.health-settings-grid .label-text {
+  display: block;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.cube-options {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: var(--spacing-sm);
+}
+
+.cube-options fieldset {
+  margin: 0.4rem 0 0 0;
+}
+
+.cube-option-item {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.section-icon {
+  margin-right: 0.6rem;
+  font-size: 0.95em;
+  vertical-align: -0.05em;
+}
+
+.extra-buffs-container {
+  overflow: hidden;
+  max-height: 420px;
+  opacity: 1;
+  transition: max-height 0.2s ease, opacity 0.2s ease;
+  margin-top: 0.5rem;
+  margin-left: 1.2rem;
+  grid-column: 1 / -1;
+}
+
+.extra-buffs-toggle-row {
+  margin-top: 0.4rem;
+  margin-bottom: 0.1rem;
+}
+
+.extra-buffs-toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+}
+
+.extra-buffs-toggle-label input[type="checkbox"] {
+  margin-left: 0.6rem;
+}
+
+.extra-buffs-container .walking-radius-container {
+  margin-bottom: 0.35rem;
+}
+
+.extra-buffs-container > div:last-child {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem 1rem;
+  align-items: center;
+}
+
+.extra-buffs-container > div:last-child label {
+  margin-bottom: 0;
+}
+
+.extra-buffs-container hr,
+.extra-buffs-container .input-info {
+  grid-column: 1 / -1;
+}
+
+.extra-buffs-container.is-hidden {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .chest-toggle-title {

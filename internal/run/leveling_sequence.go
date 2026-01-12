@@ -250,7 +250,7 @@ func (ls LevelingSequence) CheckSequenceRequirements(run Run, sequenceSettings S
 	}
 
 	if sequenceSettings.MaxLevel != nil {
-		if playerLevel >= *sequenceSettings.MaxLevel {
+		if playerLevel > *sequenceSettings.MaxLevel {
 			return false, nil
 		}
 	}

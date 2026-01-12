@@ -26,13 +26,29 @@ export const RENDER_PIPELINE = [
 
 /**
  * Mapping of difficulty to the condition sections shown in the UI.
- * @type {Record<DifficultyKey, Array<{key:ConditionSectionKey, title:string}>>}
+ * @type {Record<DifficultyKey, Array<{key:ConditionSectionKey, title:string, autoSyncInfo?:string}>>}
  */
 export const CONDITION_SECTIONS = {
-  normal: [{ key: "nextDifficultyConditions", title: "Next Difficulty Conditions" }],
+  normal: [{
+    key: "nextDifficultyConditions",
+    title: "Next Difficulty Conditions",
+    autoSyncInfo: "Auto-synced with Nightmare's Stay Difficulty Conditions"
+  }],
   nightmare: [
-    { key: "stayDifficultyConditions", title: "Stay Difficulty Conditions" },
-    { key: "nextDifficultyConditions", title: "Next Difficulty Conditions" },
+    {
+      key: "stayDifficultyConditions",
+      title: "Stay Difficulty Conditions",
+      autoSyncInfo: "Auto-synced with Normal's Next Difficulty Conditions"
+    },
+    {
+      key: "nextDifficultyConditions",
+      title: "Next Difficulty Conditions",
+      autoSyncInfo: "Auto-synced with Hell's Stay Difficulty Conditions"
+    },
   ],
-  hell: [{ key: "stayDifficultyConditions", title: "Stay Difficulty Conditions" }],
+  hell: [{
+    key: "stayDifficultyConditions",
+    title: "Stay Difficulty Conditions",
+    autoSyncInfo: "Auto-synced with Nightmare's Next Difficulty Conditions"
+  }],
 };

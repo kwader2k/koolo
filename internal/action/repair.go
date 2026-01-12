@@ -2,6 +2,7 @@ package action
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -17,37 +18,183 @@ import (
 	"github.com/lxn/win"
 )
 
+func RepairTownRoutine() error {
+	ctx := context.Get()
+	ctx.SetLastAction("RepairTownRoutine")
+
+	if !ctx.Data.PlayerUnit.Area.IsTown() {
+		return nil
+	}
+
+	force, reason := shouldForceRepairAllForJavazonDkQuantity(ctx)
+	if force {
+		ctx.Logger.Info(reason)
+		repairNPC := town.GetTownByArea(ctx.Data.PlayerUnit.Area).RepairNPC()
+		return repairAllAtNPC(repairNPC)
+	}
+
+	return Repair()
+}
+
+func shouldForceRepairAllForJavazonDkQuantity(ctx *context.Status) (bool, string) {
+	if ctx.CharacterCfg.Character.Class != "javazon" {
+		return false, ""
+	}
+	if !ctx.CharacterCfg.Character.Javazon.DensityKillerEnabled {
+		return false, ""
+	}
+
+	threshold := ctx.CharacterCfg.Character.Javazon.DensityKillerForceRefillBelowPercent
+	if threshold <= 0 || threshold > 100 {
+		threshold = 50
+	}
+
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
+		if itm.Location.BodyLocation != item.LocLeftArm && itm.Location.BodyLocation != item.LocRightArm {
+			continue
+		}
+
+		if itm.Ethereal {
+			continue
+		}
+
+		itmType := itm.Type()
+		if !itmType.IsType(item.TypeJavelin) && !itmType.IsType(item.TypeAmazonJavelin) {
+			continue
+		}
+
+		qty, qtyFound := itm.FindStat(stat.Quantity, 0)
+		if !qtyFound {
+			continue
+		}
+
+		maxQty := getMaxJavelinQuantity(itm)
+		if maxQty <= 0 {
+			continue
+		}
+
+		if qty.Value < 0 {
+			qty.Value = 0
+		}
+
+		pct := (qty.Value * 100) / maxQty
+
+		if pct < threshold {
+			return true, fmt.Sprintf("Force RepairAll for javelin refill: %s %d/%d (%d%%) < %d%%",
+				itm.Name, qty.Value, maxQty, pct, threshold)
+		}
+	}
+
+	return false, ""
+}
+
+func getMaxJavelinQuantity(itm data.Item) int {
+	qty, qtyFound := itm.FindStat(stat.Quantity, 0)
+	currentQty := 0
+	if qtyFound {
+		currentQty = qty.Value
+	}
+
+	name := strings.ToLower(string(itm.Name))
+
+	// Titan's Revenge: 180 max (Ceremonial Javelin base)
+	if strings.Contains(name, "titan") {
+		return 180
+	}
+	if strings.Contains(name, "ceremonial") && currentQty > 80 {
+		return 180
+	}
+
+	// Thunderstroke: 80 max (Matriarchal Javelin base)
+	if strings.Contains(name, "thunder") || strings.Contains(name, "tstroke") {
+		return 80
+	}
+
+	// Check for Replenishes Quantity stat (Titan's Revenge)
+	for _, s := range itm.Stats {
+		if s.ID == 252 {
+			return 180
+		}
+	}
+
+	// Fallback: base type defaults
+	itmType := itm.Type()
+	if itmType.IsType(item.TypeAmazonJavelin) {
+		return 80
+	}
+	if itmType.IsType(item.TypeJavelin) {
+		return 60
+	}
+
+	return 0
+}
+
+func repairAllAtNPC(repairNPC npc.ID) error {
+	ctx := context.Get()
+
+	if repairNPC == npc.Larzuk {
+		MoveToCoords(data.Position{X: 5135, Y: 5046})
+	}
+	if repairNPC == npc.Hratli {
+		if err := FindHratliEverywhere(); err != nil {
+			return err
+		}
+	}
+
+	if err := InteractNPC(repairNPC); err != nil {
+		return err
+	}
+
+	if repairNPC != npc.Halbu {
+		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
+	} else {
+		ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
+	}
+
+	utils.Sleep(100)
+	if ctx.Data.LegacyGraphics {
+		ctx.HID.Click(game.LeftButton, ui.RepairButtonXClassic, ui.RepairButtonYClassic)
+	} else {
+		ctx.HID.Click(game.LeftButton, ui.RepairButtonX, ui.RepairButtonY)
+	}
+	utils.Sleep(500)
+
+	return step.CloseAllMenus()
+}
+
 func Repair() error {
 	ctx := context.Get()
 	ctx.SetLastAction("Repair")
 
 	for _, i := range ctx.Data.Inventory.ByLocation(item.LocationEquipped) {
-		// var
 		triggerRepair := false
 		logMessage := ""
 
 		_, indestructible := i.FindStat(stat.Indestructible, 0)
 		quantity, quantityFound := i.FindStat(stat.Quantity, 0)
 
-		// skip indestructible and no quantity
 		if indestructible && !quantityFound {
 			continue
 		}
 
-		// skip eth and no qnt
 		if i.Ethereal && !quantityFound {
 			continue
 		}
 
-		// qantity check
 		if quantityFound {
-			// Low quantity (under 15) or broken (quantity 0)
+			if ctx.CharacterCfg.Character.Class == "javazon" &&
+				ctx.CharacterCfg.Character.Javazon.DensityKillerEnabled {
+				itmType := i.Type()
+				if itmType.IsType(item.TypeJavelin) || itmType.IsType(item.TypeAmazonJavelin) {
+					continue
+				}
+			}
+
 			if quantity.Value < 15 || i.IsBroken {
 				triggerRepair = true
 				logMessage = fmt.Sprintf("Replenishing %s, quantity is %d", i.Name, quantity.Value)
 			}
 		} else {
-			// check item durability (Durability)
 			durability, found := i.FindStat(stat.Durability, 0)
 			maxDurability, maxDurabilityFound := i.FindStat(stat.MaxDurability, 0)
 			durabilityPercent := -1
@@ -56,14 +203,12 @@ func Repair() error {
 				durabilityPercent = int((float64(durability.Value) / float64(maxDurability.Value)) * 100)
 			}
 
-			// if item is broken or under 20%
 			if i.IsBroken || (durabilityPercent != -1 && durabilityPercent <= 20) {
 				triggerRepair = true
 				logMessage = fmt.Sprintf("Repairing %s, item durability is %d percent", i.Name, durabilityPercent)
 			}
 		}
 
-		// trigger
 		if triggerRepair {
 			ctx.Logger.Info(logMessage)
 
@@ -72,12 +217,9 @@ func Repair() error {
 				MoveToCoords(data.Position{X: 5135, Y: 5046})
 			}
 			if repairNPC == npc.Hratli {
-
 				if err := FindHratliEverywhere(); err != nil {
-					// If moveToHratli returns an error, it means a forced game quit is required.
 					return err
 				}
-				// If no error, Hratli was found at the final position, and we continue to interact and repair.
 			}
 
 			if err := InteractNPC(repairNPC); err != nil {
@@ -121,13 +263,11 @@ func RepairRequired() bool {
 			continue
 		}
 
-		// qnt check
 		if quantityFound {
 			if quantity.Value < 15 || i.IsBroken {
 				return true
 			}
 		} else {
-			// durability check
 			durability, found := i.FindStat(stat.Durability, 0)
 			maxDurability, maxDurabilityFound := i.FindStat(stat.MaxDurability, 0)
 
@@ -155,17 +295,14 @@ func IsEquipmentBroken() bool {
 		_, indestructible := i.FindStat(stat.Indestructible, 0)
 		_, quantityFound := i.FindStat(stat.Quantity, 0)
 
-		// eth quantity
 		if i.Ethereal && !quantityFound {
 			continue
 		}
 
-		// indestructible with quantity
 		if indestructible && !quantityFound {
 			continue
 		}
 
-		// Check if item is broken, works for quantity if its 0.
 		if i.IsBroken {
 			ctx.Logger.Debug("Equipment is broken, returning to town", "item", i.Name)
 			return true
@@ -179,31 +316,24 @@ func FindHratliEverywhere() error {
 	ctx := botCtx.Get()
 	ctx.SetLastStep("FindHratliEverywhere")
 
-	// 1. Move to Hratli's final (default) position to check if he is there.
 	finalPos := data.Position{X: 5224, Y: 5045}
 	MoveToCoords(finalPos)
 
-	// 2. Check if Hratli is found in the vicinity (meaning he is at his final position).
 	_, found := ctx.Data.Monsters.FindOne(npc.Hratli, data.MonsterTypeNone)
 
 	if !found {
-		// Hratli is NOT found after moving to his final spot. Assume he is at the start position.
 		ctx.Logger.Warn("Hratli not found at final position. Moving to start position to trigger quest update and force quitting game.")
 
-		// Start Position: {X: 5116, Y: 5167}
 		startPos := data.Position{X: 5116, Y: 5167}
 		MoveToCoords(startPos)
 
-		// Interact with him there (to satisfy the requirement/quest logic)
 		if err := InteractNPC(npc.Hratli); err != nil {
 			ctx.Logger.Warn("Failed to interact with Hratli at start position.", "error", err)
 		}
 
-		// Close menus and force game quit
 		step.CloseAllMenus()
 		return nil
 	}
 
-	// 3. If found, we are already at his final position and can proceed with interaction.
 	return nil
 }

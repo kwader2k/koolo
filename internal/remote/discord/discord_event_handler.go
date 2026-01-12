@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"image/jpeg"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -293,6 +294,18 @@ func buildItemStashDescription(evt event.ItemStashedEvent) string {
 		description.WriteString(fmt.Sprintf("Sockets: %d\n", socketCount))
 	}
 
+	if config.Koolo.Discord.IncludePickitInfoInItemText && (evt.Item.RuleFile != "" || evt.Item.Rule != "") {
+		location := formatRuleLocation(evt.Item.RuleFile)
+		ruleLine := strings.TrimSpace(evt.Item.Rule)
+		description.WriteString("\n")
+		if location != "" {
+			description.WriteString(fmt.Sprintf("> *%s*\n", location))
+		}
+		if ruleLine != "" {
+			description.WriteString(fmt.Sprintf("> %s\n", ruleLine))
+		}
+	}
+
 	description.WriteString(fmt.Sprintf("\n`%s | %s`", evt.Supervisor(), time.Now().Format("2006-01-02 15:04:05")))
 	return strings.TrimSpace(description.String())
 }
@@ -378,6 +391,45 @@ func resistValueForID(id d2stat.ID, frVal, crVal, lrVal, prVal int) int {
 	default:
 		return 0
 	}
+}
+
+func formatRuleLocation(ruleFile string) string {
+	trimmed := strings.TrimSpace(ruleFile)
+	if trimmed == "" {
+		return ""
+	}
+
+	pathPart := trimmed
+	line := ""
+	if idx := strings.LastIndex(trimmed, ":"); idx != -1 && idx+1 < len(trimmed) {
+		tail := strings.TrimSpace(trimmed[idx+1:])
+		if isAllDigits(tail) {
+			line = tail
+			pathPart = strings.TrimSpace(trimmed[:idx])
+		}
+	}
+
+	base := filepath.Base(pathPart)
+	if base == "." || base == string(filepath.Separator) {
+		base = pathPart
+	}
+
+	if line != "" {
+		return fmt.Sprintf("%s : line %s", base, line)
+	}
+	return base
+}
+
+func isAllDigits(val string) bool {
+	if val == "" {
+		return false
+	}
+	for i := 0; i < len(val); i++ {
+		if val[i] < '0' || val[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func (b *Bot) sendEventMessage(ctx context.Context, message string) error {

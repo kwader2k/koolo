@@ -128,6 +128,8 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 }
 
 func (mng *SupervisorManager) ReloadConfig() error {
+	// Clear NIP rules cache so edited files are picked up
+	config.ClearNIPCache()
 
 	// Load fresh configs
 	if err := config.Load(); err != nil {

@@ -16,6 +16,7 @@ const (
 	PindleskinRun       Run = "pindleskin"
 	NihlathakRun        Run = "nihlathak"
 	TristramRun         Run = "tristram"
+	FlayerJungleRun     Run = "flayer_jungle"
 	LowerKurastRun      Run = "lower_kurast"
 	LowerKurastChestRun Run = "lower_kurast_chest"
 	StonyTombRun        Run = "stony_tomb"
@@ -23,6 +24,7 @@ const (
 	ArachnidLairRun     Run = "arachnid_lair"
 	TalRashaTombsRun    Run = "tal_rasha_tombs"
 	BaalRun             Run = "baal"
+	RiverOfFlameRun     Run = "river_of_flame"
 	DiabloRun           Run = "diablo"
 	CowsRun             Run = "cows"
 	LevelingRun         Run = "leveling"
@@ -89,6 +91,7 @@ var AvailableRuns = map[Run]interface{}{
 	PindleskinRun:       nil,
 	NihlathakRun:        nil,
 	TristramRun:         nil,
+	FlayerJungleRun:     nil,
 	LowerKurastRun:      nil,
 	LowerKurastChestRun: nil,
 	StonyTombRun:        nil,
@@ -96,6 +99,7 @@ var AvailableRuns = map[Run]interface{}{
 	ArachnidLairRun:     nil,
 	TalRashaTombsRun:    nil,
 	BaalRun:             nil,
+	RiverOfFlameRun:     nil,
 	DiabloRun:           nil,
 	CowsRun:             nil,
 	LevelingRun:         nil,
@@ -169,6 +173,7 @@ var SequencerRuns = []Run{
 	DurielRun,
 	EldritchRun,
 	EnduguRun,
+	FlayerJungleRun,
 	FrozenAuraMercRun,
 	FireEyeRun,
 	GidbinnRun,
@@ -190,12 +195,14 @@ var SequencerRuns = []Run{
 	RescueBarbsRun,
 	RescueCainRun,
 	RetrieveHammerRun,
+	RiverOfFlameRun,
 	ShenkRun,
 	SpiderCavernRun,
 	StaffRun,
 	StonyTombRun,
 	SummonerRun,
 	TalRashaTombsRun,
+	TerrorZoneRun,
 	ThreshsocketRun,
 	TravincalRun,
 	TristramEarlyGoldfarmRun,
