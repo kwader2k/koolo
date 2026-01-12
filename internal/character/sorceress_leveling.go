@@ -324,7 +324,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 				if found {
 					//s.Logger.Info(fmt.Sprintf("Teleporting to safe position: %v", safePos))
 					if s.Data.PlayerUnit.Skills[skill.Teleport].Level > 0 {
-						if _, ok := s.Data.KeyBindings.KeyBindingForSkill(skill.Teleport); ok {
+						if _, ok := s.Data.KeyBindings.KeyBindingForSkill(skill.Teleport); ok && !s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 							if s.Context.Data.PlayerUnit.IsDead() {
 								//s.Logger.Info("Player detected as dead, stopping KillMonsterSequence.")
 								return nil

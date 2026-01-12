@@ -11,6 +11,7 @@ require (
 	github.com/inkeliz/gowebview v1.0.1
 	github.com/lxn/win v0.0.0-20210218163916-a377121e959e
 	github.com/otiai10/copy v1.14.0
+	golang.ngrok.com/ngrok v1.13.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/sys v0.28.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -29,7 +30,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.ngrok.com/muxado/v2 v2.0.1 // indirect
-	golang.ngrok.com/ngrok v1.13.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/term v0.27.0 // indirect
@@ -37,4 +37,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace github.com/hectorgimenez/d2go => github.com/kwader2k/d2go v0.0.0-20251228080657-d31193099721
+replace github.com/hectorgimenez/d2go => github.com/kwader2k/d2go v0.0.0-20260111195645-cae132c48b19
