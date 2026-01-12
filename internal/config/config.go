@@ -31,6 +31,10 @@ var (
 	Koolo      *KooloCfg
 	Characters map[string]*CharacterCfg
 	Version    = "dev"
+
+	// NIP rules cache - stores compiled rules by path to avoid recompiling for multiple characters
+	nipRulesCacheMux sync.RWMutex
+	nipRulesCache    = make(map[string]nip.Rules)
 )
 
 type KooloCfg struct {
@@ -637,7 +641,7 @@ func Load() error {
 			pickitPath = getAbsPath(filepath.Join("config", entry.Name(), "pickit")) + "\\"
 		}
 
-		rules, err := nip.ReadDir(pickitPath)
+		rules, err := getCachedRulesDir(pickitPath)
 		if err != nil {
 			return fmt.Errorf("error reading pickit directory %s: %w", pickitPath, err)
 		}
@@ -687,8 +691,61 @@ func sanitizeDiscordConfig(cfg *KooloCfg) {
 	}
 }
 
-// Helper function to read a single NIP file using the temp directory workaround
-func readSinglePickitFile(filePath string) (nip.Rules, error) {
+// ClearNIPCache clears the compiled NIP rules cache, forcing recompilation on next load
+func ClearNIPCache() {
+	nipRulesCacheMux.Lock()
+	nipRulesCache = make(map[string]nip.Rules)
+	nipRulesCacheMux.Unlock()
+}
+
+// getCachedRulesDir returns cached NIP rules for a directory, compiling only if not cached
+func getCachedRulesDir(pickitPath string) (nip.Rules, error) {
+	nipRulesCacheMux.RLock()
+	if cached, ok := nipRulesCache[pickitPath]; ok {
+		nipRulesCacheMux.RUnlock()
+		return cached, nil
+	}
+	nipRulesCacheMux.RUnlock()
+
+	// Not cached, compile the rules
+	rules, err := nip.ReadDir(pickitPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	nipRulesCacheMux.Lock()
+	nipRulesCache[pickitPath] = rules
+	nipRulesCacheMux.Unlock()
+
+	return rules, nil
+}
+
+// getCachedRulesFile returns cached NIP rules for a single file, compiling only if not cached
+func getCachedRulesFile(filePath string) (nip.Rules, error) {
+	nipRulesCacheMux.RLock()
+	if cached, ok := nipRulesCache[filePath]; ok {
+		nipRulesCacheMux.RUnlock()
+		return cached, nil
+	}
+	nipRulesCacheMux.RUnlock()
+
+	// Not cached, compile via temp directory workaround
+	rules, err := readSinglePickitFileUncached(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Store in cache
+	nipRulesCacheMux.Lock()
+	nipRulesCache[filePath] = rules
+	nipRulesCacheMux.Unlock()
+
+	return rules, nil
+}
+
+// Helper function to read a single NIP file using the temp directory workaround (uncached)
+func readSinglePickitFileUncached(filePath string) (nip.Rules, error) {
 	tempDir := filepath.Join(filepath.Dir(filePath), "temp_single_read")
 	if err := os.MkdirAll(tempDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create temp pickit directory: %w", err)
@@ -710,6 +767,11 @@ func readSinglePickitFile(filePath string) (nip.Rules, error) {
 	}
 
 	return rules, nil
+}
+
+// readSinglePickitFile returns cached NIP rules for a single file (for backwards compatibility)
+func readSinglePickitFile(filePath string) (nip.Rules, error) {
+	return getCachedRulesFile(filePath)
 }
 
 func CreateFromTemplate(name string) error {
