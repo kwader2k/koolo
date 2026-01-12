@@ -14,38 +14,60 @@ const (
 
 type CollisionType uint8
 
+// Grid uses a flat 1D slice for collision data to minimize allocations.
+// Access via Get(x,y) and Set(x,y,v) methods, or directly via CollisionGrid[y*Width+x].
 type Grid struct {
 	OffsetX       int
 	OffsetY       int
 	Width         int
 	Height        int
-	CollisionGrid [][]CollisionType
+	CollisionGrid []CollisionType // flat 1D array: index = y*Width + x
 }
 
+// Get returns the collision type at (x, y). No bounds checking.
+func (g *Grid) Get(x, y int) CollisionType {
+	return g.CollisionGrid[y*g.Width+x]
+}
+
+// Set sets the collision type at (x, y). No bounds checking.
+func (g *Grid) Set(x, y int, v CollisionType) {
+	g.CollisionGrid[y*g.Width+x] = v
+}
+
+// NewGrid creates a Grid from a 2D collision grid, converting to flat storage.
 func NewGrid(rawCollisionGrid [][]CollisionType, offsetX, offsetY int, canTeleport bool) *Grid {
+	height := len(rawCollisionGrid)
+	width := len(rawCollisionGrid[0])
+
+	// Convert 2D to flat 1D (single allocation instead of height allocations)
+	flat := make([]CollisionType, width*height)
+	for y := 0; y < height; y++ {
+		copy(flat[y*width:(y+1)*width], rawCollisionGrid[y])
+	}
+
 	grid := &Grid{
 		OffsetX:       offsetX,
 		OffsetY:       offsetY,
-		Width:         len(rawCollisionGrid[0]),
-		Height:        len(rawCollisionGrid),
-		CollisionGrid: rawCollisionGrid,
+		Width:         width,
+		Height:        height,
+		CollisionGrid: flat,
 	}
 
 	// Let's lower the priority for the walkable tiles that are close to non-walkable tiles, so we can avoid walking too close to walls and obstacles
-	for y := 0; y < len(rawCollisionGrid); y++ {
-		for x := 0; x < len(rawCollisionGrid[y]); x++ {
-			collisionType := rawCollisionGrid[y][x]
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			collisionType := grid.Get(x, y)
 			if collisionType == CollisionTypeNonWalkable || (!canTeleport && collisionType == CollisionTypeTeleportOver) {
 				for i := -2; i <= 2; i++ {
 					for j := -2; j <= 2; j++ {
 						if i == 0 && j == 0 {
 							continue
 						}
-						if y+i < 0 || y+i >= len(rawCollisionGrid) || x+j < 0 || x+j >= len(rawCollisionGrid[y]) {
+						if y+i < 0 || y+i >= height || x+j < 0 || x+j >= width {
 							continue
 						}
-						if rawCollisionGrid[y+i][x+j] == CollisionTypeWalkable {
-							rawCollisionGrid[y+i][x+j] = CollisionTypeLowPriority
+						if grid.Get(x+j, y+i) == CollisionTypeWalkable {
+							grid.Set(x+j, y+i, CollisionTypeLowPriority)
 						}
 					}
 				}
@@ -64,16 +86,16 @@ func thickenCollisions(grid *Grid) {
 		return
 	}
 
-	height := len(grid.CollisionGrid)
-	if height == 0 {
+	height := grid.Height
+	width := grid.Width
+	if height == 0 || width == 0 {
 		return
 	}
-	width := len(grid.CollisionGrid[0])
 
 	// First pass: identify and mark narrow passages
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
-			if grid.CollisionGrid[y][x] != CollisionTypeWalkable {
+			if grid.Get(x, y) != CollisionTypeWalkable {
 				continue
 			}
 
@@ -81,22 +103,22 @@ func thickenCollisions(grid *Grid) {
 			nonWalkableNeighbors := 0
 
 			// Check 4 cardinal directions
-			if grid.CollisionGrid[y-1][x] == CollisionTypeNonWalkable {
+			if grid.Get(x, y-1) == CollisionTypeNonWalkable {
 				nonWalkableNeighbors++
 			}
-			if grid.CollisionGrid[y+1][x] == CollisionTypeNonWalkable {
+			if grid.Get(x, y+1) == CollisionTypeNonWalkable {
 				nonWalkableNeighbors++
 			}
-			if grid.CollisionGrid[y][x-1] == CollisionTypeNonWalkable {
+			if grid.Get(x-1, y) == CollisionTypeNonWalkable {
 				nonWalkableNeighbors++
 			}
-			if grid.CollisionGrid[y][x+1] == CollisionTypeNonWalkable {
+			if grid.Get(x+1, y) == CollisionTypeNonWalkable {
 				nonWalkableNeighbors++
 			}
 
 			// If surrounded by 3+ non-walkable neighbors, it's a narrow passage
 			if nonWalkableNeighbors >= 3 {
-				grid.CollisionGrid[y][x] = CollisionTypeTeleportOver
+				grid.Set(x, y, CollisionTypeTeleportOver)
 			}
 		}
 	}
@@ -111,11 +133,11 @@ func fillGaps(grid *Grid) {
 		return
 	}
 
-	height := len(grid.CollisionGrid)
-	if height == 0 {
+	height := grid.Height
+	width := grid.Width
+	if height == 0 || width == 0 {
 		return
 	}
-	width := len(grid.CollisionGrid[0])
 
 	for y := 1; y < height-1; y++ {
 		for x := 1; x < width-1; x++ {
@@ -123,29 +145,29 @@ func fillGaps(grid *Grid) {
 			// but the connecting diagonal tiles are walkable
 
 			// Top-left to bottom-right diagonal gap
-			if (grid.CollisionGrid[y-1][x-1] == CollisionTypeNonWalkable ||
-				grid.CollisionGrid[y-1][x-1] == CollisionTypeTeleportOver) &&
-				(grid.CollisionGrid[y+1][x+1] == CollisionTypeNonWalkable ||
-					grid.CollisionGrid[y+1][x+1] == CollisionTypeTeleportOver) {
-				if grid.CollisionGrid[y][x] == CollisionTypeWalkable {
+			topLeft := grid.Get(x-1, y-1)
+			bottomRight := grid.Get(x+1, y+1)
+			if (topLeft == CollisionTypeNonWalkable || topLeft == CollisionTypeTeleportOver) &&
+				(bottomRight == CollisionTypeNonWalkable || bottomRight == CollisionTypeTeleportOver) {
+				if grid.Get(x, y) == CollisionTypeWalkable {
 					// Check if adjacent tiles allow passage
-					if grid.CollisionGrid[y-1][x] == CollisionTypeNonWalkable &&
-						grid.CollisionGrid[y][x-1] == CollisionTypeNonWalkable {
-						grid.CollisionGrid[y][x] = CollisionTypeTeleportOver
+					if grid.Get(x, y-1) == CollisionTypeNonWalkable &&
+						grid.Get(x-1, y) == CollisionTypeNonWalkable {
+						grid.Set(x, y, CollisionTypeTeleportOver)
 					}
 				}
 			}
 
 			// Top-right to bottom-left diagonal gap
-			if (grid.CollisionGrid[y-1][x+1] == CollisionTypeNonWalkable ||
-				grid.CollisionGrid[y-1][x+1] == CollisionTypeTeleportOver) &&
-				(grid.CollisionGrid[y+1][x-1] == CollisionTypeNonWalkable ||
-					grid.CollisionGrid[y+1][x-1] == CollisionTypeTeleportOver) {
-				if grid.CollisionGrid[y][x] == CollisionTypeWalkable {
+			topRight := grid.Get(x+1, y-1)
+			bottomLeft := grid.Get(x-1, y+1)
+			if (topRight == CollisionTypeNonWalkable || topRight == CollisionTypeTeleportOver) &&
+				(bottomLeft == CollisionTypeNonWalkable || bottomLeft == CollisionTypeTeleportOver) {
+				if grid.Get(x, y) == CollisionTypeWalkable {
 					// Check if adjacent tiles allow passage
-					if grid.CollisionGrid[y-1][x] == CollisionTypeNonWalkable &&
-						grid.CollisionGrid[y][x+1] == CollisionTypeNonWalkable {
-						grid.CollisionGrid[y][x] = CollisionTypeTeleportOver
+					if grid.Get(x, y-1) == CollisionTypeNonWalkable &&
+						grid.Get(x+1, y) == CollisionTypeNonWalkable {
+						grid.Set(x, y, CollisionTypeTeleportOver)
 					}
 				}
 			}
@@ -174,9 +196,9 @@ func drillExits(grid *Grid, exitPositions []data.Position) {
 				y := relPos.Y + dy
 				x := relPos.X + dx
 
-				if y >= 0 && y < len(grid.CollisionGrid) && x >= 0 && x < len(grid.CollisionGrid[0]) {
-					if grid.CollisionGrid[y][x] == CollisionTypeTeleportOver {
-						grid.CollisionGrid[y][x] = CollisionTypeWalkable
+				if y >= 0 && y < grid.Height && x >= 0 && x < grid.Width {
+					if grid.Get(x, y) == CollisionTypeTeleportOver {
+						grid.Set(x, y, CollisionTypeWalkable)
 					}
 				}
 			}
@@ -196,16 +218,14 @@ func (g *Grid) IsWalkable(p data.Position) bool {
 	if p.X < 0 || p.X >= g.Width || p.Y < 0 || p.Y >= g.Height {
 		return false
 	}
-	positionType := g.CollisionGrid[p.Y][p.X]
+	positionType := g.Get(p.X, p.Y)
 	return positionType != CollisionTypeNonWalkable && positionType != CollisionTypeTeleportOver
 }
 
+// Copy returns a deep copy of the Grid with single allocation for flat array
 func (g *Grid) Copy() *Grid {
-	cg := make([][]CollisionType, g.Height)
-	for y := 0; y < g.Height; y++ {
-		cg[y] = make([]CollisionType, g.Width)
-		copy(cg[y], g.CollisionGrid[y])
-	}
+	cg := make([]CollisionType, len(g.CollisionGrid))
+	copy(cg, g.CollisionGrid)
 
 	return &Grid{
 		OffsetX:       g.OffsetX,
