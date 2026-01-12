@@ -82,7 +82,9 @@ func BuyConsumables(forceRefill bool) {
 		}
 	}
 
-	if ShouldBuyIDs() || forceRefill {
+	// Check if we should buy IDs, respecting DisableIdentifyTome even with forceRefill
+	shouldBuyIDsNow := ShouldBuyIDs()
+	if shouldBuyIDsNow || (forceRefill && !isDisableIdentifyTomeActive()) {
 		if _, found := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationInventory); !found && ctx.Data.PlayerUnit.TotalPlayerGold() > 360 {
 			ctx.Logger.Info("ID Tome not found, buying one...")
 			if itm, itmFound := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationVendor); itmFound {
@@ -156,6 +158,14 @@ func ShouldBuyIDs() bool {
 
 	qty, found := idTome.FindStat(stat.Quantity, 0)
 	return !found || qty.Value < 10
+}
+
+// isDisableIdentifyTomeActive returns true if DisableIdentifyTome option is enabled
+// and the character is not a leveling character
+func isDisableIdentifyTomeActive() bool {
+	ctx := context.Get()
+	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+	return ctx.CharacterCfg.Game.DisableIdentifyTome && !isLevelingChar
 }
 
 func ShouldBuyKeys() (int, bool) {

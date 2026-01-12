@@ -1645,7 +1645,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 		}
 		cfg.UseCentralizedPickit = values.Has("useCentralizedPickit")
 		cfg.Game.UseCainIdentify = values.Has("useCainIdentify")
-		cfg.Game.DisableIdentifyTome = values.Get("game.disableIdentifyTome") == "on"
+		cfg.Game.DisableIdentifyTome = values.Has("game.disableIdentifyTome")
 		cfg.Game.InteractWithShrines = values.Has("interactWithShrines")
 		cfg.Game.InteractWithChests = values.Has("interactWithChests")
 		cfg.Game.InteractWithSuperChests = values.Has("interactWithSuperChests")
@@ -2497,7 +2497,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.MinGoldPickupThreshold, _ = strconv.Atoi(r.Form.Get("gameMinGoldPickupThreshold"))
 		cfg.UseCentralizedPickit = r.Form.Has("useCentralizedPickit")
 		cfg.Game.UseCainIdentify = r.Form.Has("useCainIdentify")
-		cfg.Game.DisableIdentifyTome = r.PostFormValue("game.disableIdentifyTome") == "on"
+		cfg.Game.DisableIdentifyTome = r.Form.Has("game.disableIdentifyTome")
 		cfg.Game.InteractWithShrines = r.Form.Has("interactWithShrines")
 		cfg.Game.InteractWithChests = r.Form.Has("interactWithChests")
 		cfg.Game.InteractWithSuperChests = r.Form.Has("interactWithSuperChests")
