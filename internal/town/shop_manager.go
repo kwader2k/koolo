@@ -82,7 +82,10 @@ func BuyConsumables(forceRefill bool) {
 		}
 	}
 
-	if ShouldBuyIDs() || forceRefill {
+	disableIDs := ctx.CharacterCfg.Game.DisableIdentifyTome && (ctx.Data == nil || !ctx.Data.IsLevelingCharacter)
+	if disableIDs {
+		ctx.Logger.Debug("DisableIdentifyTome enabled – skipping ID tome/scroll purchases.")
+	} else if ShouldBuyIDs() || forceRefill {
 		if _, found := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationInventory); !found && ctx.Data.PlayerUnit.TotalPlayerGold() > 360 {
 			ctx.Logger.Info("ID Tome not found, buying one...")
 			if itm, itmFound := ctx.Data.Inventory.Find(item.TomeOfIdentify, item.LocationVendor); itmFound {
@@ -139,9 +142,16 @@ func ShouldBuyTPs() bool {
 func ShouldBuyIDs() bool {
 	ctx := context.Get()
 
-	_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
+	// Prefer cached flag from game data (set in Context.RefreshGameData)
+	isLevelingChar := false
+	if ctx.Data != nil {
+		isLevelingChar = ctx.Data.IsLevelingCharacter
+	} else {
+		_, isLevelingChar = ctx.Char.(context.LevelingCharacter)
+	}
 
 	// Respect end-game setting: completely disable ID tome purchasing
+	// NOTE: This must override any "force refill" vendor visit logic elsewhere.
 	if ctx.CharacterCfg.Game.DisableIdentifyTome && !isLevelingChar {
 		// Do not buy Tome of Identify nor ID scrolls at all
 		ctx.Logger.Debug("DisableIdentifyTome enabled – skipping ID tome/scroll purchases.")

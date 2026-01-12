@@ -285,6 +285,25 @@ func formatActualStat(itm data.Item, label string, groupTag string, ts config.Ru
 			stat.Vitality:  "Vit",
 		}))
 	default:
+		// ED/EDef are sometimes not exposed as explicit stats by the memory reader.
+		// Derive from base/current values where possible so the history summary stays truthful.
+		switch ts.StatID {
+		case stat.EnhancedDamageMin, stat.EnhancedDamage, stat.DamagePercent:
+			if minED, maxED, exact, ok := GetRunewordWeaponDamageEDPercentRange(itm); ok {
+				if exact {
+					return fmt.Sprintf("%s %d", label, minED)
+				}
+				return fmt.Sprintf("%s %d-%d", label, minED, maxED)
+			}
+		case stat.EnhancedDefense:
+			if minED, maxED, exact, ok := GetRunewordArmorDefenseEDPercentRange(itm); ok {
+				if exact {
+					return fmt.Sprintf("%s %d", label, minED)
+				}
+				return fmt.Sprintf("%s %d-%d", label, minED, maxED)
+			}
+		}
+
 		st, found := itm.FindStat(ts.StatID, ts.Layer)
 		if !found {
 			return fmt.Sprintf("%s n/a", label)

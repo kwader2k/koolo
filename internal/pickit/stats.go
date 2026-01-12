@@ -32,7 +32,9 @@ func GetAllStatTypes() []StatType {
 		{ID: "mindamage", Name: "Min Damage", NipProperty: "[mindamage]", MinValue: 1, MaxValue: 50, IsPercent: false},
 		{ID: "maxdamage", Name: "Max Damage", NipProperty: "[maxdamage]", MinValue: 1, MaxValue: 50, IsPercent: false},
 		{ID: "tohit", Name: "Attack Rating", NipProperty: "[tohit]", MinValue: 1, MaxValue: 450, IsPercent: false},
-		{ID: "eddmg", Name: "Enhanced Damage", NipProperty: "[eddmg]", MinValue: 1, MaxValue: 450, IsPercent: true},
+		// NOTE: Internally we used to call this "eddmg".
+		// The actual NIP property supported by the engine is [enhanceddamage].
+		{ID: "eddmg", Name: "Enhanced Damage", NipProperty: "[enhanceddamage]", MinValue: 1, MaxValue: 450, IsPercent: true},
 		{ID: "deadlystrike", Name: "Deadly Strike", NipProperty: "[deadlystrike]", MinValue: 1, MaxValue: 100, IsPercent: true},
 		{ID: "crushingblow", Name: "Crushing Blow", NipProperty: "[crushingblow]", MinValue: 1, MaxValue: 50, IsPercent: true},
 		{ID: "openwounds", Name: "Open Wounds", NipProperty: "[openwounds]", MinValue: 1, MaxValue: 100, IsPercent: true},
@@ -121,6 +123,10 @@ func GetAllStatTypes() []StatType {
 
 // GetStatTypeByID returns a specific stat type by ID
 func GetStatTypeByID(id string) *StatType {
+	// Compatibility: allow both "eddmg" (legacy) and "enhanceddamage" (engine property).
+	if id == "enhanceddamage" {
+		id = "eddmg"
+	}
 	for _, st := range GetAllStatTypes() {
 		if st.ID == id {
 			return &st

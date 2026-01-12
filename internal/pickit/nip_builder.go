@@ -124,6 +124,12 @@ func (b *NIPBuilder) conditionToNIP(cond Condition) string {
 	operator := cond.Operator
 	value := cond.Value
 
+	// Compatibility: older templates/UI used "eddmg" for Enhanced Damage.
+	// The NIP engine expects [enhanceddamage], but we keep accepting/saving "eddmg" internally.
+	if property == "eddmg" {
+		property = "enhanceddamage"
+	}
+
 	// Handle special properties
 	switch property {
 	case "name", "type", "quality", "flag":

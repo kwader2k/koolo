@@ -493,11 +493,61 @@ func GetRunewordWeaponDamageEDPercentRange(it data.Item) (min int, max int, exac
 	baseMin, okBaseMin := it.BaseStats.FindStat(stat.TwoHandedMinDamage, 0)
 	curMin, okCurMin := it.Stats.FindStat(stat.TwoHandedMinDamage, 0)
 
+	// Fall back between Stats/BaseStats (some memory readers expose computed damage in BaseStats).
+	if !okCurMax {
+		curMax, okCurMax = it.BaseStats.FindStat(stat.TwoHandedMaxDamage, 0)
+	}
+	if !okCurMin {
+		curMin, okCurMin = it.BaseStats.FindStat(stat.TwoHandedMinDamage, 0)
+	}
+	if !okBaseMax {
+		baseMax, okBaseMax = it.Stats.FindStat(stat.TwoHandedMaxDamage, 0)
+	}
+	if !okBaseMin {
+		baseMin, okBaseMin = it.Stats.FindStat(stat.TwoHandedMinDamage, 0)
+	}
+
 	if !okBaseMax || !okCurMax {
 		baseMax, okBaseMax = it.BaseStats.FindStat(stat.MaxDamage, 0)
 		curMax, okCurMax = it.Stats.FindStat(stat.MaxDamage, 0)
 		baseMin, okBaseMin = it.BaseStats.FindStat(stat.MinDamage, 0)
 		curMin, okCurMin = it.Stats.FindStat(stat.MinDamage, 0)
+
+		if !okCurMax {
+			curMax, okCurMax = it.BaseStats.FindStat(stat.MaxDamage, 0)
+		}
+		if !okCurMin {
+			curMin, okCurMin = it.BaseStats.FindStat(stat.MinDamage, 0)
+		}
+		if !okBaseMax {
+			baseMax, okBaseMax = it.Stats.FindStat(stat.MaxDamage, 0)
+		}
+		if !okBaseMin {
+			baseMin, okBaseMin = it.Stats.FindStat(stat.MinDamage, 0)
+		}
+	}
+
+	// Last resort: if base damage isn't available as a stat, use the item template description.
+	// (Not perfect for superior/eth bases, but better than failing entirely.)
+	if (!okBaseMax || baseMax.Value == 0) {
+		d := it.Desc()
+		if d.TwoHandMaxDamage > 0 {
+			baseMax.Value = d.TwoHandMaxDamage
+			okBaseMax = true
+		} else if d.MaxDamage > 0 {
+			baseMax.Value = d.MaxDamage
+			okBaseMax = true
+		}
+	}
+	if (!okBaseMin || baseMin.Value == 0) {
+		d := it.Desc()
+		if d.TwoHandMinDamage > 0 {
+			baseMin.Value = d.TwoHandMinDamage
+			okBaseMin = true
+		} else if d.MinDamage > 0 {
+			baseMin.Value = d.MinDamage
+			okBaseMin = true
+		}
 	}
 
 	if !okBaseMax || !okCurMax || baseMax.Value == 0 {
@@ -512,15 +562,29 @@ func GetRunewordWeaponDamageEDPercentRange(it data.Item) (min int, max int, exac
 	min = minMax
 	max = maxMax
 
-	// Intersect with the min-damage range when we can.
+	// Intersect with the min-damage range when we can. If the intersection is empty, fall back
+	// to whichever range is tighter (common for runewords that also add flat min/max damage).
 	if okBaseMin && okCurMin && baseMin.Value != 0 {
 		minMin, maxMin, okMin := edPercentRangeFromBaseCurrent(baseMin.Value, curMin.Value)
 		if okMin {
-			if minMin > min {
-				min = minMin
+			iMin := min
+			if minMin > iMin {
+				iMin = minMin
 			}
-			if maxMin < max {
-				max = maxMin
+			iMax := max
+			if maxMin < iMax {
+				iMax = maxMin
+			}
+			if iMin <= iMax {
+				min, max = iMin, iMax
+			} else {
+				widthMax := maxMax - minMax
+				widthMin := maxMin - minMin
+				if widthMin < widthMax {
+					min, max = minMin, maxMin
+				} else {
+					min, max = minMax, maxMax
+				}
 			}
 		}
 	}
