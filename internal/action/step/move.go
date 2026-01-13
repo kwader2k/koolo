@@ -125,7 +125,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 	stepLastMonsterCheck := time.Time{}
 
 	blockThreshold := 200 * time.Millisecond
-	stuckThreshold := 2 * time.Second
+	stuckThreshold := 5 * time.Second
 	stuckCheckStartTime := time.Now()
 
 	roundTripReferencePosition := ctx.Data.PlayerUnit.Position

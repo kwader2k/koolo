@@ -117,6 +117,9 @@ func ClearThroughPath(pos data.Position, radius int, filter data.MonsterFilter) 
 	ctx := context.Get()
 
 	lastMovement := false
+	stuckRetries := 0
+	const maxStuckRetries = 3
+
 	for {
 		ctx.PauseIfNotPriority()
 
@@ -162,7 +165,22 @@ func ClearThroughPath(pos data.Position, radius int, filter data.MonsterFilter) 
 					continue
 				}
 			}
+
+			if strings.Contains(err.Error(), "player is stuck") {
+				stuckRetries++
+				if stuckRetries >= maxStuckRetries {
+					ctx.Logger.Warn(fmt.Sprintf("ClearThroughPath: Player stuck after %d retries, giving up", maxStuckRetries))
+					return err
+				}
+				ctx.Logger.Debug(fmt.Sprintf("ClearThroughPath: Player stuck detected (attempt %d/%d), performing random movement", stuckRetries, maxStuckRetries))
+				ctx.PathFinder.RandomMovement()
+				continue
+			}
+
 			return err
 		}
+
+		// Reset stuck counter on successful movement
+		stuckRetries = 0
 	}
 }
