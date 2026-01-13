@@ -143,8 +143,8 @@ func itemsToIdentify() (items []data.Item) {
 		_, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 
 		if !isLevelingChar {
-
-			if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(i); result == nip.RuleResultFullMatch {
+			evalCtx := getEvaluationContext()
+			if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(i, evalCtx); result == nip.RuleResultFullMatch {
 				continue
 			}
 		}
@@ -166,11 +166,12 @@ func HaveItemsToStashUnidentified() bool {
 		items := ctx.Data.Inventory.ByLocation(item.LocationInventory)
 		for _, i := range items {
 
-			if !i.Identified {
-				if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(i); result == nip.RuleResultFullMatch {
-					return true
-				}
+		if !i.Identified {
+			evalCtx := getEvaluationContext()
+			if _, result := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(i, evalCtx); result == nip.RuleResultFullMatch {
+				return true
 			}
+		}
 		}
 	}
 

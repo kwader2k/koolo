@@ -220,7 +220,8 @@ func stashItemAcrossTabs(i data.Item, matchedRule string, ruleFile string, first
 
 		if stashItemAction(i, matchedRule, ruleFile, firstRun) {
 			itemStashed = true
-			r, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(i)
+			evalCtx := getEvaluationContext()
+			r, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(i, evalCtx)
 
 			if res != nip.RuleResultFullMatch && firstRun {
 				ctx.Logger.Info(
@@ -296,7 +297,8 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	}
 
 	// NOW, evaluate pickit rules.
-	tierRule, mercTierRule := ctx.CharacterCfg.Runtime.Rules.EvaluateTiers(i, ctx.CharacterCfg.Runtime.TierRules)
+	evalCtx := getEvaluationContext()
+	tierRule, mercTierRule := ctx.CharacterCfg.Runtime.Rules.EvaluateTiersWithContext(i, ctx.CharacterCfg.Runtime.TierRules, evalCtx)
 	if tierRule.Tier() > 0.0 && IsBetterThanEquipped(i, false, PlayerScore) {
 		return true, true, tierRule.RawLine, tierRule.Filename + ":" + strconv.Itoa(tierRule.LineNumber)
 	}
@@ -306,7 +308,7 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 	}
 
 	// NOW, evaluate pickit rules.
-	rule, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllIgnoreTiers(i)
+	rule, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllIgnoreTiersWithContext(i, evalCtx)
 
 	if res == nip.RuleResultFullMatch {
 		if doesExceedQuantity(rule) {
@@ -348,16 +350,17 @@ func shouldKeepRecipeItem(i data.Item) bool {
 	jewelCount := 0
 
 	// Count ALL non-NIP jewels in stash (regardless of quality: magic, rare, unique, etc.)
+	evalCtx := getEvaluationContext()
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
 		if string(it.Name) == "Jewel" {
-			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it); res != nip.RuleResultFullMatch {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(it, evalCtx); res != nip.RuleResultFullMatch {
 				jewelCount++
 			}
 		}
 		// For OTHER recipe items (not jewels): match on base name and require magic quality
 		// so only another magic item of the same base blocks us
 		if string(it.Name) != "Jewel" && strings.EqualFold(string(it.Name), string(i.Name)) && it.Quality == item.QualityMagic {
-			_, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it)
+			_, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(it, evalCtx)
 			if res != nip.RuleResultFullMatch {
 				itemInStashNotMatchingRule = true
 			}
@@ -368,7 +371,7 @@ func shouldKeepRecipeItem(i data.Item) bool {
 	// because they will also be stashed in the same run
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if string(it.Name) == "Jewel" && it.UnitID != i.UnitID {
-			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAll(it); res != nip.RuleResultFullMatch {
+			if _, res := ctx.CharacterCfg.Runtime.Rules.EvaluateAllWithContext(it, evalCtx); res != nip.RuleResultFullMatch {
 				jewelCount++
 			}
 		}
