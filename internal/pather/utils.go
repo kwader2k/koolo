@@ -98,7 +98,7 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 		}
 
 		// Prevent mouse overlap the HUD
-		if screenY > int(float32(pf.gr.GameAreaSizeY)/1.19) {
+		if screenY > int(float32(pf.gr.GameAreaSizeY)/1.21) {
 			break
 		}
 
@@ -113,43 +113,60 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 }
 
 func (pf *PathFinder) moveThroughPathTeleport(p Path) {
-	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.19)
+	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.21)
+	fallbackSafetyMargin := int(float32(pf.gr.GameAreaSizeY) * 0.05)
+	fallbackMaxY := pf.gr.GameAreaSizeY - fallbackSafetyMargin
 	fromX, fromY := p.From().X, p.From().Y
+
+	var fallback struct {
+		screenX, screenY int
+		worldPos         data.Position
+		usePacket        bool
+		valid            bool
+	}
 
 	for i := len(p) - 1; i >= 0; i-- {
 		pos := p[i]
 		screenX, screenY := pf.gameCoordsToScreenCords(fromX, fromY, pos.X, pos.Y)
 
-		if screenY > hudBoundary {
+		if screenX < 0 || screenY < 0 || screenX > pf.gr.GameAreaSizeX || screenY > pf.gr.GameAreaSizeY {
 			continue
 		}
 
-		if screenX >= 0 && screenY >= 0 && screenX <= pf.gr.GameAreaSizeX && screenY <= pf.gr.GameAreaSizeY {
-			worldPos := data.Position{
-				X: pos.X + pf.data.AreaOrigin.X,
-				Y: pos.Y + pf.data.AreaOrigin.Y,
-			}
+		worldPos := data.Position{
+			X: pos.X + pf.data.AreaOrigin.X,
+			Y: pos.Y + pf.data.AreaOrigin.Y,
+		}
 
-			usePacket := pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil
+		usePacket := pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil
 
-			if usePacket {
-				if pf.isMouseClickTeleportZone() {
-					slog.Debug("Mouse click teleport zone detected, using mouse click instead of packet",
-						slog.String("area", pf.data.PlayerUnit.Area.Area().Name),
+		if usePacket {
+			if pf.isMouseClickTeleportZone() {
+				slog.Debug("Mouse click teleport zone detected, using mouse click instead of packet",
+					slog.String("area", pf.data.PlayerUnit.Area.Area().Name),
+				)
+				usePacket = false
+			} else {
+				nearBoundary := pf.isNearAreaBoundary(worldPos, 60)
+				if nearBoundary {
+					slog.Debug("Near area boundary detected, using mouse click instead of packet",
+						slog.Int("x", worldPos.X),
+						slog.Int("y", worldPos.Y),
 					)
 					usePacket = false
-				} else {
-					nearBoundary := pf.isNearAreaBoundary(worldPos, 60)
-					if nearBoundary {
-						slog.Debug("Near area boundary detected, using mouse click instead of packet",
-							slog.Int("x", worldPos.X),
-							slog.Int("y", worldPos.Y),
-						)
-						usePacket = false
-					}
 				}
 			}
+		}
 
+		// fallback incase below hud bounds
+		if !fallback.valid && (screenY <= fallbackMaxY || usePacket) {
+			fallback.screenX, fallback.screenY = screenX, screenY
+			fallback.worldPos = worldPos
+			fallback.usePacket = usePacket
+			fallback.valid = true
+		}
+
+		if screenY <= hudBoundary {
 			if usePacket {
 				pf.MoveCharacter(screenX, screenY, worldPos)
 			} else {
@@ -158,28 +175,39 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 			return
 		}
 	}
+
+	if fallback.valid {
+		if fallback.usePacket {
+			pf.MoveCharacter(fallback.screenX, fallback.screenY, fallback.worldPos)
+		} else {
+			pf.MoveCharacter(fallback.screenX, fallback.screenY)
+		}
+	}
 }
 
 func (pf *PathFinder) GetLastPathIndexOnScreen(p Path) int {
-	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.19)
+	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.21)
 	fromX, fromY := p.From().X, p.From().Y
 
+	fallbackIndex := 0
 	for i := len(p) - 1; i >= 0; i-- {
 		pos := p[i]
 		screenX, screenY := pf.gameCoordsToScreenCords(fromX, fromY, pos.X, pos.Y)
 
-		// Prevent mouse overlap the HUD
-		if screenY > hudBoundary {
+		if screenX < 0 || screenY < 0 || screenX > pf.gr.GameAreaSizeX || screenY > pf.gr.GameAreaSizeY {
 			continue
 		}
 
-		// Check if coordinates are within screen bounds
-		if screenX >= 0 && screenY >= 0 && screenX <= pf.gr.GameAreaSizeX && screenY <= pf.gr.GameAreaSizeY {
+		if fallbackIndex == 0 {
+			fallbackIndex = i
+		}
+
+		if screenY <= hudBoundary {
 			return i
 		}
 	}
 
-	return 0
+	return fallbackIndex
 }
 
 func (pf *PathFinder) isNearAreaBoundary(pos data.Position, threshold int) bool {
