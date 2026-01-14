@@ -114,7 +114,7 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 
 func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.21)
-	fallbackSafetyMargin := int(float32(pf.gr.GameAreaSizeY) * 0.05)
+	fallbackSafetyMargin := int(float32(pf.gr.GameAreaSizeY) * 0.08)
 	fallbackMaxY := pf.gr.GameAreaSizeY - fallbackSafetyMargin
 	fromX, fromY := p.From().X, p.From().Y
 
@@ -158,8 +158,7 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 			}
 		}
 
-		// fallback incase below hud bounds
-		if !fallback.valid && (screenY <= fallbackMaxY || usePacket) {
+		if !fallback.valid {
 			fallback.screenX, fallback.screenY = screenX, screenY
 			fallback.worldPos = worldPos
 			fallback.usePacket = usePacket
@@ -176,7 +175,7 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 		}
 	}
 
-	if fallback.valid {
+	if fallback.valid && (fallback.screenY <= fallbackMaxY || fallback.usePacket) {
 		if fallback.usePacket {
 			pf.MoveCharacter(fallback.screenX, fallback.screenY, fallback.worldPos)
 		} else {
