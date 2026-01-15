@@ -751,7 +751,7 @@ func (ls LevelingSequence) AdjustDifficultyConfig() {
 	ls.ctx.CharacterCfg.Game.RunewordMaker.EnabledRecipes = ls.GetRunewords()
 	ls.ctx.CharacterCfg.Game.MinGoldPickupThreshold = 5000 * lvl.Value
 
-	if !ls.ctx.CharacterCfg.Character.UseMerc && ls.ctx.Data.Quests[quest.Act1SistersBurialGrounds].Completed() {
+	if !ls.ctx.CharacterCfg.Character.UseMerc && (ls.ctx.Data.Quests[quest.Act1SistersBurialGrounds].Completed() || lvl.Value >= 8) {
 		ls.ctx.CharacterCfg.Character.UseMerc = true
 	}
 
