@@ -1,7 +1,6 @@
 package pather
 
 import (
-	"log/slog"
 	"math"
 	"math/rand"
 	"time"
@@ -114,18 +113,16 @@ func (pf *PathFinder) moveThroughPathWalk(p Path, walkDuration time.Duration) {
 
 func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 	hudBoundary := int(float32(pf.gr.GameAreaSizeY) / 1.21)
-	fallbackSafetyMargin := int(float32(pf.gr.GameAreaSizeY) * 0.08)
-	fallbackMaxY := pf.gr.GameAreaSizeY - fallbackSafetyMargin
 	fromX, fromY := p.From().X, p.From().Y
 
-	var fallback struct {
+	var bestSafe, bestUnsafe struct {
 		screenX, screenY int
 		worldPos         data.Position
 		usePacket        bool
 		valid            bool
 	}
 
-	for i := len(p) - 1; i >= 0; i-- {
+	for i := 0; i < len(p); i++ {
 		pos := p[i]
 		screenX, screenY := pf.gameCoordsToScreenCords(fromX, fromY, pos.X, pos.Y)
 
@@ -139,33 +136,31 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 		}
 
 		usePacket := pf.cfg.PacketCasting.UseForTeleport && pf.packetSender != nil
-
 		if usePacket {
 			if pf.isMouseClickTeleportZone() {
-				slog.Debug("Mouse click teleport zone detected, using mouse click instead of packet",
-					slog.String("area", pf.data.PlayerUnit.Area.Area().Name),
-				)
 				usePacket = false
-			} else {
-				nearBoundary := pf.isNearAreaBoundary(worldPos, 60)
-				if nearBoundary {
-					slog.Debug("Near area boundary detected, using mouse click instead of packet",
-						slog.Int("x", worldPos.X),
-						slog.Int("y", worldPos.Y),
-					)
-					usePacket = false
-				}
+			} else if pf.isNearAreaBoundary(worldPos, 60) {
+				usePacket = false
 			}
 		}
 
-		if !fallback.valid {
-			fallback.screenX, fallback.screenY = screenX, screenY
-			fallback.worldPos = worldPos
-			fallback.usePacket = usePacket
-			fallback.valid = true
+		isSafe := screenY <= hudBoundary || usePacket
+
+		if isSafe && (!bestSafe.valid || screenY < bestSafe.screenY) {
+			bestSafe.screenX, bestSafe.screenY = screenX, screenY
+			bestSafe.worldPos = worldPos
+			bestSafe.usePacket = usePacket
+			bestSafe.valid = true
 		}
 
-		if screenY <= hudBoundary {
+		if !isSafe && (!bestUnsafe.valid || screenY < bestUnsafe.screenY) {
+			bestUnsafe.screenX, bestUnsafe.screenY = screenX, screenY
+			bestUnsafe.worldPos = worldPos
+			bestUnsafe.usePacket = usePacket
+			bestUnsafe.valid = true
+		}
+
+		if isSafe {
 			if usePacket {
 				pf.MoveCharacter(screenX, screenY, worldPos)
 			} else {
@@ -175,11 +170,17 @@ func (pf *PathFinder) moveThroughPathTeleport(p Path) {
 		}
 	}
 
-	if fallback.valid && (fallback.screenY <= fallbackMaxY || fallback.usePacket) {
-		if fallback.usePacket {
-			pf.MoveCharacter(fallback.screenX, fallback.screenY, fallback.worldPos)
+	if bestSafe.valid {
+		if bestSafe.usePacket {
+			pf.MoveCharacter(bestSafe.screenX, bestSafe.screenY, bestSafe.worldPos)
 		} else {
-			pf.MoveCharacter(fallback.screenX, fallback.screenY)
+			pf.MoveCharacter(bestSafe.screenX, bestSafe.screenY)
+		}
+	} else if bestUnsafe.valid {
+		if bestUnsafe.usePacket {
+			pf.MoveCharacter(bestUnsafe.screenX, bestUnsafe.screenY, bestUnsafe.worldPos)
+		} else {
+			pf.MoveCharacter(bestUnsafe.screenX, bestUnsafe.screenY)
 		}
 	}
 }
