@@ -498,6 +498,7 @@ func ResetStats() error {
 		utils.Sleep(1000)
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
 		utils.Sleep(1000)
+		ctx.GameReader.GetData() // Refresh data to update skill values
 
 		// 4. Now, drop any remaining items directly in the inventory
 		ctx.Logger.Info("Dropping all remaining inventory items.")
@@ -528,6 +529,8 @@ func ResetStats() error {
 
 		step.CloseAllMenus()
 		utils.Sleep(500)
+		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
+		utils.Sleep(500)
 
 		// 5. Finalize the reset process
 		err := ResetBindings()
@@ -535,13 +538,24 @@ func ResetStats() error {
 			ctx.Logger.Error("Failed to bind TomeOfTownPortal after stats reset", slog.Any("error", err))
 		}
 		utils.Sleep(500)
+		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
+		utils.Sleep(500)
 
 		EnsureStatPoints()
 		utils.Sleep(500)
+		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
+		utils.Sleep(500)
+		ctx.GameReader.GetData() // Refresh data to update stat values
+
 		EnsureSkillPoints()
 		utils.Sleep(500)
+		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
+		utils.Sleep(500)
+		ctx.GameReader.GetData() // Refresh data to update skill values
 
 		EnsureSkillBindings()
+		utils.Sleep(500)
+		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
 		utils.Sleep(500)
 
 		ctx.EnableItemPickup()
