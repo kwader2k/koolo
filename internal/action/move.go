@@ -393,7 +393,6 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 	}
 
 	// Ensure no menus are open that might block movement
-	ctx.RefreshGameData()
 	for ctx.Data.OpenMenus.IsMenuOpen() {
 		ctx.Logger.Debug("Found open menus while moving, closing them...")
 		if err := step.CloseAllMenus(); err != nil {
@@ -401,7 +400,6 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 		}
 
 		utils.Sleep(500)
-		ctx.RefreshGameData()
 	}
 
 	clearPathDist := ctx.CharacterCfg.Character.ClearPathDist // Get this once

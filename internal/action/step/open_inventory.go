@@ -12,16 +12,15 @@ func OpenInventory() error {
 	ctx.SetLastStep("OpenInventory")
 
 	attempts := 0
-	ctx.RefreshGameData()
 	for !ctx.Data.OpenMenus.Inventory {
 		// Pause the execution if the priority is not the same as the execution priority
 		ctx.PauseIfNotPriority()
+		ctx.RefreshGameData()
 		if attempts > 10 {
 			return errors.New("failed opening inventory")
 		}
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
 		utils.Sleep(200)
-		ctx.RefreshGameData()
 		attempts++
 	}
 
