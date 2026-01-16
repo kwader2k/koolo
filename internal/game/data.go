@@ -14,6 +14,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/config"
 )
 
@@ -138,7 +139,7 @@ func (d Data) HasPotionInInventory(potionType data.PotionType) bool {
 }
 
 func (d Data) PotionsInInventory(potionType data.PotionType) []data.Item {
-	items := d.Data.Inventory.ByLocation(item.LocationInventory)
+	items := d.Inventory.ByLocation(item.LocationInventory)
 	potions := make([]data.Item, 0)
 
 	for _, i := range items {
@@ -180,4 +181,72 @@ func (d Data) ConfiguredInventoryPotionCount(potionType data.PotionType) int {
 	default:
 		return 0
 	}
+}
+
+// PlayerHasRuneword reports whether the player equipment includes the provided runeword.
+func (d Data) PlayerHasRuneword(target item.RunewordName) bool {
+	if target == item.RunewordNone {
+		return false
+	}
+
+	for _, it := range d.Inventory.ByLocation(item.LocationEquipped) {
+		if it.RunewordName == target {
+			return true
+		}
+	}
+
+	return false
+}
+
+// MercHasRuneword reports whether the mercenary equipment includes the provided runeword.
+func (d Data) MercHasRuneword(target item.RunewordName) bool {
+	if !d.HasMerc || target == item.RunewordNone {
+		return false
+	}
+
+	for _, it := range d.Inventory.ByLocation(item.LocationMercenary) {
+		if it.RunewordName == target {
+			return true
+		}
+	}
+
+	return false
+}
+
+// MercHasState reports whether the closest mercenary to the player has the provided state.
+// This is a best-effort heuristic when multiple mercenaries are visible.
+func (d Data) MercHasState(target state.State) bool {
+	if !d.HasMerc {
+		return false
+	}
+
+	closestFound := false
+	closestDistSq := 0
+	closestHasState := false
+	for _, monster := range d.Monsters {
+		if !monster.IsMerc() {
+			continue
+		}
+
+		dx := monster.Position.X - d.PlayerUnit.Position.X
+		dy := monster.Position.Y - d.PlayerUnit.Position.Y
+		distSq := dx*dx + dy*dy
+		if !closestFound || distSq < closestDistSq {
+			closestFound = true
+			closestDistSq = distSq
+			closestHasState = monster.States.HasState(target)
+		}
+	}
+
+	return closestFound && closestHasState
+}
+
+// MercIsHovered reports whether the currently hovered unit is a mercenary.
+func (d Data) MercIsHovered() bool {
+	if !d.HasMerc || !d.HoverData.IsHovered || d.HoverData.UnitType != 1 {
+		return false
+	}
+
+	monster, found := d.Monsters.FindByID(d.HoverData.UnitID)
+	return found && monster.IsMerc()
 }

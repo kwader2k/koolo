@@ -1,17 +1,15 @@
 package action
 
 import (
+	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	botCtx "github.com/hectorgimenez/koolo/internal/context" // ALIAS THIS IMPORT
 	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/lxn/win"
-	"github.com/hectorgimenez/d2go/pkg/data/item"
-	"github.com/hectorgimenez/d2go/pkg/data/stat"
 )
 
-
 func ReviveMerc() {
-	
 	status := botCtx.Get()
 
 	status.SetLastAction("ReviveMerc") // SetLastAction is a method on Status
