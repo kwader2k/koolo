@@ -206,11 +206,17 @@ func equipCTAIfFound(allItems []data.Item) (bool, error) {
 
 	for _, itm := range allItems {
 		if itm.RunewordName == item.RunewordCallToArms {
+			if !isAllowedEtherealForPlayer(itm) {
+				continue
+			}
 			ctaWeapon = itm
 			foundCta = true
 		}
 		if itm.RunewordName == item.RunewordSpirit && slices.Contains(shieldTypes, string(itm.Desc().Type)) {
 			if itm.Location.LocationType != item.LocationEquipped {
+				if !isAllowedEtherealForPlayer(itm) {
+					continue
+				}
 				spiritShield = itm
 				foundSpirit = true
 			}
@@ -275,6 +281,9 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 	}
 	isQuestItem := slices.Contains(questItems, newItem.Name)
 	if isQuestItem {
+		return false
+	}
+	if target == item.LocationEquipped && !isAllowedEtherealForPlayer(newItem) {
 		return false
 	}
 
@@ -376,6 +385,19 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 	}
 
 	return true
+}
+
+func isAllowedEtherealForPlayer(itm data.Item) bool {
+	if !itm.Ethereal {
+		return true
+	}
+	if _, found := itm.FindStat(stat.Indestructible, 0); found {
+		return true
+	}
+	if _, found := itm.FindStat(stat.ReplenishDurability, 0); found {
+		return true
+	}
+	return false
 }
 
 func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.LocationType) bool {
@@ -1034,6 +1056,10 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	ctx := context.Get()
 	ctx.SetLastAction("Equip")
 	defer step.CloseAllMenus()
+
+	if target == item.LocationEquipped && !isAllowedEtherealForPlayer(itm) {
+		return fmt.Errorf("ethereal item %s is not allowed for player equip", itm.IdentifiedName)
+	}
 
 	// Move item from stash to inventory if needed
 	if itm.Location.LocationType == item.LocationStash || itm.Location.LocationType == item.LocationSharedStash {
