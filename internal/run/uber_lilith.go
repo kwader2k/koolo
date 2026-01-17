@@ -73,6 +73,8 @@ func (l Lilith) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	l.ctx.Logger.Info("Successfully killed Lilith")
 	return nil
 }

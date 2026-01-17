@@ -78,6 +78,8 @@ func (b Bloodraven) Run(parameters *RunParameters) error {
 		}, nil)
 	}
 
+	action.ItemPickup(30)
+
 	if IsQuestRun(parameters) {
 		if err := action.ReturnTown(); err != nil {
 			err = action.MoveToArea(area.ColdPlains)

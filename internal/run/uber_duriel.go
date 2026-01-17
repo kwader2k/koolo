@@ -73,6 +73,8 @@ func (u UberDuriel) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	u.ctx.Logger.Info("Successfully killed Uber Duriel")
 	return nil
 }

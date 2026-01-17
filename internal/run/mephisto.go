@@ -130,6 +130,8 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	if m.ctx.CharacterCfg.Game.Mephisto.OpenChests || m.ctx.CharacterCfg.Game.Mephisto.KillCouncilMembers {
 		if err = action.ClearCurrentLevel(m.ctx.CharacterCfg.Game.Mephisto.OpenChests, m.CouncilMemberFilter()); err != nil {
 			return err

@@ -77,6 +77,8 @@ func (t *Travincal) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	t.ctx.CurrentGame.AreaCorrection.Enabled = false
 
 	if IsQuestRun(parameters) {

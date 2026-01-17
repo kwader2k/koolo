@@ -164,6 +164,8 @@ func (s Summoner) runStandard(parameters *RunParameters) error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	if isQuestRun {
 		if err := s.goToCanyon(); err != nil {
 			return err
@@ -227,6 +229,7 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 					al.ctx.Logger.Warn("Failed to kill Summoner: %v", err)
 				} else {
 					al.ctx.Logger.Info("Summoner killed successfully")
+					action.ItemPickup(30)
 				}
 			}
 		}

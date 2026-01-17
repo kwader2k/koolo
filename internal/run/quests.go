@@ -674,6 +674,8 @@ func (a Quests) killIzualQuest() error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	err = action.ReturnTown()
 	if err != nil {
 		return err
@@ -720,6 +722,7 @@ func (a Quests) killShenkQuest() error {
 	}
 
 	action.ClearAreaAroundPlayer(25, data.MonsterAnyFilter())
+	action.ItemPickup(30)
 
 	err = action.ReturnTown()
 	if err != nil {
@@ -903,6 +906,8 @@ func (a Quests) killAncientsQuest() error {
 			return 0, false
 		}, nil)
 	}
+
+	action.ItemPickup(30)
 
 	// The defer statement above will handle the restoration
 	// a.ctx.CharacterCfg.BackToTown = originalBackToTownCfg // This line is now removed
