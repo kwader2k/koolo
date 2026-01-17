@@ -9,12 +9,9 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/koolo/internal/action"
-	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/character"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
-	"github.com/hectorgimenez/koolo/internal/game"
-	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -126,43 +123,7 @@ func (t *Travincal) findCouncilPosition() data.Position {
 }
 
 func (t Travincal) prepareWill() error {
-	hasWill := t.hasKhalimsWill()
-	if !hasWill {
-		eye, found := t.ctx.Data.Inventory.Find("KhalimsEye", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			t.ctx.Logger.Info("Khalim's Eye not found, skipping")
-			return nil
-		}
-
-		brain, found := t.ctx.Data.Inventory.Find("KhalimsBrain", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			t.ctx.Logger.Info("Khalim's Brain not found, skipping")
-			return nil
-		}
-
-		heart, found := t.ctx.Data.Inventory.Find("KhalimsHeart", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			t.ctx.Logger.Info("Khalim's Heart not found, skipping")
-			return nil
-		}
-
-		flail, found := t.ctx.Data.Inventory.Find("KhalimsFlail", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			t.ctx.Logger.Info("Khalim's Flail not found, skipping")
-			return nil
-		}
-
-		err := action.CubeAddItems(eye, brain, heart, flail)
-		if err != nil {
-			return err
-		}
-
-		err = action.CubeTransmute()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return prepareKhalimsWill(t.ctx)
 }
 
 func (t Travincal) hasKhalimsWill() bool {
@@ -199,50 +160,18 @@ func (t Travincal) hasAllWillIngredients() bool {
 }
 
 func (t Travincal) equipWill() error {
-	khalimsWill, kwfound := t.ctx.Data.Inventory.Find("KhalimsWill", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-	if !t.ctx.Data.Quests[quest.Act3TheGuardian].Completed() && kwfound {
-		t.ctx.Logger.Info("Khalim's Will found!")
-		if khalimsWill.Location.LocationType != item.LocationEquipped {
-			if t.ctx.Data.ActiveWeaponSlot == 0 {
-				utils.Sleep(500)
-				t.ctx.HID.PressKeyBinding(t.ctx.Data.KeyBindings.SwapWeapons)
-				utils.Sleep(500)
-			}
-			if khalimsWill.Location.LocationType == item.LocationStash {
-				t.ctx.Logger.Info("It's in the stash, let's pick it up")
-
-				bank, found := t.ctx.Data.Objects.FindOne(object.Bank)
-				if !found {
-					t.ctx.Logger.Info("bank object not found")
-				}
-				utils.Sleep(300)
-				err := action.InteractObject(bank, func() bool {
-					return t.ctx.Data.OpenMenus.Stash
-				})
-				if err != nil {
-					return err
-				}
-			}
-			if khalimsWill.Location.LocationType == item.LocationInventory && !t.ctx.Data.OpenMenus.Inventory {
-				t.ctx.HID.PressKeyBinding(t.ctx.Data.KeyBindings.Inventory)
-			}
-			screenPos := ui.GetScreenCoordsForItem(khalimsWill)
-			t.ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.ShiftKey)
-			utils.Sleep(300)
-			if t.ctx.Data.ActiveWeaponSlot == 1 {
-				utils.Sleep(500)
-				t.ctx.HID.PressKeyBinding(t.ctx.Data.KeyBindings.SwapWeapons)
-				utils.Sleep(500)
-
-			}
-			step.CloseAllMenus()
-		}
+	if t.ctx.Data.Quests[quest.Act3TheBlackenedTemple].Completed() {
 		return nil
 	}
-	return errors.New("khalim will not found")
+	_, _, err := ensureQuestWeaponEquipped(t.ctx, "KhalimsWill", swapWeaponSlot)
+	return err
 }
 
 func (t Travincal) smashOrb() error {
+	if t.ctx.Data.Quests[quest.Act3TheBlackenedTemple].Completed() {
+		return nil
+	}
+
 	// Interact with the Compelling Orb to open the stairs
 	compellingorb, found := t.ctx.Data.Objects.FindOne(object.CompellingOrb)
 	if !found {
@@ -250,31 +179,16 @@ func (t Travincal) smashOrb() error {
 	}
 
 	action.MoveToCoords(compellingorb.Position)
-	if t.ctx.Data.ActiveWeaponSlot == 0 {
-		utils.Sleep(500)
-		t.ctx.HID.PressKeyBinding(t.ctx.Data.KeyBindings.SwapWeapons)
-		utils.Sleep(500)
-
-	}
-
-	defer func() {
-		if t.ctx.Data.ActiveWeaponSlot == 1 {
-			utils.Sleep(500)
-			t.ctx.HID.PressKeyBinding(t.ctx.Data.KeyBindings.SwapWeapons)
-			utils.Sleep(500)
+	return withQuestWeaponSlot(t.ctx, "KhalimsWill", func() error {
+		if err := action.InteractObject(compellingorb, func() bool {
+			o, _ := t.ctx.Data.Objects.FindOne(object.CompellingOrb)
+			return !o.Selectable
+		}); err != nil {
+			return err
 		}
-	}()
-
-	err := action.InteractObject(compellingorb, func() bool {
-		o, _ := t.ctx.Data.Objects.FindOne(object.CompellingOrb)
-		return !o.Selectable
+		utils.Sleep(300)
+		return nil
 	})
-	if err != nil {
-		return err
-	}
-	utils.Sleep(300)
-
-	return nil
 }
 
 func (t Travincal) tryReachDuranceWp() error {
