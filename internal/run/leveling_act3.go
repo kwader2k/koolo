@@ -393,89 +393,18 @@ func (a Leveling) findKhalimsHeart() error {
 }
 
 func (a Leveling) prepareWill() error {
-	_, found := a.ctx.Data.Inventory.Find("KhalimsWill", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-	if !found {
-
-		eye, found := a.ctx.Data.Inventory.Find("KhalimsEye", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			a.ctx.Logger.Info("Khalim's Eye not found, skipping")
-			return nil
-		}
-
-		brain, found := a.ctx.Data.Inventory.Find("KhalimsBrain", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			a.ctx.Logger.Info("Khalim's Brain not found, skipping")
-			return nil
-		}
-
-		heart, found := a.ctx.Data.Inventory.Find("KhalimsHeart", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			a.ctx.Logger.Info("Khalim's Heart not found, skipping")
-			return nil
-		}
-
-		flail, found := a.ctx.Data.Inventory.Find("KhalimsFlail", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-		if !found {
-			a.ctx.Logger.Info("Khalim's Flail not found, skipping")
-			return nil
-		}
-
-		err := action.CubeAddItems(eye, brain, heart, flail)
-		if err != nil {
-			return err
-		}
-
-		err = action.CubeTransmute()
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	return prepareKhalimsWill(a.ctx)
 }
 
 func (a Leveling) openMephistoStairs() error {
 	// Use Travincal/Council run to kill the council
-	khalimsWill, kwfound := a.ctx.Data.Inventory.Find("KhalimsWill", item.LocationInventory, item.LocationStash, item.LocationEquipped)
-	if !kwfound {
-		a.prepareWill()
+	if err := a.prepareWill(); err != nil {
+		return err
 	}
 
-	if !a.ctx.Data.Quests[quest.Act3TheGuardian].Completed() && kwfound {
-		a.ctx.Logger.Info("Khalim's Will found!")
-		if khalimsWill.Location.LocationType != item.LocationEquipped {
-			if a.ctx.Data.ActiveWeaponSlot == 0 {
-				utils.Sleep(500)
-				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.SwapWeapons)
-				utils.Sleep(500)
-			}
-			if khalimsWill.Location.LocationType == item.LocationStash {
-				a.ctx.Logger.Info("It's in the stash, let's pick it up")
-
-				bank, found := a.ctx.Data.Objects.FindOne(object.Bank)
-				if !found {
-					a.ctx.Logger.Info("bank object not found")
-				}
-				utils.Sleep(300)
-				err := action.InteractObject(bank, func() bool {
-					return a.ctx.Data.OpenMenus.Stash
-				})
-				if err != nil {
-					return err
-				}
-			}
-			if khalimsWill.Location.LocationType == item.LocationInventory && !a.ctx.Data.OpenMenus.Inventory {
-				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-			}
-			screenPos := ui.GetScreenCoordsForItem(khalimsWill)
-			a.ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.ShiftKey)
-			utils.Sleep(300)
-			if a.ctx.Data.ActiveWeaponSlot == 1 {
-				utils.Sleep(500)
-				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.SwapWeapons)
-				utils.Sleep(500)
-
-			}
-			step.CloseAllMenus()
+	if !a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
+		if _, _, err := ensureQuestWeaponEquipped(a.ctx, "KhalimsWill", swapWeaponSlot); err != nil {
+			return err
 		}
 	}
 
@@ -492,32 +421,26 @@ func (a Leveling) openMephistoStairs() error {
 	// Swap weapons, equip Khalim's Will
 
 	action.MoveToCoords(compellingorb.Position)
-	if a.ctx.Data.ActiveWeaponSlot == 0 {
-		utils.Sleep(500)
-		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.SwapWeapons)
-		utils.Sleep(500)
-
-	}
-
-	err = action.InteractObject(compellingorb, func() bool {
-		o, _ := a.ctx.Data.Objects.FindOne(object.CompellingOrb)
-		return !o.Selectable
-	})
-	if err != nil {
-		return err
-	}
-	utils.Sleep(300)
-	if a.ctx.Data.ActiveWeaponSlot == 1 {
-		utils.Sleep(500)
-		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.SwapWeapons)
-		utils.Sleep(500)
+	if !a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
+		if err := withQuestWeaponSlot(a.ctx, "KhalimsWill", func() error {
+			if err := action.InteractObject(compellingorb, func() bool {
+				o, _ := a.ctx.Data.Objects.FindOne(object.CompellingOrb)
+				return !o.Selectable
+			}); err != nil {
+				return err
+			}
+			utils.Sleep(300)
+			return nil
+		}); err != nil {
+			return err
+		}
 	}
 
 	// Wait for quest/stairs state update, but do not block longer than needed.
 	waitDeadline := time.Now().Add(12 * time.Second)
 	for {
 		a.ctx.RefreshGameData()
-		if a.ctx.Data.Quests[quest.Act3TheBlackenedTemple].Completed() {
+		if a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
 			break
 		}
 		if _, found := a.ctx.Data.Objects.FindOne(object.StairSR); found {
@@ -529,7 +452,7 @@ func (a Leveling) openMephistoStairs() error {
 		time.Sleep(250 * time.Millisecond)
 	}
 
-	if a.ctx.Data.Quests[quest.Act3TheBlackenedTemple].Completed() {
+	if a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
 		// Interact with the stairs to go to Durance of Hate Level 1
 		stairsr, found := a.ctx.Data.Objects.FindOne(object.StairSR)
 		if !found {
