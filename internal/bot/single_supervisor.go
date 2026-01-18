@@ -30,7 +30,7 @@ const menuActionTimeout = 30 * time.Second
 // Define constants for the in-game activity monitor
 const (
 	activityCheckInterval = 15 * time.Second
-	maxStuckDuration      = 3 * time.Minute
+	maxStuckDuration      = 2 * time.Minute
 )
 
 type SinglePlayerSupervisor struct {

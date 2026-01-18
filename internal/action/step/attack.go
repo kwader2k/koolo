@@ -18,7 +18,7 @@ import (
 )
 
 const attackCycleDuration = 120 * time.Millisecond
-const repositionCooldown = 2 * time.Second // Constant for repositioning cooldown
+const repositionCooldown = 1 * time.Second // Constant for repositioning cooldown
 
 var (
 	statesMutex           sync.RWMutex
@@ -189,7 +189,7 @@ func attack(settings attackSettings) error {
 		// Check if we need to reposition if we aren't doing any damage (prevent attacking through doors etc.)
 		_, state := checkMonsterDamage(monster) // Get the state
 		needsRepositioning := !state.failedAttemptStartTime.IsZero() &&
-			time.Since(state.failedAttemptStartTime) > 3*time.Second
+			time.Since(state.failedAttemptStartTime) > 1500*time.Millisecond
 
 		// Be sure we stay in range of the enemy. ensureEnemyIsInRange will handle reposition attempts.
 		err := ensureEnemyIsInRange(monster, state, settings.maxDistance, settings.minDistance, needsRepositioning)
@@ -436,13 +436,13 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 
 	// Handle repositioning if needed (due to no damage, or no LoS for burst attacks)
 	if needsRepositioning {
-		// If we've already tried repositioning once for this "stuck" phase
-		if state.repositionAttempts >= 1 { // This is the problematic part. User wants to allow 1 attempt.
+		// If we've already tried repositioning 3 times for this "stuck" phase
+		if state.repositionAttempts >= 3 {
 			ctx.Logger.Info(fmt.Sprintf(
-				"Already attempted repositioning for monster [%d] in area [%s]. Skipping further attempts and considering monster unkillable.", // Updated log message
+				"Already attempted repositioning for monster [%d] in area [%s]. Skipping further attempts and considering monster unkillable.",
 				monster.Name, ctx.Data.PlayerUnit.Area.Area().Name,
 			))
-			return ErrMonsterUnreachable // <-- CHANGE: Return specific error
+			return ErrMonsterUnreachable
 		}
 
 		// Check if enough time has passed since the last reposition attempt (cooldown)
@@ -451,7 +451,7 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 		}
 
 		ctx.Logger.Info(fmt.Sprintf(
-			"No damage taken by target monster [%d] in area [%s] for more than 3 seconds. Trying to re-position (attempt %d/1)",
+			"No damage taken by target monster [%d] in area [%s] for more than 1.5 seconds. Trying to re-position (attempt %d/3)",
 			monster.Name, ctx.Data.PlayerUnit.Area.Area().Name, state.repositionAttempts+1,
 		))
 
