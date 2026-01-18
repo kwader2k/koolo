@@ -54,6 +54,11 @@ type GroupLevelingCoordinator struct {
 	leaderPosition data.Position
 	leaderArea     area.ID
 	positionMu     sync.RWMutex
+
+	// Current run tracking
+	currentRun     string
+	currentRunData map[string]interface{}
+	runMu          sync.RWMutex
 }
 
 // NewGroupLevelingCoordinator creates a new coordinator instance
@@ -69,6 +74,7 @@ func NewGroupLevelingCoordinator(ctx *context.Status, iccManager *context.ICCMan
 		bossKillCredits: make(map[string]map[string]bool),
 		synchroStates:   make(map[string]map[string]bool),
 		groupMembers:    make(map[string]bool),
+		currentRunData:  make(map[string]interface{}),
 	}
 
 	// Add self to group members
@@ -163,6 +169,16 @@ func (c *GroupLevelingCoordinator) setupEventSubscriptions() {
 			return nil
 		}
 		c.handleGroupMemberJoinedEvent(evt)
+		return nil
+	})
+
+	// Current run events
+	c.iccManager.Subscribe(context.EventTypeCurrentRun, func(evt context.ICCEvent) error {
+		groupName, _ := evt.Data["group_name"].(string)
+		if groupName != c.groupName {
+			return nil
+		}
+		c.onRunEvent(evt)
 		return nil
 	})
 }
@@ -753,6 +769,47 @@ func (c *GroupLevelingCoordinator) handleGroupMemberJoinedEvent(evt context.ICCE
 				"ready":        true,
 			},
 		)
+	}
+}
+
+// --- Current Run Tracking ---
+func (c *GroupLevelingCoordinator) BroadcastRun(runName string, runData map[string]interface{}) {
+	if !c.IsLeader() {
+		return
+	}
+
+	eventData := map[string]interface{}{
+		"group_name": c.groupName,
+		"run_name":   runName,
+	}
+
+	for k, v := range runData {
+		eventData[k] = v
+	}
+
+	c.iccManager.PublishEvent(
+		context.EventTypeCurrentRun,
+		c.myCharName,
+		eventData,
+	)
+
+	c.logger.Info("Broadcast run", "run_name", runName)
+}
+
+func (c *GroupLevelingCoordinator) onRunEvent(evt context.ICCEvent) {
+	runName, _ := evt.Data["run_name"].(string)
+	if runName == "" {
+		return
+	}
+
+	if c.IsLeader() {
+		return
+	}
+
+	if c.ctx.GroupLevelingState != nil && c.ctx.GroupLevelingState.ExecuteRun != nil {
+		if err := c.ctx.GroupLevelingState.ExecuteRun(runName, evt.Data); err != nil {
+			c.logger.Error("Failed to execute run", "run_name", runName, "error", err)
+		}
 	}
 }
 

@@ -106,6 +106,20 @@ func (a Leveling) runWithGroupCoordination(parameters *RunParameters) error {
 		return err
 	}
 
+	// ExecuteRun callback for followers
+	if !coord.IsLeader() {
+		if a.ctx.GroupLevelingState == nil {
+			a.ctx.GroupLevelingState = &context.GroupLevelingState{}
+		}
+		a.ctx.GroupLevelingState.ExecuteRun = func(runName string, runData map[string]interface{}) error {
+			runInstance := BuildRun(runName)
+			if runInstance == nil {
+				return fmt.Errorf("unknown run: %s", runName)
+			}
+			return runInstance.Run(&RunParameters{})
+		}
+	}
+
 	// Determine my role
 	if coord.IsLeader() {
 		return a.runAsLeader(coord, parameters)
