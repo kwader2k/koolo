@@ -119,6 +119,8 @@ func (n Nihlathak) runStandard(parameters *RunParameters) error {
 		}, nil)
 	}
 
+	action.ItemPickup(30)
+
 	if IsQuestRun(parameters) {
 		err = action.ReturnTown()
 		if err != nil {
@@ -293,5 +295,10 @@ func (n Nihlathak) killPindleFast() error {
 	// Reuse pindleSafePosition from pindleskin.go
 	_ = action.MoveToCoords(pindleSafePosition)
 
-	return n.ctx.Char.KillPindle()
+	if err := n.ctx.Char.KillPindle(); err != nil {
+		return err
+	}
+
+	action.ItemPickup(30)
+	return nil
 }

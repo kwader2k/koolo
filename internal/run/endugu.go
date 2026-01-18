@@ -72,6 +72,7 @@ func (e Endugu) Run(parameters *RunParameters) error {
 
 	// Clear monsters around player
 	action.ClearAreaAroundPlayer(15, data.MonsterEliteFilter())
+	action.ItemPickup(30)
 
 	// Open the chest
 	return action.InteractObject(khalimChest2, func() bool {

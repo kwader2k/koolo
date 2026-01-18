@@ -73,6 +73,8 @@ func (u UberIzual) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	action.ItemPickup(30)
+
 	u.ctx.Logger.Info("Successfully killed Uber Izual")
 	return nil
 }

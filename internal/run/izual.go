@@ -86,6 +86,8 @@ func (i Izual) Run(parameters *RunParameters) error {
 		if err != nil {
 			return err
 		}
+
+		action.ItemPickup(30)
 	}
 
 	err = action.ReturnTown()

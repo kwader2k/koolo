@@ -126,6 +126,7 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 	}
 
 	action.ClearAreaAroundPlayer(30, data.MonsterEliteFilter())
+	action.ItemPickup(30)
 
 	return nil
 }
