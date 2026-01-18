@@ -66,6 +66,8 @@ func BuildRun(run string) Run {
 		return NewAndariel()
 	case string(config.SummonerRun):
 		return NewSummoner()
+	case string(config.ArcaneSanctuaryRun):
+		return NewArcaneSanctuary()
 	case string(config.DurielRun):
 		return NewDuriel()
 	case string(config.MuleRun):

@@ -394,6 +394,10 @@ type CharacterCfg struct {
 		Summoner struct {
 			KillFireEye bool `yaml:"killFireEye"`
 		} `yaml:"summoner"`
+		ArcaneSanctuary struct {
+			OpenChests        bool `yaml:"openChests"`
+			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`
+		} `yaml:"arcane_sanctuary"`
 		DrifterCavern struct {
 			OpenChests        bool `yaml:"openChests"`
 			FocusOnElitePacks bool `yaml:"focusOnElitePacks"`

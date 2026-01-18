@@ -82,7 +82,7 @@ func (s Summoner) runTerrorZone() error {
 	for lane := 0; lane < 4; lane++ {
 		s.ctx.Logger.Info("Clearing Arcane Sanctuary TZ - Lane %d/4", lane+1)
 
-		// Clear this lane properly (handles Summoner only if encountered at lane end)
+		// Clear this lane to End Point (one side)
 		if err := lanes.ClearLane(s.clearMonsterFilter, summonerNPC, summonerFound); err != nil {
 			s.ctx.Logger.Warn("Lane %d clearing issue: %v", lane+1, err)
 		}
@@ -90,6 +90,11 @@ func (s Summoner) runTerrorZone() error {
 		// Open chests at end of lane
 		if s.ctx.CharacterCfg.Game.TerrorZone.OpenChests {
 			lanes.OpenChestsAtEnd()
+		}
+
+		// Return to center via the other side
+		if err := lanes.ReturnToCenter(s.clearMonsterFilter); err != nil {
+			s.ctx.Logger.Warn("Lane %d return path issue: %v", lane+1, err)
 		}
 
 		// Move on to next lane
@@ -176,10 +181,11 @@ func (s Summoner) runStandard(parameters *RunParameters) error {
 // ---------------- ARCANE LANES SYSTEM ----------------
 
 type ArcaneLanes struct {
-	checkPoints []data.Position
-	sequence    []int
-	clearRange  int
-	ctx         *context.Status
+	checkPoints    []data.Position
+	sequence       []int // Sequence to End Point (one side)
+	returnSequence []int // Return path (other side)
+	clearRange     int
+	ctx            *context.Status
 }
 
 // NewArcaneLanes creates a new ArcaneLanes instance
@@ -195,10 +201,47 @@ func NewArcaneLanes() *ArcaneLanes {
 			{X: 25637, Y: 5506}, // Center on Left Lane 5
 			{X: 25683, Y: 5453}, // Center of Lane 6
 		},
-		sequence:   []int{1, 2, 6, 3, 4, 5, 1, 0},
-		clearRange: 30,
-		ctx:        context.Get(),
+		sequence:       []int{1, 2, 6, 3, 4}, // Go to End Point via right side
+		returnSequence: []int{5, 6, 1, 0},    // Return to center via left side
+		clearRange:     30,
+		ctx:            context.Get(),
 	}
+}
+
+// shouldOpenChest determines if a chest should be opened based on bot settings
+// This mimics the logic from action.ClearCurrentLevel for consistency
+func (al *ArcaneLanes) shouldOpenChest(obj data.Object) bool {
+	// Global settings take precedence (same as ClearCurrentLevel)
+	openAllChests := al.ctx.CharacterCfg.Game.InteractWithChests
+	openSuperOnly := al.ctx.CharacterCfg.Game.InteractWithSuperChests && !openAllChests
+
+	// Per-run openChests setting (from ArcaneSanctuary or TerrorZone config)
+	// This is checked automatically - we don't need a parameter
+	openChests := al.ctx.CharacterCfg.Game.ArcaneSanctuary.OpenChests
+	// Check if we're in TZ mode by checking if TerrorZone config is active
+	if len(al.ctx.Data.TerrorZones) > 0 {
+		openChests = al.ctx.CharacterCfg.Game.TerrorZone.OpenChests
+	}
+
+	if !obj.Selectable {
+		// Even if not selectable, allow Arcane-specific chests and those matching IsChest()
+		isArcaneChest := obj.Name == 398 || obj.Name == 399 || obj.Name == 400 || obj.Name == 401 || obj.Name == 402
+		if !obj.IsChest() && !isArcaneChest {
+			return false
+		}
+	}
+
+	// Same logic as ClearCurrentLevel (lines 69-76 of clear_level.go)
+	switch {
+	case openSuperOnly:
+		return obj.IsSuperChest()
+	case openAllChests:
+		return obj.IsChest() || obj.IsSuperChest()
+	case openChests:
+		return obj.IsChest()
+	}
+
+	return false
 }
 
 // ClearLane clears the current lane
@@ -250,26 +293,41 @@ func (al *ArcaneLanes) RotateToNextLane() {
 	}
 }
 
+// ReturnToCenter returns to center via the other side of the lane
+func (al *ArcaneLanes) ReturnToCenter(filter data.MonsterFilter) error {
+	for _, idx := range al.returnSequence {
+		// Clear while moving back to center
+		if err := action.ClearThroughPath(
+			al.checkPoints[idx],
+			al.clearRange,
+			filter,
+		); err != nil {
+			al.ctx.Logger.Debug("ClearThroughPath error at checkpoint %d during return: %v", idx, err)
+			// Continue even on error
+		}
+	}
+	return nil
+}
+
 // OpenChestsAtEnd opens chests at the end of the lane
 func (al *ArcaneLanes) OpenChestsAtEnd() {
 	laneEndPos := al.checkPoints[4] // End Point
-
-	al.ctx.Logger.Debug("Opening chests near lane end")
-
 	chestsOpened := 0
-	for _, obj := range al.ctx.Data.Objects {
-		if !obj.Selectable {
-			continue
-		}
 
-		// Only chests at a reasonable distance from the lane end (5-25 distance)
+	for _, obj := range al.ctx.Data.Objects {
+		// Only check objects within reasonable distance from lane end
 		distance := pather.DistanceFromPoint(obj.Position, laneEndPos)
 		if distance < 5 || distance > 25 {
 			continue
 		}
 
+		// Use shouldOpenChest() to respect bot settings (global + per-run)
+		if !al.shouldOpenChest(obj) {
+			continue
+		}
+
 		if err := action.MoveToCoords(obj.Position); err != nil {
-			al.ctx.Logger.Debug("Failed to move to chest: %v", err)
+			al.ctx.Logger.Debug("Failed to move to chest at distance %d: %v", distance, err)
 			continue
 		}
 
@@ -277,14 +335,14 @@ func (al *ArcaneLanes) OpenChestsAtEnd() {
 			chest, found := al.ctx.Data.Objects.FindByID(obj.ID)
 			return found && !chest.Selectable
 		}); err != nil {
-			al.ctx.Logger.Debug("Failed to open chest: %v", err)
+			al.ctx.Logger.Debug("Failed to open chest Name=%d: %v", obj.Name, err)
 		} else {
 			chestsOpened++
 		}
 	}
 
 	if chestsOpened > 0 {
-		al.ctx.Logger.Debug("Opened %d chests at lane end", chestsOpened)
+		al.ctx.Logger.Info("Opened %d chests at lane end", chestsOpened)
 	}
 }
 
