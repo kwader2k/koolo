@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
@@ -293,19 +294,36 @@ func (ls *LevelingSequence) LoadSettings() error {
 	getAbsPath := func(relPath string) string {
 		return filepath.Join(cwd, relPath)
 	}
-	fileName := ls.ctx.CharacterCfg.Game.LevelingSequence.SequenceFile
+	rawName := strings.TrimSpace(ls.ctx.CharacterCfg.Game.LevelingSequence.SequenceFile)
+	if rawName == "" {
+		message := "Stopping supervisor now. Leveling sequence file is not set.\nSelect a sequence.json file in your config and restart the supervisor"
+		ls.ctx.Logger.Error("leveling sequence file is not set")
+		utils.ShowDialog("Missing leveling sequence for supervisor "+ls.ctx.Name, message)
+		ls.ctx.StopSupervisor()
+		return errors.New("leveling sequence file is not set")
+	}
+	fileName := rawName
+	if strings.HasSuffix(strings.ToLower(fileName), ".json") {
+		fileName = strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	}
 	levelingSequencesPath := getAbsPath(filepath.Join("config", "template", "sequences_leveling"))
 	sequenceFilePath := filepath.Join(levelingSequencesPath, fileName+".json")
 	jsonData, err := utils.GetJsonData(sequenceFilePath)
 	if err != nil {
-		ls.ctx.Logger.Error("failed to load sequence ", "file name", fileName)
+		message := fmt.Sprintf("Stopping supervisor now. Unable to load leveling sequence file: %s.json", fileName)
+		ls.ctx.Logger.Error("failed to load sequence", "file name", fileName, "error", err)
+		utils.ShowDialog("Invalid leveling sequence for supervisor "+ls.ctx.Name, message)
+		ls.ctx.StopSupervisor()
 		return err
 	}
 
 	var sequenceSettings LevelingSequenceSettings
 	err = json.Unmarshal(jsonData, &sequenceSettings)
 	if err != nil {
-		ls.ctx.Logger.Error("failed to parse sequence json ", "file name", fileName)
+		message := fmt.Sprintf("Stopping supervisor now. Invalid leveling sequence JSON: %s.json", fileName)
+		ls.ctx.Logger.Error("failed to parse sequence json", "file name", fileName, "error", err)
+		utils.ShowDialog("Invalid leveling sequence for supervisor "+ls.ctx.Name, message)
+		ls.ctx.StopSupervisor()
 		return err
 	}
 
