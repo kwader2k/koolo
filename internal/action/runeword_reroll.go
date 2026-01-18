@@ -68,26 +68,28 @@ func runewordMeetsTargetStats(itm data.Item, targets []config.RunewordTargetStat
 			}
 		}
 
-		// Handle ED-style rolls that only show up indirectly by comparing base stats with rolled stats.
-		// For those we derive a range rather than trusting itm.FindStat.
+		// Enhanced Damage can be missing as an explicit stat (depending on item/runeword).
+		// We compute a best-effort value and, when a range is possible, we use the lower bound.
 		switch ts.StatID {
 		case stat.EnhancedDamage, stat.EnhancedDamageMin, stat.DamagePercent:
 			if minED, maxED, exact, ok := GetRunewordWeaponDamageEDPercentRange(itm); ok {
-				// Conservative: require minED >= Min and cap maxED when a Max value is set.
-				if float64(minED) < ts.Min {
-					ctx.Logger.Debug("Runeword reroll: weapon ED not guaranteed to meet minimum; rule not satisfied",
+				ed := minED
+				if float64(ed) < ts.Min {
+					ctx.Logger.Debug("Runeword reroll: weapon ED does not meet minimum; rule not satisfied",
 						"statID", int(ts.StatID),
 						"requiredMin", ts.Min,
+						"ed", ed,
 						"edMin", minED,
 						"edMax", maxED,
 						"edExact", exact,
 					)
 					return false
 				}
-				if maxConstraint != nil && float64(maxED) > *maxConstraint {
-					ctx.Logger.Debug("Runeword reroll: weapon ED not guaranteed to be <= maximum; rule not satisfied",
+				if maxConstraint != nil && float64(ed) > *maxConstraint {
+					ctx.Logger.Debug("Runeword reroll: weapon ED exceeds maximum; rule not satisfied",
 						"statID", int(ts.StatID),
 						"requiredMax", *maxConstraint,
+						"ed", ed,
 						"edMin", minED,
 						"edMax", maxED,
 						"edExact", exact,
@@ -289,11 +291,8 @@ func formatActualStat(itm data.Item, label string, groupTag string, ts config.Ru
 		// so we derive them from base/current values when needed.
 		switch ts.StatID {
 		case stat.EnhancedDamage, stat.EnhancedDamageMin, stat.DamagePercent:
-			if minED, maxED, exact, ok := GetRunewordWeaponDamageEDPercentRange(itm); ok {
-				if exact {
-					return fmt.Sprintf("%s %d", label, minED)
-				}
-				return fmt.Sprintf("%s %d-%d", label, minED, maxED)
+			if minED, _, _, ok := GetRunewordWeaponDamageEDPercentRange(itm); ok {
+				return fmt.Sprintf("%s %d", label, minED)
 			}
 			return fmt.Sprintf("%s n/a", label)
 		case stat.EnhancedDefense:
