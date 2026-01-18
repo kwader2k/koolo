@@ -3,6 +3,7 @@ package action
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -29,9 +30,12 @@ func HasSkillPointsToUse() bool {
 // EnsureSkillPoints allocates skill points according to the leveling character's build.
 func EnsureSkillPoints() error {
 	ctx := context.Get()
+	ctx.SetLastAction("EnsureSkillPoints")
 	char, isLevelingChar := ctx.Char.(context.LevelingCharacter)
 	if !isLevelingChar {
-		return nil
+		if !ctx.CharacterCfg.Character.AutoStatSkill.Enabled {
+			return nil
+		}
 	}
 
 	ctx.IsAllocatingStatsOrSkills.Store(true)
@@ -45,11 +49,14 @@ func EnsureSkillPoints() error {
 	}
 	skillPoints, hasUnusedPoints := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
 	remainingPoints := skillPoints.Value
-	if !isLevelingChar || !hasUnusedPoints || remainingPoints == 0 {
+	if !hasUnusedPoints || remainingPoints == 0 {
 		if ctx.Data.OpenMenus.SkillTree {
 			step.CloseAllMenus()
 		}
 		return nil
+	}
+	if !isLevelingChar {
+		return ensureConfiguredSkillPoints(remainingPoints)
 	}
 	// Check if we should use packet mode for any leveling class
 	usePacketMode := false
@@ -76,27 +83,28 @@ func EnsureSkillPoints() error {
 			currentSkillLevel = int(skillData.Level)
 		}
 		if currentSkillLevel < targetLevels[sk] {
-			var success bool
+			spent := 0
 			if usePacketMode {
 				// Use packet mode
 				err := LearnSkillPacket(sk)
-				success = err == nil
-				if !success {
+				if err != nil {
 					ctx.Logger.Error(fmt.Sprintf("Failed to learn skill %v via packet: %v", sk, err))
 					break
 				}
+				spent = 1
 			} else {
 				// Use traditional UI mode
-				success = spendSkillPoint(sk)
-				if !success {
+				spent = spendSkillPoint(sk, false)
+				if spent <= 0 {
 					break
 				}
 			}
-			if success {
-				remainingPoints--
-				if remainingPoints <= 0 {
-					break
-				}
+			if spent <= 0 {
+				break
+			}
+			remainingPoints -= spent
+			if remainingPoints <= 0 {
+				break
 			}
 		}
 	}
@@ -106,8 +114,145 @@ func EnsureSkillPoints() error {
 	return nil
 }
 
+func ensureConfiguredSkillPoints(remainingPoints int) error {
+	ctx := context.Get()
+
+	learned := make(map[skill.ID]bool, len(ctx.Data.PlayerUnit.Skills))
+	for id, skillData := range ctx.Data.PlayerUnit.Skills {
+		if skillData.Level > 0 {
+			learned[id] = true
+		}
+	}
+
+	skillKeyToID := make(map[string]skill.ID, len(skill.SkillNames))
+	for id, name := range skill.SkillNames {
+		skillKeyToID[strings.ToLower(name)] = id
+	}
+	skillNameToID := make(map[string]skill.ID, len(skill.Skills))
+	for id, sk := range skill.Skills {
+		if sk.Name == "" {
+			continue
+		}
+		skillNameToID[strings.ToLower(sk.Name)] = id
+	}
+
+	usePacketMode := false
+	for _, entry := range ctx.CharacterCfg.Character.AutoStatSkill.Skills {
+		if remainingPoints <= 0 {
+			break
+		}
+		if entry.Target <= 0 {
+			continue
+		}
+		skillID, ok := skillKeyToID[strings.ToLower(strings.TrimSpace(entry.Skill))]
+		if !ok {
+			ctx.Logger.Warn(fmt.Sprintf("Unknown skill key in auto skill config: %s", entry.Skill))
+			continue
+		}
+
+		currentSkillLevel := 0
+		if skillData, found := ctx.Data.PlayerUnit.Skills[skillID]; found {
+			currentSkillLevel = int(skillData.Level)
+		}
+		bulkStep := 0
+		failures := 0
+		for currentSkillLevel < entry.Target && remainingPoints > 0 {
+			if ok := ensureSkillPrereqs(skillID, skillNameToID, learned, &remainingPoints); !ok {
+				break
+			}
+			pointsNeeded := entry.Target - currentSkillLevel
+			useBulk := false
+			if bulkStep > 1 {
+				useBulk = pointsNeeded >= bulkStep && remainingPoints >= bulkStep
+			} else if pointsNeeded >= 20 && remainingPoints >= 20 {
+				useBulk = true
+			}
+			spent := spendSkillPoint(skillID, useBulk)
+			if spent <= 0 {
+				failures++
+				if failures >= 3 {
+					break
+				}
+				continue
+			}
+			failures = 0
+			if spent > pointsNeeded {
+				ctx.Logger.Warn(fmt.Sprintf("Spent more skill points than requested for %s (spent=%d, needed=%d)", entry.Skill, spent, pointsNeeded))
+				spent = pointsNeeded
+			}
+			if useBulk && bulkStep == 0 && spent > 1 {
+				bulkStep = spent
+			}
+			currentSkillLevel += spent
+			remainingPoints -= spent
+			learned[skillID] = true
+		}
+	}
+
+	if !usePacketMode {
+		return step.CloseAllMenus()
+	}
+	return nil
+}
+
+func ensureSkillPrereqs(skillID skill.ID, skillNameToID map[string]skill.ID, learned map[skill.ID]bool, remainingPoints *int) bool {
+	ctx := context.Get()
+
+	visiting := make(map[skill.ID]bool)
+	var ensurePrereq func(skill.ID) bool
+	ensurePrereq = func(target skill.ID) bool {
+		if *remainingPoints <= 0 {
+			return false
+		}
+		if visiting[target] {
+			return false
+		}
+		visiting[target] = true
+		defer delete(visiting, target)
+
+		sk := skill.Skills[target]
+		reqs := []string{sk.ReqSkill1, sk.ReqSkill2}
+		for _, reqName := range reqs {
+			if strings.TrimSpace(reqName) == "" {
+				continue
+			}
+			reqID, ok := skillNameToID[strings.ToLower(reqName)]
+			if !ok {
+				ctx.Logger.Warn(fmt.Sprintf("Prereq skill name not found: %s", reqName))
+				return false
+			}
+			if learned[reqID] {
+				continue
+			}
+			if skillData, found := ctx.Data.PlayerUnit.Skills[reqID]; found && skillData.Level > 0 {
+				learned[reqID] = true
+				continue
+			}
+			if !ensurePrereq(reqID) {
+				return false
+			}
+			if *remainingPoints <= 0 {
+				return false
+			}
+			spent := spendSkillPoint(reqID, false)
+			if spent <= 0 {
+				ctx.Logger.Warn(fmt.Sprintf("Failed to learn prereq skill: %s", reqName))
+				return false
+			}
+			if spent > *remainingPoints {
+				spent = *remainingPoints
+			}
+			*remainingPoints -= spent
+			learned[reqID] = true
+		}
+		return true
+	}
+
+	return ensurePrereq(skillID)
+}
+
 // spendSkillPoint spends a skill point on the given skill using the in-game UI.
-func spendSkillPoint(skillID skill.ID) bool {
+func spendSkillPoint(skillID skill.ID, useBulk bool) int {
 	ctx := context.Get()
 	beforePoints, _ := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
 	if !ctx.Data.OpenMenus.SkillTree {
@@ -118,7 +263,7 @@ func spendSkillPoint(skillID skill.ID) bool {
 	skillDesc := sk.Desc()
 	if !found {
 		ctx.Logger.Error(fmt.Sprintf("skill not found for character: %v", skillID))
-		return false
+		return 0
 	}
 	if ctx.Data.LegacyGraphics {
 		ctx.HID.Click(game.LeftButton, uiSkillPagePositionLegacy[skillDesc.Page-1].X, uiSkillPagePositionLegacy[skillDesc.Page-1].Y)
@@ -127,13 +272,41 @@ func spendSkillPoint(skillID skill.ID) bool {
 	}
 	utils.Sleep(200)
 	if ctx.Data.LegacyGraphics {
-		ctx.HID.Click(game.LeftButton, uiSkillColumnPositionLegacy[skillDesc.Column-1], uiSkillRowPositionLegacy[skillDesc.Row-1])
+		if useBulk {
+			ctx.HID.ClickWithModifier(game.LeftButton, uiSkillColumnPositionLegacy[skillDesc.Column-1], uiSkillRowPositionLegacy[skillDesc.Row-1], game.ShiftKey)
+		} else {
+			ctx.HID.Click(game.LeftButton, uiSkillColumnPositionLegacy[skillDesc.Column-1], uiSkillRowPositionLegacy[skillDesc.Row-1])
+		}
 	} else {
-		ctx.HID.Click(game.LeftButton, uiSkillColumnPosition[skillDesc.Column-1], uiSkillRowPosition[skillDesc.Row-1])
+		if useBulk {
+			ctx.HID.ClickWithModifier(game.LeftButton, uiSkillColumnPosition[skillDesc.Column-1], uiSkillRowPosition[skillDesc.Row-1], game.ShiftKey)
+		} else {
+			ctx.HID.Click(game.LeftButton, uiSkillColumnPosition[skillDesc.Column-1], uiSkillRowPosition[skillDesc.Row-1])
+		}
 	}
 	utils.Sleep(300)
 	afterPoints, _ := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
-	return beforePoints.Value-afterPoints.Value == 1
+	spent := beforePoints.Value - afterPoints.Value
+	if spent == 0 && useBulk {
+		ctx.RefreshGameData()
+		afterPoints, _ = ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
+		spent = beforePoints.Value - afterPoints.Value
+		if spent == 0 {
+			if ctx.Data.LegacyGraphics {
+				ctx.HID.Click(game.LeftButton, uiSkillColumnPositionLegacy[skillDesc.Column-1], uiSkillRowPositionLegacy[skillDesc.Row-1])
+			} else {
+				ctx.HID.Click(game.LeftButton, uiSkillColumnPosition[skillDesc.Column-1], uiSkillRowPosition[skillDesc.Row-1])
+			}
+			utils.Sleep(300)
+			ctx.RefreshGameData()
+			afterPoints, _ = ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
+			spent = beforePoints.Value - afterPoints.Value
+		}
+	}
+	if spent < 0 {
+		return 0
+	}
+	return spent
 }
 
 // EnsureSkillBindings ensures that all required skills are bound to hotkeys and the main skill is set.
@@ -141,16 +314,19 @@ func EnsureSkillBindings() error {
 	ctx := context.Get()
 	ctx.SetLastAction("EnsureSkillBindings")
 	char, isLevelingChar := ctx.Char.(context.LevelingCharacter)
-	if !isLevelingChar {
-		return nil
-	}
 	// New: avoid opening skill UI on a brand-new character; this is where crashes happen.
 	clvl, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if clvl.Value <= 1 {
 		ctx.Logger.Debug("Level 1 character detected, skipping EnsureSkillBindings for now.")
 		return nil
 	}
-	mainSkill, skillsToBind := char.SkillsToBind()
+	var mainSkill skill.ID
+	var skillsToBind []skill.ID
+	if isLevelingChar {
+		mainSkill, skillsToBind = char.SkillsToBind()
+	} else {
+		skillsToBind = ctx.Char.CheckKeyBindings()
+	}
 	notBoundSkills := make([]skill.ID, 0, len(skillsToBind))
 	for _, sk := range skillsToBind {
 		// Only add skills that are not already bound AND are either TomeOfTownPortal or the player has learned them.
@@ -186,6 +362,14 @@ func EnsureSkillBindings() error {
 		utils.Sleep(300)
 		menuOpen = true
 		menuIsMain = bindOnLeft
+	}
+	closeSkillMenu := func() {
+		if !menuOpen {
+			return
+		}
+		step.CloseAllMenus()
+		utils.Sleep(300)
+		menuOpen = false
 	}
 
 	preferLeftBindings := mainSkill != skill.AttackSkill
@@ -252,8 +436,9 @@ func EnsureSkillBindings() error {
 				}
 			}
 		}
-	} else {
-		// Special handling for Fire Bolt on level 1 sorcs
+		// Close the skill assignment menu if it was opened for binding F-keys
+		closeSkillMenu()
+	} else if isLevelingChar {
 		if _, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.FireBolt); !found {
 			if _, known := ctx.Data.PlayerUnit.Skills[skill.FireBolt]; !known {
 				ctx.Logger.Debug("Fire Bolt not learned; skipping Fire Bolt binding.")
@@ -275,35 +460,32 @@ func EnsureSkillBindings() error {
 							ctx.HID.PressKeyBinding(availableKB[0])
 							utils.Sleep(300)
 						}
+						closeSkillMenu()
 					}
 				}
 			}
 		}
 	}
-	// NEW: Check if the main skill exists before trying to bind it
-	mainSkillExists := false
-	if mainSkill == skill.TomeOfTownPortal {
-		// Town Portal tome can always be bound
-		mainSkillExists = true
-	} else if skillData, found := ctx.Data.PlayerUnit.Skills[mainSkill]; found && skillData.Level > 0 {
-		// Regular skill exists and has at least 1 level
-		mainSkillExists = true
-	}
-	if !mainSkillExists {
-		ctx.Logger.Debug(fmt.Sprintf("Main skill %v not yet available (level %d), skipping left-hand binding", skill.SkillNames[mainSkill], clvl.Value))
-		return nil
-	}
-	// Set left (main) skill - only if it exists
-	openSkillMenu(true)
-	// Give time for the main skill assignment UI to open
-	skillPosition, found := calculateSkillPositionInUI(true, mainSkill)
-	if found {
-		ctx.HID.Click(game.LeftButton, skillPosition.X, skillPosition.Y)
-		utils.Sleep(300)
-		// Always close menu after binding
-	} else {
-		ctx.Logger.Error(fmt.Sprintf("Failed to find UI position for main skill %v (ID: %d)", skill.SkillNames[mainSkill], mainSkill))
-		// Close the menu we just opened since we can't bind the skill
+	if isLevelingChar {
+		mainSkillExists := false
+		if mainSkill == skill.TomeOfTownPortal {
+			mainSkillExists = true
+		} else if skillData, found := ctx.Data.PlayerUnit.Skills[mainSkill]; found && skillData.Level > 0 {
+			mainSkillExists = true
+		}
+		if !mainSkillExists {
+			ctx.Logger.Debug(fmt.Sprintf("Main skill %v not yet available (level %d), skipping left-hand binding", skill.SkillNames[mainSkill], clvl.Value))
+			return nil
+		}
+		openSkillMenu(true)
+		skillPosition, found := calculateSkillPositionInUI(true, mainSkill)
+		if found {
+			ctx.HID.Click(game.LeftButton, skillPosition.X, skillPosition.Y)
+			utils.Sleep(300)
+		} else {
+			ctx.Logger.Error(fmt.Sprintf("Failed to find UI position for main skill %v (ID: %d)", skill.SkillNames[mainSkill], mainSkill))
+		}
+		closeSkillMenu()
 	}
 	return nil
 }

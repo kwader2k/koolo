@@ -18,15 +18,15 @@ type TZGroup struct {
 
 // SchedulerStatusInfo contains scheduler state for UI display
 type SchedulerStatusInfo struct {
-	Enabled         bool              `json:"enabled"`
-	Mode            string            `json:"mode"`
-	Phase           string            `json:"phase"`
-	PhaseStartTime  string            `json:"phaseStartTime"`
-	PhaseEndTime    string            `json:"phaseEndTime"`
-	TodayWakeTime   string            `json:"todayWakeTime"`
-	TodayRestTime   string            `json:"todayRestTime"`
-	PlayedMinutes   int               `json:"playedMinutes"`
-	NextBreaks      []SchedulerBreak  `json:"nextBreaks"`
+	Enabled        bool             `json:"enabled"`
+	Mode           string           `json:"mode"`
+	Phase          string           `json:"phase"`
+	PhaseStartTime string           `json:"phaseStartTime"`
+	PhaseEndTime   string           `json:"phaseEndTime"`
+	TodayWakeTime  string           `json:"todayWakeTime"`
+	TodayRestTime  string           `json:"todayRestTime"`
+	PlayedMinutes  int              `json:"playedMinutes"`
+	NextBreaks     []SchedulerBreak `json:"nextBreaks"`
 }
 
 type SchedulerBreak struct {
@@ -70,26 +70,33 @@ type AllDropRecord struct {
 }
 
 type CharacterSettings struct {
-	Version               string
-	ErrorMessage          string
-	Supervisor            string
-	CloneSource           string
-	Config                *config.CharacterCfg
-	Saved                 bool
-	DayNames              []string
-	EnabledRuns           []string
-	DisabledRuns          []string
-	TerrorZoneGroups      []TZGroup
-	RecipeList            []string
-	RunewordRecipeList    []string
+	Version                 string
+	ErrorMessage            string
+	Supervisor              string
+	CloneSource             string
+	Config                  *config.CharacterCfg
+	SkillOptions            []SkillOption
+	SkillPrereqs            map[string][]string
+	Saved                   bool
+	DayNames                []string
+	EnabledRuns             []string
+	DisabledRuns            []string
+	TerrorZoneGroups        []TZGroup
+	RecipeList              []string
+	RunewordRecipeList      []string
 	RunewordFavoriteRecipes []string
-	RunFavoriteRuns       []string
-	RunewordRuneNames     map[string]string
-	RunewordRerollable    map[string]bool
-	AvailableProfiles     []string
-	FarmerProfiles        []string
-	LevelingSequenceFiles []string
-	Supervisors           []string
+	RunFavoriteRuns         []string
+	RunewordRuneNames       map[string]string
+	RunewordRerollable      map[string]bool
+	AvailableProfiles       []string
+	FarmerProfiles          []string
+	LevelingSequenceFiles   []string
+	Supervisors             []string
+}
+
+type SkillOption struct {
+	Key  string
+	Name string
 }
 
 type ConfigData struct {

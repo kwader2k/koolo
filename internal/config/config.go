@@ -175,6 +175,32 @@ type TimeRange struct {
 	EndVarianceMin   int       `yaml:"endVarianceMin,omitempty"`   // +/- minutes for end time
 }
 
+type AutoStatSkillConfig struct {
+	Enabled            bool                 `yaml:"enabled"`
+	Stats              []AutoStatSkillStat  `yaml:"stats,omitempty"`
+	Skills             []AutoStatSkillSkill `yaml:"skills,omitempty"`
+	Respec             AutoRespecConfig     `yaml:"autoRespec,omitempty"`
+	ExcludeQuestStats  bool                 `yaml:"excludeQuestStats,omitempty"`
+	ExcludeQuestSkills bool                 `yaml:"excludeQuestSkills,omitempty"`
+}
+
+type AutoStatSkillStat struct {
+	Stat   string `yaml:"stat"`
+	Target int    `yaml:"target"`
+}
+
+type AutoStatSkillSkill struct {
+	Skill  string `yaml:"skill"`
+	Target int    `yaml:"target"`
+}
+
+type AutoRespecConfig struct {
+	Enabled     bool `yaml:"enabled"`
+	TokenFirst  bool `yaml:"tokenFirst,omitempty"`
+	TargetLevel int  `yaml:"targetLevel,omitempty"`
+	Applied     bool `yaml:"applied,omitempty"`
+}
+
 type CharacterCfg struct {
 	MaxGameLength        int    `yaml:"maxGameLength"`
 	Username             string `yaml:"username"`
@@ -237,16 +263,17 @@ type CharacterCfg struct {
 		RejuvPotionCount   int         `yaml:"rejuvPotionCount"`
 	} `yaml:"inventory"`
 	Character struct {
-		Class                        string `yaml:"class"`
-		UseMerc                      bool   `yaml:"useMerc"`
-		StashToShared                bool   `yaml:"stashToShared"`
-		UseTeleport                  bool   `yaml:"useTeleport"`
-		ClearPathDist                int    `yaml:"clearPathDist"`
-		ShouldHireAct2MercFrozenAura bool   `yaml:"shouldHireAct2MercFrozenAura"`
-		UseExtraBuffs                bool   `yaml:"useExtraBuffs"`
-		UseSwapForBuffs              bool   `yaml:"use_swap_for_buffs"`
-		BuffOnNewArea                bool   `yaml:"buffOnNewArea"`
-		BuffAfterWP                  bool   `yaml:"buffAfterWP"`
+		Class                        string              `yaml:"class"`
+		UseMerc                      bool                `yaml:"useMerc"`
+		StashToShared                bool                `yaml:"stashToShared"`
+		UseTeleport                  bool                `yaml:"useTeleport"`
+		ClearPathDist                int                 `yaml:"clearPathDist"`
+		ShouldHireAct2MercFrozenAura bool                `yaml:"shouldHireAct2MercFrozenAura"`
+		UseExtraBuffs                bool                `yaml:"useExtraBuffs"`
+		UseSwapForBuffs              bool                `yaml:"use_swap_for_buffs"`
+		BuffOnNewArea                bool                `yaml:"buffOnNewArea"`
+		BuffAfterWP                  bool                `yaml:"buffAfterWP"`
+		AutoStatSkill                AutoStatSkillConfig `yaml:"autoStatSkill"`
 		BerserkerBarb                struct {
 			FindItemSwitch              bool `yaml:"find_item_switch"`
 			SkipPotionPickupInTravincal bool `yaml:"skip_potion_pickup_in_travincal"`

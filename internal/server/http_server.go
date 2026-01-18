@@ -32,6 +32,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/difficulty"
+	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/bot"
 	"github.com/hectorgimenez/koolo/internal/config"
@@ -249,6 +250,17 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 		},
 		"upper": strings.ToUpper,
 		"trim":  strings.TrimSpace,
+		"isLevelingBuild": func(build string) bool {
+			if strings.HasSuffix(build, "_leveling") {
+				return true
+			}
+			switch build {
+			case "paladin", "necromancer", "assassin", "barb_leveling":
+				return true
+			default:
+				return false
+			}
+		},
 		"toJSON": func(v interface{}) template.JS {
 			b, err := json.Marshal(v)
 			if err != nil {
@@ -440,6 +452,163 @@ func containss(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+func resolveSkillClassFromBuild(build string) string {
+	switch build {
+	case "amazon_leveling", "javazon":
+		return "ama"
+	case "sorceress", "nova", "hydraorb", "lightsorc", "fireballsorc", "sorceress_leveling":
+		return "sor"
+	case "necromancer":
+		return "nec"
+	case "paladin", "hammerdin", "foh", "dragondin", "smiter":
+		return "pal"
+	case "barb_leveling", "berserker", "warcry_barb":
+		return "bar"
+	case "druid_leveling", "winddruid":
+		return "dru"
+	case "assassin", "trapsin", "mosaic":
+		return "ass"
+	default:
+		return ""
+	}
+}
+
+func buildSkillOptionsForBuild(build string) []SkillOption {
+	classKey := resolveSkillClassFromBuild(build)
+	options := make([]SkillOption, 0)
+	for id, sk := range skill.Skills {
+		if sk.Class == "" {
+			continue
+		}
+		if classKey != "" && sk.Class != classKey {
+			continue
+		}
+		key := skill.SkillNames[id]
+		name := sk.Name
+		if name == "" {
+			name = key
+		}
+		options = append(options, SkillOption{Key: key, Name: name})
+	}
+	sort.Slice(options, func(i, j int) bool {
+		return options[i].Name < options[j].Name
+	})
+	return options
+}
+
+func buildSkillPrereqsForBuild(build string) map[string][]string {
+	classKey := resolveSkillClassFromBuild(build)
+	nameToKey := make(map[string]string)
+	for id, sk := range skill.Skills {
+		key := skill.SkillNames[id]
+		if key == "" {
+			continue
+		}
+		nameToKey[strings.ToLower(key)] = key
+		if sk.Name != "" {
+			nameToKey[strings.ToLower(sk.Name)] = key
+		}
+	}
+
+	prereqs := make(map[string][]string)
+	for id, sk := range skill.Skills {
+		if sk.Class == "" {
+			continue
+		}
+		if classKey != "" && sk.Class != classKey {
+			continue
+		}
+		key := skill.SkillNames[id]
+		if key == "" {
+			continue
+		}
+		reqs := make([]string, 0, 2)
+		for _, reqName := range []string{sk.ReqSkill1, sk.ReqSkill2} {
+			if reqName == "" {
+				continue
+			}
+			if reqKey, ok := nameToKey[strings.ToLower(reqName)]; ok {
+				reqs = append(reqs, reqKey)
+			}
+		}
+		if len(reqs) > 0 {
+			prereqs[key] = reqs
+		}
+	}
+
+	return prereqs
+}
+
+func (s *HttpServer) updateAutoStatSkillFromForm(values url.Values, cfg *config.CharacterCfg) {
+	oldRespec := cfg.Character.AutoStatSkill.Respec
+
+	cfg.Character.AutoStatSkill.Enabled = values.Has("autoStatSkillEnabled")
+	cfg.Character.AutoStatSkill.ExcludeQuestStats = values.Has("autoStatSkillExcludeQuestStats")
+	cfg.Character.AutoStatSkill.ExcludeQuestSkills = values.Has("autoStatSkillExcludeQuestSkills")
+
+	statKeys := values["autoStatSkillStat[]"]
+	statTargets := values["autoStatSkillStatTarget[]"]
+	stats := make([]config.AutoStatSkillStat, 0, len(statKeys))
+	for i, statKey := range statKeys {
+		if i >= len(statTargets) {
+			break
+		}
+		statKey = strings.TrimSpace(statKey)
+		if statKey == "" {
+			continue
+		}
+		target, err := strconv.Atoi(strings.TrimSpace(statTargets[i]))
+		if err != nil || target <= 0 {
+			continue
+		}
+		stats = append(stats, config.AutoStatSkillStat{Stat: statKey, Target: target})
+	}
+	cfg.Character.AutoStatSkill.Stats = stats
+
+	skillKeys := values["autoStatSkillSkill[]"]
+	skillTargets := values["autoStatSkillSkillTarget[]"]
+	skills := make([]config.AutoStatSkillSkill, 0, len(skillKeys))
+	for i, skillKey := range skillKeys {
+		if i >= len(skillTargets) {
+			break
+		}
+		skillKey = strings.TrimSpace(skillKey)
+		if skillKey == "" {
+			continue
+		}
+		target, err := strconv.Atoi(strings.TrimSpace(skillTargets[i]))
+		if err != nil || target <= 0 {
+			continue
+		}
+		skills = append(skills, config.AutoStatSkillSkill{Skill: skillKey, Target: target})
+	}
+	cfg.Character.AutoStatSkill.Skills = skills
+
+	respecEnabled := values.Has("autoRespecEnabled") && cfg.Character.AutoStatSkill.Enabled
+	targetLevel := 0
+	if raw := strings.TrimSpace(values.Get("autoRespecTargetLevel")); raw != "" {
+		if n, err := strconv.Atoi(raw); err == nil {
+			if n < 0 {
+				n = 0
+			} else if n > 0 && n < 2 {
+				n = 2
+			} else if n > 99 {
+				n = 99
+			}
+			targetLevel = n
+		}
+	}
+	cfg.Character.AutoStatSkill.Respec.Enabled = respecEnabled
+	cfg.Character.AutoStatSkill.Respec.TokenFirst = values.Has("autoRespecTokenFirst") && respecEnabled
+	cfg.Character.AutoStatSkill.Respec.TargetLevel = targetLevel
+
+	if !respecEnabled {
+		cfg.Character.AutoStatSkill.Respec.Applied = false
+	} else if !oldRespec.Enabled || oldRespec.TargetLevel != targetLevel {
+		cfg.Character.AutoStatSkill.Respec.Applied = false
+	}
 }
 
 func (s *HttpServer) initialData(w http.ResponseWriter, r *http.Request) {
@@ -757,6 +926,7 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/sequence-editor/save", s.sequenceAPI.handleSaveSequence)
 	http.HandleFunc("/api/sequence-editor/delete", s.sequenceAPI.handleDeleteSequence)
 	http.HandleFunc("/api/sequence-editor/files", s.sequenceAPI.handleListSequenceFiles)
+	http.HandleFunc("/api/skill-options", s.skillOptionsAPI)
 
 	http.HandleFunc("/api/supervisors/bulk-apply", s.bulkApplyCharacterSettings)
 	http.HandleFunc("/api/scheduler-history", s.schedulerHistory)
@@ -1637,6 +1807,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 		cfg.Character.StashToShared = values.Has("characterStashToShared")
 		cfg.Character.UseTeleport = values.Has("characterUseTeleport")
 		cfg.Character.UseExtraBuffs = values.Has("characterUseExtraBuffs")
+		s.updateAutoStatSkillFromForm(values, cfg)
 
 		// Game Settings (General)
 		if v := values.Get("gameMinGoldPickupThreshold"); v != "" {
@@ -2124,6 +2295,7 @@ func applyRunewordSettings(dst *config.CharacterCfg, src *config.CharacterCfg) {
 
 func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 	sequenceFiles := s.listLevelingSequenceFiles()
+	defaultSkillOptions := buildSkillOptionsForBuild("")
 	var err error
 	if r.Method == http.MethodPost {
 		err = r.ParseForm()
@@ -2131,6 +2303,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			s.templates.ExecuteTemplate(w, "character_settings.gohtml", CharacterSettings{
 				Version:               config.Version,
 				ErrorMessage:          err.Error(),
+				SkillOptions:          defaultSkillOptions,
 				LevelingSequenceFiles: sequenceFiles,
 				RunFavoriteRuns:       config.Koolo.RunFavoriteRuns,
 			})
@@ -2147,6 +2320,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 					Version:               config.Version,
 					ErrorMessage:          err.Error(),
 					Supervisor:            supervisorName,
+					SkillOptions:          defaultSkillOptions,
 					LevelingSequenceFiles: sequenceFiles,
 					RunFavoriteRuns:       config.Koolo.RunFavoriteRuns,
 				})
@@ -2158,6 +2332,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 					Version:               config.Version,
 					ErrorMessage:          "failed to load newly created configuration",
 					Supervisor:            supervisorName,
+					SkillOptions:          defaultSkillOptions,
 					LevelingSequenceFiles: sequenceFiles,
 					RunFavoriteRuns:       config.Koolo.RunFavoriteRuns,
 				})
@@ -2230,6 +2405,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Character.UseSwapForBuffs = r.Form.Has("useSwapForBuffs")
 		cfg.Character.BuffOnNewArea = r.Form.Has("characterBuffOnNewArea")
 		cfg.Character.BuffAfterWP = r.Form.Has("characterBuffAfterWP")
+		s.updateAutoStatSkillFromForm(r.Form, cfg)
 
 		// Process ClearPathDist - only relevant when teleport is disabled
 		if !cfg.Character.UseTeleport {
@@ -2828,6 +3004,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cloneSource = cloneParam
 		}
 	}
+	skillOptions := buildSkillOptionsForBuild(cfg.Character.Class)
 
 	enabledRuns := make([]string, 0)
 	for _, run := range cfg.Game.Runs {
@@ -2892,6 +3069,8 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		Supervisor:            supervisor,
 		CloneSource:           cloneSource,
 		Config:                cfg,
+		SkillOptions:          skillOptions,
+		SkillPrereqs:          buildSkillPrereqsForBuild(cfg.Character.Class),
 		DayNames:              dayNames,
 		EnabledRuns:           enabledRuns,
 		DisabledRuns:          disabledRuns,
@@ -3308,6 +3487,21 @@ func (s *HttpServer) resetMuling(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
+}
+
+func (s *HttpServer) skillOptionsAPI(w http.ResponseWriter, r *http.Request) {
+	build := r.URL.Query().Get("build")
+	payload := struct {
+		Options  []SkillOption       `json:"options"`
+		Prereqs  map[string][]string `json:"prereqs"`
+		Resolved string              `json:"resolvedBuild"`
+	}{
+		Options:  buildSkillOptionsForBuild(build),
+		Prereqs:  buildSkillPrereqsForBuild(build),
+		Resolved: build,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(payload)
 }
 
 // openDroplogs opens the droplogs directory in Windows Explorer.

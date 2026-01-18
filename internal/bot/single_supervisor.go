@@ -124,6 +124,27 @@ func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
 
 }
 
+func (s *SinglePlayerSupervisor) shouldSkipKeybindingsForRespec() bool {
+	ctx := s.bot.ctx
+	if ctx == nil || ctx.CharacterCfg == nil {
+		return false
+	}
+	if _, isLevelingChar := ctx.Char.(ct.LevelingCharacter); isLevelingChar {
+		return false
+	}
+
+	autoCfg := ctx.CharacterCfg.Character.AutoStatSkill
+	if !autoCfg.Enabled || !autoCfg.Respec.Enabled || autoCfg.Respec.Applied {
+		return false
+	}
+	if autoCfg.Respec.TargetLevel == 0 {
+		return true
+	}
+
+	level, ok := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+	return ok && level.Value == autoCfg.Respec.TargetLevel
+}
+
 // Start will return error if it can be started, otherwise will always return nil
 func (s *SinglePlayerSupervisor) Start() error {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -289,16 +310,20 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 
 		if firstRun {
-			missingKeybindings := s.bot.ctx.Char.CheckKeyBindings()
-			if len(missingKeybindings) > 0 {
-				var missingKeybindingsText = "Missing key binding for skill(s):"
-				for _, v := range missingKeybindings {
-					missingKeybindingsText += fmt.Sprintf("\n%s", skill.SkillNames[v])
-				}
-				missingKeybindingsText += "\nPlease bind the skills. Pausing bot..."
+			if s.shouldSkipKeybindingsForRespec() {
+				s.bot.ctx.Logger.Info("Auto respec pending; skipping keybinding check for this run")
+			} else {
+				missingKeybindings := s.bot.ctx.Char.CheckKeyBindings()
+				if len(missingKeybindings) > 0 {
+					var missingKeybindingsText = "Missing key binding for skill(s):"
+					for _, v := range missingKeybindings {
+						missingKeybindingsText += fmt.Sprintf("\n%s", skill.SkillNames[v])
+					}
+					missingKeybindingsText += "\nPlease bind the skills. Pausing bot..."
 
-				utils.ShowDialog("Missing keybindings for "+s.name, missingKeybindingsText)
-				s.TogglePause()
+					utils.ShowDialog("Missing keybindings for "+s.name, missingKeybindingsText)
+					s.TogglePause()
+				}
 			}
 		}
 
@@ -374,6 +399,19 @@ func (s *SinglePlayerSupervisor) Start() error {
 					}
 
 					currentPos := s.bot.ctx.Data.PlayerUnit.Position
+					lastAction := s.bot.ctx.ContextDebug[s.bot.ctx.ExecutionPriority].LastAction
+					isAllocating := lastAction == "AutoRespecIfNeeded" ||
+						lastAction == "EnsureStatPoints" ||
+						lastAction == "EnsureSkillPoints" ||
+						lastAction == "EnsureSkillBindings" ||
+						lastAction == "AllocateStatPointPacket" ||
+						lastAction == "LearnSkillPacket"
+					if isAllocating && (s.bot.ctx.Data.OpenMenus.Character || s.bot.ctx.Data.OpenMenus.SkillTree || s.bot.ctx.Data.OpenMenus.Inventory) {
+						stuckSince = time.Time{}
+						droppedMouseItem = false
+						lastPosition = currentPos
+						continue
+					}
 					if currentPos.X == lastPosition.X && currentPos.Y == lastPosition.Y {
 						if stuckSince.IsZero() {
 							stuckSince = time.Now()

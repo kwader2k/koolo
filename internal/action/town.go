@@ -151,10 +151,19 @@ func PreRun(firstRun bool) error {
 	}
 
 	// Leveling related checks
-	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation {
+	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation && isLevelingChar {
 		ResetStats()
 		EnsureStatPoints()
 		EnsureSkillPoints()
+	} else if !isLevelingChar && ctx.CharacterCfg.Character.AutoStatSkill.Enabled {
+		AutoRespecIfNeeded()
+		EnsureStatPoints()
+		if !shouldDeferAutoSkillsForStats() {
+			EnsureSkillPoints()
+			EnsureSkillBindings()
+		} else {
+			ctx.Logger.Debug("Auto stat targets pending; skipping skill allocation for now.")
+		}
 	}
 
 	if ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding {
@@ -240,11 +249,24 @@ func InRunReturnTownRoutine() error {
 	Stash(false)
 	ctx.PauseIfNotPriority() // Check after post-reroll Stash
 
-	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation {
+	if ctx.CharacterCfg.Game.Leveling.EnsurePointsAllocation && isLevelingChar {
 		EnsureStatPoints()
 		ctx.PauseIfNotPriority() // Check after EnsureStatPoints
 		EnsureSkillPoints()
 		ctx.PauseIfNotPriority() // Check after EnsureSkillPoints
+	} else if !isLevelingChar && ctx.CharacterCfg.Character.AutoStatSkill.Enabled {
+		AutoRespecIfNeeded()
+		ctx.PauseIfNotPriority() // Check after AutoRespecIfNeeded
+		EnsureStatPoints()
+		ctx.PauseIfNotPriority() // Check after EnsureStatPoints
+		if !shouldDeferAutoSkillsForStats() {
+			EnsureSkillPoints()
+			ctx.PauseIfNotPriority() // Check after EnsureSkillPoints
+			EnsureSkillBindings()
+			ctx.PauseIfNotPriority() // Check after EnsureSkillBindings
+		} else {
+			ctx.Logger.Debug("Auto stat targets pending; skipping skill allocation for now.")
+		}
 	}
 
 	if ctx.CharacterCfg.Game.Leveling.EnsureKeyBinding {

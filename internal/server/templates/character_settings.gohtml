@@ -29,6 +29,193 @@
     .col-lock-btn i {
         font-size: 0.75rem;
     }
+    .auto-stat-skill-settings {
+        margin: 12px 0 20px;
+        padding: 12px;
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.02);
+    }
+    .auto-stat-skill-hidden {
+        display: none;
+    }
+    .auto-stat-skill-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-top: 12px;
+    }
+    .auto-stat-skill-row {
+        display: grid;
+        grid-template-columns: 28px 1fr 110px 72px;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 8px;
+        counter-increment: autoStatSkillRow;
+    }
+    .auto-stat-skill-row:last-child {
+        margin-bottom: 0;
+    }
+    .auto-stat-skill-row-actions {
+        display: inline-flex;
+        gap: 8px;
+        justify-content: flex-end;
+    }
+    .auto-stat-skill-checkbox {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+        color: var(--text-secondary);
+        font-size: 0.85rem;
+    }
+    .auto-stat-skill-list {
+        counter-reset: autoStatSkillRow;
+    }
+    .auto-stat-skill-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+        font-size: 0.75rem;
+        cursor: grab;
+    }
+    .auto-stat-skill-index::before {
+        content: counter(autoStatSkillRow);
+    }
+    .auto-stat-skill-actions {
+        display: flex;
+        justify-content: flex-end;
+    }
+    .auto-stat-skill-section-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+    }
+    .auto-stat-skill-total {
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+    .auto-stat-skill-help {
+        display: block;
+        margin-bottom: 10px;
+        color: var(--text-secondary);
+        font-size: 0.8rem;
+    }
+    .auto-stat-skill-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 0px;
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        width: 100%;
+    }
+    .auto-stat-skill-respec {
+        display: contents;
+    }
+    .auto-stat-skill-respec.auto-stat-skill-hidden {
+        display: contents;
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .auto-stat-skill-respec label {
+        margin: 0;
+    }
+    .auto-stat-skill-header-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    #autoRespecTargetRow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        flex-wrap: nowrap;
+    }
+    .auto-respec-hidden {
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .auto-stat-skill-respec input[type="number"] {
+        width: 120px;
+    }
+    .auto-respec-token-first {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 6px;
+        font-size: 0.85rem;
+        color: var(--text-secondary);
+    }
+    .auto-stat-skill-settings select {
+        color-scheme: light;
+        color: #111;
+        background: #fff;
+    }
+    .auto-stat-skill-settings select option {
+        color: #111;
+        background: #fff;
+    }
+    .auto-stat-skill-remove {
+        padding: 0.2rem 0.4rem;
+        min-width: 32px;
+        height: 32px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-color: #b42318;
+        background: rgba(180, 35, 24, 0.15);
+        color: #b42318;
+    }
+    .auto-stat-skill-remove:hover {
+        background: rgba(180, 35, 24, 0.25);
+        border-color: #b42318;
+        color: #b42318;
+    }
+    .auto-stat-skill-add {
+        padding: 0.2rem 0.4rem;
+        min-width: 32px;
+        height: 32px;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-color: #2f9e44;
+        background: rgba(47, 158, 68, 0.15);
+        color: #2f9e44;
+    }
+    .auto-stat-skill-add:hover {
+        background: rgba(47, 158, 68, 0.25);
+        border-color: #2f9e44;
+        color: #2f9e44;
+    }
+    @media (max-width: 900px) {
+        .auto-stat-skill-columns {
+            grid-template-columns: 1fr;
+        }
+        .auto-stat-skill-row {
+            grid-template-columns: 28px 1fr 90px 72px;
+        }
+        .auto-stat-skill-header {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .auto-stat-skill-header-item {
+            flex: 1 1 100%;
+        }
+    }
     </style>
 </head>
 <body>
@@ -161,6 +348,190 @@
                 </label>
             <article style="margin-top: 20px; margin-bottom: 20px; padding: 15px; border: 2px solid #444;">
                 <h5>Class-Specific Settings</h5>
+                <div class="auto-stat-skill-settings {{ if and .Config (isLevelingBuild .Config.Character.Class) }}auto-stat-skill-hidden{{ end }}">
+                    <div class="auto-stat-skill-header">
+                        <label class="auto-stat-skill-header-item">
+                            <input type="checkbox" id="autoStatSkillEnabled" name="autoStatSkillEnabled" {{ if .Config.Character.AutoStatSkill.Enabled }}checked{{ end }}/>
+                            Enable Auto Stat & Skill
+                        </label>
+                        <div id="autoStatSkillRespec" class="auto-stat-skill-respec {{ if not .Config.Character.AutoStatSkill.Enabled }}auto-stat-skill-hidden{{ end }}">
+                        <label class="auto-stat-skill-header-item">
+                            <input type="checkbox" id="autoRespecEnabled" name="autoRespecEnabled" {{ if .Config.Character.AutoStatSkill.Respec.Enabled }}checked{{ end }} {{ if not .Config.Character.AutoStatSkill.Enabled }}disabled{{ end }}/>
+                            Enable Auto Respec
+                        </label>
+                            <label id="autoRespecTokenFirstRow" class="auto-stat-skill-header-item auto-respec-token-first {{ if not .Config.Character.AutoStatSkill.Respec.Enabled }}auto-respec-hidden{{ end }}">
+                                <input type="checkbox" name="autoRespecTokenFirst" {{ if .Config.Character.AutoStatSkill.Respec.TokenFirst }}checked{{ end }} {{ if not .Config.Character.AutoStatSkill.Respec.Enabled }}disabled{{ end }}/>
+                                Token first
+                            </label>
+                        <label id="autoRespecTargetRow" class="auto-stat-skill-header-item {{ if not .Config.Character.AutoStatSkill.Respec.Enabled }}auto-respec-hidden{{ end }}">
+                            Target level:
+                            <input type="number" name="autoRespecTargetLevel" min="0" max="99" value="{{ .Config.Character.AutoStatSkill.Respec.TargetLevel }}" placeholder="e.g. 80" {{ if not .Config.Character.AutoStatSkill.Respec.Enabled }}disabled{{ end }}>
+                        </label>
+                        </div>
+                    </div>
+                    <small id="autoStatSkillHelp" class="auto-stat-skill-help {{ if not .Config.Character.AutoStatSkill.Enabled }}auto-stat-skill-hidden{{ end }}" {{ if not .Config.Character.AutoStatSkill.Enabled }}hidden{{ end }}>
+                        Skills and stats allocated in order shown. Drag numbers to reorder. Missing skill prerequisites automatically assigned.
+                    </small>
+                    <small id="autoRespecHelp" class="auto-stat-skill-help {{ if not .Config.Character.AutoStatSkill.Respec.Enabled }}auto-stat-skill-hidden{{ end }}" {{ if not .Config.Character.AutoStatSkill.Respec.Enabled }}hidden{{ end }}>
+                        At target level, resets and reallocates stats/skills. Tries Akara first, then uses a token if unavailable. Set target level to 0 or leave it blank to respec immediately.
+                    </small>
+                    <div id="autoStatSkillPanel">
+                        <script>
+                            window.autoStatSkillPrereqs = {{ toJSON .SkillPrereqs }};
+                        </script>
+                        <div class="auto-stat-skill-columns">
+                            <div>
+                                <div class="auto-stat-skill-section-head">
+                                    <h6>Stats</h6>
+                                    <span class="auto-stat-skill-total" id="autoStatSkillStatTotal">Total: 0</span>
+                                </div>
+                                <div id="autoStatSkillStats" class="auto-stat-skill-list">
+                                    {{ if .Config.Character.AutoStatSkill.Stats }}
+                                        {{ range .Config.Character.AutoStatSkill.Stats }}
+                                            <div class="auto-stat-skill-row">
+                                                <span class="auto-stat-skill-index" aria-hidden="true"></span>
+                                                <select name="autoStatSkillStat[]">
+                                                    <option value="">-- Select stat --</option>
+                                                    <option value="strength" {{ if eq .Stat "strength" }}selected{{ end }}>Strength</option>
+                                                    <option value="dexterity" {{ if eq .Stat "dexterity" }}selected{{ end }}>Dexterity</option>
+                                                    <option value="vitality" {{ if eq .Stat "vitality" }}selected{{ end }}>Vitality</option>
+                                                    <option value="energy" {{ if eq .Stat "energy" }}selected{{ end }}>Energy</option>
+                                                </select>
+                                                <input type="number" name="autoStatSkillStatTarget[]" min="1" value="{{ .Target }}" placeholder="Target">
+                                                <div class="auto-stat-skill-row-actions">
+                                                    <button type="button" class="btn btn-outline auto-stat-skill-remove" title="Remove stat step">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline auto-stat-skill-add" data-kind="stat" title="Add stat step" aria-label="Add stat step">
+                                                        <i class="bi bi-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        {{ end }}
+                                    {{ else }}
+                                        <div class="auto-stat-skill-row">
+                                            <span class="auto-stat-skill-index" aria-hidden="true"></span>
+                                            <select name="autoStatSkillStat[]">
+                                                <option value="">-- Select stat --</option>
+                                                <option value="strength">Strength</option>
+                                                <option value="dexterity">Dexterity</option>
+                                                <option value="vitality">Vitality</option>
+                                                <option value="energy">Energy</option>
+                                            </select>
+                                            <input type="number" name="autoStatSkillStatTarget[]" min="1" placeholder="Target">
+                                            <div class="auto-stat-skill-row-actions">
+                                                <button type="button" class="btn btn-outline auto-stat-skill-remove" title="Remove stat step">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-outline auto-stat-skill-add" data-kind="stat" title="Add stat step" aria-label="Add stat step">
+                                                    <i class="bi bi-plus"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    {{ end }}
+                                </div>
+                                <label class="auto-stat-skill-checkbox">
+                                    <input type="checkbox" name="autoStatSkillExcludeQuestStats" id="autoStatSkillExcludeQuestStats" {{ if .Config.Character.AutoStatSkill.ExcludeQuestStats }}checked{{ end }}/>
+                                    Exclude quest points from level estimate <span id="autoStatSkillExcludeQuestStatsDifficulty"></span>
+                                </label>
+                            </div>
+                            <div>
+                                <div class="auto-stat-skill-section-head">
+                                    <h6>Skills</h6>
+                                    <span class="auto-stat-skill-total" id="autoStatSkillSkillTotal">Total: 0</span>
+                                </div>
+                                <div id="autoStatSkillSkills" class="auto-stat-skill-list">
+                                    {{ if .Config.Character.AutoStatSkill.Skills }}
+                                        {{ range $step := .Config.Character.AutoStatSkill.Skills }}
+                                            <div class="auto-stat-skill-row">
+                                                <span class="auto-stat-skill-index" aria-hidden="true"></span>
+                                                <select name="autoStatSkillSkill[]">
+                                                    <option value="">-- Select skill --</option>
+                                                    {{ range $opt := $topLevelContext.SkillOptions }}
+                                                        <option value="{{ $opt.Key }}" {{ if eq $step.Skill $opt.Key }}selected{{ end }}>{{ $opt.Name }}</option>
+                                                    {{ end }}
+                                                </select>
+                                                <input type="number" name="autoStatSkillSkillTarget[]" min="1" max="20" value="{{ $step.Target }}" placeholder="Target">
+                                                <div class="auto-stat-skill-row-actions">
+                                                    <button type="button" class="btn btn-outline auto-stat-skill-remove" title="Remove skill step">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                    <button type="button" class="btn btn-outline auto-stat-skill-add" data-kind="skill" title="Add skill step" aria-label="Add skill step">
+                                                        <i class="bi bi-plus"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        {{ end }}
+                                {{ else }}
+                                    <div class="auto-stat-skill-row">
+                                        <span class="auto-stat-skill-index" aria-hidden="true"></span>
+                                        <select name="autoStatSkillSkill[]">
+                                            <option value="">-- Select skill --</option>
+                                            {{ range $topLevelContext.SkillOptions }}
+                                                <option value="{{ .Key }}">{{ .Name }}</option>
+                                            {{ end }}
+                                        </select>
+                                        <input type="number" name="autoStatSkillSkillTarget[]" min="1" max="20" placeholder="Target">
+                                        <div class="auto-stat-skill-row-actions">
+                                            <button type="button" class="btn btn-outline auto-stat-skill-remove" title="Remove skill step">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-outline auto-stat-skill-add" data-kind="skill" title="Add skill step" aria-label="Add skill step">
+                                                <i class="bi bi-plus"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                {{ end }}
+                                </div>
+                                <label class="auto-stat-skill-checkbox">
+                                    <input type="checkbox" name="autoStatSkillExcludeQuestSkills" id="autoStatSkillExcludeQuestSkills" {{ if .Config.Character.AutoStatSkill.ExcludeQuestSkills }}checked{{ end }}/>
+                                    Exclude quest points from level estimate <span id="autoStatSkillExcludeQuestSkillsDifficulty"></span>
+                                </label>
+                            </div>
+                        </div>
+                        <template id="autoStatSkillStatRowTemplate">
+                            <div class="auto-stat-skill-row">
+                                <span class="auto-stat-skill-index" aria-hidden="true"></span>
+                                <select name="autoStatSkillStat[]">
+                                    <option value="">-- Select stat --</option>
+                                    <option value="strength">Strength</option>
+                                    <option value="dexterity">Dexterity</option>
+                                    <option value="vitality">Vitality</option>
+                                    <option value="energy">Energy</option>
+                                </select>
+                                <input type="number" name="autoStatSkillStatTarget[]" min="1" placeholder="Target">
+                                <div class="auto-stat-skill-row-actions">
+                                    <button type="button" class="btn btn-outline auto-stat-skill-remove" title="Remove stat step">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline auto-stat-skill-add" data-kind="stat" title="Add stat step" aria-label="Add stat step">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                        <template id="autoStatSkillSkillRowTemplate">
+                            <div class="auto-stat-skill-row">
+                                <span class="auto-stat-skill-index" aria-hidden="true"></span>
+                                <select name="autoStatSkillSkill[]">
+                                    <option value="">-- Select skill --</option>
+                                    {{ range $topLevelContext.SkillOptions }}
+                                        <option value="{{ .Key }}">{{ .Name }}</option>
+                                    {{ end }}
+                                </select>
+                                <input type="number" name="autoStatSkillSkillTarget[]" min="1" max="20" placeholder="Target">
+                                <div class="auto-stat-skill-row-actions">
+                                    <button type="button" class="btn btn-outline auto-stat-skill-remove" title="Remove skill step">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline auto-stat-skill-add" data-kind="skill" title="Add skill step" aria-label="Add skill step">
+                                        <i class="bi bi-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
                 <div id="class-specific-settings">
                     <div id="no-settings-message" style="display: none;">
                         No custom settings available for this class.
