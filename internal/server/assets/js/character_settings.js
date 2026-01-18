@@ -364,6 +364,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const characterClassSelect = document.querySelector('select[name="characterClass"]');
     const mainCharacterClassSelect = document.getElementById('mainCharacterClass');
     const berserkerBarbOptions = document.querySelector('.berserker-barb-options');
+    const whirlwindBarbOptions = document.querySelector('.whirlwind-barb-options');
     const novaSorceressOptions = document.querySelector('.nova-sorceress-options');
     const bossStaticThresholdInput = document.getElementById('novaBossStaticThreshold');
     const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
@@ -391,6 +392,7 @@ document.addEventListener('DOMContentLoaded', function () {
             { value: 'barb_leveling', label: 'Barbarian (Leveling)' },
             { value: 'berserker', label: 'Berserk Barbarian' },
             { value: 'warcry_barb', label: 'Warcry Barbarian' },
+            { value: 'whirlwind_barb', label: 'Whirlwind Barbarian' },
         ],
         druid: [
             { value: 'druid_leveling', label: 'Druid (Leveling)' },
@@ -593,6 +595,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const noSettingsMessage = document.getElementById('no-settings-message');
         const berserkerBarbOptions = document.querySelector('.berserker-barb-options');
         const warcryBarbOptions = document.querySelector('.warcry-barb-options');
+        const whirlwindBarbOptions = document.querySelector('.whirlwind-barb-options');
         const barbLevelingOptions = document.querySelector('.barb-leveling-options');
         const novaSorceressOptions = document.querySelector('.nova-sorceress-options');
         const mosaicAssassinOptions = document.querySelector('.mosaic-assassin-options');
@@ -612,10 +615,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Hide all options first
         if (berserkerBarbOptions) berserkerBarbOptions.style.display = 'none';
         if (warcryBarbOptions) warcryBarbOptions.style.display = 'none';
+        if (whirlwindBarbOptions) whirlwindBarbOptions.style.display = 'none';
         if (barbLevelingOptions) barbLevelingOptions.style.display = 'none';
 
         // Hide all options first
         if (berserkerBarbOptions) berserkerBarbOptions.style.display = 'none';
+        if (whirlwindBarbOptions) whirlwindBarbOptions.style.display = 'none';
         if (novaSorceressOptions) novaSorceressOptions.style.display = 'none';
         if (mosaicAssassinOptions) mosaicAssassinOptions.style.display = 'none';
         if (blizzardSorceressOptions) blizzardSorceressOptions.style.display = 'none';
@@ -637,6 +642,8 @@ document.addEventListener('DOMContentLoaded', function () {
             berserkerBarbOptions.style.display = 'block';
         } else if (selectedClass === 'warcry_barb') {
             warcryBarbOptions.style.display = 'block';
+        } else if (selectedClass === 'whirlwind_barb') {
+            whirlwindBarbOptions.style.display = 'block';
         } else if (selectedClass === 'barb_leveling') {
             barbLevelingOptions.style.display = 'block';
         } else if (selectedClass === 'nova' || selectedClass === 'lightsorc') {

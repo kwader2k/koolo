@@ -259,6 +259,11 @@ type CharacterCfg struct {
 			HorkNormalMonsters          bool `yaml:"hork_normal_monsters"`
 			HorkMonsterCheckRange       int  `yaml:"hork_monster_check_range"`
 		} `yaml:"berserker_barb"`
+		WhirlwindBarb struct {
+			SkipPotionPickupInTravincal bool `yaml:"skip_potion_pickup_in_travincal"`
+			HorkNormalMonsters          bool `yaml:"hork_normal_monsters"`
+			HorkMonsterCheckRange       int  `yaml:"hork_monster_check_range"`
+		} `yaml:"whirlwind_barb"`
 		BlizzardSorceress struct {
 			UseMoatTrick        bool `yaml:"use_moat_trick"`
 			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`

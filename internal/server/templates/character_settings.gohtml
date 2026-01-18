@@ -137,6 +137,7 @@
                         <option value="amazon_leveling" {{ if eq .Config.Character.Class "amazon_leveling" }}selected{{ end }}>Amazon (Leveling)</option>
                         <option value="berserker" {{ if eq .Config.Character.Class "berserker" }}selected{{ end }}>Berserk Barbarian</option>
                         <option value="warcry_barb" {{ if eq .Config.Character.Class "warcry_barb" }}selected{{ end }}>Warcry Barbarian</option>
+                        <option value="whirlwind_barb" {{ if eq .Config.Character.Class "whirlwind_barb" }}selected{{ end }}>Whirlwind Barbarian</option>
                     </select>
                 </label>
                 <label>
@@ -215,6 +216,25 @@
                         <label>
                             Monster Check Range (yards)
                             <input type="number" name="berserkerBarbHorkMonsterCheckRange" min="1" max="20" step="1" value="{{ if .Config.Character.BerserkerBarb.HorkMonsterCheckRange }}{{ .Config.Character.BerserkerBarb.HorkMonsterCheckRange }}{{ else }}7{{ end }}">
+                        </label>
+                    </fieldset>
+                </div>
+                <div class="whirlwind-barb-options" style="display: none;">
+                    <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="barbSkipPotionPickupInTravincal" {{ if .Config.Character.WhirlwindBarb.SkipPotionPickupInTravincal }}checked{{ end }}/>
+                            Skip potion pickup during Travincal
+                        </label>
+                    </fieldset>
+                    <div style="margin: 20px 0;"></div>
+                    <fieldset style="margin-top: 15px;">
+                        <label>
+                            <input type="checkbox" name="WhirlwindBarbHorkNormalMonsters" {{ if .Config.Character.WhirlwindBarb.HorkNormalMonsters }}checked{{ end }}/>
+                            Hork Normal Monsters Too
+                        </label>
+                        <label>
+                            Monster Check Range (yards)
+                            <input type="number" name="WhirlwindBarbHorkMonsterCheckRange" min="1" max="20" step="1" value="{{ if .Config.Character.WhirlwindBarb.HorkMonsterCheckRange }}{{ .Config.Character.WhirlwindBarb.HorkMonsterCheckRange }}{{ else }}7{{ end }}">
                         </label>
                     </fieldset>
                 </div>
