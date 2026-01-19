@@ -284,10 +284,10 @@ func (gd *MemoryReader) GetData() Data {
 	}
 
 	return Data{
+		Areas:        cachedData,
+		AreaData:     currentArea,
 		Data:         d,
 		CharacterCfg: cfgCopy,
-		AreaData:     currentArea,
-		Areas:        cachedData,
 	}
 }
 
