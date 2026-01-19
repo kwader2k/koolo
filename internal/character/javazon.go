@@ -214,7 +214,7 @@ func (s Javazon) ShouldIgnoreMonster(m data.Monster) bool {
 }
 
 func (s Javazon) CheckKeyBindings() []skill.ID {
-	requireKeybindings := []skill.ID{skill.LightningFury, skill.ChargedStrike, skill.TomeOfTownPortal}
+	requireKeybindings := []skill.ID{skill.LightningStrike, skill.LightningFury, skill.TomeOfTownPortal}
 	missingKeybindings := []skill.ID{}
 
 	for _, cskill := range requireKeybindings {
@@ -273,30 +273,24 @@ func (s Javazon) killMonsterSequenceSafe(
 			return nil
 		}
 
-		closeMonsters := 0
+		closePackMonsters := 0
 		for _, mob := range s.Data.Monsters {
-			if mob.IsPet() || mob.IsMerc() || mob.IsGoodNPC() || mob.IsSkip() {
+			if mob.IsPet() || mob.IsMerc() || mob.IsGoodNPC() || mob.IsSkip() || monster.Stats[stat.Life] <= 0 && mob.UnitID != monster.UnitID {
 				continue
 			}
-			if !jzAliveMonster(mob) {
-				continue
+			dist := pather.DistanceFromPoint(mob.Position, monster.Position)
+			if dist <= 20 && dist >= 10 {
+				closePackMonsters++
 			}
-			if pather.DistanceFromPoint(mob.Position, monster.Position) <= 15 {
-				closeMonsters++
-			}
-			if closeMonsters >= 3 {
+			if closePackMonsters >= 8 {
 				break
 			}
 		}
 
-		if closeMonsters >= 3 {
+		if closePackMonsters >= 8 {
 			step.SecondaryAttack(skill.LightningFury, id, numOfAttacks, step.Distance(minJavazonDistance, maxJavazonDistance))
 		} else {
-			if s.Data.PlayerUnit.Skills[skill.ChargedStrike].Level > 0 {
-				s.chargedStrikeAccurate(id, numOfAttacks)
-			} else {
-				step.PrimaryAttack(id, numOfAttacks, false, step.Distance(1, 1))
-			}
+			step.SecondaryAttack(skill.LightningStrike, id, numOfAttacks, step.Distance(0, meleeRange))
 		}
 
 		completedAttackLoops++
@@ -637,7 +631,7 @@ func (s Javazon) KillBossSequence(
 				s.chargedStrike(id)
 			}
 		} else {
-			step.PrimaryAttack(id, numOfAttacks, false, step.Distance(1, 1))
+			step.PrimaryAttack(id, numOfAttacks, false, step.Distance(1, meleeRange))
 		}
 
 		completedAttackLoops++
