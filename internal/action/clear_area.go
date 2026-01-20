@@ -71,7 +71,7 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filters ...data.Mons
 	// Defer the re-enabling of item pickup to ensure it happens regardless of how the function exits
 	defer ctx.EnableItemPickup()
 
-	return ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+	err := ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 		enemies := d.Monsters.Enemies(filters...)
 
 		SortEnemiesByPriority(&enemies)
@@ -111,6 +111,13 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filters ...data.Mons
 
 		return data.UnitID(0), false
 	}, nil)
+
+	if err != nil {
+		return err
+	}
+
+	// Pick up items after clearing the area
+	return ItemPickup(30)
 }
 
 func ClearThroughPath(pos data.Position, radius int, filter data.MonsterFilter) error {
