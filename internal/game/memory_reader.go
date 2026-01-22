@@ -293,11 +293,13 @@ func (gd *MemoryReader) GetData() Data {
 
 func (gd *MemoryReader) getMapSeed(playerUnit uintptr) (uint, error) {
 	actPtr := uintptr(gd.Process.ReadUInt(playerUnit+0x20, memory.Uint64))
-	actMiscPtr := uintptr(gd.Process.ReadUInt(actPtr+0x78, memory.Uint64))
+	//actMiscPtr := uintptr(gd.Process.ReadUInt(actPtr+0x78, memory.Uint64))
+	actMiscPtr := uintptr(gd.Process.ReadUInt(actPtr+0x70, memory.Uint64))
 
 	dwInitSeedHash1 := gd.Process.ReadUInt(actMiscPtr+0x840, memory.Uint32)
 	//dwInitSeedHash2 := uintptr(gd.Process.ReadUInt(actMiscPtr+0x844, memory.Uint32))
-	dwEndSeedHash1 := gd.Process.ReadUInt(actMiscPtr+0x868, memory.Uint32)
+	//dwEndSeedHash1 := gd.Process.ReadUInt(actMiscPtr+0x868, memory.Uint32)
+	dwEndSeedHash1 := gd.Process.ReadUInt(actMiscPtr+0x860, memory.Uint32)
 
 	mapSeed, found := utils.GetMapSeed(dwInitSeedHash1, dwEndSeedHash1)
 	if !found {
