@@ -267,6 +267,8 @@ const (
 	CharHardcoreBtnY  = 620
 	CharExpansionBtnX = 710
 	CharExpansionBtnY = 620
+	CharOfflineHardcoreBtnX  = 605
+	CharOfflineExpansionBtnX = 675
 
 	CharCreateNewBtnX = 1125
 	CharCreateNewBtnY = 640
