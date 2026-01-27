@@ -1,6 +1,7 @@
 package action
 
 import (
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -14,6 +15,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/town"
 	"github.com/hectorgimenez/koolo/internal/ui"
@@ -77,6 +79,9 @@ func RunShopping(plan ActionShoppingPlan) error {
 		ctx.Logger.Warn("No vendors selected for shopping")
 		return nil
 	}
+	if ctx.Drop != nil && ctx.Drop.Pending() != nil && ctx.Drop.Active() == nil {
+		return drop.ErrInterrupt
+	}
 
 	// Ensure enough adjacent space (two columns) before starting
 	if !ensureTwoFreeColumnsStrict() {
@@ -93,16 +98,32 @@ func RunShopping(plan ActionShoppingPlan) error {
 		passes = 0
 	}
 
+	checkDropInterrupt := func() error {
+		if ctx.Drop != nil && ctx.Drop.Pending() != nil && ctx.Drop.Active() == nil {
+			return drop.ErrInterrupt
+		}
+		return nil
+	}
+
 	for pass := 0; pass <= passes; pass++ {
+		if err := checkDropInterrupt(); err != nil {
+			return err
+		}
 		ctx.Logger.Info("Shopping pass", slog.Int("pass", pass))
 
 		for _, townID := range townOrder {
+			if err := checkDropInterrupt(); err != nil {
+				return err
+			}
 			vendors := vendorsByTown[townID]
 			if len(vendors) == 0 {
 				continue
 			}
 
 			if err := ensureInTown(townID); err != nil {
+				if errors.Is(err, drop.ErrInterrupt) {
+					return err
+				}
 				ctx.Logger.Warn("Skipping town; cannot reach", slog.String("town", townID.Area().Name), slog.Any("err", err))
 				continue
 			}
@@ -114,11 +135,17 @@ func RunShopping(plan ActionShoppingPlan) error {
 			}
 
 			for _, v := range vendors {
+				if err := checkDropInterrupt(); err != nil {
+					return err
+				}
 				if !ensureTwoFreeColumnsStrict() {
 					ctx.Logger.Warn("Skipping vendor due to inventory space (need two free columns)", slog.Int("vendor", int(v)))
 					break
 				}
 				if _, _, err := shopVendorSinglePass(v, plan); err != nil {
+					if errors.Is(err, drop.ErrInterrupt) {
+						return err
+					}
 					ctx.Logger.Warn("Vendor pass failed", slog.Int("vendor", int(v)), slog.Any("err", err))
 				}
 				step.CloseAllMenus()
@@ -128,12 +155,22 @@ func RunShopping(plan ActionShoppingPlan) error {
 
 		// Refresh town after visiting all selected vendors in this pass (if more passes remain)
 		if pass < passes {
+			if err := checkDropInterrupt(); err != nil {
+				return err
+			}
 			lastTown := townOrder[len(townOrder)-1]
 			vendorsLast := vendorsByTown[lastTown]
 			onlyAnya := len(vendorsLast) == 1 && vendorsLast[0] == npc.Drehya
 			if err := refreshTownPreferAnyaPortal(lastTown, onlyAnya); err != nil {
+				if errors.Is(err, drop.ErrInterrupt) {
+					return err
+				}
 				ctx.Logger.Warn("Town refresh failed; falling back to waypoint", slog.Any("err", err))
-				_ = refreshTownViaWaypoint(lastTown)
+				if err := refreshTownViaWaypoint(lastTown); err != nil {
+					if errors.Is(err, drop.ErrInterrupt) {
+						return err
+					}
+				}
 			}
 		}
 	}
@@ -630,6 +667,9 @@ func shopVendorSinglePass(vendorID npc.ID, plan ActionShoppingPlan) (int, int, e
 
 	// Approach and open trade
 	if err := moveToVendor(vendorID); err != nil {
+		if errors.Is(err, drop.ErrInterrupt) {
+			return 0, 0, err
+		}
 		ctx.Logger.Warn("MoveTo vendor reported error", slog.Int("vendor", int(vendorID)), slog.Any("err", err))
 	}
 	utils.Sleep(60)

@@ -17,6 +17,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -472,6 +473,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 		firstRun = false
 
 		if err != nil {
+			if errors.Is(err, drop.ErrInterrupt) {
+				s.bot.ctx.Logger.Info("Drop interrupt received. Exiting game and restarting loop.")
+				s.bot.ctx.Manager.ExitGame()
+				utils.Sleep(2000)
+				continue
+			}
 			if errors.Is(err, context.DeadlineExceeded) {
 				// We don't log the generic "Bot run finished with error" message if it was a planned timeout
 			} else {

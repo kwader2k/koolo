@@ -22,6 +22,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -69,6 +70,11 @@ var (
 
 // checkPlayerDeath checks if the player is dead and returns ErrDied if so.
 func checkPlayerDeath(ctx *context.Status) error {
+	if ctx.Manager == nil || !ctx.Manager.InGame() || ctx.Data.PlayerUnit.ID == 0 {
+		// Avoid false death checks while out of game or data is not yet valid.
+		return nil
+	}
+
 	if ctx.Data.PlayerUnit.Area.IsTown() {
 		return nil
 	}
@@ -80,6 +86,10 @@ func checkPlayerDeath(ctx *context.Status) error {
 }
 
 func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
+	if ctx.Context != nil && ctx.Context.Drop != nil && ctx.Context.Drop.Pending() != nil && ctx.Context.Drop.Active() == nil {
+		return drop.ErrInterrupt
+	}
+
 	// Wait for area data to sync
 	for attempts := 0; attempts < maxAreaSyncAttempts; attempts++ {
 		ctx.RefreshGameData()
@@ -245,6 +255,9 @@ func MoveToArea(dst area.ID) error {
 	}
 
 	if err != nil {
+		if errors.Is(err, drop.ErrInterrupt) {
+			return err
+		}
 		if errors.Is(err, health.ErrDied) { // Propagate death error
 			return err
 		}

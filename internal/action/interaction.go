@@ -1,6 +1,7 @@
 package action
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/utils"
@@ -67,17 +69,26 @@ func InteractObject(o data.Object, isCompletedFn func() bool) error {
 		if o.IsWaypoint() && !ctx.Data.AreaData.Area.IsTown() {
 			err = MoveToCoords(pos)
 			if err != nil {
+				if errors.Is(err, drop.ErrInterrupt) {
+					return err
+				}
 				continue
 			}
 		} else {
 			err = step.MoveTo(pos, step.WithDistanceToFinish(distFinish), step.WithIgnoreMonsters())
 			if err != nil {
+				if errors.Is(err, drop.ErrInterrupt) {
+					return err
+				}
 				continue
 			}
 		}
 
 		err = step.InteractObject(o, isCompletedFn)
 		if err != nil {
+			if errors.Is(err, drop.ErrInterrupt) {
+				return err
+			}
 			continue
 		}
 		break
