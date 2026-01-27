@@ -30,6 +30,7 @@ require (
 	github.com/expr-lang/expr v1.16.9 // indirect
 	github.com/go-rod/rod v0.116.2
 	github.com/go-stack/stack v1.8.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/inconshreveable/log15 v3.0.0-testing.5+incompatible // indirect
 	github.com/inconshreveable/log15/v3 v3.0.0-testing.5 // indirect
 	github.com/inkeliz/w32 v1.0.2 // indirect
