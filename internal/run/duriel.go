@@ -437,6 +437,9 @@ func (d Duriel) tryTalkToMeshif() bool {
 			Y: 5060,
 		})
 		action.InteractNPC(npc.Meshif)
+		utils.Sleep(500)
+		d.ctx.HID.KeySequence(win.VK_SPACE)
+		utils.Sleep(500)
 		d.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
 		utils.Sleep(1000)
 		action.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
