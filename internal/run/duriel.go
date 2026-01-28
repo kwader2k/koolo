@@ -189,7 +189,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 	}
 
 	// Get thawing potions before entering Duriel's lair
-	if d.ctx.CharacterCfg.Game.Duriel.UseThawing {
+	if d.ctx.CharacterCfg.Game.Duriel.UseThawing || isLevelingChar {
 		d.ctx.Logger.Info("Returning to town for thawing potions before Duriel")
 
 		// Use the existing portal from the previous town prep

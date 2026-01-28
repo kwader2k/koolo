@@ -217,7 +217,7 @@ func (a Andariel) Run(parameters *RunParameters) error {
 			action.MoveToCoords(andarielClearPos11)
 			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
 
-			if a.ctx.CharacterCfg.Game.Andariel.UseAntidoes {
+			if a.ctx.CharacterCfg.Game.Andariel.UseAntidoes || isLevelingChar {
 				reHidePortraits := false
 				action.ReturnTown()
 
