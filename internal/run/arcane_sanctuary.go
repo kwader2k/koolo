@@ -43,6 +43,23 @@ func (a ArcaneSanctuary) CheckConditions(parameters *RunParameters) SequencerRes
 	return SequencerOk
 }
 
+// ignoreTowersFilter creates a filter that excludes lightning towers (LightningSpire)
+func (a ArcaneSanctuary) ignoreTowersFilter(baseFilter data.MonsterFilter) data.MonsterFilter {
+	return func(m data.Monsters) []data.Monster {
+		// First apply the base filter (e.g., MonsterAnyFilter or MonsterEliteFilter)
+		filtered := baseFilter(m)
+
+		// Then remove LightningSpire NPCs (lightning sentry towers)
+		var result []data.Monster
+		for _, mo := range filtered {
+			if mo.Name != npc.LightningSpire {
+				result = append(result, mo)
+			}
+		}
+		return result
+	}
+}
+
 func (a ArcaneSanctuary) Run(parameters *RunParameters) error {
 	var openChests bool
 	var filter data.MonsterFilter
@@ -55,11 +72,15 @@ func (a ArcaneSanctuary) Run(parameters *RunParameters) error {
 		// Normal run - use ArcaneSanctuary config
 		openChests = a.ctx.CharacterCfg.Game.ArcaneSanctuary.OpenChests
 		onlyElites := a.ctx.CharacterCfg.Game.ArcaneSanctuary.FocusOnElitePacks
-		filter = data.MonsterAnyFilter()
 
+		// Start with base filter
+		baseFilter := data.MonsterAnyFilter()
 		if onlyElites {
-			filter = data.MonsterEliteFilter()
+			baseFilter = data.MonsterEliteFilter()
 		}
+
+		// Apply tower exclusion on top of base filter
+		filter = a.ignoreTowersFilter(baseFilter)
 	}
 
 	// Use Waypoint to get to Arcane Sanctuary

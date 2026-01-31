@@ -259,6 +259,9 @@ func (al *ArcaneLanes) ClearLane(filter data.MonsterFilter, summonerNPC data.NPC
 			// Continue even on error
 		}
 
+		// Pickup items after clearing each checkpoint
+		action.ItemPickup(al.clearRange)
+
 		// Check for Summoner at the End Point (idx 4)
 		if summonerFound && len(summonerNPC.Positions) > 0 && idx == 4 {
 			summonerDistance := pather.DistanceFromPoint(
@@ -308,6 +311,9 @@ func (al *ArcaneLanes) ReturnToCenter(filter data.MonsterFilter) error {
 			al.ctx.Logger.Debug("ClearThroughPath error at checkpoint %d during return: %v", idx, err)
 			// Continue even on error
 		}
+
+		// Pickup items after clearing each checkpoint on return path
+		action.ItemPickup(al.clearRange)
 	}
 	return nil
 }
