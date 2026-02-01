@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
+	"sync"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -16,6 +17,12 @@ import (
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/utils"
+)
+
+var (
+	blacklistedItemsTTL = 5 * time.Second
+	blacklistedItems    = make(map[data.UnitID]time.Time)
+	blacklistedItemsMu  sync.Mutex
 )
 
 func itemFitsInventory(i data.Item) bool {
@@ -367,6 +374,9 @@ outer:
 		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
 			if !IsBlacklisted(itemToPickup) {
 				ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, itemToPickup)
+				blacklistedItemsMu.Lock()
+				blacklistedItems[itemToPickup.UnitID] = time.Now()
+				blacklistedItemsMu.Unlock()
 			}
 
 			// Screenshot with show items on
@@ -590,11 +600,13 @@ func shouldBePickedUp(i data.Item) bool {
 }
 
 func IsBlacklisted(itm data.Item) bool {
-	for _, blacklisted := range context.Get().CurrentGame.BlacklistedItems {
-		// Blacklist is per-game. UnitID is the safest key: it targets only the problematic ground instance.
-		if itm.UnitID == blacklisted.UnitID {
+	blacklistedItemsMu.Lock()
+	defer blacklistedItemsMu.Unlock()
+	if t, ok := blacklistedItems[itm.UnitID]; ok {
+		if time.Since(t) < blacklistedItemsTTL {
 			return true
 		}
+		delete(blacklistedItems, itm.UnitID)
 	}
 	return false
 }
