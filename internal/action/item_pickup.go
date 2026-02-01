@@ -373,7 +373,6 @@ outer:
 		// If all attempts failed, blacklist *this specific ground instance* (UnitID), not the whole base item ID.
 		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
 			if !IsBlacklisted(itemToPickup) {
-				ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, itemToPickup)
 				blacklistedItemsMu.Lock()
 				blacklistedItems[itemToPickup.UnitID] = time.Now()
 				blacklistedItemsMu.Unlock()
@@ -601,12 +600,19 @@ func shouldBePickedUp(i data.Item) bool {
 
 func IsBlacklisted(itm data.Item) bool {
 	blacklistedItemsMu.Lock()
-	defer blacklistedItemsMu.Unlock()
 	if t, ok := blacklistedItems[itm.UnitID]; ok {
 		if time.Since(t) < blacklistedItemsTTL {
+			blacklistedItemsMu.Unlock()
 			return true
 		}
 		delete(blacklistedItems, itm.UnitID)
+	}
+	blacklistedItemsMu.Unlock()
+
+	for _, blacklisted := range context.Get().CurrentGame.BlacklistedItems {
+		if itm.UnitID == blacklisted.UnitID {
+			return true
+		}
 	}
 	return false
 }
