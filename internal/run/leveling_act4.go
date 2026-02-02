@@ -51,9 +51,14 @@ func (a Leveling) act4() error {
 	// Apply Nightmare difficulty penalty (-40) to resistances for effective values
 	effectiveFireRes := rawFireRes.Value - 40
 	effectiveLightRes := rawLightRes.Value - 40
+	// Use raw resistance values, the game already handles the penalty in the displayed stats
+	effectiveFireRes := rawFireRes.Value
+	effectiveLightRes := rawLightRes.Value
 
 	// Log the effective resistance values
 	a.ctx.Logger.Info(fmt.Sprintf("Current effective resistances (Nightmare penalty applied) - Fire: %d, Lightning: %d", effectiveFireRes, effectiveLightRes))
+	// Log the resistance values
+	a.ctx.Logger.Info(fmt.Sprintf("Current resistances - Fire: %d, Lightning: %d", effectiveFireRes, effectiveLightRes))
 
 	lvl, _ := a.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	_, found := a.ctx.Data.Objects.FindOne(object.LastLastPortal)
