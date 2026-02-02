@@ -64,15 +64,19 @@ func (m *Manager) RequestDrop(room, passwd string) *Request {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Always re-apply latest filters to ensure correct quotas before Drop
+	var currentFilters Filters
 	if m.filters != nil {
-		m.filters.UpdateFilters(m.filters.filters)
+		m.filters.mu.RLock()
+		currentFilters = m.filters.filters
+		m.filters.mu.RUnlock()
+		// Always re-apply latest filters to ensure correct quotas before Drop
+		m.filters.UpdateFilters(currentFilters)
 	}
 
 	req := &Request{
 		RoomName:  room,
 		Password:  passwd,
-		Filters:   m.filters.filters,
+		Filters:   currentFilters,
 		CreatedAt: time.Now(),
 	}
 

@@ -1,4 +1,4 @@
-name: "Manage Stale PRs"
+name: "Manage Stale PRs (by Creation Date)"
 
 on:
   schedule:
@@ -10,40 +10,77 @@ permissions:
   issues: write
 
 jobs:
-  stale:
+  stale-by-age:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v9
+      - uses: actions/github-script@v7
         with:
-          # Timing settings
-          days-before-pr-stale: 21
-          days-before-pr-close: 7
-          
-          # The "Friendly Info" message (posted when 30 days of inactivity pass)
-          stale-pr-message: >
-            This Pull Request has been inactive for 21 days. To keep our 
-            queue manageable, we mark older PRs as stale. This doesn't mean the 
-            work isn't appreciated. It's often just a matter of timing or current 
-            project focus. 
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const DAYS_BEFORE_STALE = 21;
+            const DAYS_BEFORE_CLOSE = 7; // Days after stale to close
+            const STALE_LABEL = 'stale';
             
-            We’ll leave this open for another 7 days in case you have final 
-            thoughts, but otherwise, it will be closed automatically to keep 
-            things tidy. This doesn't mean the content is lost! Your work is archived here and 
-            may be referenced or reused in the future.
-          
-          # The closing message
-          close-pr-message: >
-            This Pull Request has been automatically closed. As mentioned before, 
-            this doesn't mean the content is lost! Your work is archived here and 
-            may be referenced or reused in the future when it fits the project 
-            roadmap better. 
+            // Messages
+            const STALE_MESSAGE = `This Pull Request has been open for more than ${DAYS_BEFORE_STALE} days. To keep our queue manageable, we mark older PRs as stale. This doesn't mean the work isn't appreciated. It's often just a matter of timing or current project focus.\n\nWe’ll leave this open for another ${DAYS_BEFORE_CLOSE} days in case you have final thoughts, but otherwise, it will be closed automatically.`;
             
-            If you feel this is still a priority, feel free to comment or reopen 
-            when you're ready to continue. Thank you!
-          
-          # Label settings
-          stale-pr-label: 'stale'
-          
-          # Settings to ignore Issues
-          days-before-issue-stale: -1
-          days-before-issue-close: -1
+            const CLOSE_MESSAGE = `This Pull Request has been automatically closed because it has been open for more than ${DAYS_BEFORE_STALE + DAYS_BEFORE_CLOSE} days. Your work is archived here and may be referenced later. Thank you!`;
+
+            // 1. Fetch all open Pull Requests
+            const prs = await github.paginate(github.rest.pulls.list, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100
+            });
+
+            const now = new Date();
+
+            for (const pr of prs) {
+              const createdDate = new Date(pr.created_at);
+              const ageInMs = now - createdDate;
+              const ageInDays = ageInMs / (1000 * 60 * 60 * 24);
+              
+              const hasStaleLabel = pr.labels.some(label => label.name === STALE_LABEL);
+
+              // CHECK 1: Should we close it?
+              // Logic: It is older than (21+7) days AND it already has the warning label
+              if (ageInDays > (DAYS_BEFORE_STALE + DAYS_BEFORE_CLOSE) && hasStaleLabel) {
+                console.log(`Closing PR #${pr.number} (Age: ${ageInDays.toFixed(1)} days)`);
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: CLOSE_MESSAGE
+                });
+                
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  state: 'closed'
+                });
+                continue; // Move to next PR
+              }
+
+              // CHECK 2: Should we mark it stale?
+              // Logic: It is older than 21 days AND does NOT have the label yet
+              if (ageInDays > DAYS_BEFORE_STALE && !hasStaleLabel) {
+                console.log(`Marking PR #${pr.number} as stale (Age: ${ageInDays.toFixed(1)} days)`);
+                
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  labels: [STALE_LABEL]
+                });
+                
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  body: STALE_MESSAGE
+                });
+              }
+            }

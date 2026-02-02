@@ -13,7 +13,7 @@ type Service struct {
 
 	// queued start-Drop requests per supervisor
 	queuedStart map[string][]StartRequest
-	// persistent Drop requests per supervisor (10min timeout)
+	// persistent Drop requests per supervisor (3min timeout)
 	persistentRequests map[string][]*Request
 }
 
@@ -121,7 +121,7 @@ func (s *Service) consumePersistentRequest(supervisor string) (*Request, bool) {
 			s.persistentRequests[supervisor] = queue
 		}
 
-		if req != nil && time.Since(req.CreatedAt) < 10*time.Minute {
+		if req != nil && time.Since(req.CreatedAt) < persistentRequestTTL {
 			return req, true
 		}
 		// skip expired and continue

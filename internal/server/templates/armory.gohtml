@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Armory{{ if .Character }} - {{ .Character }}{{ end }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
+    <style>
+        :root {
+            --quality-low: #9CA3AF;
+            --quality-normal: #FFFFFF;
+            --quality-superior: #FFFFFF;
+            --quality-magic: #6B8AFF;
+            --quality-set: #00FF00;
+            --quality-rare: #FFFF00;
+            --quality-unique: #BFA969;
+            --quality-crafted: #FFA500;
+            --quality-runeword: #BFA969;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* Colorful Theme (Default) */
+        body.theme-colorful {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            color: #fff;
+        }
+        body.theme-colorful .panel { background: rgba(30,30,50,0.9); border-color: #4a4a4a; }
+        body.theme-colorful .panel-header { background: linear-gradient(180deg, rgba(40, 40, 60, 0.9) 0%, rgba(30, 30, 50, 0.9) 100%); }
+        body.theme-colorful .inventory-slot { background: rgba(20, 20, 40, 0.8); border-color: #333; }
+        body.theme-colorful .inventory-grid { background: rgba(0,0,0,0.5); border-color: #4a4a4a; }
+        body.theme-colorful .equip-slot { background: rgba(20, 20, 40, 0.8); border-color: #444; }
+        body.theme-colorful .section-title { color: #bfa969; border-color: #4a4a4a; }
+        body.theme-colorful .selector { background: rgba(30, 30, 50, 0.9); border-color: #4a4a4a; color: #fff; }
+        body.theme-colorful .btn-back { background: rgba(40, 40, 60, 0.9); border-color: #4a4a4a; color: #fff; }
+        body.theme-colorful .gold-display { background: rgba(30, 30, 50, 0.8); border-color: #4a4a4a; }
+        body.theme-colorful .stash-tab { background: rgba(40, 40, 60, 0.6); border-color: #4a4a4a; color: #888; }
+        body.theme-colorful .stash-tab.active { background: rgba(80, 80, 100, 0.8); color: #fff; }
+        body.theme-colorful .warning-banner { background: rgba(60,50,30,0.9); border-color: #8B7500; }
+        body.theme-colorful .text-muted { color: #888; }
+        body.theme-colorful .text-secondary { color: #aaa; }
+
+        /* Dark Theme */
+        body.theme-dark {
+            background: #0d0d0d;
+            color: #e0e0e0;
+        }
+        body.theme-dark .panel { background: #1a1a1a; border-color: #333; }
+        body.theme-dark .panel-header { background: #1f1f1f; }
+        body.theme-dark .inventory-slot { background: #141414; border-color: #2a2a2a; }
+        body.theme-dark .inventory-grid { background: #0a0a0a; border-color: #333; }
+        body.theme-dark .equip-slot { background: #141414; border-color: #333; }
+        body.theme-dark .section-title { color: #bfa969; border-color: #333; }
+        body.theme-dark .selector { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+        body.theme-dark .btn-back { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+        body.theme-dark .gold-display { background: #1a1a1a; border-color: #333; }
+        body.theme-dark .stash-tab { background: #1a1a1a; border-color: #333; color: #666; }
+        body.theme-dark .stash-tab.active { background: #2a2a2a; color: #fff; }
+        body.theme-dark .warning-banner { background: #2a2200; border-color: #665500; }
+        body.theme-dark .text-muted { color: #666; }
+        body.theme-dark .text-secondary { color: #888; }
+
+        /* Light Theme */
+        body.theme-light {
+            background: #f5f5f5;
+            color: #222;
+        }
+        body.theme-light .panel { background: #ffffff; border-color: #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body.theme-light .panel-header { background: #fafafa; }
+        body.theme-light .inventory-slot { background: #f0f0f0; border-color: #ccc; }
+        body.theme-light .inventory-grid { background: #e8e8e8; border-color: #ccc; }
+        body.theme-light .equip-slot { background: #f0f0f0; border-color: #ccc; }
+        body.theme-light .section-title { color: #8B7500; border-color: #ddd; }
+        body.theme-light .selector { background: #fff; border-color: #ccc; color: #333; }
+        body.theme-light .btn-back { background: #fff; border-color: #ccc; color: #333; }
+        body.theme-light .btn-back:hover { background: #f0f0f0; border-color: #999; }
+        body.theme-light .gold-display { background: #fff; border-color: #ddd; }
+        body.theme-light .stash-tab { background: #f0f0f0; border-color: #ccc; color: #666; }
+        body.theme-light .stash-tab.active { background: #fff; color: #333; border-bottom-color: #fff; }
+        body.theme-light .warning-banner { background: #fff8e0; border-color: #e0c000; }
+        body.theme-light .warning-banner span { color: #856404 !important; }
+        body.theme-light .warning-banner i { color: #856404 !important; }
+        body.theme-light .text-muted { color: #888; }
+        body.theme-light .text-secondary { color: #666; }
+        body.theme-light .text-white { color: #222 !important; }
+        body.theme-light .text-gray-400 { color: #666 !important; }
+        body.theme-light .text-gray-500 { color: #888 !important; }
+        body.theme-light .text-\[\#bfa969\] { color: #8B7500 !important; }
+        body.theme-light .dump-time { color: #888; }
+
+        .item-quality-low { color: var(--quality-low); }
+        .item-quality-normal { color: var(--quality-normal); }
+        .item-quality-superior { color: var(--quality-superior); }
+        .item-quality-magic { color: var(--quality-magic); }
+        .item-quality-set { color: var(--quality-set); }
+        .item-quality-rare { color: var(--quality-rare); }
+        .item-quality-unique { color: var(--quality-unique); }
+        .item-quality-crafted { color: var(--quality-crafted); }
+        .item-quality-runeword { color: var(--quality-runeword); }
+
+        .inventory-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .inventory-items-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .inventory-items-layer .inventory-item {
+            pointer-events: auto;
+        }
+
+        .inventory-grid {
+            display: grid;
+            gap: 1px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .inventory-slot {
+            width: 29px;
+            height: 29px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #333;
+            position: relative;
+        }
+
+        .inventory-slot:hover {
+            border-color: #666;
+        }
+
+        .inventory-item {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.1s ease, z-index 0s;
+            image-rendering: pixelated;
+        }
+
+        .inventory-item:hover {
+            transform: scale(1.05);
+            z-index: 100;
+        }
+
+        .item-tooltip {
+            display: none;
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 12px;
+            min-width: 200px;
+            max-width: 350px;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .item-tooltip.visible {
+            display: block;
+        }
+
+        .item-tooltip .item-name {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .item-tooltip .item-type {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .item-tooltip .item-stats {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .item-tooltip .stat-line {
+            color: #6B8AFF;
+            margin: 2px 0;
+        }
+
+        .item-tooltip .stat-line.base {
+            color: #FFFFFF;
+        }
+
+        .item-tooltip .ethereal {
+            color: #888;
+            font-style: italic;
+        }
+
+        .item-tooltip .sockets {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+        }
+
+        .item-tooltip .socket-item {
+            color: #FFA500;
+            margin: 2px 0;
+            font-size: 11px;
+        }
+
+        .item-tooltip .level-req {
+            color: #FF4444;
+            margin-top: 6px;
+            font-size: 11px;
+        }
+
+        .equipment-panel {
+            position: relative;
+            width: 350px;
+            height: 450px;
+            background-image: url('/assets/UI/equipment.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .equipment-slot {
+            position: absolute;
+            cursor: pointer;
+        }
+
+        /* Equipment slot positions (approximate, adjust based on actual image) */
+        .slot-head { top: 10px; left: 145px; width: 60px; height: 60px; }
+        .slot-neck { top: 20px; left: 220px; width: 30px; height: 30px; }
+        .slot-torso { top: 85px; left: 130px; width: 90px; height: 90px; }
+        .slot-left-arm { top: 85px; left: 30px; width: 60px; height: 120px; }
+        .slot-right-arm { top: 85px; left: 260px; width: 60px; height: 120px; }
+        .slot-left-ring { top: 210px; left: 100px; width: 30px; height: 30px; }
+        .slot-right-ring { top: 210px; left: 220px; width: 30px; height: 30px; }
+        .slot-belt { top: 190px; left: 140px; width: 60px; height: 30px; }
+        .slot-gloves { top: 230px; left: 30px; width: 60px; height: 60px; }
+        .slot-feet { top: 280px; left: 260px; width: 60px; height: 60px; }
+
+        /* New visual equipment layout */
+        .equipment-visual {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .equip-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .equip-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .equip-spacer {
+            width: 60px;
+        }
+
+        .equip-slot {
+            background: rgba(20, 20, 40, 0.8);
+            border: 2px solid #444;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .equip-slot:hover {
+            border-color: #666;
+        }
+
+        .equip-head { width: 60px; height: 60px; }
+        .equip-torso { width: 60px; height: 90px; }
+        .equip-weapon { width: 60px; height: 120px; }
+        .equip-shield { width: 60px; height: 90px; }
+        .equip-gloves { width: 60px; height: 60px; }
+        .equip-boots { width: 60px; height: 60px; }
+        .equip-belt { width: 60px; height: 30px; }
+        .equip-neck { width: 30px; height: 30px; }
+        .equip-ring { width: 28px; height: 28px; }
+
+        .equip-slot-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .equip-accessories {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .equip-rings {
+            display: flex;
+            gap: 4px;
+        }
+
+        .equip-item {
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            image-rendering: pixelated;
+        }
+
+        .equip-item:hover {
+            filter: brightness(1.2);
+        }
+
+        .stash-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .stash-tab {
+            padding: 6px 16px;
+            background: rgba(40, 40, 60, 0.8);
+            border: 1px solid #444;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            color: #888;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .stash-tab:hover {
+            background: rgba(60, 60, 80, 0.8);
+            color: #aaa;
+        }
+
+        .stash-tab.active {
+            background: rgba(80, 80, 100, 0.8);
+            color: #fff;
+            border-bottom-color: transparent;
+        }
+
+        .stash-content {
+            display: none;
+        }
+
+        .stash-content.active {
+            display: block;
+        }
+
+        .armory-row {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .armory-row > div {
+            flex: 1 1 33.33%;
+            min-width: 0;
+        }
+
+        .section-title {
+            font-size: 16px;
+            color: #bfa969;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #4a4a4a;
+            padding-bottom: 6px;
+        }
+
+        .character-header {
+            border: 1px solid;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .selector {
+            border: 1px solid;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .selector:focus {
+            outline: none;
+            border-color: #6B8AFF;
+        }
+
+        .gold-display {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gold-display .gold-icon {
+            color: #FFD700;
+        }
+
+        .gold-display .gold-amount {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .dump-time {
+            color: #666;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .no-armory-message {
+            background: rgba(40, 40, 60, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #888;
+        }
+
+        .no-armory-message h2 {
+            color: #bfa969;
+            margin-bottom: 16px;
+        }
+
+        .btn-back {
+            background: rgba(40, 40, 60, 0.9);
+            border: 1px solid #4a4a4a;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-back:hover {
+            background: rgba(60, 60, 80, 0.9);
+            border-color: #666;
+        }
+    </style>
+</head>
+<body class="text-white">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <a href="/" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <h1 class="text-2xl font-bold text-[#bfa969]">
+                <i class="bi bi-shield-shaded mr-2"></i>Armory
+            </h1>
+            <div class="flex items-center gap-4">
+                <select class="selector theme-selector" onchange="changeTheme(this.value)" title="Theme">
+                    <option value="colorful">Colorful</option>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+                <select class="selector" onchange="loadCharacter(this.value)">
+                    <option value="">Select Character...</option>
+                    {{ range .Characters }}
+                    <option value="{{ . }}" {{ if eq . $.Character }}selected{{ end }}>{{ . }}</option>
+                    {{ end }}
+                </select>
+            </div>
+        </div>
+
+        {{ if .Error }}
+        <div class="no-armory-message">
+            <h2><i class="bi bi-exclamation-triangle"></i> No Armory Data</h2>
+            <p>{{ .Error }}</p>
+            <p class="mt-4">Start the character in a game to generate armory data.</p>
+        </div>
+        {{ else if .Armory }}
+        <!-- Character Info -->
+        <div class="character-header panel panel-header">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold">{{ .Armory.CharacterName }}</h2>
+                    <p class="text-gray-400">Level {{ .Armory.Level }} {{ .Armory.Class }}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="gold-display">
+                        <i class="bi bi-coin gold-icon"></i>
+                        <span class="gold-amount">{{ .Armory.Gold }}</span>
+                        <span class="text-gray-500">(carried)</span>
+                    </div>
+                    <div class="gold-display">
+                        <i class="bi bi-safe gold-icon"></i>
+                        <span class="gold-amount">{{ index .Armory.StashedGold 0 }}</span>
+                        <span class="text-gray-500">(stashed)</span>
+                    </div>
+                </div>
+            </div>
+            <p class="dump-time">Last updated: {{ .Armory.DumpTime.Format "Jan 02, 2006 15:04:05" }} (Game: {{ .Armory.GameName }})</p>
+        </div>
+
+        <!-- Warning Notice -->
+        <div class="warning-banner rounded-lg p-3 mb-4 flex items-center gap-3 border" style="max-width: 1100px; margin: 0 auto 16px auto;">
+            <i class="bi bi-exclamation-triangle-fill text-[#FFD700] text-xl"></i>
+            <span class="text-[#FFD700] text-sm">PLEASE NOTE: There might be some images missing, if you find a missing image please report it to bug section.</span>
+        </div>
+
+        <!-- Row 1: Equipped | Inventory | Belt -->
+        <div class="panel border rounded-lg flex flex-wrap armory-row">
+            <!-- Equipment Panel -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-person-fill mr-2"></i>Equipped</h3>
+                <div class="equipment-visual">
+                    <!-- Visual equipment layout -->
+                    <div class="equip-grid">
+                        <!-- Row 1: Head -->
+                        <div class="equip-row">
+                            <div class="equip-spacer"></div>
+                            <div class="equip-slot equip-head" data-slot="head">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "head" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-spacer"></div>
+                        </div>
+                        <!-- Row 2: Weapon, Torso, Amulet + Shield -->
+                        <div class="equip-row">
+                            <div class="equip-slot equip-weapon" data-slot="left_arm">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "left_arm" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot equip-torso" data-slot="torso">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "torso" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot-group">
+                                <div class="equip-slot equip-neck" data-slot="neck">
+                                    {{ range .Armory.Equipped }}{{ if eq .BodyLocation "neck" }}
+                                    <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                         style="background-image: url('/items/{{ .ImageName }}');"
+                                         data-item='{{ . | json }}'
+                                         onmouseenter="showTooltip(event, this)"
+                                         onmouseleave="hideTooltip()"
+                                         onmousemove="moveTooltip(event)">
+                                    </div>
+                                    {{ end }}{{ end }}
+                                </div>
+                                <div class="equip-slot equip-shield" data-slot="right_arm">
+                                    {{ range .Armory.Equipped }}{{ if eq .BodyLocation "right_arm" }}
+                                    <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                         style="background-image: url('/items/{{ .ImageName }}');"
+                                         data-item='{{ . | json }}'
+                                         onmouseenter="showTooltip(event, this)"
+                                         onmouseleave="hideTooltip()"
+                                         onmousemove="moveTooltip(event)">
+                                    </div>
+                                    {{ end }}{{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Row 3: Gloves, Belt + Rings, Boots -->
+                        <div class="equip-row">
+                            <div class="equip-slot equip-gloves" data-slot="gloves">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "gloves" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot-group">
+                                <div class="equip-slot equip-belt" data-slot="belt">
+                                    {{ range .Armory.Equipped }}{{ if eq .BodyLocation "belt" }}
+                                    <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                         style="background-image: url('/items/{{ .ImageName }}');"
+                                         data-item='{{ . | json }}'
+                                         onmouseenter="showTooltip(event, this)"
+                                         onmouseleave="hideTooltip()"
+                                         onmousemove="moveTooltip(event)">
+                                    </div>
+                                    {{ end }}{{ end }}
+                                </div>
+                                <div class="equip-rings">
+                                    <div class="equip-slot equip-ring" data-slot="left_ring">
+                                        {{ range .Armory.Equipped }}{{ if eq .BodyLocation "left_ring" }}
+                                        <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                             style="background-image: url('/items/{{ .ImageName }}');"
+                                             data-item='{{ . | json }}'
+                                             onmouseenter="showTooltip(event, this)"
+                                             onmouseleave="hideTooltip()"
+                                             onmousemove="moveTooltip(event)">
+                                        </div>
+                                        {{ end }}{{ end }}
+                                    </div>
+                                    <div class="equip-slot equip-ring" data-slot="right_ring">
+                                        {{ range .Armory.Equipped }}{{ if eq .BodyLocation "right_ring" }}
+                                        <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                             style="background-image: url('/items/{{ .ImageName }}');"
+                                             data-item='{{ . | json }}'
+                                             onmouseenter="showTooltip(event, this)"
+                                             onmouseleave="hideTooltip()"
+                                             onmousemove="moveTooltip(event)">
+                                        </div>
+                                        {{ end }}{{ end }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="equip-slot equip-boots" data-slot="feet">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "feet" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-grid-3x3-gap mr-2"></i>Inventory</h3>
+                <div class="inventory-container">
+                    <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(4, 29px);">
+                        {{ range $row := iterate 4 }}
+                        {{ range $col := iterate 10 }}
+                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                        {{ end }}
+                        {{ end }}
+                    </div>
+                    <div class="inventory-items-layer">
+                        {{ range .Armory.Inventory }}
+                        <div class="inventory-item"
+                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)">
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Belt -->
+            <div class="p-4 flex-1 min-w-[200px]">
+                <h3 class="section-title"><i class="bi bi-columns-gap mr-2"></i>Belt</h3>
+                <div class="inventory-container">
+                    <div class="inventory-grid" style="grid-template-columns: repeat(4, 29px); grid-template-rows: repeat(4, 29px);">
+                        {{ range $row := iterate 4 }}
+                        {{ range $col := iterate 4 }}
+                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                        {{ end }}
+                        {{ end }}
+                    </div>
+                    <div class="inventory-items-layer">
+                        {{ range .Armory.Belt }}
+                        <div class="inventory-item"
+                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: 29px; height: 29px; background-image: url('/items/{{ .ImageName }}');"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)">
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Stash | Cube | Mercenary -->
+        <div class="panel border rounded-lg flex flex-wrap mt-6 armory-row">
+            <!-- Stash -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-box-seam mr-2"></i>Stash</h3>
+                <div class="stash-tabs">
+                    <button class="stash-tab active" onclick="showStashTab('personal')">Personal</button>
+                    <button class="stash-tab" onclick="showStashTab('shared1')">Shared 1</button>
+                    <button class="stash-tab" onclick="showStashTab('shared2')">Shared 2</button>
+                    <button class="stash-tab" onclick="showStashTab('shared3')">Shared 3</button>
+                </div>
+                
+                <!-- Personal Stash -->
+                <div id="stash-personal" class="stash-content active">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.Stash }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Stash 1 -->
+                <div id="stash-shared1" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash1 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Stash 2 -->
+                <div id="stash-shared2" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash2 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Stash 3 -->
+                <div id="stash-shared3" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash3 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cube -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-box mr-2"></i>Horadric Cube</h3>
+                <div class="inventory-container">
+                    <div class="inventory-grid" style="grid-template-columns: repeat(3, 29px); grid-template-rows: repeat(4, 29px);">
+                        {{ range $row := iterate 4 }}
+                        {{ range $col := iterate 3 }}
+                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                        {{ end }}
+                        {{ end }}
+                    </div>
+                    <div class="inventory-items-layer">
+                        {{ range .Armory.Cube }}
+                        <div class="inventory-item"
+                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)">
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+            <!-- Mercenary -->
+            <div class="p-4 flex-1 min-w-[200px]">
+                <h3 class="section-title"><i class="bi bi-person-badge mr-2"></i>Mercenary</h3>
+                {{ if .Armory.Mercenary }}
+                <div class="equipment-visual">
+                    <div class="equip-grid">
+                        <!-- Row 1: Head -->
+                        <div class="equip-row">
+                            <div class="equip-spacer"></div>
+                            <div class="equip-slot equip-head" data-slot="head">
+                                {{ range .Armory.Mercenary }}{{ if eq .BodyLocation "head" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-spacer"></div>
+                        </div>
+                        <!-- Row 2: Weapon, Torso -->
+                        <div class="equip-row">
+                            <div class="equip-slot equip-weapon" data-slot="left_arm">
+                                {{ range .Armory.Mercenary }}{{ if eq .BodyLocation "left_arm" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot equip-torso" data-slot="torso">
+                                {{ range .Armory.Mercenary }}{{ if eq .BodyLocation "torso" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-spacer"></div>
+                        </div>
+                    </div>
+                </div>
+                {{ else }}
+                <p class="text-gray-500 text-sm">No mercenary</p>
+                {{ end }}
+            </div>
+        </div>
+        {{ else }}
+        <div class="no-armory-message">
+            <h2><i class="bi bi-shield-shaded"></i> Select a Character</h2>
+            <p>Choose a character from the dropdown to view their armory.</p>
+        </div>
+        {{ end }}
+    </div>
+
+    <!-- Tooltip -->
+    <div id="item-tooltip" class="item-tooltip"></div>
+
+    <script>
+        function loadCharacter(name) {
+            if (name) {
+                window.location.href = '/armory?character=' + encodeURIComponent(name);
+            }
+        }
+
+        function showStashTab(tab) {
+            // Hide all stash contents
+            document.querySelectorAll('.stash-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.stash-tab').forEach(el => el.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById('stash-' + tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        const tooltip = document.getElementById('item-tooltip');
+
+        function showTooltip(event, element) {
+            const itemData = JSON.parse(element.dataset.item);
+            tooltip.innerHTML = formatItemTooltip(itemData);
+            tooltip.classList.add('visible');
+            moveTooltip(event);
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
+        }
+
+        function moveTooltip(event) {
+            const x = event.clientX + 15;
+            const y = event.clientY + 15;
+            
+            // Prevent tooltip from going off screen
+            const rect = tooltip.getBoundingClientRect();
+            const maxX = window.innerWidth - rect.width - 20;
+            const maxY = window.innerHeight - rect.height - 20;
+            
+            tooltip.style.left = Math.min(x, maxX) + 'px';
+            tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        function formatItemTooltip(item) {
+            let html = '';
+            
+            // Item name with quality color
+            const qualityClass = 'item-quality-' + item.quality.toLowerCase();
+            let displayName = item.identifiedName || item.name;
+            
+            // For runewords, show runeword name
+            if (item.isRuneword && item.runewordName) {
+                displayName = item.runewordName;
+            }
+            
+            html += `<div class="item-name ${qualityClass}">${displayName}</div>`;
+            
+            // Base item name for uniques/sets/runewords
+            if ((item.quality === 'Unique' || item.quality === 'Set' || item.isRuneword) && item.name !== displayName) {
+                html += `<div class="item-type">${item.name}</div>`;
+            }
+            
+            // Defense
+            if (item.defense > 0) {
+                html += `<div class="stat-line base">Defense: ${item.defense}</div>`;
+            }
+            
+            // Damage
+            if (item.minDamage > 0 || item.maxDamage > 0) {
+                if (item.minDamage > 0 && item.maxDamage > 0) {
+                    html += `<div class="stat-line base">Damage: ${item.minDamage} to ${item.maxDamage}</div>`;
+                }
+            }
+            
+            // Durability
+            if (item.maxDurability > 0) {
+                html += `<div class="stat-line base">Durability: ${item.durability} of ${item.maxDurability}</div>`;
+            }
+            
+            // Level requirement
+            if (item.levelReq > 0) {
+                html += `<div class="level-req">Required Level: ${item.levelReq}</div>`;
+            }
+            
+            // Stats (filter out already shown stats)
+            const shownStatIds = [31, 72, 73, 92]; // Defense, Durability, MaxDurability, Level
+            if (item.stats && item.stats.length > 0) {
+                html += '<div class="item-stats">';
+                for (const stat of item.stats) {
+                    if (!shownStatIds.includes(stat.id) && stat.string) {
+                        html += `<div class="stat-line">${stat.string}</div>`;
+                    }
+                }
+                html += '</div>';
+            }
+            
+            // Ethereal
+            if (item.ethereal) {
+                html += `<div class="ethereal">Ethereal (Cannot be Repaired)</div>`;
+            }
+            
+            // Socketed items
+            if (item.sockets && item.sockets.length > 0) {
+                html += '<div class="sockets">';
+                html += `<div style="color: #888; font-size: 11px;">Socketed (${item.sockets.length}):</div>`;
+                for (const socketItem of item.sockets) {
+                    html += `<div class="socket-item">${socketItem.name}</div>`;
+                }
+                html += '</div>';
+            }
+            
+            return html;
+        }
+
+        // Theme handling
+        function changeTheme(theme) {
+            document.body.classList.remove('theme-colorful', 'theme-dark', 'theme-light');
+            document.body.classList.add('theme-' + theme);
+            localStorage.setItem('armoryTheme', theme);
+        }
+
+        // Restore saved theme on page load
+        (function() {
+            const saved = localStorage.getItem('armoryTheme') || 'colorful';
+            const selector = document.querySelector('.theme-selector');
+            if (selector) {
+                selector.value = saved;
+            }
+            changeTheme(saved);
+        })();
+    </script>
+</body>
+</html>
