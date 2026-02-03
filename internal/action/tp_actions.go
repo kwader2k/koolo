@@ -16,6 +16,11 @@ import (
 )
 
 func checkPlayerDeathForTP(ctx *context.Status) error {
+	if ctx.Manager == nil || !ctx.Manager.InGame() || ctx.Data.PlayerUnit.ID == 0 {
+		// Avoid false positives while out of game or data is not yet valid.
+		return nil
+	}
+
 	if ctx.Data.PlayerUnit.Area.IsTown() {
 		return nil
 	}

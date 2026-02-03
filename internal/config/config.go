@@ -405,8 +405,10 @@ type CharacterCfg struct {
 			ClearFloors bool `yaml:"clearFloors"`
 		}
 		Andariel struct {
-			ClearRoom   bool `yaml:"clearRoom"`
-			UseAntidoes bool `yaml:"useAntidoes"`
+			ClearRoom bool `yaml:"clearRoom"`
+			// Deprecated: kept for backwards compatibility with older configs; can be removed in the future.
+			UseAntidoesDeprecated bool `yaml:"useAntidoes,omitempty"`
+			UseAntidotes          bool `yaml:"useAntidotes"`
 		}
 		Duriel struct {
 			UseThawing bool `yaml:"useThawing"`
@@ -653,6 +655,12 @@ func Load() error {
 			return fmt.Errorf("error reading %s character config: %w", charConfigPath, err)
 		}
 		_ = r.Close()
+
+		// Deprecated: kept for backwards compatibility with older configs; can be removed in the future.
+		if !charCfg.Game.Andariel.UseAntidotes && charCfg.Game.Andariel.UseAntidoesDeprecated {
+			charCfg.Game.Andariel.UseAntidotes = true
+		}
+		charCfg.Game.Andariel.UseAntidoesDeprecated = false
 
 		charCfg.ConfigFolderName = entry.Name()
 

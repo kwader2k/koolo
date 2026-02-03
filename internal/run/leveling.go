@@ -187,7 +187,6 @@ func (a Leveling) setupLevelOneConfig() {
 	a.ctx.CharacterCfg.Game.Pit.FocusOnElitePacks = false
 	a.ctx.CharacterCfg.Game.Pit.OnlyClearLevel2 = false
 	a.ctx.CharacterCfg.Game.Andariel.ClearRoom = true
-	a.ctx.CharacterCfg.Game.Andariel.UseAntidoes = true
 	a.ctx.CharacterCfg.Game.Mephisto.KillCouncilMembers = false
 	a.ctx.CharacterCfg.Game.Mephisto.OpenChests = false
 	a.ctx.CharacterCfg.Game.Mephisto.ExitToA4 = true

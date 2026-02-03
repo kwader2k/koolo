@@ -725,7 +725,7 @@ func (ls LevelingSequence) setupLevelOneConfig() {
 	ls.ctx.CharacterCfg.Game.Pit.FocusOnElitePacks = false
 	ls.ctx.CharacterCfg.Game.Pit.OnlyClearLevel2 = false
 	ls.ctx.CharacterCfg.Game.Andariel.ClearRoom = true
-	ls.ctx.CharacterCfg.Game.Andariel.UseAntidoes = true
+	ls.ctx.CharacterCfg.Game.Andariel.UseAntidotes = true
 	ls.ctx.CharacterCfg.Game.Mephisto.KillCouncilMembers = false
 	ls.ctx.CharacterCfg.Game.Mephisto.OpenChests = false
 	ls.ctx.CharacterCfg.Game.Mephisto.ExitToA4 = true

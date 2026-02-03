@@ -16,6 +16,8 @@ import (
 	"github.com/lxn/win"
 )
 
+const antidotePotionsToDrink = 10 // Number of antidote potions to consume (counts separately for the character and the mercenary)
+
 var andarielClearPos1 = data.Position{
 	X: 22575,
 	Y: 9634,
@@ -145,12 +147,26 @@ func (a Andariel) CheckConditions(parameters *RunParameters) SequencerResult {
 
 func (a Andariel) Run(parameters *RunParameters) error {
 	_, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)
+	useAntidotes := a.ctx.CharacterCfg.Game.Andariel.UseAntidotes || isLevelingChar
 
 	if IsQuestRun(parameters) {
 		needLeaveTown := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusRewardGranted+quest.StatusLeaveTown+quest.StatusEnterArea) || a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusCompletedBefore)
 		if needLeaveTown {
 			a.goToAct2()
 			return nil
+		}
+	}
+
+	// Always start the run with antidote potions when configured or leveling.
+	if useAntidotes {
+		if !a.ctx.Data.PlayerUnit.Area.IsTown() {
+			if err := action.ReturnTown(); err != nil {
+				return err
+			}
+		}
+		mercAlive := a.ctx.Data.MercHPPercent() > 0
+		if err := a.buyAndDrinkAntidotePotions(mercAlive); err != nil {
+			return err
 		}
 	}
 
@@ -166,6 +182,7 @@ func (a Andariel) Run(parameters *RunParameters) error {
 		return err
 	}
 
+	// Regular characters use the simpler clear pathing, leveling uses the robust variant.
 	if !isLevelingChar {
 
 		if a.ctx.CharacterCfg.Game.Andariel.ClearRoom {
@@ -217,62 +234,6 @@ func (a Andariel) Run(parameters *RunParameters) error {
 			action.MoveToCoords(andarielClearPos11)
 			action.ClearAreaAroundPlayer(15, data.MonsterAnyFilter())
 
-			if a.ctx.CharacterCfg.Game.Andariel.UseAntidoes {
-				reHidePortraits := false
-				action.ReturnTown()
-
-				potsToBuy := 4
-				if a.ctx.Data.MercHPPercent() > 0 {
-					potsToBuy = 8
-					if a.ctx.CharacterCfg.HidePortraits && !a.ctx.Data.OpenMenus.PortraitsShown {
-						a.ctx.CharacterCfg.HidePortraits = false
-						reHidePortraits = true
-						a.ctx.HID.PressKey(a.ctx.Data.KeyBindings.ShowPortraits.Key1[0])
-					}
-				}
-
-				action.VendorRefill(action.VendorRefillOpts{ForceRefill: true, SellJunk: true, BuyConsumables: true})
-				action.BuyAtVendor(npc.Akara, action.VendorItemRequest{
-					Item:     "AntidotePotion",
-					Quantity: potsToBuy,
-					Tab:      4,
-				})
-
-				a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-
-				x := 0
-				for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-					if itm.Name != "AntidotePotion" {
-						continue
-					}
-					pos := ui.GetScreenCoordsForItem(itm)
-					utils.Sleep(500)
-
-					if x > 3 {
-
-						a.ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-						utils.Sleep(300)
-						if a.ctx.Data.LegacyGraphics {
-							a.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionXClassic, ui.MercAvatarPositionYClassic)
-						} else {
-							a.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionX, ui.MercAvatarPositionY)
-						}
-
-					} else {
-						a.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
-					}
-					x++
-				}
-				step.CloseAllMenus()
-
-				if reHidePortraits {
-					a.ctx.CharacterCfg.HidePortraits = true
-				}
-				action.HidePortraits()
-				a.ctx.DisableItemPickup()
-				action.UsePortalInTown()
-			}
-
 			a.ctx.DisableItemPickup()
 			action.MoveToCoords(andarielAttackPos1)
 
@@ -306,6 +267,183 @@ func (a Andariel) Run(parameters *RunParameters) error {
 	}
 
 	return err
+}
+
+// Consume antidotes from the inventory only, optionally feeding the mercenary.
+func (a Andariel) drinkAntidotePotions(selfTarget, mercTarget int) (int, int) {
+	mercAlive := a.ctx.Data.MercHPPercent() > 0
+	if selfTarget < 0 {
+		selfTarget = 0
+	}
+	if mercTarget < 0 {
+		mercTarget = 0
+	}
+	if !mercAlive {
+		mercTarget = 0
+	}
+	if selfTarget == 0 && mercTarget == 0 {
+		return 0, 0
+	}
+	shouldGiveMerc := mercAlive && mercTarget > 0
+	reHidePortraits := false
+	if shouldGiveMerc && a.ctx.CharacterCfg.HidePortraits && !a.ctx.Data.OpenMenus.PortraitsShown {
+		a.ctx.CharacterCfg.HidePortraits = false
+		reHidePortraits = true
+		a.ctx.HID.PressKey(a.ctx.Data.KeyBindings.ShowPortraits.Key1[0])
+		utils.Sleep(200)
+	}
+
+	a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
+	utils.Sleep(300)
+
+	selfCount := 0
+	mercCount := 0
+	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		if itm.Name != "AntidotePotion" {
+			continue
+		}
+		pos := ui.GetScreenCoordsForItem(itm)
+		utils.Sleep(500)
+
+		if selfCount < selfTarget {
+			a.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
+			selfCount++
+			continue
+		}
+
+		if mercCount < mercTarget {
+			a.ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
+			utils.Sleep(300)
+			if a.ctx.Data.LegacyGraphics {
+				a.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionXClassic, ui.MercAvatarPositionYClassic)
+			} else {
+				a.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionX, ui.MercAvatarPositionY)
+			}
+			mercCount++
+			continue
+		}
+
+		a.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
+		selfCount++
+	}
+	step.CloseAllMenus()
+
+	if reHidePortraits {
+		a.ctx.CharacterCfg.HidePortraits = true
+		_ = action.HidePortraits()
+	}
+
+	return selfCount, mercCount
+}
+
+// Count only free, unlocked inventory cells.
+func (a Andariel) countFreeInventorySlots() int {
+	occupied := [4][10]bool{}
+	for _, i := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
+		w := i.Desc().InventoryWidth
+		h := i.Desc().InventoryHeight
+		for y := 0; y < h; y++ {
+			for x := 0; x < w; x++ {
+				if i.Position.Y+y < 4 && i.Position.X+x < 10 {
+					occupied[i.Position.Y+y][i.Position.X+x] = true
+				}
+			}
+		}
+	}
+
+	for y, row := range a.ctx.CharacterCfg.Inventory.InventoryLock {
+		if y < 4 {
+			for x, cell := range row {
+				if x < 10 && cell == 0 {
+					occupied[y][x] = true
+				}
+			}
+		}
+	}
+
+	free := 0
+	for y := 0; y < 4; y++ {
+		for x := 0; x < 10; x++ {
+			if !occupied[y][x] {
+				free++
+			}
+		}
+	}
+	return free
+}
+
+// Buy antidotes in batches based on free inventory space, then consume them.
+func (a Andariel) buyAndDrinkAntidotePotions(mercAlive bool) error {
+	selfTarget := antidotePotionsToDrink
+	mercTarget := 0
+	if mercAlive {
+		mercTarget = antidotePotionsToDrink
+	}
+
+	drinkAndLog := func(selfTarget, mercTarget int) (int, int) {
+		selfCount, mercCount := a.drinkAntidotePotions(selfTarget, mercTarget)
+		a.ctx.Logger.Info("Antidote potions consumed", "self", selfCount, "merc", mercCount)
+		return selfCount, mercCount
+	}
+
+	selfCount, mercCount := drinkAndLog(selfTarget, mercTarget)
+	selfTarget -= selfCount
+	mercTarget -= mercCount
+	if selfTarget < 0 {
+		selfTarget = 0
+	}
+	if mercTarget < 0 {
+		mercTarget = 0
+	}
+
+	for selfTarget > 0 || mercTarget > 0 {
+		freeSlots := a.countFreeInventorySlots()
+		if freeSlots == 0 {
+			a.ctx.Logger.Warn("Not enough inventory space to buy antidote potions", "free", freeSlots, "required", selfTarget+mercTarget)
+			return nil
+		}
+
+		batch := min(freeSlots, selfTarget+mercTarget)
+		if err := a.buyAntidotePotions(batch); err != nil {
+			return err
+		}
+		a.ctx.RefreshGameData()
+
+		selfCount, mercCount = drinkAndLog(selfTarget, mercTarget)
+		if selfCount == 0 && mercCount == 0 {
+			a.ctx.Logger.Warn("Failed to consume antidote potions after purchase", "remaining", selfTarget+mercTarget)
+			return nil
+		}
+
+		selfTarget -= selfCount
+		mercTarget -= mercCount
+		if selfTarget < 0 {
+			selfTarget = 0
+		}
+		if mercTarget < 0 {
+			mercTarget = 0
+		}
+	}
+
+	return nil
+}
+
+func (a Andariel) buyAntidotePotions(quantity int) error {
+	if quantity <= 0 {
+		return nil
+	}
+	a.ctx.Logger.Info("Buying antidote potions from Akara", "quantity", quantity)
+	if err := action.InteractNPC(npc.Akara); err != nil {
+		return err
+	}
+	if err := action.BuyAtVendor(npc.Akara, action.VendorItemRequest{
+		Item:     "AntidotePotion",
+		Quantity: quantity,
+		Tab:      4,
+	}); err != nil {
+		return err
+	}
+	return step.CloseAllMenus()
 }
 
 func (a Andariel) goToAct2() {

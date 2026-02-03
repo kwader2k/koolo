@@ -49,6 +49,8 @@ var (
 func AutoCreateCharacter(class, name string) error {
 	ctx := context.Get()
 	ctx.Logger.Info("[AutoCreate] Processing", slog.String("class", class), slog.String("name", name))
+	authMethod := strings.TrimSpace(ctx.CharacterCfg.AuthMethod)
+	isOfflineAuth := authMethod == "" || strings.EqualFold(authMethod, "None")
 
 	// 1. Enter character creation screen
 	if !ctx.GameReader.IsInCharacterCreationScreen() {
@@ -68,14 +70,19 @@ func AutoCreateCharacter(class, name string) error {
 	utils.Sleep(500)
 
 	// 3. Toggle Ladder
-	if !ctx.CharacterCfg.Game.IsNonLadderChar {
+	if !isOfflineAuth && !ctx.CharacterCfg.Game.IsNonLadderChar {
 		ctx.HID.Click(game.LeftButton, ui.CharLadderBtnX, ui.CharLadderBtnY)
 		utils.Sleep(300)
 	}
 
 	// 4. Toggle Hardcore
 	if ctx.CharacterCfg.Game.IsHardCoreChar {
-		ctx.HID.Click(game.LeftButton, ui.CharHardcoreBtnX, ui.CharHardcoreBtnY)
+		hardcoreX, hardcoreY := ui.CharHardcoreBtnX, ui.CharHardcoreBtnY
+		if isOfflineAuth {
+			// Offline creation screen omits ladder, shifting toggle positions left.
+			hardcoreX, hardcoreY = ui.CharOfflineHardcoreBtnX, ui.CharHardcoreBtnY
+		}
+		ctx.HID.Click(game.LeftButton, hardcoreX, hardcoreY)
 		utils.Sleep(300)
 	}
 

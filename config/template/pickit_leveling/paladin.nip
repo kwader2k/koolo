@@ -94,7 +94,7 @@
 [type] == armor # [sockets] == 3 # # [maxquantity] == 1 // Treachery
 [type] == armor # [sockets] == 2 # # [maxquantity] == 1 // Stealth
 [type] == helm # [sockets] == 2 # # [maxquantity] == 1 // Lore
-[type] == scimitar # [sockets] == 2 # # [maxquantity] == 1 // steel
+[name] == scimitar # [sockets] == 2 # # [maxquantity] == 1 // steel
 [name] == shortstaff # [sockets] == 2 # # [maxquantity] == 1 //Leaf
 [type] == helm && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1 // bulwark
 

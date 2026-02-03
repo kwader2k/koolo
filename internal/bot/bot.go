@@ -158,6 +158,11 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					continue
 				}
 
+				if !b.ctx.Manager.InGame() || b.ctx.Data.PlayerUnit.ID == 0 {
+					// Avoid false death/chicken checks while out of game or data is not yet valid.
+					continue
+				}
+
 				err = b.ctx.HealthManager.HandleHealthAndMana()
 				if err != nil {
 					b.ctx.Logger.Info("HealthManager: Detected critical error (chicken/death), stopping bot.", "error", err.Error())
@@ -426,21 +431,9 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 				// Drop: Handle Drop interrupt from step functions
 				if errors.Is(err, drop.ErrInterrupt) {
-					b.ctx.Logger.Info("Drop request acknowledged, switching to Drop routine")
+					b.ctx.Logger.Info("Drop request acknowledged, ending run to hand over to supervisor")
 					step.CleanupForDrop()
-					_ = b.ctx.Manager.ExitGame()
-
-					d := run.NewDrop()
-					if derr := d.Run(nil); derr != nil {
-						b.ctx.Logger.Error("Drop run failed", "error", derr)
-					} else {
-						b.ctx.Logger.Info("Drop run completed successfully")
-					}
-
-					// Note: ResetDropContext() is called in Drop.go's defer
-					// to handle both success and failure cases consistently
-
-					return nil
+					return drop.ErrInterrupt
 				}
 
 				var runFinishReason event.FinishReason

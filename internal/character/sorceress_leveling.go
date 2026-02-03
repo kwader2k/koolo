@@ -33,8 +33,8 @@ const (
 	SorceressLevelingThreatDistance     = 15
 	AndarielRepositionLength            = 9
 
-	SorceressLevelingDangerDistance = 6
-	SorceressLevelingSafeDistance   = 15
+	SorceressLevelingDangerDistance = 4
+	SorceressLevelingSafeDistance   = 6
 
 	StaticFieldEffectiveRange = 4 // Maximum distance for Static Field to reliably hit
 )
