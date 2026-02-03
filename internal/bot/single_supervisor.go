@@ -17,6 +17,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -304,6 +305,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 		s.bot.ctx.LastBuffAt = time.Time{}
 		s.logGameStart(runs)
 		s.bot.ctx.RefreshGameData()
+
+		// Dump armory data on game start
+		if err := s.dumpArmory(); err != nil {
+			s.bot.ctx.Logger.Warn("Failed to dump armory data", slog.Any("error", err))
+		}
+
 		if s.bot.ctx.Data.IsLevelingCharacter && s.bot.ctx.Data.ActiveWeaponSlot != 0 {
 			for attempt := 0; attempt < 3 && s.bot.ctx.Data.ActiveWeaponSlot != 0; attempt++ {
 				s.bot.ctx.HID.PressKeyBinding(s.bot.ctx.Data.KeyBindings.SwapWeapons)
@@ -472,6 +479,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 		firstRun = false
 
 		if err != nil {
+			if errors.Is(err, drop.ErrInterrupt) {
+				s.bot.ctx.Logger.Info("Drop interrupt received. Exiting game and restarting loop.")
+				s.bot.ctx.Manager.ExitGame()
+				utils.Sleep(2000)
+				continue
+			}
 			if errors.Is(err, context.DeadlineExceeded) {
 				// We don't log the generic "Bot run finished with error" message if it was a planned timeout
 			} else {
@@ -880,4 +893,14 @@ func (s *SinglePlayerSupervisor) createLobbyGame() error {
 	s.bot.ctx.CharacterCfg.Game.PublicGameCounter++
 	s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
 	return nil
+}
+
+// dumpArmory saves the current character inventory state to a JSON file
+func (s *SinglePlayerSupervisor) dumpArmory() error {
+	if s.bot.ctx.Data == nil {
+		return fmt.Errorf("game data not available")
+	}
+
+	gameName := s.bot.ctx.GameReader.LastGameName()
+	return dumpArmoryData(s.name, s.bot.ctx.Data, gameName)
 }

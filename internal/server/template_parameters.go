@@ -100,8 +100,16 @@ type SkillOption struct {
 }
 
 type ConfigData struct {
-	ErrorMessage string
+	ErrorMessage   string
+	CurrentVersion *VersionData
 	*config.KooloCfg
+}
+
+type VersionData struct {
+	CommitHash string
+	CommitDate string
+	CommitMsg  string
+	Branch     string
 }
 
 type AutoSettings struct {

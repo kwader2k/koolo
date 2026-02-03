@@ -84,25 +84,25 @@
 // RUNEWORDS - WEAPONS
 // ============================================
 // Heart of the Oak
-([type] == mace || [type] == flail) && [flag] != ethereal # [itemallskills] == 3 && [fcr] >= 40 # [tier] == 12000 // Heart of the Oak (top priority)
+([type] == mace || [name] == flail) && [flag] != ethereal # [itemallskills] == 3 && [fcr] >= 40 # [tier] == 12000 // Heart of the Oak (top priority)
 
 // Spirit (recognized by +89-112 Max Mana)
 ([name] == broadsword || [name] == crystalsword || [name] == longsword) && [flag] != ethereal && [type] != shield # [maxmana] >= 89 # [tier] == 8000 // Spirit weapon
 
 // Strength
-([type] == mace || [type] == club || [type] == flail) && [flag] != ethereal # [itemcrushingblow] >= 25 # [tier] == 5000 // Strength runeword
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [itemcrushingblow] >= 25 # [tier] == 5000 // Strength runeword
 
 // Malice (recognized by +33% Enhanced Damage and +100% Open Wounds)
-([type] == mace || [type] == club || [type] == flail) && [flag] != ethereal # [itemopenwounds] >= 99 # [tier] == 4500 // Malice runeword
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [itemopenwounds] >= 99 # [tier] == 4500 // Malice runeword
 
 // Black
-([type] == mace || [type] == club || [type] == flail) && [flag] != ethereal # [enhanceddamage] >= 120 && [itemcrushingblow] >= 40 // Black runeword
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [enhanceddamage] >= 120 && [itemcrushingblow] >= 40 // Black runeword
 
 // Steel
-([type] == mace || [type] == club || [type] == flail) && [flag] != ethereal # [enhanceddamage] >= 20 && [tohit] >= 25 # [tier] == 250 // Steel runeword
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [enhanceddamage] >= 20 && [tohit] >= 25 # [tier] == 250 // Steel runeword
 [type] == hammer && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Hammers
 [type] == scepter && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Scepters
-[type] == flail && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Flails
+[name] == flail && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Flails
 [type] == mace && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 180 // One-handed maces
 [type] == club && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 180 // Clubs
 
@@ -150,7 +150,7 @@
 // Unique weapons
 [name] == flail && [quality] == unique && [flag] != ethereal # [manaleech] >= 5 # [tier] == 1000 # [maxquantity] == 1 // the general's tan do li ga (best unique)
 [name] == mace && [quality] == unique && [flag] != ethereal # [itemcrushingblow] >= 33 # [tier] == 800 # [maxquantity] == 1 // crushflange
-[name] == morningstar && [quality] == unique && [flag] != ethereal # [openwounds] >= 25 # [tier] == 800 # [maxquantity] == 1 // bloodrise
+[name] == morningstar && [quality] == unique && [flag] != ethereal # [itemopenwounds] >= 25 # [tier] == 800 # [maxquantity] == 1 // bloodrise
 [name] == warhammer && [quality] == unique && [flag] != ethereal # [tohit] >= 138 # [tier] == 500 # [maxquantity] == 1 // ironstone
 [name] == club && [quality] == unique && [flag] != ethereal # [lightresist] >= 60 # [tier] == 200 # [maxquantity] == 1 // felloak
 [name] == spikedclub && [quality] == unique && [flag] != ethereal # [itemattackertakesdamage] >= 3 # [tier] == 100 # [maxquantity] == 1 // stoutnail

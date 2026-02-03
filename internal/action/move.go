@@ -22,6 +22,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/state"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/drop"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/health"
@@ -69,6 +70,11 @@ var (
 
 // checkPlayerDeath checks if the player is dead and returns ErrDied if so.
 func checkPlayerDeath(ctx *context.Status) error {
+	if ctx.Manager == nil || !ctx.Manager.InGame() || ctx.Data.PlayerUnit.ID == 0 {
+		// Avoid false death checks while out of game or data is not yet valid.
+		return nil
+	}
+
 	if ctx.Data.PlayerUnit.Area.IsTown() {
 		return nil
 	}
@@ -80,6 +86,10 @@ func checkPlayerDeath(ctx *context.Status) error {
 }
 
 func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
+	if ctx.Context != nil && ctx.Context.Drop != nil && ctx.Context.Drop.Pending() != nil && ctx.Context.Drop.Active() == nil {
+		return drop.ErrInterrupt
+	}
+
 	// Wait for area data to sync
 	for attempts := 0; attempts < maxAreaSyncAttempts; attempts++ {
 		ctx.RefreshGameData()
@@ -245,6 +255,9 @@ func MoveToArea(dst area.ID) error {
 	}
 
 	if err != nil {
+		if errors.Is(err, drop.ErrInterrupt) {
+			return err
+		}
 		if errors.Is(err, health.ErrDied) { // Propagate death error
 			return err
 		}
@@ -635,7 +648,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 			adjustMinDist = false
 		}
 
-		//We're not done yet, split the path into smaller segments when outside of town
+		//We're not done yet, split the path into smaller segments
 		nextPosition := targetPosition
 		pathStep := 0
 		if !ctx.Data.AreaData.Area.IsTown() {
@@ -660,6 +673,19 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 			nextPosition = utils.PositionAddCoords(nextPathPos, pathOffsetX, pathOffsetY)
 			if pather.DistanceFromPoint(nextPosition, targetPosition) <= minDistanceToFinishMoving {
 				nextPosition = targetPosition
+			}
+		} else {
+			// In town: use path segmentation to avoid getting stuck on corners/objects
+			// Larger steps than combat but still segmented for obstacle avoidance
+			maxPathStep := 12
+
+			pathStep = min(maxPathStep, len(path)-1)
+			if pathStep > 0 {
+				nextPathPos := path[pathStep]
+				nextPosition = utils.PositionAddCoords(nextPathPos, pathOffsetX, pathOffsetY)
+				if pather.DistanceFromPoint(nextPosition, targetPosition) <= minDistanceToFinishMoving {
+					nextPosition = targetPosition
+				}
 			}
 		}
 
@@ -693,8 +719,8 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 
 		stuck = false
 		previousPosition = ctx.Data.PlayerUnit.Position
-		//If we're not in town and moved without errors, move forward in the path
-		if !ctx.Data.AreaData.Area.IsTown() {
+		//Move forward in the path after successful movement
+		if pathStep > 0 {
 			path = path[pathStep:]
 		}
 	}

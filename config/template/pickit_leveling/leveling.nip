@@ -92,7 +92,7 @@
 [type] == helm && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1
 [type] == sword # [sockets] == 2 # # [maxquantity] == 1 // steel
 [type] == axe # [sockets] == 2 # # [maxquantity] == 1 // steel
-[type] == scimitar # [sockets] == 2 # # [maxquantity] == 1 // steel
+[name] == scimitar # [sockets] == 2 # # [maxquantity] == 1 // steel
 [type] == helm && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1 // bulwark
 
 // Paladin Shields

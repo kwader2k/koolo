@@ -42,6 +42,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/remote/droplog"
 	terrorzones "github.com/hectorgimenez/koolo/internal/terrorzone"
+	"github.com/hectorgimenez/koolo/internal/updater"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
@@ -58,6 +59,7 @@ type HttpServer struct {
 	wsServer            *WebSocketServer
 	pickitAPI           *PickitAPI
 	sequenceAPI         *SequenceAPI
+	updater             *updater.Updater
 	DropHistory         []DropHistoryEntry
 	RunewordHistory     []RunewordHistoryEntry
 	DropFilters         map[string]drop.Filters
@@ -268,6 +270,25 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 			}
 			return template.JS(b)
 		},
+		// Armory template helpers
+		"iterate": func(count int) []int {
+			result := make([]int, count)
+			for i := range result {
+				result[i] = i
+			}
+			return result
+		},
+		"mul": func(a, b int) int {
+			return a * b
+		},
+		"json": func(v interface{}) template.JS {
+			b, err := json.Marshal(v)
+			if err != nil {
+				return template.JS("{}")
+			}
+			return template.JS(b)
+		},
+		"lower": strings.ToLower,
 	}
 	templates, err := template.New("").Funcs(helperFuncs).ParseFS(templatesFS, "templates/*.gohtml")
 	if err != nil {
@@ -287,6 +308,7 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 		templates:    templates,
 		pickitAPI:    NewPickitAPI(),
 		sequenceAPI:  NewSequenceAPI(logger),
+		updater:      updater.NewUpdater(logger),
 		DropFilters:  make(map[string]drop.Filters),
 		DropCardInfo: make(map[string]dropCardInfo),
 	}
@@ -898,6 +920,18 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/generate-battlenet-token", s.generateBattleNetToken) // Battle.net token generation
 	http.HandleFunc("/reset-muling", s.resetMuling)
 
+	// Updater routes
+	http.HandleFunc("/api/updater/version", s.getVersion)
+	http.HandleFunc("/api/updater/check", s.checkUpdates)
+	http.HandleFunc("/api/updater/current-commits", s.getCurrentCommits)
+	http.HandleFunc("/api/updater/update", s.performUpdate)
+	http.HandleFunc("/api/updater/status", s.getUpdaterStatus)
+	http.HandleFunc("/api/updater/backups", s.getBackups)
+	http.HandleFunc("/api/updater/rollback", s.performRollback)
+	http.HandleFunc("/api/updater/prs", s.getUpstreamPRs)
+	http.HandleFunc("/api/updater/cherry-pick", s.cherryPickPRs)
+	http.HandleFunc("/api/updater/prs/revert", s.revertPR)
+
 	// Pickit Editor routes
 	http.HandleFunc("/pickit-editor", s.pickitEditorPage)
 	http.HandleFunc("/sequence-editor", s.sequenceEditorPage)
@@ -933,10 +967,18 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/scheduler-history", s.schedulerHistory)
 	http.HandleFunc("/Drop-manager", s.DropManagerPage)
 
+	// Armory routes
+	http.HandleFunc("/armory", s.armoryPage)
+	http.HandleFunc("/api/armory", s.armoryAPI)
+	http.HandleFunc("/api/armory/characters", s.armoryCharactersAPI)
+
 	s.registerDropRoutes()
 
 	assets, _ := fs.Sub(assetsFS, "assets")
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.FS(assets))))
+
+	// Serve item images from the filesystem (assets/items folder relative to executable)
+	http.Handle("/items/", http.StripPrefix("/items/", http.FileServer(http.Dir("../assets/items"))))
 
 	s.server = &http.Server{
 		Addr: fmt.Sprintf(":%d", port),
@@ -1500,11 +1542,28 @@ func validateSchedulerData(cfg *config.CharacterCfg) error {
 	return nil
 }
 
+func (s *HttpServer) getVersionData() *VersionData {
+	versionInfo, _ := updater.GetCurrentVersion()
+	if versionInfo != nil {
+		return &VersionData{
+			CommitHash: versionInfo.CommitHash,
+			CommitDate: versionInfo.CommitDate.Format("2006-01-02 15:04:05"),
+			CommitMsg:  versionInfo.CommitMsg,
+			Branch:     versionInfo.Branch,
+		}
+	}
+	return nil
+}
+
 func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {
-			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: config.Koolo, ErrorMessage: "Error parsing form"})
+			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+				KooloCfg:       config.Koolo,
+				ErrorMessage:   "Error parsing form",
+				CurrentVersion: s.getVersionData(),
+			})
 			return
 		}
 
@@ -1547,7 +1606,11 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		newConfig.Telegram.Token = r.Form.Get("telegram_token")
 		telegramChatId, err := strconv.ParseInt(r.Form.Get("telegram_chat_id"), 10, 64)
 		if err != nil {
-			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: &newConfig, ErrorMessage: "Invalid Telegram Chat ID"})
+			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+				KooloCfg:       &newConfig,
+				ErrorMessage:   "Invalid Telegram Chat ID",
+				CurrentVersion: s.getVersionData(),
+			})
 			return
 		}
 		newConfig.Telegram.ChatID = telegramChatId
@@ -1560,15 +1623,27 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		newConfig.Ngrok.BasicAuthUser = strings.TrimSpace(r.Form.Get("ngrok_basic_auth_user"))
 		newConfig.Ngrok.BasicAuthPass = strings.TrimSpace(r.Form.Get("ngrok_basic_auth_pass"))
 		if newConfig.Ngrok.BasicAuthUser != "" && newConfig.Ngrok.BasicAuthPass == "" {
-			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: &newConfig, ErrorMessage: "ngrok basic auth password is required when a username is set"})
+			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+				KooloCfg:       &newConfig,
+				ErrorMessage:   "ngrok basic auth password is required when a username is set",
+				CurrentVersion: s.getVersionData(),
+			})
 			return
 		}
 		if newConfig.Ngrok.BasicAuthPass != "" && newConfig.Ngrok.BasicAuthUser == "" {
-			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: &newConfig, ErrorMessage: "ngrok basic auth username is required when a password is set"})
+			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+				KooloCfg:       &newConfig,
+				ErrorMessage:   "ngrok basic auth username is required when a password is set",
+				CurrentVersion: s.getVersionData(),
+			})
 			return
 		}
 		if newConfig.Ngrok.BasicAuthPass != "" && len(newConfig.Ngrok.BasicAuthPass) < 8 {
-			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: &newConfig, ErrorMessage: "ngrok basic auth password must be at least 8 characters"})
+			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+				KooloCfg:       &newConfig,
+				ErrorMessage:   "ngrok basic auth password must be at least 8 characters",
+				CurrentVersion: s.getVersionData(),
+			})
 			return
 		}
 
@@ -1596,7 +1671,11 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 
 		err = config.ValidateAndSaveConfig(newConfig)
 		if err != nil {
-			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: &newConfig, ErrorMessage: err.Error()})
+			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+				KooloCfg:       &newConfig,
+				ErrorMessage:   err.Error(),
+				CurrentVersion: s.getVersionData(),
+			})
 			return
 		}
 
@@ -1604,7 +1683,23 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{KooloCfg: config.Koolo, ErrorMessage: ""})
+	// Get current version info
+	versionInfo, _ := updater.GetCurrentVersion()
+	var versionData *VersionData
+	if versionInfo != nil {
+		versionData = &VersionData{
+			CommitHash: versionInfo.CommitHash,
+			CommitDate: versionInfo.CommitDate.Format("2006-01-02 15:04:05"),
+			CommitMsg:  versionInfo.CommitMsg,
+			Branch:     versionInfo.Branch,
+		}
+	}
+
+	s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
+		KooloCfg:       config.Koolo,
+		ErrorMessage:   "",
+		CurrentVersion: versionData,
+	})
 }
 
 // ConfigUpdateOptions defines which sections of the configuration should be updated
@@ -2724,7 +2819,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Pit.OnlyClearLevel2 = r.Form.Has("gamePitOnlyClearLevel2")
 
 		cfg.Game.Andariel.ClearRoom = r.Form.Has("gameAndarielClearRoom")
-		cfg.Game.Andariel.UseAntidoes = r.Form.Has("gameAndarielUseAntidoes")
+		cfg.Game.Andariel.UseAntidotes = r.Form.Has("gameAndarielUseAntidotes")
 
 		cfg.Game.Countess.ClearFloors = r.Form.Has("gameCountessClearFloors")
 
@@ -3186,7 +3281,7 @@ func (s *HttpServer) applyRunDetails(values url.Values, cfg *config.CharacterCfg
 		switch runID {
 		case "andariel":
 			cfg.Game.Andariel.ClearRoom = values.Has("gameAndarielClearRoom")
-			cfg.Game.Andariel.UseAntidoes = values.Has("gameAndarielUseAntidoes")
+			cfg.Game.Andariel.UseAntidotes = values.Has("gameAndarielUseAntidotes")
 		case "countess":
 			cfg.Game.Countess.ClearFloors = values.Has("gameCountessClearFloors")
 		case "duriel":
@@ -3611,6 +3706,458 @@ func buildTZGroups() []TZGroup {
 	})
 
 	return result
+}
+
+// Updater handlers
+
+func (s *HttpServer) getVersion(w http.ResponseWriter, r *http.Request) {
+	version, err := updater.GetCurrentVersion()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get version: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"commitHash": version.CommitHash,
+		"commitDate": version.CommitDate.Format("2006-01-02 15:04:05"),
+		"commitMsg":  version.CommitMsg,
+		"branch":     version.Branch,
+	})
+}
+
+func (s *HttpServer) checkUpdates(w http.ResponseWriter, r *http.Request) {
+	result, err := updater.CheckForUpdates()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": fmt.Sprintf("Failed to check for updates: %v", err),
+		})
+		return
+	}
+
+	commits := make([]map[string]string, 0)
+	for _, c := range result.NewCommits {
+		commits = append(commits, map[string]string{
+			"hash":    c.Hash,
+			"date":    c.Date.Format("2006-01-02 15:04:05"),
+			"message": c.Message,
+		})
+	}
+
+	aheadCommits := make([]map[string]string, 0)
+	for _, c := range result.AheadCommits {
+		aheadCommits = append(aheadCommits, map[string]string{
+			"hash":    c.Hash,
+			"date":    c.Date.Format("2006-01-02 15:04:05"),
+			"message": c.Message,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"hasUpdates":    result.HasUpdates,
+		"commitsAhead":  result.CommitsAhead,
+		"commitsBehind": result.CommitsBehind,
+		"aheadCommits":  aheadCommits,
+		"newCommits":    commits,
+		"currentVersion": map[string]interface{}{
+			"commitHash": result.CurrentVersion.CommitHash,
+			"commitDate": result.CurrentVersion.CommitDate.Format("2006-01-02 15:04:05"),
+			"commitMsg":  result.CurrentVersion.CommitMsg,
+			"branch":     result.CurrentVersion.Branch,
+		},
+	})
+}
+
+func (s *HttpServer) getCurrentCommits(w http.ResponseWriter, r *http.Request) {
+	limit := 10
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 50 {
+			limit = l
+		}
+	}
+
+	commits, err := updater.GetCurrentCommits(limit)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get current commits: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	payload := make([]map[string]string, 0, len(commits))
+	for _, c := range commits {
+		payload = append(payload, map[string]string{
+			"hash":    c.Hash,
+			"date":    c.Date.Format("2006-01-02 15:04:05"),
+			"message": c.Message,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(payload)
+}
+
+func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if any bots are running
+	runningCount := 0
+	for _, supervisorName := range s.manager.AvailableSupervisors() {
+		stats := s.manager.Status(supervisorName)
+		// Consider bot running if in Starting, InGame, or Paused state
+		if stats.SupervisorStatus == bot.Starting ||
+			stats.SupervisorStatus == bot.InGame ||
+			stats.SupervisorStatus == bot.Paused {
+			runningCount++
+		}
+	}
+
+	if runningCount > 0 {
+		http.Error(w, fmt.Sprintf("Cannot update while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+		return
+	}
+
+	if !s.updater.TryStartOperation("update") {
+		http.Error(w, "Updater is already running another operation", http.StatusConflict)
+		return
+	}
+
+	// Parse auto-restart flag
+	autoRestart := r.URL.Query().Get("restart") == "true"
+	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
+	source := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("source")))
+
+	// Set log callback to broadcast via WebSocket
+	s.updater.SetLogCallback(func(message string) {
+		s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"updater_log","message":%q}`, message))
+	})
+
+	// Start update in background
+	go func() {
+		defer s.updater.EndOperation()
+		var err error
+		if mode == "build" {
+			backupTag := "build"
+			if source == "pr" {
+				backupTag = "pr"
+			}
+			err = s.updater.ExecuteBuild(autoRestart, backupTag)
+		} else {
+			err = s.updater.ExecuteUpdate(autoRestart)
+		}
+		if err != nil {
+			s.logger.Error("Update failed", slog.Any("error", err))
+			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"updater_error","error":%q}`, err.Error()))
+		} else {
+			s.wsServer.broadcast <- []byte(`{"type":"updater_complete"}`)
+		}
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "update started",
+	})
+}
+
+func (s *HttpServer) getUpdaterStatus(w http.ResponseWriter, r *http.Request) {
+	status := s.updater.GetStatus()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(status)
+}
+
+func (s *HttpServer) getBackups(w http.ResponseWriter, r *http.Request) {
+	// Get backup versions (limit to 5 most recent)
+	backups, err := updater.GetBackupVersions(5)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to get backup versions: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Get current executable info
+	currentExe, _ := updater.GetCurrentExecutable()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"backups": backups,
+		"current": currentExe,
+	})
+}
+
+func (s *HttpServer) performRollback(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if any bots are running
+	runningCount := 0
+	for _, supervisorName := range s.manager.AvailableSupervisors() {
+		stats := s.manager.Status(supervisorName)
+		if stats.SupervisorStatus == bot.Starting ||
+			stats.SupervisorStatus == bot.InGame ||
+			stats.SupervisorStatus == bot.Paused {
+			runningCount++
+		}
+	}
+
+	if runningCount > 0 {
+		http.Error(w, fmt.Sprintf("Cannot rollback while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+		return
+	}
+
+	// Get backup file path from request
+	var request struct {
+		BackupPath string `json:"backupPath"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if request.BackupPath == "" {
+		http.Error(w, "backupPath is required", http.StatusBadRequest)
+		return
+	}
+
+	// Confirm the file exists
+	if _, err := os.Stat(request.BackupPath); os.IsNotExist(err) {
+		http.Error(w, "Backup file not found", http.StatusNotFound)
+		return
+	}
+
+	exePath, err := os.Executable()
+	if err != nil {
+		http.Error(w, "Failed to resolve install directory", http.StatusInternalServerError)
+		return
+	}
+	absExe, err := filepath.Abs(exePath)
+	if err != nil {
+		http.Error(w, "Failed to resolve install directory", http.StatusInternalServerError)
+		return
+	}
+	installDir := filepath.Dir(absExe)
+	oldVersionsDir := filepath.Join(installDir, "old_versions")
+	absOldVersions, err := filepath.Abs(oldVersionsDir)
+	if err != nil {
+		http.Error(w, "Failed to resolve backup directory", http.StatusInternalServerError)
+		return
+	}
+	absBackup, err := filepath.Abs(request.BackupPath)
+	if err != nil {
+		http.Error(w, "Invalid backupPath", http.StatusBadRequest)
+		return
+	}
+	base := strings.TrimRight(absOldVersions, string(os.PathSeparator)) + string(os.PathSeparator)
+	if !strings.HasPrefix(strings.ToLower(absBackup), strings.ToLower(base)) {
+		http.Error(w, "backupPath must be inside old_versions", http.StatusBadRequest)
+		return
+	}
+
+	if !s.updater.TryStartOperation("rollback") {
+		http.Error(w, "Updater is already running another operation", http.StatusConflict)
+		return
+	}
+
+	// Set log callback to broadcast via WebSocket
+	s.updater.SetLogCallback(func(message string) {
+		s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"rollback_log","message":%q}`, message))
+	})
+
+	// Perform rollback in background
+	go func() {
+		defer s.updater.EndOperation()
+		err := s.updater.RollbackToVersion(request.BackupPath)
+		if err != nil {
+			s.logger.Error("Rollback failed", slog.Any("error", err))
+			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"rollback_error","error":%q}`, err.Error()))
+		}
+		// Note: If successful, the application will restart, so no completion message is sent
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "rollback started",
+	})
+}
+
+func (s *HttpServer) getUpstreamPRs(w http.ResponseWriter, r *http.Request) {
+	// Get query parameters
+	state := r.URL.Query().Get("state")
+	if state == "" {
+		state = "open"
+	}
+
+	limit := 30
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
+			limit = l
+		}
+	}
+
+	prs, err := updater.GetUpstreamPRs(state, limit)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to fetch PRs: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	applied, err := updater.LoadAppliedPRs()
+	if err != nil {
+		s.logger.Warn("Failed to load applied PRs", slog.Any("error", err))
+	} else {
+		for i := range prs {
+			if info, ok := applied[prs[i].Number]; ok {
+				prs[i].Applied = true
+				prs[i].CanRevert = len(info.Commits) > 0
+			}
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(prs)
+}
+
+func (s *HttpServer) cherryPickPRs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if any bots are running
+	runningCount := 0
+	for _, supervisorName := range s.manager.AvailableSupervisors() {
+		stats := s.manager.Status(supervisorName)
+		if stats.SupervisorStatus == bot.Starting ||
+			stats.SupervisorStatus == bot.InGame ||
+			stats.SupervisorStatus == bot.Paused {
+			runningCount++
+		}
+	}
+
+	if runningCount > 0 {
+		http.Error(w, fmt.Sprintf("Cannot cherry-pick while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+		return
+	}
+
+	// Parse request body
+	var request struct {
+		PRNumbers []int `json:"prNumbers"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if len(request.PRNumbers) == 0 {
+		http.Error(w, "prNumbers is required", http.StatusBadRequest)
+		return
+	}
+
+	if !s.updater.TryStartOperation("cherry-pick") {
+		http.Error(w, "Updater is already running another operation", http.StatusConflict)
+		return
+	}
+
+	// Set log callback to broadcast via WebSocket
+	s.updater.SetLogCallback(func(message string) {
+		s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"cherrypick_log","message":%q}`, message))
+	})
+
+	// Perform cherry-pick in background
+	go func() {
+		defer s.updater.EndOperation()
+		results, err := s.updater.CherryPickMultiplePRs(request.PRNumbers, func(message string) {
+			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"cherrypick_log","message":%q}`, message))
+		})
+
+		if err != nil {
+			s.logger.Error("Cherry-pick failed", slog.Any("error", err))
+			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"cherrypick_error","error":%q}`, err.Error()))
+			return
+		}
+
+		// Send results
+		resultsJSON, _ := json.Marshal(results)
+		s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"cherrypick_complete","results":%s}`, resultsJSON))
+	}()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "cherry-pick started",
+	})
+}
+
+func (s *HttpServer) revertPR(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Check if any bots are running
+	runningCount := 0
+	for _, supervisorName := range s.manager.AvailableSupervisors() {
+		stats := s.manager.Status(supervisorName)
+		if stats.SupervisorStatus == bot.Starting ||
+			stats.SupervisorStatus == bot.InGame ||
+			stats.SupervisorStatus == bot.Paused {
+			runningCount++
+		}
+	}
+
+	if runningCount > 0 {
+		http.Error(w, fmt.Sprintf("Cannot revert while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+		return
+	}
+
+	var request struct {
+		PRNumber int `json:"prNumber"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+	if request.PRNumber <= 0 {
+		http.Error(w, "prNumber is required", http.StatusBadRequest)
+		return
+	}
+
+	if !s.updater.TryStartOperation("revert") {
+		http.Error(w, "Updater is already running another operation", http.StatusConflict)
+		return
+	}
+
+	progressCallback := func(message string) {
+		s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_log","message":%q}`, message))
+	}
+
+	go func(prNumber int) {
+		defer s.updater.EndOperation()
+		result, err := s.updater.RevertPR(prNumber, progressCallback)
+		if err != nil {
+			s.logger.Error("Revert failed", slog.Any("error", err))
+			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_error","error":%q}`, err.Error()))
+			return
+		}
+		if result != nil && !result.Success {
+			errMsg := result.Error
+			if errMsg == "" {
+				errMsg = fmt.Sprintf("Revert failed for PR #%d", prNumber)
+			}
+			s.logger.Error("Revert failed", slog.String("reason", errMsg))
+			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_error","error":%q}`, errMsg))
+			return
+		}
+		s.wsServer.broadcast <- []byte(`{"type":"revert_complete"}`)
+	}(request.PRNumber)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status": "revert started",
+	})
 }
 
 func (s *HttpServer) generateBattleNetToken(w http.ResponseWriter, r *http.Request) {

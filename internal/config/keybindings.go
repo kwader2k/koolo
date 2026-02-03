@@ -89,11 +89,15 @@ func resolveSaveDir(commandLineArgs string, useCustomSettings bool) string {
 	return filepath.Join(settingsPath, "mods", modName)
 }
 
-func keyBindingFilename(characterName, authMethod string) string {
+func keyBindingExtension(authMethod string) string {
 	if isOfflineAuth(authMethod) {
-		return characterName + ".key"
+		return ".key"
 	}
-	return characterName + ".keyo"
+	return ".keyo"
+}
+
+func keyBindingFilename(characterName, authMethod string) string {
+	return characterName + keyBindingExtension(authMethod)
 }
 
 func isOfflineAuth(authMethod string) bool {
@@ -104,33 +108,65 @@ func isOfflineAuth(authMethod string) bool {
 func resolveKeyBindingPath(saveDir, characterName, authMethod string) (string, bool, error) {
 	filename := keyBindingFilename(characterName, authMethod)
 	path := filepath.Join(saveDir, filename)
+
+	// Try exact case match first
 	if _, err := os.Stat(path); err == nil {
 		return path, true, nil
 	} else if !os.IsNotExist(err) {
 		return "", false, err
 	}
-	if isOfflineAuth(authMethod) {
-		return path, false, nil
-	}
 
-	pattern := filepath.Join(saveDir, characterName+"*.keyo")
-	matches, err := filepath.Glob(pattern)
+	// Read directory for case-insensitive matching
+	entries, err := os.ReadDir(saveDir)
 	if err != nil {
+		if os.IsNotExist(err) {
+			return path, false, nil
+		}
 		return "", false, err
 	}
 
+	ext := keyBindingExtension(authMethod)
+
 	var best string
 	var bestMod time.Time
-	for _, match := range matches {
-		base := strings.TrimSuffix(filepath.Base(match), ".keyo")
-		if len(base) <= len(characterName) || !strings.EqualFold(base[:len(characterName)], characterName) {
+
+	for _, entry := range entries {
+		if entry.IsDir() {
 			continue
 		}
+		name := entry.Name()
+		if !strings.HasSuffix(strings.ToLower(name), ext) {
+			continue
+		}
+		base := name[:len(name)-len(ext)]
+
+		// Check if base matches character name (case-insensitive)
+		if len(base) < len(characterName) {
+			continue
+		}
+		if !strings.EqualFold(base[:len(characterName)], characterName) {
+			continue
+		}
+
 		suffix := base[len(characterName):]
+
+		// For offline auth, only exact name matches are valid (no suffix)
+		if isOfflineAuth(authMethod) {
+			if suffix == "" {
+				return filepath.Join(saveDir, name), true, nil
+			}
+			continue
+		}
+
+		// For online auth, suffix must be present and digits only
+		if suffix == "" {
+			continue
+		}
+
+		// For online auth, suffix must be digits only
 		digitsOnly := true
 		for i := 0; i < len(suffix); i++ {
-			ch := suffix[i]
-			if ch < '0' || ch > '9' {
+			if suffix[i] < '0' || suffix[i] > '9' {
 				digitsOnly = false
 				break
 			}
@@ -138,15 +174,17 @@ func resolveKeyBindingPath(saveDir, characterName, authMethod string) (string, b
 		if !digitsOnly {
 			continue
 		}
-		info, err := os.Stat(match)
+
+		info, err := entry.Info()
 		if err != nil {
 			continue
 		}
 		if best == "" || info.ModTime().After(bestMod) {
-			best = match
+			best = filepath.Join(saveDir, name)
 			bestMod = info.ModTime()
 		}
 	}
+
 	if best != "" {
 		return best, true, nil
 	}
