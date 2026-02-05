@@ -58,6 +58,7 @@ func NewSinglePlayerSupervisor(name string, bot *Bot, statsHandler *StatsHandler
 }
 
 var ErrUnrecoverableClientState = errors.New("unrecoverable client state, forcing restart")
+var ErrLoadingScreen = errors.New("loading screen")
 
 func (s *SinglePlayerSupervisor) orderRuns(runs []string) []string {
 
@@ -200,6 +201,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 	firstRun := true
 	var timeSpentNotInGameStart = time.Now()
 	const maxTimeNotInGame = 3 * time.Minute
+	var isStuckOnLoadingScreen = false
 
 	for {
 		// Check if the main context has been cancelled
@@ -239,8 +241,13 @@ func (s *SinglePlayerSupervisor) Start() error {
 		if !s.bot.ctx.Manager.InGame() {
 			// This outer timer is the ultimate watchdog. If the bot is out of game for too long,
 			// for any reason (including a frozen state read), this will trigger.
-			if time.Since(timeSpentNotInGameStart) > maxTimeNotInGame {
-				s.bot.ctx.Logger.Error(fmt.Sprintf("Bot has been outside of a game for more than %s. Forcing client restart.", maxTimeNotInGame))
+			watchdogTimeout := maxTimeNotInGame
+			if isStuckOnLoadingScreen {
+				watchdogTimeout = 10 * time.Minute
+			}
+
+			if time.Since(timeSpentNotInGameStart) > watchdogTimeout {
+				s.bot.ctx.Logger.Error(fmt.Sprintf("Bot has been outside of a game for more than %s. Forcing client restart.", watchdogTimeout))
 				if killErr := s.KillClient(); killErr != nil {
 					s.bot.ctx.Logger.Error(fmt.Sprintf("Error killing client after timeout: %s", killErr.Error()))
 				}
@@ -256,13 +263,19 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 			select {
 			case err := <-errChan:
+				if errors.Is(err, ErrLoadingScreen) {
+					isStuckOnLoadingScreen = true
+				} else {
+					isStuckOnLoadingScreen = false
+				}
+
 				// Menu flow finished (or returned an error) before the timeout.
 				if err != nil {
 					if errors.Is(err, ErrUnrecoverableClientState) {
 						s.bot.ctx.Logger.Error(fmt.Sprintf("Unrecoverable client state detected: %s. Forcing client restart.", err.Error()))
 						return err
 					}
-					if err.Error() == "loading screen" || err.Error() == "" || err.Error() == "idle" {
+					if errors.Is(err, ErrLoadingScreen) || err.Error() == "" || err.Error() == "idle" {
 						utils.Sleep(100)
 						continue
 					}
@@ -282,6 +295,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		// In-game logic
 		timeSpentNotInGameStart = time.Now()
+		isStuckOnLoadingScreen = false
 
 		stringRuns := make([]string, len(s.bot.ctx.CharacterCfg.Game.Runs))
 		for i, r := range s.bot.ctx.CharacterCfg.Game.Runs {
@@ -683,7 +697,7 @@ func (s *SinglePlayerSupervisor) HandleMenuFlow() error {
 
 	if s.bot.ctx.Data.OpenMenus.LoadingScreen {
 		utils.Sleep(500)
-		return fmt.Errorf("loading screen")
+		return ErrLoadingScreen
 	}
 
 	s.bot.ctx.Logger.Debug("[Menu Flow]: Starting menu flow ...")
