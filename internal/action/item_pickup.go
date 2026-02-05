@@ -402,8 +402,7 @@ func GetItemsToPickup(maxDistance int) []data.Item {
 		// Skip itempickup on party leveling Maggot Lair, is too narrow and causes characters to get stuck
 		if isLevelingChar && itm.Name != "StaffOfKings" && (ctx.Data.PlayerUnit.Area == area.MaggotLairLevel1 ||
 			ctx.Data.PlayerUnit.Area == area.MaggotLairLevel2 ||
-			ctx.Data.PlayerUnit.Area == area.MaggotLairLevel3 ||
-			ctx.Data.PlayerUnit.Area == area.ArcaneSanctuary) {
+			ctx.Data.PlayerUnit.Area == area.MaggotLairLevel3) {
 			continue
 		}
 

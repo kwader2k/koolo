@@ -2871,6 +2871,9 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Nihlathak.ClearArea = r.Form.Has("gameNihlathakClearArea")
 		cfg.Game.Summoner.KillFireEye = r.Form.Has("gameSummonerKillFireEye")
 
+		cfg.Game.ArcaneSanctuary.OpenChests = r.Form.Has("gameArcaneSanctuaryOpenChests")
+		cfg.Game.ArcaneSanctuary.FocusOnElitePacks = r.Form.Has("gameArcaneSanctuaryFocusOnElitePacks")
+
 		cfg.Game.Baal.KillBaal = r.Form.Has("gameBaalKillBaal")
 		cfg.Game.Baal.DollQuit = r.Form.Has("gameBaalDollQuit")
 		cfg.Game.Baal.SoulQuit = r.Form.Has("gameBaalSoulQuit")
@@ -3348,6 +3351,9 @@ func (s *HttpServer) applyRunDetails(values url.Values, cfg *config.CharacterCfg
 			cfg.Game.Nihlathak.ClearArea = values.Has("gameNihlathakClearArea")
 		case "summoner":
 			cfg.Game.Summoner.KillFireEye = values.Has("gameSummonerKillFireEye")
+		case "arcane_sanctuary":
+			cfg.Game.ArcaneSanctuary.OpenChests = values.Has("gameArcaneSanctuaryOpenChests")
+			cfg.Game.ArcaneSanctuary.FocusOnElitePacks = values.Has("gameArcaneSanctuaryFocusOnElitePacks")
 		case "baal":
 			cfg.Game.Baal.KillBaal = values.Has("gameBaalKillBaal")
 			cfg.Game.Baal.DollQuit = values.Has("gameBaalDollQuit")
