@@ -33,20 +33,32 @@
 
 //gems
 //[name] == chippedamethyst # # [maxquantity] == 2
-//[name] == chippeddiamond # # [maxquantity] == 2
 //[name] == chippedemerald # # [maxquantity] == 2
-//[name] == chippedruby # # [maxquantity] = 2
-//[name] == chippedsapphire # # [maxquantity] == 2
 //[name] == chippedskull # # [maxquantity] == 2
 //[name] == chippedtopaz # # [maxquantity] == 5
 //[name] == flawedamethyst # # [maxquantity] == 5
-//[name] == flaweddiamond # # [maxquantity] == 5
 //[name] == flawedemerald # # [maxquantity] == 5
-//[name] == flawedruby # # [maxquantity] == 5
-//[name] == flawedsapphire # # [maxquantity] == 5
 //[name] == flawedskull # # [maxquantity] == 5
 //[name] == flawedtopaz # # [maxquantity] == 5
 [name] == flawlessamethyst # # [maxquantity] == 3
+
+//sockets gems
+[name] == chippeddiamond # # [maxquantity] == 3
+[name] == chippedruby # # [maxquantity] = 4
+[name] == chippedsapphire # # [maxquantity] == 4
+
+[name] == flaweddiamond # # [maxquantity] == 3
+[name] == flawedruby # # [maxquantity] == 4
+[name] == flawedsapphire # # [maxquantity] == 4
+
+[name] == diamond # # [maxquantity] == 3
+[name] == ruby # # [maxquantity] == 4
+[name] == sapphire # # [maxquantity] == 4	
+
+[name] == flawlessruby # # [maxquantity] == 3	
+[name] == flawlessdiamond # # [maxquantity] == 4
+[name] == flawlesssapphire # # [maxquantity] == 4
+
 
 // potions
 [name] == minorhealingpotion

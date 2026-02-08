@@ -376,8 +376,9 @@ func (s BarbLeveling) StatPoints() []context.StatAllocation {
 		{Stat: stat.Dexterity, Points: 45}, // lvl 18
 		{Stat: stat.Vitality, Points: 60},  // lvl 18
 
-		{Stat: stat.Strength, Points: 55},  // lvl 30
-		{Stat: stat.Dexterity, Points: 45}, // lvl 30
+	
+		{Stat: stat.Vitality, Points: 90}, // lvl 30
+		{Stat: stat.Strength, Points: 60},  // lvl 30
 		{Stat: stat.Vitality, Points: 115}, // lvl 30
 		{Stat: stat.Energy, Points: 30},    // lvl 30
 

@@ -272,6 +272,10 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 		return false, false, "", ""
 	}
 
+	if hasSocketedStashGem(i) {
+		return false, false, "", ""
+	}
+
 	if _, isLevelingChar := ctx.Char.(context.LevelingCharacter); isLevelingChar && i.IsFromQuest() && i.Name != "HoradricCube" || i.Name == "HoradricStaff" {
 		return false, false, "", ""
 	}
@@ -326,6 +330,16 @@ func shouldStashIt(i data.Item, firstRun bool) (bool, bool, string, string) {
 
 	fmt.Printf("DEBUG: Disallowing stash for '%s' (no rule match and not explicitly kept, and not exceeding quantity).\n", i.Name)
 	return false, false, "", "" // Default if no other rule matches
+}
+
+func hasSocketedStashGem(itm data.Item) bool {
+	for _, socket := range itm.Sockets {
+		name := strings.ToLower(string(socket.Name))
+		if strings.HasSuffix(name, "ruby") || strings.HasSuffix(name, "sapphire") || strings.HasSuffix(name, "diamond") {
+			return true
+		}
+	}
+	return false
 }
 
 // shouldKeepRecipeItem decides whether the bot should stash a low-quality item that is part of an enabled cube recipe.

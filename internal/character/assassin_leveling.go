@@ -252,7 +252,7 @@ func (s AssassinLeveling) StatPoints() []context.StatAllocation {
 		{Stat: stat.Energy, Points: 35},
 		{Stat: stat.Vitality, Points: 55},
 		{Stat: stat.Strength, Points: 35},
-		{Stat: stat.Vitality, Points: 95},
+		{Stat: stat.Vitality, Points: 90},
 		{Stat: stat.Strength, Points: 60},
 		{Stat: stat.Vitality, Points: 130},
 		{Stat: stat.Strength, Points: 125},
