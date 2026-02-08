@@ -423,6 +423,8 @@ func (n *NecromancerLeveling) StatPoints() []context.StatAllocation {
 		{Stat: stat.Strength, Points: 40},
 		{Stat: stat.Vitality, Points: 50},
 		{Stat: stat.Strength, Points: 50},
+		{Stat: stat.Vitality, Points: 90},
+		{Stat: stat.Strength, Points: 60},
 		{Stat: stat.Vitality, Points: 100},
 		{Stat: stat.Strength, Points: 95},
 		{Stat: stat.Vitality, Points: 250},
