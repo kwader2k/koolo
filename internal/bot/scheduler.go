@@ -11,15 +11,16 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/koolo/internal/config"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 // SchedulerPhase represents the current phase in duration mode
 type SchedulerPhase string
 
 const (
-	PhaseResting  SchedulerPhase = "resting"
-	PhasePlaying  SchedulerPhase = "playing"
-	PhaseOnBreak  SchedulerPhase = "onBreak"
+	PhaseResting SchedulerPhase = "resting"
+	PhasePlaying SchedulerPhase = "playing"
+	PhaseOnBreak SchedulerPhase = "onBreak"
 )
 
 // ScheduledBreak represents a pre-calculated break
@@ -46,12 +47,12 @@ type DurationState struct {
 
 // HistoryEntry represents one day's play session
 type HistoryEntry struct {
-	Date             string           `json:"date"`
-	WakeTime         string           `json:"wakeTime"`
-	SleepTime        string           `json:"sleepTime"`
-	TotalPlayMinutes int              `json:"totalPlayMinutes"`
-	TotalBreakMinutes int             `json:"totalBreakMinutes"`
-	Breaks           []ScheduledBreak `json:"breaks"`
+	Date              string           `json:"date"`
+	WakeTime          string           `json:"wakeTime"`
+	SleepTime         string           `json:"sleepTime"`
+	TotalPlayMinutes  int              `json:"totalPlayMinutes"`
+	TotalBreakMinutes int              `json:"totalBreakMinutes"`
+	Breaks            []ScheduledBreak `json:"breaks"`
 }
 
 // SchedulerHistory stores the last 30 days of play history
@@ -60,9 +61,9 @@ type SchedulerHistory struct {
 }
 
 type Scheduler struct {
-	manager       *SupervisorManager
-	logger        *slog.Logger
-	stop          chan struct{}
+	manager *SupervisorManager
+	logger  *slog.Logger
+	stop    chan struct{}
 
 	// Duration mode state (per supervisor)
 	durationState map[string]*DurationState
@@ -482,7 +483,7 @@ func (s *Scheduler) pickMealSlots(breakSlots []int, mealCount int, playHours int
 			if used[i] {
 				continue
 			}
-			dist := abs(slotMin - idealMin)
+			dist := utils.Abs(slotMin - idealMin)
 			if dist < bestDist {
 				bestDist = dist
 				bestIdx = i
@@ -801,11 +802,4 @@ func contains(slice []int, val int) bool {
 		}
 	}
 	return false
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
 }

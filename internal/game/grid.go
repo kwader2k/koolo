@@ -24,6 +24,15 @@ type Grid struct {
 	CollisionGrid []CollisionType // flat 1D array: index = y*Width + x
 }
 
+func (g *Grid) CanTeleportTo(p data.Position) bool {
+	p = g.RelativePosition(p)
+	if p.X < 0 || p.X >= g.Width || p.Y < 0 || p.Y >= g.Height {
+		return false
+	}
+	positionType := g.Get(p.X, p.Y)
+	return positionType != CollisionTypeNonWalkable && positionType != CollisionTypeTeleportOver && positionType != CollisionTypeObject
+}
+
 // Get returns the collision type at (x, y). No bounds checking.
 func (g *Grid) Get(x, y int) CollisionType {
 	return g.CollisionGrid[y*g.Width+x]

@@ -11,6 +11,14 @@ type Vector struct {
 	Y float64
 }
 
+// Abs Return the absolute value of a number
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 // calculateDistance returns the Euclidean distance between two positions.
 func CalculateDistance(p1, p2 data.Position) float64 {
 	dx := float64(p1.X - p2.X)

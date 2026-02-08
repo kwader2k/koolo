@@ -973,8 +973,8 @@ func (s Javazon) jzDkHasLoS(from, to data.Position) bool {
 func (s Javazon) jzDkRaycast(from, to data.Position) []data.Position {
 	x0, y0 := from.X, from.Y
 	x1, y1 := to.X, to.Y
-	dx := abs(x1 - x0)
-	dy := -abs(y1 - y0)
+	dx := utils.Abs(x1 - x0)
+	dy := -utils.Abs(y1 - y0)
 	sx := -1
 	if x0 < x1 {
 		sx = 1
@@ -1037,19 +1037,12 @@ func javazonNearestValuablePickupPos(maxDistance int) (data.Position, bool) {
 }
 
 func jzDkGridDist(a, b data.Position) int {
-	dx := abs(a.X - b.X)
-	dy := abs(a.Y - b.Y)
+	dx := utils.Abs(a.X - b.X)
+	dy := utils.Abs(a.Y - b.Y)
 	if dx > dy {
 		return dx
 	}
 	return dy
-}
-
-func abs(v int) int {
-	if v < 0 {
-		return -v
-	}
-	return v
 }
 
 func (s Javazon) killMonster(npc npc.ID, t data.MonsterType) error {
