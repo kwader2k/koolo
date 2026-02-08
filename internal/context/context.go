@@ -65,8 +65,10 @@ type Context struct {
 	RestartWithCharacter      string
 	PacketSender              *game.PacketSender
 	IsLevelingCharacter       *bool
-	ManualModeActive          bool          // Manual play mode: stops after character selection
-	LastPortalTick            time.Time     // NEW FIELD: Tracks last portal creation for spam prevention
+	ManualModeActive          bool      // Manual play mode: stops after character selection
+	LastPortalTick            time.Time // NEW FIELD: Tracks last portal creation for spam prevention
+	LastStaminaPotUse         time.Time
+	StaminaPotCooldown        time.Duration
 	IsBossEquipmentActive     bool          // flag for barb leveling
 	Drop                      *drop.Manager // Drop: Per-supervisor Drop manager
 	IsAllocatingStatsOrSkills atomic.Bool   // Prevents stuck detection during stat/skill allocation
