@@ -52,11 +52,25 @@ type AnalyticsUpdate struct {
 	Data interface{} `json:"data"`
 }
 
-// NewAnalyticsManager creates a new analytics manager
-func NewAnalyticsManager(characterName string, basePath string, logger *slog.Logger) *AnalyticsManager {
+// NewAnalyticsManager creates a new analytics manager.
+// cfg is merged with defaults: zero values fall back to DefaultAnalyticsConfig().
+func NewAnalyticsManager(characterName string, basePath string, logger *slog.Logger, cfg AnalyticsConfig) *AnalyticsManager {
+	defaults := DefaultAnalyticsConfig()
+	if cfg.HistoryDays <= 0 {
+		cfg.HistoryDays = defaults.HistoryDays
+	}
+	if cfg.MaxNotableDrops <= 0 {
+		cfg.MaxNotableDrops = defaults.MaxNotableDrops
+	}
+	// EnablePersistence defaults to true; only override when the caller
+	// hasn't explicitly set it (zero-value == false). Since the zero-value
+	// is indistinguishable from "intentionally disabled", we always enable
+	// persistence — callers that truly need it off can set it after construction.
+	cfg.EnablePersistence = defaults.EnablePersistence
+
 	am := &AnalyticsManager{
 		characterName: characterName,
-		config:        DefaultAnalyticsConfig(),
+		config:        cfg,
 		basePath:      basePath,
 		logger:        logger,
 		runHistory:    make([]*RunAnalytics, 0),
@@ -219,12 +233,13 @@ func (am *AnalyticsManager) RecordKill(isElite bool, isChampion bool, isBoss boo
 		return
 	}
 
-	am.currentRun.MonstersKilled++
+	// Use mutually exclusive buckets so the UI can safely sum them.
 	if isElite {
 		am.currentRun.ElitesKilled++
-	}
-	if isChampion {
+	} else if isChampion {
 		am.currentRun.ChampionsKilled++
+	} else {
+		am.currentRun.MonstersKilled++
 	}
 	if isBoss {
 		am.currentRun.BossKilled = true

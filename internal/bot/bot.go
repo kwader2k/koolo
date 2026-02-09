@@ -500,9 +500,10 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 						b.ctx.Logger.Debug("Analytics: Failed to read end XP")
 					}
 					success := runFinishReason == event.FinishedOK
-					b.analyticsManager.EndRunWithXP(success, string(runFinishReason), runEndXP)
 
-					// Update level progress with game's own XP boundaries
+					// Update level progress before ending the run, so that the
+					// async Save() inside EndRunWithXP persists the latest
+					// level/XP boundary values.
 					lvl, _ := b.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 					var lastLvlXP, nextLvlXP int64
 					if v, ok := b.ctx.Data.PlayerUnit.FindStat(stat.LastExp, 0); ok {
@@ -512,6 +513,8 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 						nextLvlXP = int64(uint32(v.Value))
 					}
 					b.analyticsManager.UpdateLevelProgress(lvl.Value, runEndXP, lastLvlXP, nextLvlXP)
+
+					b.analyticsManager.EndRunWithXP(success, string(runFinishReason), runEndXP)
 				}
 
 				event.Send(event.RunFinished(event.Text(b.ctx.Name, fmt.Sprintf("Finished run: %s", r.Name())), r.Name(), runFinishReason))

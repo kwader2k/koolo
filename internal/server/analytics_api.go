@@ -15,34 +15,71 @@ func (s *HttpServer) analyticsPage(w http.ResponseWriter, r *http.Request) {
 	s.templates.ExecuteTemplate(w, "analytics.gohtml", nil)
 }
 
-// getAnalyticsManagers returns analytics managers for all configured characters
-// For running supervisors, it returns the live manager; for non-running ones, it loads from disk
+// getAnalyticsManagers returns analytics managers for all configured characters.
+// For running supervisors it returns the live manager; for non-running ones it
+// returns a lazily-cached manager loaded from disk, avoiding repeated I/O
+// across concurrent API calls.
 func (s *HttpServer) getAnalyticsManagers() map[string]*bot.AnalyticsManager {
 	result := make(map[string]*bot.AnalyticsManager)
 
-	// Get managers from running supervisors
+	// Get managers from running supervisors (always authoritative)
 	runningManagers := s.manager.GetAllAnalyticsManagers()
 	for name, am := range runningManagers {
 		result[name] = am
 	}
 
-	// Load analytics from disk for non-running characters
+	// For non-running characters, use the cache to avoid repeated disk I/O.
 	basePath, err := os.Getwd()
 	if err != nil {
 		return result
 	}
 
-	for charName := range config.Characters {
-		if _, exists := result[charName]; !exists {
-			// Character not running, load from disk
-			am := bot.NewAnalyticsManager(charName, basePath, nil)
-			if am.GetSessionSummary().TotalRuns > 0 || len(am.GetRunHistory(0)) > 0 {
-				result[charName] = am
-			}
+	s.analyticsCacheMu.Lock()
+	defer s.analyticsCacheMu.Unlock()
+
+	for charName := range config.GetCharacters() {
+		if _, running := result[charName]; running {
+			continue
+		}
+
+		// Check cache first
+		if cached, ok := s.cachedAnalyticsManagers[charName]; ok {
+			result[charName] = cached
+			continue
+		}
+
+		// Cache miss — load from disk and store
+		am := bot.NewAnalyticsManager(charName, basePath, nil, bot.AnalyticsConfig{
+			HistoryDays:     config.Koolo.Analytics.HistoryDays,
+			MaxNotableDrops: config.Koolo.Analytics.MaxNotableDrops,
+			TrackAllItems:   config.Koolo.Analytics.TrackAllItems,
+		})
+		if am.GetSessionSummary().TotalRuns > 0 || len(am.GetRunHistory(0)) > 0 {
+			s.cachedAnalyticsManagers[charName] = am
+			result[charName] = am
 		}
 	}
 
 	return result
+}
+
+// invalidateAnalyticsCache removes cached analytics managers so that subsequent
+// calls to getAnalyticsManagers will reload data from disk. When called with no
+// arguments, the entire cache is cleared; otherwise only the named characters
+// are evicted.
+func (s *HttpServer) invalidateAnalyticsCache(characters ...string) {
+	s.analyticsCacheMu.Lock()
+	defer s.analyticsCacheMu.Unlock()
+
+	if len(characters) == 0 {
+		// Full invalidation
+		s.cachedAnalyticsManagers = make(map[string]*bot.AnalyticsManager)
+		return
+	}
+
+	for _, name := range characters {
+		delete(s.cachedAnalyticsManagers, name)
+	}
 }
 
 // analyticsSessionAPI returns session summary for a character
@@ -492,7 +529,7 @@ func (s *HttpServer) analyticsResetAPI(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		// Reset all characters
-		for charName := range config.Characters {
+		for charName := range config.GetCharacters() {
 			if err := s.resetCharacterAnalytics(basePath, charName); err != nil {
 				errors = append(errors, err.Error())
 			}
@@ -509,6 +546,14 @@ func (s *HttpServer) analyticsResetAPI(w http.ResponseWriter, r *http.Request) {
 		if character == "" || name == character {
 			am.Reset()
 		}
+	}
+
+	// Invalidate cached analytics managers so stale disk-loaded data is
+	// not served after a reset.
+	if character != "" {
+		s.invalidateAnalyticsCache(character)
+	} else {
+		s.invalidateAnalyticsCache()
 	}
 
 	if len(errors) > 0 {

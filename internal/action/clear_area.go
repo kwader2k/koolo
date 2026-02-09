@@ -97,12 +97,22 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filters ...data.Mons
 		for id, monster := range trackedMonsters {
 			if !aliveNow[id] {
 				// Monster died - send kill event
+				// isElite: Minion (pack followers), Unique, and SuperUnique are elite-tier
+				// isChampion: Champion packs (blue) are a separate category
+				// isBoss: Unique and SuperUnique are the named pack leaders
+				isElite := monster.Type == data.MonsterTypeMinion ||
+					monster.Type == data.MonsterTypeUnique ||
+					monster.Type == data.MonsterTypeSuperUnique
+				isChampion := monster.Type == data.MonsterTypeChampion
+				isBoss := monster.Type == data.MonsterTypeUnique ||
+					monster.Type == data.MonsterTypeSuperUnique
+
 				event.Send(event.MonsterKilled(
 					event.Text(ctx.Name, ""),
 					string(monster.Name),
-					monster.Type == data.MonsterTypeMinion,
-					monster.Type == data.MonsterTypeChampion,
-					monster.Type == data.MonsterTypeSuperUnique,
+					isElite,
+					isChampion,
+					isBoss,
 				))
 				// Remove from tracking
 				delete(trackedMonsters, id)

@@ -67,6 +67,13 @@ type HttpServer struct {
 	DropMux             sync.Mutex
 	RunewordMux         sync.Mutex
 	autoStartPromptOnce sync.Once
+
+	// cachedAnalyticsManagers holds lazily-loaded managers for non-running
+	// characters so that repeated API requests avoid redundant disk I/O.
+	// Entries are invalidated when a supervisor starts/stops or analytics
+	// are reset.
+	cachedAnalyticsManagers map[string]*bot.AnalyticsManager
+	analyticsCacheMu        sync.RWMutex
 }
 
 var (
@@ -302,15 +309,16 @@ func New(logger *slog.Logger, manager *bot.SupervisorManager, scheduler *bot.Sch
 	}
 
 	server := &HttpServer{
-		logger:       logger,
-		manager:      manager,
-		scheduler:    scheduler,
-		templates:    templates,
-		pickitAPI:    NewPickitAPI(),
-		sequenceAPI:  NewSequenceAPI(logger),
-		updater:      updater.NewUpdater(logger),
-		DropFilters:  make(map[string]drop.Filters),
-		DropCardInfo: make(map[string]dropCardInfo),
+		logger:                  logger,
+		manager:                 manager,
+		scheduler:               scheduler,
+		templates:               templates,
+		pickitAPI:               NewPickitAPI(),
+		sequenceAPI:             NewSequenceAPI(logger),
+		updater:                 updater.NewUpdater(logger),
+		DropFilters:             make(map[string]drop.Filters),
+		DropCardInfo:            make(map[string]dropCardInfo),
+		cachedAnalyticsManagers: make(map[string]*bot.AnalyticsManager),
 	}
 
 	server.updater.SetPreRestartCallback(func() error {
@@ -1187,6 +1195,10 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 		}
 	}(supervisor, manualMode)
 
+	// Evict cached analytics manager so getAnalyticsManagers returns the
+	// live running manager instead of a stale disk-loaded snapshot.
+	s.invalidateAnalyticsCache(supervisor)
+
 	s.initialData(w, r)
 }
 
@@ -1350,7 +1362,13 @@ func (s *HttpServer) AutoStartOnStartup() {
 }
 
 func (s *HttpServer) stopSupervisor(w http.ResponseWriter, r *http.Request) {
-	s.manager.Stop(r.URL.Query().Get("characterName"))
+	characterName := r.URL.Query().Get("characterName")
+	s.manager.Stop(characterName)
+
+	// Evict cached analytics so the next request reloads fresh data from
+	// disk (the supervisor's final save may have written updated stats).
+	s.invalidateAnalyticsCache(characterName)
+
 	s.initialData(w, r)
 }
 
@@ -1701,11 +1719,15 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		analyticsHistoryDays, err := strconv.Atoi(r.Form.Get("analytics_history_days"))
 		if err != nil || analyticsHistoryDays < 1 {
 			analyticsHistoryDays = 30 // Default to 30 days
+		} else if analyticsHistoryDays > 365 {
+			analyticsHistoryDays = 365
 		}
 		newConfig.Analytics.HistoryDays = analyticsHistoryDays
 		analyticsMaxDrops, err := strconv.Atoi(r.Form.Get("analytics_max_notable_drops"))
 		if err != nil || analyticsMaxDrops < 10 {
 			analyticsMaxDrops = 100 // Default to 100
+		} else if analyticsMaxDrops > 1000 {
+			analyticsMaxDrops = 1000
 		}
 		newConfig.Analytics.MaxNotableDrops = analyticsMaxDrops
 		newConfig.Analytics.TrackAllItems = r.Form.Get("analytics_track_all_items") == "true"

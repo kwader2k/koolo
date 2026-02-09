@@ -329,7 +329,11 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 		if err != nil {
 			logger.Warn("Failed to get working directory for analytics", slog.String("error", err.Error()))
 		} else {
-			am := NewAnalyticsManager(supervisorName, basePath, logger)
+			am := NewAnalyticsManager(supervisorName, basePath, logger, AnalyticsConfig{
+				HistoryDays:     config.Koolo.Analytics.HistoryDays,
+				MaxNotableDrops: config.Koolo.Analytics.MaxNotableDrops,
+				TrackAllItems:   config.Koolo.Analytics.TrackAllItems,
+			})
 			bot.analyticsManager = am
 			// Register analytics event handler
 			mng.eventListener.Register(am.HandleEvent)
