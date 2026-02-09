@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Run Analytics - Koolo</title>
+    <link rel="stylesheet" href="/assets/css/pico.min.css">
+    <link rel="stylesheet" href="/assets/css/custom.css">
+    <link rel="stylesheet" href="/assets/css/dashboard.css">
+    <link rel="stylesheet" href="/assets/css/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            padding: var(--spacing-md);
+            max-width: 1800px;
+            margin: 0 auto;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #151820 100%);
+            min-height: 100vh;
+        }
+        
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+            padding: var(--spacing-md);
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
+            flex-wrap: wrap;
+            gap: var(--spacing-md);
+        }
+        
+        .analytics-header h1 {
+            margin: 0;
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .analytics-header h1 i { color: var(--primary); }
+        
+        .header-controls {
+            display: flex;
+            gap: var(--spacing-md);
+            align-items: center;
+        }
+        
+        .header-controls select {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+
+        .header-controls .btn-danger {
+            background: transparent;
+            border: 1px solid var(--danger, #dc3545);
+            color: var(--danger, #dc3545);
+            padding: var(--spacing-sm) var(--spacing-md);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            transition: all var(--transition-fast);
+        }
+
+        .header-controls .btn-danger:hover {
+            background: var(--danger, #dc3545);
+            color: white;
+        }
+        
+        /* Stats Grid - Main KPIs */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            text-align: center;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .stat-card .value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .stat-card .label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+
+        .stat-card .sub-value {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        /* Section headers */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .section-header h2 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+        }
+
+        .section-header i {
+            color: var(--primary);
+        }
+
+        /* Grid layouts */
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        @media (min-width: 1024px) {
+            .two-col-grid { grid-template-columns: 1fr 1fr; }
+            .two-col-grid.wide-left { grid-template-columns: 2fr 1fr; }
+            .two-col-grid.wide-right { grid-template-columns: 1fr 2fr; }
+        }
+
+        .three-col-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        @media (min-width: 1200px) {
+            .three-col-grid { grid-template-columns: 1fr 1fr 1fr; }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .card h3 {
+            margin: 0 0 var(--spacing-md) 0;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        
+        .card h3 i { color: var(--primary); }
+        
+        .chart-container {
+            position: relative;
+            height: 220px;
+        }
+
+        .chart-container.tall {
+            height: 280px;
+        }
+
+        /* Mini stats inside cards */
+        .mini-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--spacing-sm);
+            margin-top: var(--spacing-md);
+        }
+
+        .mini-stat {
+            text-align: center;
+            padding: var(--spacing-sm);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+        }
+
+        .mini-stat .value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        .mini-stat .label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .mini-stat.highlight .value {
+            color: var(--primary);
+        }
+
+        /* Tables */
+        .card table {
+            margin: 0;
+            font-size: 0.8rem;
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .card th {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-align: left;
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+        
+        .card td {
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--divider-color);
+            color: var(--text-primary);
+        }
+        
+        .card tr:hover td { background: var(--bg-hover); }
+
+        /* Quality colors */
+        .quality-unique { color: #c4a000; }
+        .quality-set { color: #00c400; }
+        .quality-rare { color: #ffff00; }
+        .quality-magic { color: #6969ff; }
+        .quality-rune { color: #ff8c00; }
+        .quality-normal { color: #808080; }
+
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.15rem 0.4rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .badge.success { background: rgba(40, 167, 69, 0.2); color: var(--status-success); }
+        .badge.warning { background: rgba(255, 193, 7, 0.2); color: var(--status-warning); }
+        .badge.danger { background: rgba(220, 53, 69, 0.2); color: var(--status-danger); }
+
+        /* Drops list */
+        .drops-list {
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        
+        .drop-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            border-bottom: 1px solid var(--divider-color);
+        }
+        
+        .drop-item:hover { background: var(--bg-hover); }
+        .drop-item:last-child { border-bottom: none; }
+        
+        .drop-item .quality-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .drop-item .quality-dot.unique { background: #c4a000; }
+        .drop-item .quality-dot.set { background: #00c400; }
+        .drop-item .quality-dot.rare { background: #ffff00; }
+        .drop-item .quality-dot.magic { background: #6969ff; }
+        .drop-item .quality-dot.rune { background: #ff8c00; }
+        
+        .drop-item .info { flex: 1; min-width: 0; }
+        .drop-item .name {
+            font-weight: 500;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .drop-item .meta {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        /* Progress bars */
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-bar .fill.primary { background: var(--primary); }
+        .progress-bar .fill.success { background: var(--status-success); }
+        .progress-bar .fill.warning { background: var(--status-warning); }
+        .progress-bar .fill.danger { background: var(--status-danger); }
+
+        /* Utility */
+        .back-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 0.9rem;
+            margin-bottom: var(--spacing-sm);
+        }
+        .back-link:hover { color: var(--primary); }
+        
+        .duration { font-family: monospace; color: var(--text-secondary); }
+        
+        .ws-status {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+        }
+        
+        .ws-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--status-danger);
+        }
+        .ws-status .dot.connected { background: var(--status-success); }
+
+        .empty-state {
+            text-align: center;
+            padding: var(--spacing-xl);
+            color: var(--text-secondary);
+        }
+
+        .loading::after {
+            content: "";
+            display: block;
+            width: 24px;
+            height: 24px;
+            margin: var(--spacing-md) auto;
+            border: 2px solid var(--border-color);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-tertiary); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        /* Level Progress Bar */
+        .level-progress-section {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-md);
+            border: 1px solid var(--border-color);
+            margin-bottom: var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+        }
+        .level-progress-section .level-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+        .level-progress-section .level-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+        .level-progress-section .level-label i { color: var(--primary); }
+        .level-progress-section .level-meta {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: var(--spacing-lg);
+        }
+        .level-progress-section .xp-bar {
+            height: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .level-progress-section .xp-bar .xp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #818cf8);
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+        .level-progress-section .xp-details {
+            display: flex;
+            justify-content: space-between;
+            margin-top: var(--spacing-xs);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Dry Streak Badge */
+        .dry-streak-card {
+            position: relative;
+        }
+        .dry-streak-card .streak-fire {
+            color: #ef4444;
+            font-size: 0.7rem;
+        }
+        .dry-streak-card .streak-ok {
+            color: #22c55e;
+            font-size: 0.7rem;
+        }
+
+        /* Rune Tracker */
+        .rune-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: var(--spacing-sm);
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .rune-item {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm);
+            background: var(--bg-tertiary);
+            border-radius: var(--radius-md);
+            border-left: 3px solid #ff8c00;
+        }
+        .rune-item .rune-name {
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #ff8c00;
+            flex: 1;
+        }
+        .rune-item .rune-count {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        /* Character Comparison */
+        .comparison-table th, .comparison-table td {
+            text-align: center !important;
+        }
+        .comparison-table td:first-child, .comparison-table th:first-child {
+            text-align: left !important;
+        }
+        .comparison-table .best-value {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        /* Session History */
+        .session-history-table { width: 100%; }
+        .session-date { font-weight: 600; }
+        .trend-up { color: #22c55e; }
+        .trend-down { color: #ef4444; }
+        .trend-neutral { color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="analytics-header">
+        <div>
+            <button onclick="window.close()" class="back-link" style="background:none;border:none;cursor:pointer;"><i class="bi bi-x-lg"></i> Close</button>
+            <h1><i class="bi bi-graph-up"></i> Run Analytics</h1>
+        </div>
+        <div class="header-controls">
+            <select id="characterSelect" aria-label="Select character">
+                <option value="">All Characters</option>
+            </select>
+            <button class="btn btn-outline btn-danger" onclick="resetAnalytics()" title="Reset All Data">
+                <i class="bi bi-trash"></i> Reset
+            </button>
+            <span class="ws-status">
+                <span class="dot" id="wsStatus"></span>
+                <span id="wsStatusText">Disconnected</span>
+            </span>
+        </div>
+    </div>
+
+    <!-- Main Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="value" id="totalRuns">-</div>
+            <div class="label">Total Runs</div>
+            <div class="sub-value" id="runsPerHour">-/hr</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="successRate">-</div>
+            <div class="label">Success Rate</div>
+            <div class="sub-value" id="failedRuns">- failed</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="avgRunTime">-</div>
+            <div class="label">Avg Run Time</div>
+            <div class="sub-value" id="totalRuntime">-</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="totalItems">-</div>
+            <div class="label">Items Found</div>
+            <div class="sub-value" id="itemsPerHour">-/hr</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="totalMonsters">-</div>
+            <div class="label">Monsters Killed</div>
+            <div class="sub-value" id="monstersPerHour">-/hr</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="totalElites">-</div>
+            <div class="label">Elites Killed</div>
+            <div class="sub-value" id="eliteBreakdown">- champs, - bosses</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="totalDeaths">-</div>
+            <div class="label">Deaths</div>
+            <div class="sub-value" id="deathRate">- per 100 runs</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="totalPotions">-</div>
+            <div class="label">Potions Used</div>
+            <div class="sub-value" id="potionBreakdown">-H / -M / -R</div>
+        </div>
+        <div class="stat-card">
+            <div class="value" id="xpPerHour">-</div>
+            <div class="label">XP/Hour</div>
+            <div class="sub-value" id="totalXP">- total</div>
+        </div>
+        <div class="stat-card dry-streak-card">
+            <div class="value" id="dryStreak">0</div>
+            <div class="label">Dry Streak</div>
+            <div class="sub-value" id="lastNotableDrop">No drops yet</div>
+        </div>
+    </div>
+
+    <!-- Level Progress Bar -->
+    <div class="level-progress-section" id="levelProgressSection" style="display:none;">
+        <div class="level-header">
+            <span class="level-label"><i class="bi bi-bar-chart-steps"></i> Level <span id="currentLevel">-</span></span>
+            <span class="level-meta">
+                <span>XP/hr: <strong id="levelXpRate">-</strong></span>
+                <span>Next level: <strong id="levelETA">-</strong></span>
+            </span>
+        </div>
+        <div class="xp-bar">
+            <div class="xp-fill" id="xpFill" style="width:0%"></div>
+        </div>
+        <div class="xp-details">
+            <span id="xpCurrent">-</span>
+            <span id="xpPct">0%</span>
+            <span id="xpNeeded">-</span>
+        </div>
+    </div>
+
+    <!-- Charts Row 1: Activity & Monsters -->
+    <div class="two-col-grid wide-left">
+        <div class="card">
+            <h3><i class="bi bi-clock-history"></i> Hourly Activity (Last 24h)</h3>
+            <div class="chart-container tall">
+                <canvas id="hourlyChart"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <h3><i class="bi bi-bullseye"></i> Monster Kills Breakdown</h3>
+            <div class="chart-container">
+                <canvas id="monsterChart"></canvas>
+            </div>
+            <div class="mini-stats">
+                <div class="mini-stat highlight">
+                    <div class="value" id="killsPerRun">-</div>
+                    <div class="label">Per Run</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="value" id="eliteRatio">-</div>
+                    <div class="label">Elite %</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="value" id="killEfficiency">-</div>
+                    <div class="label">Per Min</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row 2: Items & Run Distribution -->
+    <div class="two-col-grid">
+        <div class="card">
+            <h3><i class="bi bi-gem"></i> Item Quality Distribution</h3>
+            <div class="chart-container">
+                <canvas id="itemQualityChart"></canvas>
+            </div>
+            <div class="mini-stats">
+                <div class="mini-stat highlight">
+                    <div class="value" id="uniqueCount">-</div>
+                    <div class="label">Uniques</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="value" id="setCount">-</div>
+                    <div class="label">Sets</div>
+                </div>
+                <div class="mini-stat">
+                    <div class="value" id="runeCount">-</div>
+                    <div class="label">Runes</div>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <h3><i class="bi bi-pie-chart"></i> Run Distribution</h3>
+            <div class="chart-container">
+                <canvas id="runDistChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tables Row: Run Types & Drops -->
+    <div class="two-col-grid">
+        <div class="card">
+            <h3><i class="bi bi-list-ol"></i> Run Type Performance</h3>
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Run</th>
+                            <th>Count</th>
+                            <th>Success</th>
+                            <th>Avg Time</th>
+                            <th>Items</th>
+                            <th>Kills</th>
+                        </tr>
+                    </thead>
+                    <tbody id="runTypeTableBody">
+                        <tr><td colspan="6" class="loading"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card">
+            <h3><i class="bi bi-stars"></i> Recent Notable Drops</h3>
+            <div id="notableDrops" class="drops-list">
+                <div class="loading"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Efficiency Table -->
+    <div class="card" style="margin-bottom: var(--spacing-lg);">
+        <h3><i class="bi bi-speedometer2"></i> Run Efficiency Comparison</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Run Type</th>
+                        <th>Avg Time</th>
+                        <th>Items/Hour</th>
+                        <th>Kills/Hour</th>
+                        <th>Elites/Run</th>
+                        <th>Deaths/100</th>
+                        <th>Fastest</th>
+                        <th>Slowest</th>
+                    </tr>
+                </thead>
+                <tbody id="efficiencyTableBody">
+                    <tr><td colspan="8" class="loading"></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Deaths Analysis & Items Heatmap -->
+    <div class="two-col-grid">
+        <div class="card">
+            <h3><i class="bi bi-exclamation-triangle"></i> Deaths by Area</h3>
+            <div id="deathsByArea" style="max-height: 300px; overflow-y: auto;">
+                <div class="loading"></div>
+            </div>
+        </div>
+        <div class="card">
+            <h3><i class="bi bi-grid-3x3"></i> Items per Run Type (Heatmap)</h3>
+            <div id="itemsHeatmap" style="max-height: 300px; overflow-y: auto;">
+                <div class="loading"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rune Tracker -->
+    <div class="card" style="margin-bottom: var(--spacing-lg);">
+        <h3><i class="bi bi-diamond-fill" style="color: #ff8c00;"></i> Rune Tracker</h3>
+        <div id="runeTracker" class="rune-grid">
+            <div class="empty-state">No runes found yet</div>
+        </div>
+    </div>
+
+    <!-- Character Comparison (visible when All Characters selected) -->
+    <div class="card" id="charComparisonSection" style="margin-bottom: var(--spacing-lg); display: none;">
+        <h3><i class="bi bi-people"></i> Character Comparison</h3>
+        <div style="overflow-x: auto;">
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Character</th>
+                        <th>Runs</th>
+                        <th>Success%</th>
+                        <th>Avg Time</th>
+                        <th>Deaths</th>
+                        <th>Items</th>
+                        <th>Uniques</th>
+                        <th>Sets</th>
+                        <th>Runes</th>
+                        <th>Monsters</th>
+                        <th>XP/hr</th>
+                        <th>Items/Run</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTableBody">
+                    <tr><td colspan="12" class="loading"></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Session History -->
+    <div class="card" style="margin-bottom: var(--spacing-lg);">
+        <h3><i class="bi bi-calendar3"></i> Session History</h3>
+        <div style="overflow-x: auto;">
+            <table class="session-history-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Character</th>
+                        <th>Runs</th>
+                        <th>Success</th>
+                        <th>Items</th>
+                        <th>Runes</th>
+                        <th>Notable</th>
+                        <th>Deaths</th>
+                        <th>Monsters</th>
+                        <th>XP Gained</th>
+                        <th>Runtime</th>
+                    </tr>
+                </thead>
+                <tbody id="sessionHistoryBody">
+                    <tr><td colspan="11" class="loading"></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let sessionData = null;
+        let hourlyChart = null;
+        let monsterChart = null;
+        let itemQualityChart = null;
+        let runDistChart = null;
+        let ws = null;
+        let selectedCharacter = '';
+
+        // Chart colors
+        const chartColors = {
+            primary: 'rgba(99, 102, 241, 0.8)',
+            secondary: 'rgba(74, 222, 128, 0.8)',
+            tertiary: 'rgba(251, 191, 36, 0.8)',
+            quaternary: 'rgba(244, 63, 94, 0.8)',
+            items: '#4ade80',
+            monsters: '#f59e0b',
+            elites: '#ef4444',
+            champions: '#a855f7',
+            unique: '#c4a000',
+            set: '#00c400',
+            rare: '#ffff00',
+            magic: '#6969ff',
+            rune: '#ff8c00',
+            normal: '#808080'
+        };
+
+        // Format helpers
+        function formatDuration(ms) {
+            if (!ms || ms <= 0) return '-';
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            if (hours > 0) return `${hours}h ${minutes % 60}m`;
+            if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
+            return `${seconds}s`;
+        }
+
+        function formatNumber(n) {
+            if (n === undefined || n === null) return '-';
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toLocaleString();
+        }
+
+        function formatPercent(n) {
+            if (n === undefined || n === null || isNaN(n)) return '-';
+            return n.toFixed(1) + '%';
+        }
+
+        function formatRate(value, hours) {
+            if (!hours || hours <= 0) return '-';
+            const rate = value / hours;
+            return formatNumber(Math.round(rate)) + '/hr';
+        }
+
+        // API calls
+        async function fetchSession() {
+            const url = selectedCharacter 
+                ? `/api/analytics/session?character=${encodeURIComponent(selectedCharacter)}`
+                : '/api/analytics/session';
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchHourly() {
+            const url = selectedCharacter 
+                ? `/api/analytics/hourly?character=${encodeURIComponent(selectedCharacter)}`
+                : '/api/analytics/hourly';
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchRunTypes() {
+            const url = selectedCharacter 
+                ? `/api/analytics/run-types?character=${encodeURIComponent(selectedCharacter)}`
+                : '/api/analytics/run-types';
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchItems(notable = true) {
+            const url = selectedCharacter 
+                ? `/api/analytics/items?character=${encodeURIComponent(selectedCharacter)}&notable=${notable}&limit=50`
+                : `/api/analytics/items?notable=${notable}&limit=50`;
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchCharacters() {
+            const res = await fetch('/api/analytics/characters');
+            return await res.json();
+        }
+
+        async function fetchDeaths() {
+            const url = selectedCharacter 
+                ? `/api/analytics/deaths?character=${encodeURIComponent(selectedCharacter)}`
+                : '/api/analytics/deaths';
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchRunes() {
+            const url = selectedCharacter 
+                ? `/api/analytics/runes?character=${encodeURIComponent(selectedCharacter)}`
+                : '/api/analytics/runes';
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        async function fetchComparison() {
+            const res = await fetch('/api/analytics/comparison');
+            return await res.json();
+        }
+
+        async function fetchSessionHistory() {
+            const url = selectedCharacter 
+                ? `/api/analytics/session-history?character=${encodeURIComponent(selectedCharacter)}&limit=30`
+                : '/api/analytics/session-history?limit=30';
+            const res = await fetch(url);
+            return await res.json();
+        }
+
+        // Update Deaths by Area section
+        function updateDeathsByArea(data) {
+            const container = document.getElementById('deathsByArea');
+            
+            if (!data || !data.byArea || Object.keys(data.byArea).length === 0) {
+                container.innerHTML = '<div class="text-muted" style="padding: 20px; text-align: center;"><i class="bi bi-shield-check"></i> No deaths recorded</div>';
+                return;
+            }
+
+            // Sort by total deaths descending
+            const areas = Object.entries(data.byArea)
+                .sort((a, b) => b[1].totalDeaths - a[1].totalDeaths);
+
+            let html = `<table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Area</th>
+                        <th>Deaths</th>
+                        <th>Monster</th>
+                        <th>Environment</th>
+                        <th>Unknown</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            for (const [name, stats] of areas) {
+                html += `<tr>
+                    <td><strong>${stats.areaName || name}</strong></td>
+                    <td class="text-danger">${stats.totalDeaths}</td>
+                    <td>${stats.monsterDeaths || 0}</td>
+                    <td>${stats.environmentDeaths || 0}</td>
+                    <td>${stats.unknownDeaths || 0}</td>
+                </tr>`;
+            }
+
+            html += '</tbody></table>';
+
+            // Add recent deaths if available
+            if (data.recentDeaths && data.recentDeaths.length > 0) {
+                html += `<div style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px;">
+                    <strong style="font-size: 12px; color: var(--muted);">Recent Deaths:</strong>
+                    <div style="margin-top: 8px; font-size: 11px;">`;
+                
+                for (const death of data.recentDeaths.slice(0, 5)) {
+                    const time = new Date(death.timestamp).toLocaleString();
+                    html += `<div style="padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <span class="text-danger">${death.areaName || 'Unknown'}</span>
+                        <span class="text-muted"> - ${death.cause || 'Unknown cause'}</span>
+                        <span style="float: right; color: var(--muted);">${time}</span>
+                    </div>`;
+                }
+                html += '</div></div>';
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Update Items Heatmap (items by quality per run type)
+        function updateItemsHeatmap(runTypes) {
+            const container = document.getElementById('itemsHeatmap');
+            
+            if (!runTypes || Object.keys(runTypes).length === 0) {
+                container.innerHTML = '<div class="text-muted" style="padding: 20px; text-align: center;"><i class="bi bi-box"></i> No item data yet</div>';
+                return;
+            }
+
+            // Sort run types by total items descending
+            const sortedTypes = Object.entries(runTypes)
+                .filter(([_, stats]) => stats.itemsFound > 0)
+                .sort((a, b) => b[1].itemsFound - a[1].itemsFound);
+
+            if (sortedTypes.length === 0) {
+                container.innerHTML = '<div class="text-muted" style="padding: 20px; text-align: center;"><i class="bi bi-box"></i> No items found yet</div>';
+                return;
+            }
+
+            let html = `<table class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Run Type</th>
+                        <th style="background: ${chartColors.unique}; color: black;">Unique</th>
+                        <th style="background: ${chartColors.set}; color: black;">Set</th>
+                        <th style="background: ${chartColors.rare}; color: black;">Rare</th>
+                        <th style="background: ${chartColors.magic}; color: white;">Magic</th>
+                        <th style="background: ${chartColors.rune}; color: black;">Rune</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            for (const [name, stats] of sortedTypes) {
+                const quality = stats.itemsByQuality || {};
+                html += `<tr>
+                    <td><strong>${name}</strong></td>
+                    <td style="text-align: center;">${quality.unique || 0}</td>
+                    <td style="text-align: center;">${quality.set || 0}</td>
+                    <td style="text-align: center;">${quality.rare || 0}</td>
+                    <td style="text-align: center;">${quality.magic || 0}</td>
+                    <td style="text-align: center;">${quality.runes || 0}</td>
+                    <td style="text-align: center;"><strong>${stats.itemsFound}</strong></td>
+                </tr>`;
+            }
+
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+
+        // Update Dry Streak
+        function updateDryStreak(data) {
+            if (!data) return;
+            const streak = data.runsSinceLastNotable || 0;
+            document.getElementById('dryStreak').textContent = streak;
+            
+            const lastDrop = document.getElementById('lastNotableDrop');
+            if (data.lastNotableDropName) {
+                lastDrop.textContent = data.lastNotableDropName;
+                lastDrop.className = streak > 50 ? 'sub-value streak-fire' : 'sub-value streak-ok';
+            } else {
+                lastDrop.textContent = 'No drops yet';
+                lastDrop.className = 'sub-value';
+            }
+        }
+
+        // Update Level Progress Bar
+        // Uses lastLevelExperience and nextLevelExperience read directly from game memory
+        // (stat.LastExp and stat.NextExp) instead of a hardcoded XP table.
+        function updateLevelProgress(data) {
+            const section = document.getElementById('levelProgressSection');
+            const level = data ? data.characterLevel : 0;
+            const currentXP = data ? (data.currentExperience || 0) : 0;
+            const lastLevelXP = data ? (data.lastLevelExperience || 0) : 0;
+            const nextLevelXP = data ? (data.nextLevelExperience || 0) : 0;
+            const xpRate = data ? (data.experiencePerHour || 0) : 0;
+
+            if (!level || level <= 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            // Calculate progress within current level using game-provided boundaries
+            const xpInLevel = nextLevelXP - lastLevelXP; // Total XP span for this level
+            const xpProgress = currentXP - lastLevelXP;  // XP earned toward next level
+            const xpRemaining = nextLevelXP - currentXP;  // XP still needed
+
+            let pct = 0;
+            if (level >= 99) {
+                pct = 100;
+            } else if (xpInLevel > 0) {
+                pct = Math.max(0, Math.min(100, (xpProgress / xpInLevel) * 100));
+            }
+
+            // Hours to next level
+            let etaText = '-';
+            if (level < 99 && xpRate > 0 && xpRemaining > 0) {
+                const hoursToLevel = xpRemaining / xpRate;
+                if (hoursToLevel < 1) {
+                    etaText = Math.round(hoursToLevel * 60) + 'm';
+                } else if (hoursToLevel < 24) {
+                    const h = Math.floor(hoursToLevel);
+                    const m = Math.round((hoursToLevel - h) * 60);
+                    etaText = h + 'h ' + m + 'm';
+                } else {
+                    const d = Math.floor(hoursToLevel / 24);
+                    const h = Math.round(hoursToLevel % 24);
+                    etaText = d + 'd ' + h + 'h';
+                }
+            } else if (level >= 99) {
+                etaText = 'Max level';
+            }
+
+            document.getElementById('currentLevel').textContent = level;
+            document.getElementById('levelXpRate').textContent = formatNumber(Math.round(xpRate));
+            document.getElementById('levelETA').textContent = etaText;
+            document.getElementById('xpFill').style.width = pct.toFixed(1) + '%';
+            document.getElementById('xpPct').textContent = pct.toFixed(1) + '%';
+
+            if (level >= 99) {
+                document.getElementById('xpCurrent').textContent = formatNumber(currentXP) + ' total XP';
+                document.getElementById('xpNeeded').textContent = 'Max level reached';
+            } else {
+                document.getElementById('xpCurrent').textContent = formatNumber(xpProgress) + ' / ' + formatNumber(xpInLevel);
+                document.getElementById('xpNeeded').textContent = formatNumber(xpRemaining) + ' to level ' + (level + 1);
+            }
+        }
+
+        // Update Rune Tracker
+        function updateRuneTracker(runes) {
+            const container = document.getElementById('runeTracker');
+            if (!runes || Object.keys(runes).length === 0) {
+                container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;">No runes found yet</div>';
+                return;
+            }
+
+            // Define rune order (low to high)
+            const runeOrder = [
+                'ElRune', 'EldRune', 'TirRune', 'NefRune', 'EthRune', 'IthRune',
+                'TalRune', 'RalRune', 'OrtRune', 'ThulRune', 'AmnRune', 'SolRune',
+                'ShaelRune', 'DolRune', 'HelRune', 'IoRune', 'LumRune', 'KoRune',
+                'FalRune', 'LemRune', 'PulRune', 'UmRune', 'MalRune', 'IstRune',
+                'GulRune', 'VexRune', 'OhmRune', 'LoRune', 'SurRune', 'BerRune',
+                'JahRune', 'ChamRune', 'ZodRune'
+            ];
+
+            // Sort runes by order (high runes first for importance)
+            const sorted = Object.entries(runes).sort((a, b) => {
+                const idxA = runeOrder.indexOf(a[0]);
+                const idxB = runeOrder.indexOf(b[0]);
+                if (idxA === -1 && idxB === -1) return a[0].localeCompare(b[0]);
+                if (idxA === -1) return 1;
+                if (idxB === -1) return -1;
+                return idxB - idxA; // Higher runes first
+            });
+
+            let totalRunes = 0;
+            container.innerHTML = sorted.map(([name, count]) => {
+                totalRunes += count;
+                const displayName = name.replace('Rune', '');
+                const isHighRune = runeOrder.indexOf(name) >= runeOrder.indexOf('PulRune');
+                const borderColor = isHighRune ? '#fbbf24' : '#ff8c00';
+                return `<div class="rune-item" style="border-left-color: ${borderColor};">
+                    <span class="rune-name" style="color: ${borderColor};">${displayName}</span>
+                    <span class="rune-count">${count}</span>
+                </div>`;
+            }).join('');
+        }
+
+        // Update Character Comparison
+        function updateCharacterComparison(entries) {
+            const section = document.getElementById('charComparisonSection');
+            const tbody = document.getElementById('comparisonTableBody');
+            
+            // Only show when "All Characters" is selected
+            if (selectedCharacter !== '' || !entries || entries.length < 2) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+
+            // Find best values for highlighting
+            const best = {
+                totalRuns: Math.max(...entries.map(e => e.totalRuns)),
+                successRate: Math.max(...entries.map(e => e.successRate)),
+                totalItems: Math.max(...entries.map(e => e.totalItems)),
+                uniquesFound: Math.max(...entries.map(e => e.uniquesFound)),
+                setsFound: Math.max(...entries.map(e => e.setsFound)),
+                totalRunes: Math.max(...entries.map(e => e.totalRunes)),
+                monstersKilled: Math.max(...entries.map(e => e.monstersKilled)),
+                xpPerHour: Math.max(...entries.map(e => e.xpPerHour)),
+                itemsPerRun: Math.max(...entries.map(e => e.itemsPerRun))
+            };
+
+            const bestClass = (val, bestVal) => val === bestVal && bestVal > 0 ? 'best-value' : '';
+
+            tbody.innerHTML = entries.sort((a, b) => b.totalRuns - a.totalRuns).map(e => `
+                <tr>
+                    <td style="text-align:left;"><strong>${e.characterName}</strong></td>
+                    <td class="${bestClass(e.totalRuns, best.totalRuns)}">${e.totalRuns}</td>
+                    <td class="${bestClass(e.successRate, best.successRate)}">${e.successRate.toFixed(1)}%</td>
+                    <td class="duration">${formatDuration(e.avgRunTime * 1000)}</td>
+                    <td>${e.totalDeaths}</td>
+                    <td class="${bestClass(e.totalItems, best.totalItems)}">${e.totalItems}</td>
+                    <td class="${bestClass(e.uniquesFound, best.uniquesFound)}">${e.uniquesFound}</td>
+                    <td class="${bestClass(e.setsFound, best.setsFound)}">${e.setsFound}</td>
+                    <td class="${bestClass(e.totalRunes, best.totalRunes)}">${e.totalRunes}</td>
+                    <td class="${bestClass(e.monstersKilled, best.monstersKilled)}">${formatNumber(e.monstersKilled)}</td>
+                    <td class="${bestClass(e.xpPerHour, best.xpPerHour)}">${formatNumber(Math.round(e.xpPerHour))}</td>
+                    <td class="${bestClass(e.itemsPerRun, best.itemsPerRun)}">${e.itemsPerRun.toFixed(1)}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Update Session History
+        function updateSessionHistory(entries) {
+            const tbody = document.getElementById('sessionHistoryBody');
+            if (!entries || entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" class="empty-state">No session history yet</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = entries.map((s, idx) => {
+                const runtimeStr = s.runtimeMinutes >= 60 
+                    ? `${(s.runtimeMinutes / 60).toFixed(1)}h` 
+                    : `${Math.round(s.runtimeMinutes)}m`;
+                
+                // Compare with previous session for trend indicators
+                let runsTrend = '';
+                let itemsTrend = '';
+                if (idx < entries.length - 1) {
+                    const prev = entries[idx + 1];
+                    runsTrend = s.totalRuns > prev.totalRuns ? '<span class="trend-up">▲</span>' 
+                              : s.totalRuns < prev.totalRuns ? '<span class="trend-down">▼</span>' : '';
+                    itemsTrend = s.totalItems > prev.totalItems ? '<span class="trend-up">▲</span>'
+                               : s.totalItems < prev.totalItems ? '<span class="trend-down">▼</span>' : '';
+                }
+
+                const successRate = s.totalRuns > 0 ? ((s.successfulRuns / s.totalRuns) * 100).toFixed(0) + '%' : '-';
+                
+                return `<tr>
+                    <td class="session-date">${s.date}</td>
+                    <td>${s.characterName}</td>
+                    <td>${s.totalRuns} ${runsTrend}</td>
+                    <td>${successRate}</td>
+                    <td>${s.totalItems} ${itemsTrend}</td>
+                    <td>${s.totalRunes}</td>
+                    <td>${s.notableCount}</td>
+                    <td>${s.totalDeaths}</td>
+                    <td>${formatNumber(s.monstersKilled)}</td>
+                    <td>${formatNumber(s.experienceGain)}</td>
+                    <td class="duration">${runtimeStr}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        // Reset analytics
+        async function resetAnalytics() {
+            const target = selectedCharacter || 'all characters';
+            if (!confirm(`Reset analytics data for ${target}?\n\nThis permanently deletes all history.`)) return;
+            
+            try {
+                const url = selectedCharacter 
+                    ? `/api/analytics/reset?character=${encodeURIComponent(selectedCharacter)}`
+                    : '/api/analytics/reset';
+                const res = await fetch(url, { method: 'POST' });
+                const result = await res.json();
+                if (result.success) {
+                    alert('Analytics reset successfully.');
+                    window.location.reload();
+                } else {
+                    alert('Failed: ' + (result.errors?.join(', ') || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Failed: ' + error.message);
+            }
+        }
+
+        // Update functions
+        function updateStats(data) {
+            if (!data) return;
+            
+            const hours = (data.totalRuntime || 0) / 3600000;
+            const totalMonsters = (data.totalMonstersKilled || 0) + (data.totalElitesKilled || 0) + (data.totalChampionsKilled || 0);
+            
+            // Main stats
+            document.getElementById('totalRuns').textContent = formatNumber(data.totalRuns);
+            document.getElementById('runsPerHour').textContent = formatRate(data.totalRuns, hours);
+            
+            const successRate = data.totalRuns > 0 ? (data.successfulRuns / data.totalRuns * 100) : 0;
+            document.getElementById('successRate').textContent = formatPercent(successRate);
+            document.getElementById('failedRuns').textContent = `${data.failedRuns || 0} failed`;
+            
+            const avgRunTime = data.totalRuns > 0 ? data.totalRuntime / data.totalRuns : 0;
+            document.getElementById('avgRunTime').textContent = formatDuration(avgRunTime);
+            document.getElementById('totalRuntime').textContent = formatDuration(data.totalRuntime);
+            
+            document.getElementById('totalItems').textContent = formatNumber(data.totalItemsFound);
+            document.getElementById('itemsPerHour').textContent = formatRate(data.totalItemsFound, hours);
+            
+            document.getElementById('totalMonsters').textContent = formatNumber(totalMonsters);
+            document.getElementById('monstersPerHour').textContent = formatRate(totalMonsters, hours);
+            
+            document.getElementById('totalElites').textContent = formatNumber(data.totalElitesKilled || 0);
+            document.getElementById('eliteBreakdown').textContent = `${formatNumber(data.totalChampionsKilled || 0)} champs, ${formatNumber(data.totalBossesKilled || 0)} bosses`;
+            
+            document.getElementById('totalDeaths').textContent = formatNumber(data.totalDeaths);
+            const deathRate = data.totalRuns > 0 ? (data.totalDeaths / data.totalRuns * 100) : 0;
+            document.getElementById('deathRate').textContent = `${deathRate.toFixed(1)} per 100`;
+            
+            const potions = data.totalPotionsUsed || {};
+            const totalPotions = (potions.healing || 0) + (potions.mana || 0) + (potions.rejuvenation || 0);
+            document.getElementById('totalPotions').textContent = formatNumber(totalPotions);
+            document.getElementById('potionBreakdown').textContent = `${potions.healing || 0}H / ${potions.mana || 0}M / ${potions.rejuvenation || 0}R`;
+
+            // XP stats
+            const xpPerHour = data.experiencePerHour || 0;
+            document.getElementById('xpPerHour').textContent = formatNumber(Math.round(xpPerHour));
+            document.getElementById('totalXP').textContent = formatNumber(data.totalExperienceGain || 0) + ' total';
+
+            // Monster mini stats
+            const killsPerRun = data.totalRuns > 0 ? totalMonsters / data.totalRuns : 0;
+            document.getElementById('killsPerRun').textContent = killsPerRun.toFixed(1);
+            
+            const eliteRatio = totalMonsters > 0 ? ((data.totalElitesKilled || 0) + (data.totalChampionsKilled || 0)) / totalMonsters * 100 : 0;
+            document.getElementById('eliteRatio').textContent = formatPercent(eliteRatio);
+            
+            const minutes = (data.totalRuntime || 0) / 60000;
+            const killEfficiency = minutes > 0 ? totalMonsters / minutes : 0;
+            document.getElementById('killEfficiency').textContent = killEfficiency.toFixed(1);
+
+            // Item quality mini stats
+            const quality = data.itemsByQuality || {};
+            document.getElementById('uniqueCount').textContent = formatNumber(quality.unique || 0);
+            document.getElementById('setCount').textContent = formatNumber(quality.set || 0);
+            document.getElementById('runeCount').textContent = formatNumber(quality.runes || 0);
+
+            // Update item quality chart
+            updateItemQualityChart(quality);
+
+            // Update monster chart
+            updateMonsterChart(data);
+        }
+
+        function updateHourlyChart(data) {
+            if (!data || !Array.isArray(data)) return;
+
+            const currentHour = new Date().getHours();
+            const labels = [];
+            const runsData = [];
+            const itemsData = [];
+            const monstersData = [];
+            
+            for (let i = 0; i < 24; i++) {
+                const hour = (currentHour - 23 + i + 24) % 24;
+                labels.push(`${hour}:00`);
+                runsData.push(data[hour]?.runsComplete || 0);
+                itemsData.push(data[hour]?.itemsFound || 0);
+                const monsters = (data[hour]?.monstersKilled || 0) + (data[hour]?.elitesKilled || 0) + (data[hour]?.championsKilled || 0);
+                monstersData.push(Math.round(monsters / 100)); // Scale down for visibility
+            }
+
+            const ctx = document.getElementById('hourlyChart').getContext('2d');
+            
+            if (hourlyChart) {
+                hourlyChart.data.labels = labels;
+                hourlyChart.data.datasets[0].data = runsData;
+                hourlyChart.data.datasets[1].data = itemsData;
+                hourlyChart.data.datasets[2].data = monstersData;
+                hourlyChart.update();
+            } else {
+                hourlyChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Runs',
+                                data: runsData,
+                                backgroundColor: chartColors.primary,
+                                borderRadius: 4,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Items',
+                                data: itemsData,
+                                type: 'line',
+                                borderColor: chartColors.items,
+                                backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                                tension: 0.3,
+                                fill: true,
+                                yAxisID: 'y1'
+                            },
+                            {
+                                label: 'Kills (x100)',
+                                data: monstersData,
+                                type: 'line',
+                                borderColor: chartColors.monsters,
+                                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                tension: 0.3,
+                                fill: false,
+                                borderDash: [5, 5],
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#9ca3af', boxWidth: 12, padding: 10, font: { size: 11 } }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af', font: { size: 10 } } },
+                            y: { position: 'left', grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#9ca3af' } },
+                            y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: '#9ca3af' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateMonsterChart(data) {
+            const ctx = document.getElementById('monsterChart').getContext('2d');
+            const monsters = data.totalMonstersKilled || 0;
+            const elites = data.totalElitesKilled || 0;
+            const champions = data.totalChampionsKilled || 0;
+
+            if (monsterChart) {
+                monsterChart.data.datasets[0].data = [monsters, elites, champions];
+                monsterChart.update();
+            } else {
+                monsterChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Normal', 'Elites', 'Champions'],
+                        datasets: [{
+                            data: [monsters, elites, champions],
+                            backgroundColor: [chartColors.monsters, chartColors.elites, chartColors.champions],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { color: '#9ca3af', boxWidth: 12, padding: 8, font: { size: 11 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateItemQualityChart(quality) {
+            const ctx = document.getElementById('itemQualityChart').getContext('2d');
+            
+            const data = [
+                quality.unique || 0,
+                quality.set || 0,
+                quality.rare || 0,
+                quality.magic || 0,
+                quality.runes || 0,
+                quality.normal || 0
+            ];
+
+            if (itemQualityChart) {
+                itemQualityChart.data.datasets[0].data = data;
+                itemQualityChart.update();
+            } else {
+                itemQualityChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Unique', 'Set', 'Rare', 'Magic', 'Runes', 'Normal'],
+                        datasets: [{
+                            data: data,
+                            backgroundColor: [
+                                chartColors.unique,
+                                chartColors.set,
+                                chartColors.rare,
+                                chartColors.magic,
+                                chartColors.rune,
+                                chartColors.normal
+                            ],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { color: '#9ca3af', boxWidth: 12, padding: 8, font: { size: 11 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateRunDistChart(data) {
+            const ctx = document.getElementById('runDistChart').getContext('2d');
+            
+            if (!data || Object.keys(data).length === 0) {
+                if (runDistChart) runDistChart.destroy();
+                runDistChart = null;
+                return;
+            }
+
+            const entries = Object.entries(data).sort((a, b) => b[1].totalRuns - a[1].totalRuns).slice(0, 8);
+            const labels = entries.map(([name]) => name.replace(/_/g, ' '));
+            const values = entries.map(([, stats]) => stats.totalRuns);
+            const colors = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6', '#f97316', '#ec4899'];
+
+            if (runDistChart) {
+                runDistChart.data.labels = labels;
+                runDistChart.data.datasets[0].data = values;
+                runDistChart.data.datasets[0].backgroundColor = colors.slice(0, entries.length);
+                runDistChart.update();
+            } else {
+                runDistChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: colors.slice(0, entries.length),
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '50%',
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: { color: '#9ca3af', boxWidth: 12, padding: 8, font: { size: 11 } }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateRunTypeTable(data) {
+            const tbody = document.getElementById('runTypeTableBody');
+            if (!data || Object.keys(data).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No run data available</td></tr>';
+                return;
+            }
+
+            const entries = Object.entries(data).sort((a, b) => b[1].totalRuns - a[1].totalRuns);
+            
+            tbody.innerHTML = entries.map(([name, stats]) => {
+                const successClass = stats.successRate >= 95 ? 'success' : stats.successRate >= 80 ? 'warning' : 'danger';
+                const totalKills = (stats.monstersKilled || 0) + (stats.elitesKilled || 0) + (stats.championsKilled || 0);
+                return `
+                    <tr>
+                        <td><strong>${name.replace(/_/g, ' ')}</strong></td>
+                        <td>${stats.totalRuns}</td>
+                        <td><span class="badge ${successClass}">${stats.successRate?.toFixed(0) || 0}%</span></td>
+                        <td class="duration">${formatDuration(stats.avgDuration)}</td>
+                        <td>${stats.itemsFound}</td>
+                        <td>${formatNumber(totalKills)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function updateEfficiencyTable(data) {
+            const tbody = document.getElementById('efficiencyTableBody');
+            if (!data || Object.keys(data).length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No efficiency data</td></tr>';
+                return;
+            }
+
+            const entries = Object.entries(data)
+                .filter(([_, stats]) => stats.totalRuns >= 3)
+                .sort((a, b) => {
+                    const aIph = a[1].avgDuration > 0 ? (a[1].itemsPerRun / (a[1].avgDuration / 3600000)) : 0;
+                    const bIph = b[1].avgDuration > 0 ? (b[1].itemsPerRun / (b[1].avgDuration / 3600000)) : 0;
+                    return bIph - aIph;
+                });
+
+            tbody.innerHTML = entries.map(([name, stats]) => {
+                const itemsPerHour = stats.avgDuration > 0 
+                    ? (stats.itemsPerRun / (stats.avgDuration / 3600000)).toFixed(1) : '-';
+                const totalKills = (stats.monstersKilled || 0) + (stats.elitesKilled || 0) + (stats.championsKilled || 0);
+                const killsPerHour = stats.avgDuration > 0 && stats.totalRuns > 0
+                    ? formatNumber(Math.round((totalKills / stats.totalRuns) / (stats.avgDuration / 3600000))) : '-';
+                const elitesPerRun = stats.totalRuns > 0 
+                    ? ((stats.elitesKilled || 0) / stats.totalRuns).toFixed(1) : '-';
+                const deathsPer100 = stats.totalRuns > 0
+                    ? ((stats.deaths / stats.totalRuns) * 100).toFixed(1) : '-';
+
+                return `
+                    <tr>
+                        <td><strong>${name.replace(/_/g, ' ')}</strong></td>
+                        <td class="duration">${formatDuration(stats.avgDuration)}</td>
+                        <td>${itemsPerHour}</td>
+                        <td>${killsPerHour}</td>
+                        <td>${elitesPerRun}</td>
+                        <td>${deathsPer100}</td>
+                        <td class="duration">${formatDuration(stats.fastestRun)}</td>
+                        <td class="duration">${formatDuration(stats.slowestRun)}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            if (entries.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Need 3+ runs per type</td></tr>';
+            }
+        }
+
+        function updateNotableDrops(items) {
+            const container = document.getElementById('notableDrops');
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="empty-state">No notable drops yet</div>';
+                return;
+            }
+
+            container.innerHTML = items.slice(0, 30).map(item => {
+                let qualityClass = 'normal';
+                if (item.isRune) qualityClass = 'rune';
+                else if (item.isUnique) qualityClass = 'unique';
+                else if (item.isSet) qualityClass = 'set';
+                else if (item.quality === 6) qualityClass = 'rare';
+                else if (item.quality === 4) qualityClass = 'magic';
+
+                const time = new Date(item.timestamp).toLocaleTimeString();
+                return `
+                    <div class="drop-item">
+                        <div class="quality-dot ${qualityClass}"></div>
+                        <div class="info">
+                            <div class="name quality-${qualityClass}">${item.baseName || item.name}</div>
+                            <div class="meta">${item.runName?.replace(/_/g, ' ') || '-'} • ${time}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function updateCharacterSelect() {
+            try {
+                const characters = await fetchCharacters();
+                const select = document.getElementById('characterSelect');
+                select.innerHTML = '<option value="">All Characters</option>';
+                characters.forEach(char => {
+                    select.innerHTML += `<option value="${char}">${char}</option>`;
+                });
+            } catch (err) {
+                console.error('Failed to fetch characters:', err);
+            }
+        }
+
+        async function refreshAll() {
+            try {
+                const [session, hourly, runTypes, items, deaths, runes, sessionHistory] = await Promise.all([
+                    fetchSession(),
+                    fetchHourly(),
+                    fetchRunTypes(),
+                    fetchItems(true),
+                    fetchDeaths(),
+                    fetchRunes(),
+                    fetchSessionHistory()
+                ]);
+
+                sessionData = session;
+                updateStats(session);
+                updateDryStreak(session);
+                updateLevelProgress(session);
+                updateHourlyChart(hourly);
+                updateRunDistChart(runTypes);
+                updateRunTypeTable(runTypes);
+                updateEfficiencyTable(runTypes);
+                updateNotableDrops(items);
+                updateDeathsByArea(deaths);
+                updateItemsHeatmap(runTypes);
+                updateRuneTracker(runes);
+                updateSessionHistory(sessionHistory);
+
+                // Character comparison (only when All Characters selected)
+                if (selectedCharacter === '') {
+                    try {
+                        const comparison = await fetchComparison();
+                        updateCharacterComparison(comparison);
+                    } catch (err) {
+                        console.error('Failed to fetch comparison:', err);
+                    }
+                } else {
+                    document.getElementById('charComparisonSection').style.display = 'none';
+                }
+            } catch (err) {
+                console.error('Failed to refresh:', err);
+            }
+        }
+
+        // WebSocket
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                document.getElementById('wsStatus').classList.add('connected');
+                document.getElementById('wsStatusText').textContent = 'Live';
+            };
+
+            ws.onclose = () => {
+                document.getElementById('wsStatus').classList.remove('connected');
+                document.getElementById('wsStatusText').textContent = 'Disconnected';
+                setTimeout(connectWebSocket, 5000);
+            };
+
+            ws.onerror = () => ws.close();
+
+            ws.onmessage = (event) => {
+                try {
+                    const msg = JSON.parse(event.data);
+                    if (['run_complete', 'item_found', 'death', 'chicken', 'monster_killed'].includes(msg.type)) {
+                        clearTimeout(window.refreshTimeout);
+                        window.refreshTimeout = setTimeout(refreshAll, 1000);
+                    }
+                } catch (err) {}
+            };
+        }
+
+        document.getElementById('characterSelect').addEventListener('change', (e) => {
+            selectedCharacter = e.target.value;
+            refreshAll();
+        });
+
+        async function init() {
+            await updateCharacterSelect();
+            await refreshAll();
+            connectWebSocket();
+            setInterval(refreshAll, 30000);
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -91,6 +91,12 @@ type KooloCfg struct {
 		Enabled      bool `yaml:"enabled"`
 		DelaySeconds int  `yaml:"delaySeconds"`
 	} `yaml:"autoStart"`
+	Analytics struct {
+		Enabled         bool `yaml:"enabled"`
+		HistoryDays     int  `yaml:"historyDays"`     // Days of detailed history to keep (default 30)
+		MaxNotableDrops int  `yaml:"maxNotableDrops"` // Max notable drops to track (default 100)
+		TrackAllItems   bool `yaml:"trackAllItems"`   // Track all items or just stashed ones
+	} `yaml:"analytics"`
 	RunewordFavoriteRecipes []string `yaml:"runewordFavoriteRecipes"`
 	RunFavoriteRuns         []string `yaml:"runFavoriteRuns"`
 }
@@ -636,8 +642,19 @@ func Load() error {
 		return fmt.Errorf("error reading config directory %s: %w", configDir, err)
 	}
 
+	// Folders to skip when scanning for character configs
+	skipFolders := map[string]bool{
+		"template":  true,
+		"analytics": true,
+	}
+
 	for _, entry := range entries {
 		if !entry.IsDir() {
+			continue
+		}
+
+		// Skip system folders that aren't character configs
+		if skipFolders[entry.Name()] {
 			continue
 		}
 

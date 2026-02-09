@@ -984,6 +984,21 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/armory", s.armoryAPI)
 	http.HandleFunc("/api/armory/characters", s.armoryCharactersAPI)
 
+	// Analytics routes
+	http.HandleFunc("/analytics", s.analyticsPage)
+	http.HandleFunc("/api/analytics/session", s.analyticsSessionAPI)
+	http.HandleFunc("/api/analytics/global", s.analyticsGlobalAPI)
+	http.HandleFunc("/api/analytics/runs", s.analyticsRunsAPI)
+	http.HandleFunc("/api/analytics/hourly", s.analyticsHourlyAPI)
+	http.HandleFunc("/api/analytics/run-types", s.analyticsRunTypesAPI)
+	http.HandleFunc("/api/analytics/items", s.analyticsItemsAPI)
+	http.HandleFunc("/api/analytics/characters", s.analyticsCharactersAPI)
+	http.HandleFunc("/api/analytics/reset", s.analyticsResetAPI)
+	http.HandleFunc("/api/analytics/deaths", s.analyticsDeathsAPI)
+	http.HandleFunc("/api/analytics/runes", s.analyticsRunesAPI)
+	http.HandleFunc("/api/analytics/session-history", s.analyticsSessionHistoryAPI)
+	http.HandleFunc("/api/analytics/comparison", s.analyticsComparisonAPI)
+
 	s.registerDropRoutes()
 
 	assets, _ := fs.Sub(assetsFS, "assets")
@@ -1680,6 +1695,20 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 			autoStartDelay = 0
 		}
 		newConfig.AutoStart.DelaySeconds = autoStartDelay
+
+		// Analytics
+		newConfig.Analytics.Enabled = r.Form.Get("analytics_enabled") == "true"
+		analyticsHistoryDays, err := strconv.Atoi(r.Form.Get("analytics_history_days"))
+		if err != nil || analyticsHistoryDays < 1 {
+			analyticsHistoryDays = 30 // Default to 30 days
+		}
+		newConfig.Analytics.HistoryDays = analyticsHistoryDays
+		analyticsMaxDrops, err := strconv.Atoi(r.Form.Get("analytics_max_notable_drops"))
+		if err != nil || analyticsMaxDrops < 10 {
+			analyticsMaxDrops = 100 // Default to 100
+		}
+		newConfig.Analytics.MaxNotableDrops = analyticsMaxDrops
+		newConfig.Analytics.TrackAllItems = r.Form.Get("analytics_track_all_items") == "true"
 
 		err = config.ValidateAndSaveConfig(newConfig)
 		if err != nil {
