@@ -7,6 +7,12 @@ set GOGARBLE=!github.com/hectorgimenez/koolo/internal/server*,!github.com/hector
 :: Required versions
 set REQUIRED_GO_VERSION=1.24
 set REQUIRED_GARBLE_VERSION=0.14.2
+set GIT_AVAILABLE=0
+
+:: Upstream repository (override here for testing)
+set "UPSTREAM_OWNER=kwader2k"
+set "UPSTREAM_REPO=Koolo"
+set "UPSTREAM_URL=https://github.com/%UPSTREAM_OWNER%/%UPSTREAM_REPO%.git"
 
 :: Change to the script's directory
 cd /d "%~dp0"
@@ -20,6 +26,9 @@ call :print_info "Using static build folder: %STATIC_BUILD_DIR%"
 
 call :print_header "Starting Koolo Resurrected Build Process"
 
+:: Check for Git installation
+call :check_git_installation
+
 :: Check for Go installation
 call :check_go_installation
 if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
@@ -27,6 +36,14 @@ if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
 :: Check for Garble installation
 call :check_garble_installation
 if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
+
+:: Ensure git repository exists (for updater support)
+if "%GIT_AVAILABLE%"=="1" (
+    call :ensure_git_repo
+    if !errorlevel! neq 0 call :pause_and_exit !errorlevel!
+) else (
+    call :print_warning "Git not available; skipping repository setup."
+)
 
 :: Main script execution
 call :main %*
@@ -38,6 +55,20 @@ echo.
 powershell -Command "Write-Host 'Press any key to exit...' -ForegroundColor Yellow"
 pause > nul
 exit /b 0
+
+:check_git_installation
+call :print_info "Checking if Git is installed"
+where git >nul 2>&1
+if %errorlevel% neq 0 (
+    call :print_warning "Git is not installed or not in the system PATH."
+    call :print_info "You can download Git from https://git-scm.com/downloads"
+    call :print_info "Updater features will be skipped without Git."
+    set GIT_AVAILABLE=0
+    goto :eof
+)
+set GIT_AVAILABLE=1
+call :print_success "Git is installed."
+goto :eof
 
 :check_go_installation
 call :print_info "Checking if Go is installed"
@@ -135,6 +166,46 @@ if %errorlevel% neq 0 (
 )
 goto :eof
 
+:ensure_git_repo
+if "%GIT_AVAILABLE%"=="0" (
+    call :print_info "Skipping git repository initialization (git not available)."
+    goto :eof
+)
+if exist ".git" (
+    call :print_info "Git repository already exists."
+    goto :eof
+)
+call :print_header "Initializing Git Repository"
+call :print_info "No .git directory found. Setting up repository for updater support..."
+git init >nul 2>&1
+if !errorlevel! neq 0 (
+    call :print_error "Failed to initialize git repository"
+    exit /b 1
+)
+git remote add origin "!UPSTREAM_URL!" >nul 2>&1
+call :print_step "Fetching upstream repository (this may take a moment)..."
+git fetch origin main >nul 2>&1
+if !errorlevel! neq 0 (
+    call :print_error "Failed to fetch from upstream repository"
+    call :print_info "Please check your internet connection and try again."
+    exit /b 1
+)
+git checkout -b main >nul 2>&1
+:: Use .commit file from release if available; do not reset when missing or mismatched
+if exist ".commit" (
+    set /p RESET_TARGET=<.commit
+    call :print_info "Using commit from .commit file: !RESET_TARGET:~0,7!"
+    git reset !RESET_TARGET! >nul 2>&1
+    if !errorlevel! neq 0 (
+        call :print_warning "Commit from .commit not found in history; leaving HEAD unset."
+    )
+) else (
+    call :print_info "No .commit file found; leaving HEAD unset."
+)
+
+call :print_success "Git repository initialized successfully."
+goto :eof
+
 :install_go_with_chocolatey
 call :print_step "Attempting to install Go using Chocolatey..."
 where choco >nul 2>&1
@@ -166,13 +237,33 @@ call :print_info "Building %VERSION%"
 for /f "delims=" %%a in ('powershell -Command "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
 for /f "delims=" %%b in ('powershell -Command "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"
 
+:: Extract commit metadata from git for updater version tracking
+set "COMMIT_HASH="
+set "COMMIT_TIME="
+if "%GIT_AVAILABLE%"=="1" (
+    for /f "delims=" %%h in ('git rev-parse HEAD 2^>nul') do set "COMMIT_HASH=%%h"
+    for /f "delims=" %%t in ('git show -s --format^=%%cI HEAD 2^>nul') do set "COMMIT_TIME=%%t"
+)
+if not "!COMMIT_HASH!"=="" (
+    call :print_info "Commit: !COMMIT_HASH:~0,7!"
+) else if "%GIT_AVAILABLE%"=="1" (
+    call :print_warning "Could not determine commit hash. Updater version tracking may not work."
+) else (
+    call :print_info "Git not available; skipping commit metadata."
+)
+
 :: Set the expected output executable path
 set "OUTPUT_EXE=build\%BUILD_ID%.exe"
+
+:: Build ldflags with commit metadata
+set "LDFLAGS=-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'"
+if not "!COMMIT_HASH!"=="" set "LDFLAGS=!LDFLAGS! -X 'github.com/hectorgimenez/koolo/internal/updater.buildCommitHash=!COMMIT_HASH!'"
+if not "!COMMIT_TIME!"=="" set "LDFLAGS=!LDFLAGS! -X 'github.com/hectorgimenez/koolo/internal/updater.buildCommitTime=!COMMIT_TIME!'"
 
 :: Build an obfuscated Koolo binary
 call :print_step "Compiling Obfuscated Koolo executable"
 (
-    garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
+    garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "!LDFLAGS!" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log
 set "GARBLE_EXIT_CODE=!errorlevel!"
 

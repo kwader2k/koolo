@@ -2,7 +2,10 @@ package updater
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 type RevertResult struct {
@@ -14,9 +17,14 @@ type RevertResult struct {
 }
 
 // RevertPR reverts commits previously applied for a PR (most recent first).
-func (u *Updater) RevertPR(prNumber int, progressCallback func(message string)) (result *RevertResult, err error) {
+func (u *Updater) RevertPR(prNumber int, allowDiscardLocalChanges bool, progressCallback func(message string)) (result *RevertResult, err error) {
 	if progressCallback == nil {
 		progressCallback = func(message string) {}
+	}
+	originalProgress := progressCallback
+	progressCallback = func(message string) {
+		originalProgress(message)
+		appendOperationLog("revert", message)
 	}
 
 	result = &RevertResult{
@@ -38,44 +46,46 @@ func (u *Updater) RevertPR(prNumber int, progressCallback func(message string)) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to check working tree: %w", err)
 	}
-	stashCreated := false
-	if strings.TrimSpace(string(statusOut)) != "" {
-		progressCallback("Working tree has local changes; stashing before revert")
-		stashCmd := gitCmd(ctx.RepoDir, "stash", "push", "-u", "-m", "koolo-updater-revert")
-		stashOut, stashErr := stashCmd.CombinedOutput()
-		if stashErr != nil {
-			return nil, fmt.Errorf("failed to stash local changes: %w\n%s", stashErr, string(stashOut))
-		}
-		outLower := strings.ToLower(string(stashOut))
-		stashCreated = !strings.Contains(outLower, "no local changes")
+	dirty := strings.TrimSpace(string(statusOut)) != ""
+	if dirty && !allowDiscardLocalChanges {
+		return nil, newDiscardLocalChangesError("Reverting PRs requires a clean repository.")
 	}
-	defer func() {
-		if !stashCreated {
-			return
+	if dirty && allowDiscardLocalChanges {
+		progressCallback("Discarding local changes before revert...")
+		resetCmd := gitCmd(ctx.RepoDir, "reset", "--hard", "HEAD")
+		if output, err := resetCmd.CombinedOutput(); err != nil {
+			return nil, fmt.Errorf("git reset --hard failed: %w\n%s", err, output)
 		}
-		popCmd := gitCmd(ctx.RepoDir, "stash", "pop")
-		popOut, popErr := popCmd.CombinedOutput()
-		if popErr == nil {
-			return
-		}
-		popMsg := fmt.Errorf("failed to restore local changes: %w\n%s", popErr, string(popOut))
-		if err == nil {
-			err = popMsg
-		} else {
-			err = fmt.Errorf("%v; %w", err, popMsg)
-		}
-	}()
+		_ = gitCmd(ctx.RepoDir, "clean", "-fd").Run()
+	}
 
-	applied, err := LoadAppliedPRs()
+	info, ok, err := ResolveAppliedPRInfoInRepo(ctx.RepoDir, prNumber)
 	if err != nil {
 		return nil, err
 	}
-	info, ok := applied[prNumber]
 	if !ok || len(info.Commits) == 0 {
-		return nil, fmt.Errorf("no applied commits recorded for PR #%d", prNumber)
+		return nil, fmt.Errorf("no applied commits found for PR #%d", prNumber)
 	}
 
 	progressCallback(fmt.Sprintf("Reverting PR #%d...", prNumber))
+
+	tmpRoot := filepath.Join(ctx.RepoDir, ".tmp", "revert-worktrees")
+	if err := os.MkdirAll(tmpRoot, 0o755); err != nil {
+		return nil, fmt.Errorf("failed to create worktree directory: %w", err)
+	}
+	worktreeName := fmt.Sprintf("koolo-revert-%d-%d", prNumber, time.Now().UnixNano())
+	worktreeDir := filepath.Join(tmpRoot, worktreeName)
+	progressCallback("Creating isolated worktree for revert...")
+	worktreeCmd := gitCmd(ctx.RepoDir, "worktree", "add", "-b", worktreeName, worktreeDir, "HEAD")
+	if output, err := worktreeCmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("failed to create worktree: %w\n%s", err, output)
+	}
+	defer func() {
+		_ = gitCmd(ctx.RepoDir, "worktree", "remove", "--force", worktreeDir).Run()
+		_ = gitCmd(ctx.RepoDir, "branch", "-D", worktreeName).Run()
+		_ = os.RemoveAll(worktreeDir)
+		cleanupTmpRoot(tmpRoot)
+	}()
 
 	for i := len(info.Commits) - 1; i >= 0; i-- {
 		sha := info.Commits[i]
@@ -85,27 +95,30 @@ func (u *Updater) RevertPR(prNumber int, progressCallback func(message string)) 
 		}
 
 		progressCallback(fmt.Sprintf("Reverting %s...", shortSHA))
-		revertCmd := gitCmd(ctx.RepoDir, "revert", "--no-edit", sha)
+		revertCmd := gitCmd(worktreeDir, "revert", "--no-edit", sha)
 		output, err := revertCmd.CombinedOutput()
 		outputStr := string(output)
 
 		if err != nil {
 			if strings.Contains(outputStr, "merge but no -m option was given") {
-				_ = gitCmd(ctx.RepoDir, "revert", "--abort").Run()
-				return nil, fmt.Errorf("cannot revert merge commit %s without -m", shortSHA)
+				_ = gitCmd(worktreeDir, "revert", "--abort").Run()
+				result.Success = false
+				result.Error = fmt.Sprintf("Cannot revert merge commit %s without -m", shortSHA)
+				progressCallback(result.Error)
+				return result, fmt.Errorf(result.Error)
 			}
 
 			if strings.Contains(outputStr, "nothing to commit") ||
 				strings.Contains(outputStr, "The previous cherry-pick is now empty") ||
 				strings.Contains(outputStr, "The previous cherry-pick is empty") ||
 				strings.Contains(outputStr, "nothing added to commit but untracked files present") {
-				_ = gitCmd(ctx.RepoDir, "revert", "--skip").Run()
+				_ = gitCmd(worktreeDir, "revert", "--skip").Run()
 				progressCallback(fmt.Sprintf("Skipped %s (already reverted)", shortSHA))
 				continue
 			}
 
 			if strings.Contains(outputStr, "conflict") || strings.Contains(outputStr, "CONFLICT") {
-				_ = gitCmd(ctx.RepoDir, "revert", "--abort").Run()
+				_ = gitCmd(worktreeDir, "revert", "--abort").Run()
 				result.Conflicts = append(result.Conflicts, shortSHA)
 				result.Success = false
 				result.Error = fmt.Sprintf("Conflict while reverting %s", shortSHA)
@@ -113,17 +126,36 @@ func (u *Updater) RevertPR(prNumber int, progressCallback func(message string)) 
 				return result, fmt.Errorf(result.Error)
 			}
 
-			_ = gitCmd(ctx.RepoDir, "revert", "--abort").Run()
-			return nil, fmt.Errorf("failed to revert %s: %v\nOutput: %s", shortSHA, err, outputStr)
+			_ = gitCmd(worktreeDir, "revert", "--abort").Run()
+			result.Success = false
+			result.Error = fmt.Sprintf("Failed to revert %s: %v\nOutput: %s", shortSHA, err, outputStr)
+			return result, fmt.Errorf(result.Error)
 		}
 
 		result.Reverted = append(result.Reverted, shortSHA)
 		progressCallback(fmt.Sprintf("Reverted %s", shortSHA))
 	}
 
-	if err := RemoveAppliedPR(prNumber); err != nil {
-		progressCallback(fmt.Sprintf("Warning: failed to update applied PRs: %v", err))
+	headOut, err := gitCmd(worktreeDir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve worktree HEAD: %w", err)
 	}
+	worktreeHead := strings.TrimSpace(string(headOut))
+	if worktreeHead == "" {
+		return nil, fmt.Errorf("failed to resolve worktree HEAD commit")
+	}
+
+	checkoutCmd := gitCmd(ctx.RepoDir, "checkout", "-B", "main", worktreeHead)
+	if output, err := checkoutCmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("failed to update main branch: %w\n%s", err, output)
+	}
+	resetCmd := gitCmd(ctx.RepoDir, "reset", "--hard", worktreeHead)
+	if output, err := resetCmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("git reset --hard failed: %w\n%s", err, output)
+	}
+	_ = gitCmd(ctx.RepoDir, "clean", "-fd").Run()
+
+	_ = RemoveAppliedPR(prNumber)
 
 	result.Success = true
 	progressCallback(fmt.Sprintf("Successfully reverted PR #%d", prNumber))

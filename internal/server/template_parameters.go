@@ -100,8 +100,9 @@ type SkillOption struct {
 }
 
 type ConfigData struct {
-	ErrorMessage   string
-	CurrentVersion *VersionData
+	ErrorMessage    string
+	CurrentVersion  *VersionData
+	BaselineVersion *VersionData
 	*config.KooloCfg
 }
 

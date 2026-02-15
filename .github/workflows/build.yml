@@ -50,9 +50,13 @@ jobs:
           for /f "delims=" %%a in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString()"') do set "BUILD_ID=%%a"
           for /f "delims=" %%b in ('powershell -NoProfile -Command "Get-Date -Format 'o'"') do set "BUILD_TIME=%%b"
 
-          echo Building Koolo with BUILD_ID=%BUILD_ID%
+          for /f "delims=" %%h in ('git rev-parse HEAD') do set "COMMIT_HASH=%%h"
+          for /f "delims=" %%t in ('git show -s --format^=%%cI HEAD') do set "COMMIT_TIME=%%t"
 
-          garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X main.buildID=%BUILD_ID% -X main.buildTime=%BUILD_TIME% -X github.com/hectorgimenez/koolo/internal/config.Version=%GITHUB_REF_NAME%" -o ".\build\%BUILD_ID%.exe" ./cmd/koolo
+          echo Building Koolo with BUILD_ID=%BUILD_ID%
+          echo Commit: %COMMIT_HASH%
+
+          garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X main.buildID=%BUILD_ID% -X main.buildTime=%BUILD_TIME% -X github.com/hectorgimenez/koolo/internal/config.Version=%GITHUB_REF_NAME% -X github.com/hectorgimenez/koolo/internal/updater.buildCommitHash=%COMMIT_HASH% -X github.com/hectorgimenez/koolo/internal/updater.buildCommitTime=%COMMIT_TIME%" -o ".\build\%BUILD_ID%.exe" ./cmd/koolo
           if exist ".\build\%BUILD_ID%.exe" (
             echo Obfuscated build successful
           ) else (
@@ -104,6 +108,8 @@ jobs:
             )
           )
 
+          echo %COMMIT_HASH% > .commit
+
           endlocal
 
       - name: "Upload Artifact"
@@ -120,7 +126,7 @@ jobs:
           $version = "${{ github.ref_name }}"
           $zipName = "koolo-leveling-$version.zip"
           Write-Host "Creating release archive: $zipName"
-          Compress-Archive -Path ".\build\*" -DestinationPath ".\$zipName" -Force
+          Compress-Archive -Path ".\build\*", ".\.commit" -DestinationPath ".\$zipName" -Force
 
       - name: Release
         uses: softprops/action-gh-release@v1

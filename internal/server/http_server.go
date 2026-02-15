@@ -941,6 +941,7 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/updater/backups", s.getBackups)
 	http.HandleFunc("/api/updater/rollback", s.performRollback)
 	http.HandleFunc("/api/updater/prs", s.getUpstreamPRs)
+	http.HandleFunc("/api/updater/prs/applied", s.getAppliedPRs)
 	http.HandleFunc("/api/updater/cherry-pick", s.cherryPickPRs)
 	http.HandleFunc("/api/updater/prs/revert", s.revertPR)
 
@@ -1568,14 +1569,31 @@ func (s *HttpServer) getVersionData() *VersionData {
 	return nil
 }
 
+func (s *HttpServer) getBaselineVersionData() *VersionData {
+	versionInfo, _ := updater.GetBaselineVersion()
+	if versionInfo != nil {
+		return &VersionData{
+			CommitHash: versionInfo.CommitHash,
+			CommitDate: formatCommitDate(versionInfo.CommitDate),
+			CommitMsg:  versionInfo.CommitMsg,
+			Branch:     versionInfo.Branch,
+		}
+	}
+	return nil
+}
+
 func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
+	currentVersion := s.getVersionData()
+	baselineVersion := s.getBaselineVersionData()
+
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-				KooloCfg:       config.Koolo,
-				ErrorMessage:   "Error parsing form",
-				CurrentVersion: s.getVersionData(),
+				KooloCfg:        config.Koolo,
+				ErrorMessage:    "Error parsing form",
+				CurrentVersion:  currentVersion,
+				BaselineVersion: baselineVersion,
 			})
 			return
 		}
@@ -1621,9 +1639,10 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		telegramChatId, err := strconv.ParseInt(r.Form.Get("telegram_chat_id"), 10, 64)
 		if err != nil {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-				KooloCfg:       &newConfig,
-				ErrorMessage:   "Invalid Telegram Chat ID",
-				CurrentVersion: s.getVersionData(),
+				KooloCfg:        &newConfig,
+				ErrorMessage:    "Invalid Telegram Chat ID",
+				CurrentVersion:  currentVersion,
+				BaselineVersion: baselineVersion,
 			})
 			return
 		}
@@ -1638,25 +1657,28 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		newConfig.Ngrok.BasicAuthPass = strings.TrimSpace(r.Form.Get("ngrok_basic_auth_pass"))
 		if newConfig.Ngrok.BasicAuthUser != "" && newConfig.Ngrok.BasicAuthPass == "" {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-				KooloCfg:       &newConfig,
-				ErrorMessage:   "ngrok basic auth password is required when a username is set",
-				CurrentVersion: s.getVersionData(),
+				KooloCfg:        &newConfig,
+				ErrorMessage:    "ngrok basic auth password is required when a username is set",
+				CurrentVersion:  currentVersion,
+				BaselineVersion: baselineVersion,
 			})
 			return
 		}
 		if newConfig.Ngrok.BasicAuthPass != "" && newConfig.Ngrok.BasicAuthUser == "" {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-				KooloCfg:       &newConfig,
-				ErrorMessage:   "ngrok basic auth username is required when a password is set",
-				CurrentVersion: s.getVersionData(),
+				KooloCfg:        &newConfig,
+				ErrorMessage:    "ngrok basic auth username is required when a password is set",
+				CurrentVersion:  currentVersion,
+				BaselineVersion: baselineVersion,
 			})
 			return
 		}
 		if newConfig.Ngrok.BasicAuthPass != "" && len(newConfig.Ngrok.BasicAuthPass) < 8 {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-				KooloCfg:       &newConfig,
-				ErrorMessage:   "ngrok basic auth password must be at least 8 characters",
-				CurrentVersion: s.getVersionData(),
+				KooloCfg:        &newConfig,
+				ErrorMessage:    "ngrok basic auth password must be at least 8 characters",
+				CurrentVersion:  currentVersion,
+				BaselineVersion: baselineVersion,
 			})
 			return
 		}
@@ -1686,9 +1708,10 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		err = config.ValidateAndSaveConfig(newConfig)
 		if err != nil {
 			s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-				KooloCfg:       &newConfig,
-				ErrorMessage:   err.Error(),
-				CurrentVersion: s.getVersionData(),
+				KooloCfg:        &newConfig,
+				ErrorMessage:    err.Error(),
+				CurrentVersion:  currentVersion,
+				BaselineVersion: baselineVersion,
 			})
 			return
 		}
@@ -1697,22 +1720,11 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get current version info
-	versionInfo, _ := updater.GetCurrentVersionNoClone()
-	var versionData *VersionData
-	if versionInfo != nil {
-		versionData = &VersionData{
-			CommitHash: versionInfo.CommitHash,
-			CommitDate: formatCommitDate(versionInfo.CommitDate),
-			CommitMsg:  versionInfo.CommitMsg,
-			Branch:     versionInfo.Branch,
-		}
-	}
-
 	s.templates.ExecuteTemplate(w, "config.gohtml", ConfigData{
-		KooloCfg:       config.Koolo,
-		ErrorMessage:   "",
-		CurrentVersion: versionData,
+		KooloCfg:        config.Koolo,
+		ErrorMessage:    "",
+		CurrentVersion:  currentVersion,
+		BaselineVersion: baselineVersion,
 	})
 }
 
@@ -3731,9 +3743,23 @@ func buildTZGroups() []TZGroup {
 // Updater handlers
 
 func (s *HttpServer) getVersion(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
 	version, err := updater.GetCurrentVersionNoClone()
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Failed to get version: %v", err), http.StatusInternalServerError)
+		return
+	}
+	if version == nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"commitHash": "",
+			"commitDate": "",
+			"commitMsg":  "",
+			"branch":     "unknown",
+		})
 		return
 	}
 
@@ -3747,6 +3773,50 @@ func (s *HttpServer) getVersion(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) checkUpdates(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
+	gate := updater.GetUpdaterGate()
+	baselineVersion := s.getBaselineVersionData()
+	var baselinePayload map[string]interface{}
+	if baselineVersion != nil {
+		baselinePayload = map[string]interface{}{
+			"commitHash": baselineVersion.CommitHash,
+			"commitDate": baselineVersion.CommitDate,
+			"commitMsg":  baselineVersion.CommitMsg,
+			"branch":     baselineVersion.Branch,
+		}
+	}
+	if gate.ForceSyncOnly {
+		if bootstrapped, err := updater.BootstrapRepoForUpdates(); err == nil && bootstrapped {
+			gate = updater.GetUpdaterGate()
+			baselineVersion = s.getBaselineVersionData()
+			if baselineVersion != nil {
+				baselinePayload = map[string]interface{}{
+					"commitHash": baselineVersion.CommitHash,
+					"commitDate": baselineVersion.CommitDate,
+					"commitMsg":  baselineVersion.CommitMsg,
+					"branch":     baselineVersion.Branch,
+				}
+			} else {
+				baselinePayload = nil
+			}
+		}
+	}
+	if gate.ForceSyncOnly {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"hasUpdates":      false,
+			"commitsAhead":    0,
+			"commitsBehind":   0,
+			"forceSyncOnly":   true,
+			"disabledReason":  gate.Reason,
+			"baselineVersion": baselinePayload,
+		})
+		return
+	}
+
 	result, err := updater.CheckForUpdates()
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -3776,22 +3846,36 @@ func (s *HttpServer) checkUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
+	currentPayload := map[string]interface{}{
+		"commitHash": "",
+		"commitDate": "",
+		"commitMsg":  "",
+		"branch":     "",
+	}
+	if result.CurrentVersion != nil {
+		currentPayload["commitHash"] = result.CurrentVersion.CommitHash
+		currentPayload["commitDate"] = formatCommitDate(result.CurrentVersion.CommitDate)
+		currentPayload["commitMsg"] = result.CurrentVersion.CommitMsg
+		currentPayload["branch"] = result.CurrentVersion.Branch
+	}
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"hasUpdates":    result.HasUpdates,
-		"commitsAhead":  result.CommitsAhead,
-		"commitsBehind": result.CommitsBehind,
-		"aheadCommits":  aheadCommits,
-		"newCommits":    commits,
-		"currentVersion": map[string]interface{}{
-			"commitHash": result.CurrentVersion.CommitHash,
-			"commitDate": formatCommitDate(result.CurrentVersion.CommitDate),
-			"commitMsg":  result.CurrentVersion.CommitMsg,
-			"branch":     result.CurrentVersion.Branch,
-		},
+		"hasUpdates":      result.HasUpdates,
+		"commitsAhead":    result.CommitsAhead,
+		"commitsBehind":   result.CommitsBehind,
+		"aheadCommits":    aheadCommits,
+		"newCommits":      commits,
+		"forceSyncOnly":   false,
+		"disabledReason":  "",
+		"baselineVersion": baselinePayload,
+		"currentVersion":  currentPayload,
 	})
 }
 
 func (s *HttpServer) getCurrentCommits(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
 	limit := 10
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 50 {
@@ -3818,17 +3902,18 @@ func (s *HttpServer) getCurrentCommits(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(payload)
 }
 
-func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
+func requireMethod(w http.ResponseWriter, r *http.Request, method string) bool {
+	if r.Method != method {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
+		return false
 	}
+	return true
+}
 
-	// Check if any bots are running
+func (s *HttpServer) ensureNoRunningBots(w http.ResponseWriter, action string) bool {
 	runningCount := 0
 	for _, supervisorName := range s.manager.AvailableSupervisors() {
 		stats := s.manager.Status(supervisorName)
-		// Consider bot running if in Starting, InGame, or Paused state
 		if stats.SupervisorStatus == bot.Starting ||
 			stats.SupervisorStatus == bot.InGame ||
 			stats.SupervisorStatus == bot.Paused {
@@ -3837,12 +3922,18 @@ func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if runningCount > 0 {
-		http.Error(w, fmt.Sprintf("Cannot update while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+		http.Error(w, fmt.Sprintf("Cannot %s while %d bot(s) are running. Please stop all bots first.", action, runningCount), http.StatusConflict)
+		return false
+	}
+	return true
+}
+
+func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 
-	if !s.updater.TryStartOperation("update") {
-		http.Error(w, "Updater is already running another operation", http.StatusConflict)
+	if !s.ensureNoRunningBots(w, "update") {
 		return
 	}
 
@@ -3850,6 +3941,18 @@ func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
 	autoRestart := r.URL.Query().Get("restart") == "true"
 	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
 	source := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("source")))
+	forceSync := r.URL.Query().Get("forceSync") == "true"
+
+	gate := updater.GetUpdaterGate()
+	if gate.ForceSyncOnly && mode != "build" && !forceSync {
+		http.Error(w, gate.Reason, http.StatusConflict)
+		return
+	}
+
+	if !s.updater.TryStartOperation("update") {
+		http.Error(w, "Updater is already running another operation", http.StatusConflict)
+		return
+	}
 
 	// Set log callback to broadcast via WebSocket
 	s.updater.SetLogCallback(func(message string) {
@@ -3867,7 +3970,7 @@ func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
 			}
 			err = s.updater.ExecuteBuild(autoRestart, backupTag)
 		} else {
-			err = s.updater.ExecuteUpdate(autoRestart)
+			err = s.updater.ExecuteUpdate(autoRestart, forceSync)
 		}
 		if err != nil {
 			s.logger.Error("Update failed", slog.Any("error", err))
@@ -3884,13 +3987,24 @@ func (s *HttpServer) performUpdate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) getUpdaterStatus(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
 	status := s.updater.GetStatus()
+	gate := updater.GetUpdaterGate()
+	status.ForceSyncOnly = gate.ForceSyncOnly
+	status.DisabledReason = gate.Reason
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
 }
 
 func (s *HttpServer) getBackups(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
 	// Get backup versions (limit to 5 most recent)
 	backups, err := updater.GetBackupVersions(5)
 	if err != nil {
@@ -3909,24 +4023,17 @@ func (s *HttpServer) getBackups(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) performRollback(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 
-	// Check if any bots are running
-	runningCount := 0
-	for _, supervisorName := range s.manager.AvailableSupervisors() {
-		stats := s.manager.Status(supervisorName)
-		if stats.SupervisorStatus == bot.Starting ||
-			stats.SupervisorStatus == bot.InGame ||
-			stats.SupervisorStatus == bot.Paused {
-			runningCount++
-		}
+	if !s.ensureNoRunningBots(w, "rollback") {
+		return
 	}
 
-	if runningCount > 0 {
-		http.Error(w, fmt.Sprintf("Cannot rollback while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+	gate := updater.GetUpdaterGate()
+	if gate.ForceSyncOnly {
+		http.Error(w, gate.Reason, http.StatusConflict)
 		return
 	}
 
@@ -4006,6 +4113,10 @@ func (s *HttpServer) performRollback(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) getUpstreamPRs(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
+		return
+	}
+
 	// Get query parameters
 	state := r.URL.Query().Get("state")
 	if state == "" {
@@ -4021,51 +4132,95 @@ func (s *HttpServer) getUpstreamPRs(w http.ResponseWriter, r *http.Request) {
 
 	prs, err := updater.GetUpstreamPRs(state, limit)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to fetch PRs: %v", err), http.StatusInternalServerError)
+		s.logger.Error("Failed to fetch PRs", slog.Any("error", err))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"error": fmt.Sprintf("Failed to fetch PRs: %v", err),
+		})
 		return
-	}
-
-	applied, err := updater.LoadAppliedPRs()
-	if err != nil {
-		s.logger.Warn("Failed to load applied PRs", slog.Any("error", err))
-	} else {
-		for i := range prs {
-			if info, ok := applied[prs[i].Number]; ok {
-				prs[i].Applied = true
-				prs[i].CanRevert = len(info.Commits) > 0
-			}
-		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(prs)
 }
 
-func (s *HttpServer) cherryPickPRs(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func (s *HttpServer) getAppliedPRs(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodGet) {
 		return
 	}
 
-	// Check if any bots are running
-	runningCount := 0
-	for _, supervisorName := range s.manager.AvailableSupervisors() {
-		stats := s.manager.Status(supervisorName)
-		if stats.SupervisorStatus == bot.Starting ||
-			stats.SupervisorStatus == bot.InGame ||
-			stats.SupervisorStatus == bot.Paused {
-			runningCount++
+	numbersParam := strings.TrimSpace(r.URL.Query().Get("numbers"))
+	if numbersParam == "" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]map[string]bool{})
+		return
+	}
+
+	parts := strings.Split(numbersParam, ",")
+	numbers := make([]int, 0, len(parts))
+	seen := make(map[int]struct{}, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		n, err := strconv.Atoi(part)
+		if err != nil || n <= 0 {
+			continue
+		}
+		if _, ok := seen[n]; ok {
+			continue
+		}
+		seen[n] = struct{}{}
+		numbers = append(numbers, n)
+	}
+
+	appliedInfo := map[int]updater.AppliedPRInfo{}
+	if repoDir, err := updater.ResolveExistingRepoDir(); err == nil {
+		appliedInfo, err = updater.ResolveAppliedPRsForNumbersInRepo(repoDir, numbers)
+		if err != nil {
+			s.logger.Warn("Failed to resolve applied PRs", slog.Any("error", err))
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			_ = json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf("Failed to resolve applied PRs: %v", err),
+			})
+			return
 		}
 	}
 
-	if runningCount > 0 {
-		http.Error(w, fmt.Sprintf("Cannot cherry-pick while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+	resp := make(map[string]map[string]bool, len(appliedInfo))
+	for prNumber, info := range appliedInfo {
+		resp[strconv.Itoa(prNumber)] = map[string]bool{
+			"applied":   true,
+			"canRevert": updater.CanRevertCommits(info.Commits),
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
+}
+
+func (s *HttpServer) cherryPickPRs(w http.ResponseWriter, r *http.Request) {
+	if !requireMethod(w, r, http.MethodPost) {
+		return
+	}
+
+	if !s.ensureNoRunningBots(w, "cherry-pick") {
+		return
+	}
+
+	gate := updater.GetUpdaterGate()
+	if gate.ForceSyncOnly {
+		http.Error(w, gate.Reason, http.StatusConflict)
 		return
 	}
 
 	// Parse request body
 	var request struct {
-		PRNumbers []int `json:"prNumbers"`
+		PRNumbers                []int `json:"prNumbers"`
+		AllowDiscardLocalChanges bool  `json:"allowDiscardLocalChanges"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -4090,7 +4245,9 @@ func (s *HttpServer) cherryPickPRs(w http.ResponseWriter, r *http.Request) {
 	// Perform cherry-pick in background
 	go func() {
 		defer s.updater.EndOperation()
-		results, err := s.updater.CherryPickMultiplePRs(request.PRNumbers, func(message string) {
+		results, err := s.updater.CherryPickMultiplePRs(request.PRNumbers, updater.CherryPickOptions{
+			AllowDiscardLocalChanges: request.AllowDiscardLocalChanges,
+		}, func(message string) {
 			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"cherrypick_log","message":%q}`, message))
 		})
 
@@ -4112,29 +4269,23 @@ func (s *HttpServer) cherryPickPRs(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *HttpServer) revertPR(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+	if !requireMethod(w, r, http.MethodPost) {
 		return
 	}
 
-	// Check if any bots are running
-	runningCount := 0
-	for _, supervisorName := range s.manager.AvailableSupervisors() {
-		stats := s.manager.Status(supervisorName)
-		if stats.SupervisorStatus == bot.Starting ||
-			stats.SupervisorStatus == bot.InGame ||
-			stats.SupervisorStatus == bot.Paused {
-			runningCount++
-		}
+	if !s.ensureNoRunningBots(w, "revert") {
+		return
 	}
 
-	if runningCount > 0 {
-		http.Error(w, fmt.Sprintf("Cannot revert while %d bot(s) are running. Please stop all bots first.", runningCount), http.StatusConflict)
+	gate := updater.GetUpdaterGate()
+	if gate.ForceSyncOnly {
+		http.Error(w, gate.Reason, http.StatusConflict)
 		return
 	}
 
 	var request struct {
-		PRNumber int `json:"prNumber"`
+		PRNumber                 int  `json:"prNumber"`
+		AllowDiscardLocalChanges bool `json:"allowDiscardLocalChanges"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -4156,10 +4307,21 @@ func (s *HttpServer) revertPR(w http.ResponseWriter, r *http.Request) {
 
 	go func(prNumber int) {
 		defer s.updater.EndOperation()
-		result, err := s.updater.RevertPR(prNumber, progressCallback)
+		result, err := s.updater.RevertPR(prNumber, request.AllowDiscardLocalChanges, progressCallback)
 		if err != nil {
 			s.logger.Error("Revert failed", slog.Any("error", err))
-			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_error","error":%q}`, err.Error()))
+			payload := map[string]interface{}{
+				"type":  "revert_error",
+				"error": err.Error(),
+			}
+			if result != nil {
+				payload["result"] = result
+			}
+			if data, marshalErr := json.Marshal(payload); marshalErr == nil {
+				s.wsServer.broadcast <- data
+			} else {
+				s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_error","error":%q}`, err.Error()))
+			}
 			return
 		}
 		if result != nil && !result.Success {
@@ -4168,7 +4330,18 @@ func (s *HttpServer) revertPR(w http.ResponseWriter, r *http.Request) {
 				errMsg = fmt.Sprintf("Revert failed for PR #%d", prNumber)
 			}
 			s.logger.Error("Revert failed", slog.String("reason", errMsg))
-			s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_error","error":%q}`, errMsg))
+			payload := map[string]interface{}{
+				"type":  "revert_error",
+				"error": errMsg,
+			}
+			if result != nil {
+				payload["result"] = result
+			}
+			if data, marshalErr := json.Marshal(payload); marshalErr == nil {
+				s.wsServer.broadcast <- data
+			} else {
+				s.wsServer.broadcast <- []byte(fmt.Sprintf(`{"type":"revert_error","error":%q}`, errMsg))
+			}
 			return
 		}
 		s.wsServer.broadcast <- []byte(`{"type":"revert_complete"}`)

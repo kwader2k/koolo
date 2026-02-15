@@ -108,6 +108,7 @@ func pruneOldVersions(oldDir string, maxKeep int, logf func(string)) error {
 				logf("Removing duplicate backup: " + filepath.Base(file.path))
 			}
 			_ = os.Remove(file.path)
+			_ = os.Remove(file.path + ".commit")
 			continue
 		}
 		seen[hash] = struct{}{}
@@ -127,6 +128,7 @@ func pruneOldVersions(oldDir string, maxKeep int, logf func(string)) error {
 			logf("Removing old backup: " + filepath.Base(kept[i].path))
 		}
 		_ = os.Remove(kept[i].path)
+		_ = os.Remove(kept[i].path + ".commit")
 	}
 
 	return nil

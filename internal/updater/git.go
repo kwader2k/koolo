@@ -2,6 +2,8 @@ package updater
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -119,8 +121,12 @@ func CheckForUpdates() (*UpdateCheckResult, error) {
 		}
 
 		commitDate, _ := time.Parse("2006-01-02 15:04:05 -0700", parts[1])
+		hash := parts[0]
+		if len(hash) > 7 {
+			hash = hash[:7]
+		}
 		commit := CommitInfo{
-			Hash:    parts[0][:7], // Short hash
+			Hash:    hash, // Short hash
 			Date:    commitDate,
 			Message: parts[2],
 		}
@@ -142,6 +148,56 @@ func comparisonBaseRef(repoDir string, current *VersionInfo) string {
 		return "HEAD"
 	}
 	return fullHash
+}
+
+// BootstrapRepoForUpdates initializes the updater repo when missing and writes .commit.
+func BootstrapRepoForUpdates() (bool, error) {
+	if err := checkGitInstalled(); err != nil {
+		return false, err
+	}
+
+	installDir, err := resolveInstallDir()
+	if err != nil {
+		return false, err
+	}
+
+	commitPath := filepath.Join(installDir, ".commit")
+	if _, err := os.Stat(commitPath); err == nil {
+		return false, nil
+	} else if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+
+	ctx, err := resolveExistingRepoContext()
+	if err != nil {
+		if !strings.Contains(err.Error(), "no git repository found") {
+			return false, err
+		}
+		ctx, err = resolveRepoContext()
+		if err != nil {
+			return false, err
+		}
+	}
+
+	if err := ensureUpstreamRemote(ctx.RepoDir); err != nil {
+		return true, err
+	}
+
+	fetchCmd := gitCmd(ctx.RepoDir, "fetch", "upstream", "main")
+	if output, err := fetchCmd.CombinedOutput(); err != nil {
+		return true, fmt.Errorf("git fetch upstream failed: %w\n%s", err, output)
+	}
+
+	hashOut, err := gitCmd(ctx.RepoDir, "rev-parse", "upstream/main").Output()
+	if err != nil {
+		return true, fmt.Errorf("failed to resolve upstream/main commit: %w", err)
+	}
+
+	if err := updateCommitFile(ctx, strings.TrimSpace(string(hashOut))); err != nil {
+		return true, fmt.Errorf("failed to write .commit: %w", err)
+	}
+
+	return true, nil
 }
 
 // GetCurrentCommits returns recent commits from the current HEAD.
@@ -230,15 +286,8 @@ func PerformUpdate(ctx repoContext, progressCallback func(step, message string))
 		return fmt.Errorf("failed to check working tree: %w", err)
 	}
 	dirty := strings.TrimSpace(string(statusOut)) != ""
-
-	stashCreated := false
 	if dirty {
-		progressCallback("stash", "Stashing local changes...")
-		stashCmd := gitCmd(ctx.RepoDir, "stash", "push", "-u", "-m", "koolo-updater")
-		if output, err := stashCmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("git stash failed: %w\n%s", err, output)
-		}
-		stashCreated = true
+		return newDiscardLocalChangesError("Local changes detected. Force sync will discard them before updating.")
 	}
 
 	// Fetch latest changes from upstream
@@ -248,76 +297,171 @@ func PerformUpdate(ctx repoContext, progressCallback func(step, message string))
 		return fmt.Errorf("git fetch upstream failed: %w\n%s", err, output)
 	}
 
-	// Merge upstream changes
-	progressCallback("merge", "Merging upstream/main...")
-	mergeCmd := gitCmd(ctx.RepoDir, "merge", "--no-edit", "upstream/main")
+	tmpRoot := filepath.Join(ctx.RepoDir, ".tmp", "update-worktrees")
+	if err := os.MkdirAll(tmpRoot, 0o755); err != nil {
+		return fmt.Errorf("failed to create update worktree directory: %w", err)
+	}
+
+	worktreeName := fmt.Sprintf("koolo-update-%d", time.Now().UnixNano())
+	worktreeDir := filepath.Join(tmpRoot, worktreeName)
+	progressCallback("worktree", "Creating isolated worktree for update preview...")
+	worktreeCmd := gitCmd(ctx.RepoDir, "worktree", "add", "-b", worktreeName, worktreeDir, "HEAD")
+	if output, err := worktreeCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to create worktree: %w\n%s", err, output)
+	}
+	defer func() {
+		_ = gitCmd(ctx.RepoDir, "worktree", "remove", "--force", worktreeDir).Run()
+		_ = gitCmd(ctx.RepoDir, "branch", "-D", worktreeName).Run()
+		_ = os.RemoveAll(worktreeDir)
+		cleanupTmpRoot(tmpRoot)
+	}()
+
+	progressCallback("merge", "Testing merge with upstream/main...")
+	mergeCmd := gitCmd(worktreeDir, "merge", "--no-edit", "upstream/main")
 	mergeOutput, mergeErr := mergeCmd.CombinedOutput()
 	if mergeErr != nil {
 		outputStr := string(mergeOutput)
 		conflict := strings.Contains(outputStr, "CONFLICT") || strings.Contains(outputStr, "Automatic merge failed")
 		if !conflict {
-			if lsOut, lsErr := gitCmd(ctx.RepoDir, "ls-files", "-u").Output(); lsErr == nil {
+			if lsOut, lsErr := gitCmd(worktreeDir, "ls-files", "-u").Output(); lsErr == nil {
 				if strings.TrimSpace(string(lsOut)) != "" {
 					conflict = true
 				}
 			}
 		}
-
 		if conflict {
-			progressCallback("conflict", "Merge conflict detected; discarding local changes and keeping upstream updates...")
-			_ = gitCmd(ctx.RepoDir, "merge", "--abort").Run()
-
-			resetCmd := gitCmd(ctx.RepoDir, "reset", "--hard", "upstream/main")
-			if output, err := resetCmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("git reset --hard failed after conflict: %w\n%s", err, output)
-			}
-
-			cleanCmd := gitCmd(ctx.RepoDir, "clean", "-fd")
-			if output, err := cleanCmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("git clean -fd failed after conflict: %w\n%s", err, output)
-			}
-
-			if stashCreated {
-				_ = gitCmd(ctx.RepoDir, "stash", "drop").Run()
-			}
-
-			progressCallback("complete", "Git update completed (local changes discarded due to conflicts)")
-			return nil
+			_ = gitCmd(worktreeDir, "merge", "--abort").Run()
+			return newDiscardLocalChangesError("Update conflict detected. Force sync will discard local changes and reset to upstream/main.")
 		}
-
-		return fmt.Errorf("git merge failed: %w\n%s", mergeErr, outputStr)
+		return fmt.Errorf("git merge upstream/main failed: %w\n%s", mergeErr, outputStr)
 	}
 
-	if stashCreated {
-		progressCallback("stash", "Restoring local changes...")
-		popCmd := gitCmd(ctx.RepoDir, "stash", "pop")
-		popOutput, popErr := popCmd.CombinedOutput()
-		if popErr != nil {
-			outputStr := string(popOutput)
-			conflict := strings.Contains(outputStr, "CONFLICT") || strings.Contains(outputStr, "Automatic merge failed")
-			if !conflict {
-				if lsOut, lsErr := gitCmd(ctx.RepoDir, "ls-files", "-u").Output(); lsErr == nil {
-					if strings.TrimSpace(string(lsOut)) != "" {
-						conflict = true
-					}
-				}
-			}
+	headOut, err := gitCmd(worktreeDir, "rev-parse", "HEAD").Output()
+	if err != nil {
+		return fmt.Errorf("failed to resolve worktree HEAD: %w", err)
+	}
+	worktreeHead := strings.TrimSpace(string(headOut))
+	if worktreeHead == "" {
+		return fmt.Errorf("failed to resolve worktree HEAD commit")
+	}
 
-			if conflict {
-				progressCallback("conflict", "Conflicts restoring local changes; discarding them and keeping upstream updates...")
-				_ = gitCmd(ctx.RepoDir, "reset", "--hard", "HEAD").Run()
-				_ = gitCmd(ctx.RepoDir, "clean", "-fd").Run()
-				_ = gitCmd(ctx.RepoDir, "stash", "drop").Run()
-				progressCallback("complete", "Git update completed (local changes discarded due to conflicts)")
-				return nil
-			}
+	progressCallback("update", fmt.Sprintf("Updating %s to merged upstream/main...", currentBranch))
+	checkoutCmd := gitCmd(ctx.RepoDir, "checkout", "-B", currentBranch, worktreeHead)
+	if output, err := checkoutCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git checkout -B %s failed: %w\n%s", currentBranch, err, output)
+	}
+	resetCmd := gitCmd(ctx.RepoDir, "reset", "--hard", worktreeHead)
+	if output, err := resetCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git reset --hard failed: %w\n%s", err, output)
+	}
+	cleanCmd := gitCmd(ctx.RepoDir, "clean", "-fd")
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git clean -fd failed: %w\n%s", err, output)
+	}
 
-			return fmt.Errorf("git stash pop failed: %w\n%s", popErr, outputStr)
-		}
+	progressCallback("commit", "Updating .commit to upstream/main...")
+	hashOut, err := gitCmd(ctx.RepoDir, "rev-parse", "upstream/main").Output()
+	if err != nil {
+		return fmt.Errorf("failed to resolve upstream/main commit: %w", err)
+	}
+	if err := updateCommitFile(ctx, strings.TrimSpace(string(hashOut))); err != nil {
+		return fmt.Errorf("failed to write .commit: %w", err)
 	}
 
 	progressCallback("complete", "Git update completed successfully")
 	return nil
+}
+
+// ForceSyncToUpstream discards local changes and hard-resets to upstream/main.
+func ForceSyncToUpstream(ctx repoContext, progressCallback func(step, message string)) error {
+	if progressCallback == nil {
+		progressCallback = func(step, message string) {}
+	}
+
+	// Check git installation
+	progressCallback("check", "Checking Git installation...")
+	if err := checkGitInstalled(); err != nil {
+		return err
+	}
+
+	// Ensure upstream remote is configured
+	if err := ensureUpstreamRemote(ctx.RepoDir); err != nil {
+		return err
+	}
+
+	// Prepare branch (force sync can recover from detached or empty HEAD)
+	progressCallback("branch", "Preparing branch for force sync...")
+	branchCmd := gitCmd(ctx.RepoDir, "rev-parse", "--abbrev-ref", "HEAD")
+	if branchOut, err := branchCmd.Output(); err == nil {
+		currentBranch := strings.TrimSpace(string(branchOut))
+		if currentBranch == "" || currentBranch == "HEAD" {
+			progressCallback("branch", "No active branch detected; creating main from upstream/main...")
+		} else if currentBranch != "main" {
+			progressCallback("branch", fmt.Sprintf("Current branch is %q; syncing against upstream/main...", currentBranch))
+		}
+	}
+
+	// Fetch latest changes from upstream
+	progressCallback("fetch", "Fetching latest changes from upstream/main...")
+	fetchCmd := gitCmd(ctx.RepoDir, "fetch", "upstream", "main")
+	if output, err := fetchCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git fetch upstream failed: %w\n%s", err, output)
+	}
+
+	// Force reset to upstream/main
+	progressCallback("reset", "Forcing sync with upstream/main (discarding local changes)...")
+	cleanCmd := gitCmd(ctx.RepoDir, "clean", "-fd")
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git clean -fd failed: %w\n%s", err, output)
+	}
+	checkoutCmd := gitCmd(ctx.RepoDir, "checkout", "-f", "-B", "main", "upstream/main")
+	if output, err := checkoutCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git checkout -B main upstream/main failed: %w\n%s", err, output)
+	}
+	resetCmd := gitCmd(ctx.RepoDir, "reset", "--hard", "upstream/main")
+	if output, err := resetCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git reset --hard failed: %w\n%s", err, output)
+	}
+	cleanCmd = gitCmd(ctx.RepoDir, "clean", "-fd")
+	if output, err := cleanCmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("git clean -fd failed: %w\n%s", err, output)
+	}
+
+	progressCallback("commit", "Updating .commit to upstream/main...")
+	hashOut, err := gitCmd(ctx.RepoDir, "rev-parse", "upstream/main").Output()
+	if err != nil {
+		return fmt.Errorf("failed to resolve upstream/main commit: %w", err)
+	}
+	if err := updateCommitFile(ctx, strings.TrimSpace(string(hashOut))); err != nil {
+		return fmt.Errorf("failed to write .commit: %w", err)
+	}
+
+	progressCallback("complete", "Force sync completed")
+	return nil
+}
+
+// CanRevertCommits checks whether all commit SHAs are reachable from HEAD.
+func CanRevertCommits(commits []string) bool {
+	if len(commits) == 0 {
+		return false
+	}
+	if err := checkGitInstalled(); err != nil {
+		return false
+	}
+	ctx, err := resolveExistingRepoContext()
+	if err != nil {
+		return false
+	}
+	for _, sha := range commits {
+		sha = strings.TrimSpace(sha)
+		if sha == "" {
+			continue
+		}
+		if err := gitCmd(ctx.RepoDir, "merge-base", "--is-ancestor", sha, "HEAD").Run(); err != nil {
+			return false
+		}
+	}
+	return true
 }
 
 func checkGitInstalled() error {
@@ -336,7 +480,7 @@ func ensureUpstreamRemote(repoDir string) error {
 
 	if err != nil {
 		// upstream doesn't exist, add it
-		upstreamURL := "https://github.com/kwader2k/koolo.git"
+		upstreamURL := upstreamRemoteURL()
 		addCmd := gitCmd(repoDir, "remote", "add", "upstream", upstreamURL)
 		if output, err := addCmd.CombinedOutput(); err != nil {
 			return fmt.Errorf("failed to add upstream remote: %w\nOutput: %s", err, string(output))
@@ -346,9 +490,10 @@ func ensureUpstreamRemote(repoDir string) error {
 
 	// Verify it's pointing to the correct URL
 	currentURL := strings.TrimSpace(string(output))
-	expectedURL := "https://github.com/kwader2k/koolo.git"
+	expectedURL := upstreamRemoteURL()
+	expectedSlug := upstreamSlug()
 
-	if !strings.Contains(currentURL, "kwader2k/koolo") {
+	if expectedSlug != "" && !strings.Contains(currentURL, expectedSlug) {
 		// Update to correct URL
 		setCmd := gitCmd(repoDir, "remote", "set-url", "upstream", expectedURL)
 		if output, err := setCmd.CombinedOutput(); err != nil {

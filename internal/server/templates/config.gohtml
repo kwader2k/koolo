@@ -675,7 +675,7 @@
                     <ul style="margin: 6px 0 12px 18px; color: #c9ced8;">
                         <li>Updates run only when all supervisors are inactive.</li>
                         <li>Compares your local repository with kwader2k/koolo:main and merges when updates are available.</li>
-                        <li>If conflicts occur, local changes are discarded and kwader2k/koolo:main is applied.</li>
+                          <li>If conflicts occur, you will be asked to confirm discarding local changes.</li>
                         <li>If no local repository is found, the updater clones kwader2k/koolo for use.</li>
                     </ul>
                     <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">PR Application</div>
@@ -713,6 +713,25 @@
                                 Click "Check Updates" to create a .koolo-src Git clone based on the latest commits from kwader2k/koolo.
                                 {{ end }}
                             </div>
+                            <div id="baseline-version-hash" style="color: var(--text-muted); font-size: 0.85em; margin-top: 8px;">
+                                {{ if .BaselineVersion }}
+                                Upstream Baseline (.commit): {{ .BaselineVersion.CommitHash }}{{ if .BaselineVersion.CommitDate }} - {{ .BaselineVersion.CommitDate }}{{ end }}
+                                {{ else }}
+                                Upstream Baseline (.commit): not available.
+                                {{ end }}
+                            </div>
+                            <div id="baseline-version-msg" style="color: var(--text-secondary); font-size: 0.8em; margin-top: 4px;">
+                                {{ if .BaselineVersion }}
+                                {{ if .BaselineVersion.CommitMsg }}
+                                {{ .BaselineVersion.CommitMsg }}
+                                {{ else }}
+                                Baseline is sourced from .commit and stays aligned to upstream/main.
+                                {{ end }}
+                                {{ else }}
+                                Baseline is sourced from .commit and stays aligned to upstream/main.
+                                {{ end }}
+                            </div>
+                            <div id="updater-disabled-warning" style="display: none; color: #f4a261; font-size: 0.85em; margin-top: 6px;"></div>
                         </div>
                         <div id="updater-tabs" style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-sm); flex-shrink: 0;">
                             <button type="button" id="tab-updates" style="background: var(--accent-blue); color: white; border: 1px solid var(--accent-blue); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
@@ -743,6 +762,13 @@
                                 <input type="checkbox" id="auto-restart-checkbox" checked="checked" />
                                 <span>Restart automatically after update</span>
                             </label>
+                            <label style="display: flex; align-items: center; gap: 8px; margin-top: 6px;">
+                                <input type="checkbox" id="force-sync-checkbox" />
+                                <span>Force sync with upstream/main before update (discard local changes)</span>
+                            </label>
+                            <div id="force-sync-warning" style="display: none; color: #f4a261; font-size: 0.82em; margin-left: 24px; margin-top: 4px;">
+                                Warning: Force sync discards local changes and resets your branch to upstream/main.
+                            </div>
                         </div>
 
                     </div>
@@ -925,11 +951,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             currentCommitsList.textContent = 'Loading current commits...';
             try {
-                const response = await fetch('/api/updater/current-commits?limit=10');
-                if (!response.ok) {
-                    throw new Error(await response.text());
-                }
-                const commits = await response.json();
+                const commits = await fetchJson('/api/updater/current-commits?limit=10');
                 currentCommitsList.innerHTML = '';
                 if (Array.isArray(commits) && commits.length > 0) {
                     commits.forEach(commit => {
@@ -949,6 +971,27 @@ document.addEventListener("DOMContentLoaded", function () {
                 currentCommitsList.textContent = 'Failed to load current commits.';
             }
         });
+    }
+
+    async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        const text = await response.text();
+        let data = null;
+        if (text) {
+            try {
+                data = JSON.parse(text);
+            } catch (error) {
+                if (!response.ok) {
+                    throw new Error(text);
+                }
+                throw new Error('Invalid server response');
+            }
+        }
+        if (!response.ok) {
+            const message = data && data.error ? data.error : (text || `Request failed (${response.status})`);
+            throw new Error(message);
+        }
+        return data;
     }
 
     const updatesTab = document.getElementById('tab-updates');
@@ -991,11 +1034,46 @@ document.addEventListener("DOMContentLoaded", function () {
         currentCommitsLoaded = false;
     }
 
+    function updateBaselineVersionUI(baselineVersion) {
+        if (!baselineVersion || !baselineVersion.commitHash) {
+            return;
+        }
+
+        const baselineHash = document.getElementById('baseline-version-hash');
+        const baselineMsg = document.getElementById('baseline-version-msg');
+        if (baselineHash) {
+            const date = baselineVersion.commitDate ? ` - ${baselineVersion.commitDate}` : '';
+            baselineHash.textContent = `Upstream Baseline (.commit): ${baselineVersion.commitHash}${date}`;
+            baselineHash.style.color = 'var(--text-muted)';
+            baselineHash.style.fontSize = '0.85em';
+            baselineHash.style.marginTop = '8px';
+        }
+        if (baselineMsg) {
+            baselineMsg.textContent = baselineVersion.commitMsg || 'Baseline is sourced from .commit and stays aligned to upstream/main.';
+            baselineMsg.style.color = 'var(--text-secondary)';
+            baselineMsg.style.fontSize = '0.8em';
+            baselineMsg.style.marginTop = '4px';
+        }
+    }
+
+    const discardLocalChangesPrefix = 'CONFIRM_DISCARD_LOCAL_CHANGES';
+    const confirmResetUpstreamPrefix = 'CONFIRM_RESET_UPSTREAM';
+
+    let updateAvailable = false;
+    let updaterForceSyncOnly = false;
+    let updaterDisabledReason = '';
+    let currentUpdaterTab = 'updates';
+
     function setUpdaterTab(tab, refresh) {
+        if (updaterForceSyncOnly && tab !== 'updates') {
+            applyUpdaterGateWarning();
+            return;
+        }
         const isUpdates = tab === 'updates';
         const isPRs = tab === 'prs';
         const isRollback = tab === 'rollback';
 
+        currentUpdaterTab = tab;
         updatePanel.style.display = isUpdates ? '' : 'none';
         prPanel.style.display = isPRs ? '' : 'none';
         rollbackPanel.style.display = isRollback ? '' : 'none';
@@ -1055,7 +1133,77 @@ document.addEventListener("DOMContentLoaded", function () {
     setUpdaterTab('updates', false);
 
     // Updater functionality
-    let updateAvailable = false;
+    function applyUpdaterGateWarning() {
+        const warning = document.getElementById('updater-disabled-warning');
+        if (!warning) {
+            return;
+        }
+        if (updaterForceSyncOnly && updaterDisabledReason) {
+            warning.textContent = updaterDisabledReason;
+            warning.style.display = 'block';
+        } else {
+            warning.textContent = '';
+            warning.style.display = 'none';
+        }
+    }
+
+    function updateUpdaterTabAvailability() {
+        const lock = updaterForceSyncOnly;
+        const tabs = [prsTab, rollbackTab];
+        tabs.forEach(tab => {
+            if (!tab) {
+                return;
+            }
+            if (lock) {
+                tab.disabled = true;
+                tab.setAttribute('aria-disabled', 'true');
+                tab.style.cursor = 'not-allowed';
+                tab.style.opacity = '0.6';
+            } else {
+                tab.disabled = false;
+                tab.removeAttribute('aria-disabled');
+                tab.style.cursor = 'pointer';
+                tab.style.opacity = '1';
+            }
+        });
+    }
+
+    async function refreshUpdaterAvailability() {
+        try {
+            const status = await fetchJson('/api/updater/status');
+            if (!status) {
+                return;
+            }
+            if (typeof status.forceSyncOnly === 'boolean') {
+                updaterForceSyncOnly = status.forceSyncOnly;
+            }
+            updaterDisabledReason = status.disabledReason || '';
+            applyUpdaterGateWarning();
+            updateUpdateButtonState();
+            updateUpdaterTabAvailability();
+            if (updaterForceSyncOnly && currentUpdaterTab !== 'updates') {
+                setUpdaterTab('updates', false);
+            }
+            if (typeof updateSelectedPRs === 'function') {
+                updateSelectedPRs();
+            }
+        } catch (error) {
+            // Ignore status refresh failures.
+        }
+    }
+
+    function updateUpdateButtonState() {
+        const updateBtn = document.getElementById('update-now-btn');
+        const forceSyncCheckbox = document.getElementById('force-sync-checkbox');
+        const forceSync = forceSyncCheckbox ? forceSyncCheckbox.checked : false;
+        if (updateBtn) {
+            if (updaterForceSyncOnly) {
+                updateBtn.disabled = !forceSync;
+            } else {
+                updateBtn.disabled = !(updateAvailable || forceSync);
+            }
+        }
+    }
     window.checkForUpdates = async function() {
         const updateInfo = document.getElementById('update-info');
         const updateBtn = document.getElementById('update-now-btn');
@@ -1066,14 +1214,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
         updatesTab.textContent = 'Checking...';
 
-        try {
-            const response = await fetch('/api/updater/check');
-            const data = await response.json();
-            const ahead = Number(data.commitsAhead) || 0;
-            const behind = Number(data.commitsBehind) || 0;
+          try {
+              const data = await fetchJson('/api/updater/check');
+              if (!data) {
+                  throw new Error('Invalid server response');
+              }
+              if (typeof data.forceSyncOnly === 'boolean') {
+                  updaterForceSyncOnly = data.forceSyncOnly;
+              }
+                updaterDisabledReason = data.disabledReason || '';
+                applyUpdaterGateWarning();
+
+                if (updaterForceSyncOnly) {
+                    updateAvailable = false;
+                    if (statusDiv) {
+                        statusDiv.textContent = updaterDisabledReason || 'Updater is locked. Enable Force Sync to continue.';
+                        statusDiv.style.color = '#f4a261';
+                    }
+                    if (updateInfo) {
+                        updateInfo.style.display = 'block';
+                    }
+                    updatesTab.textContent = 'Check Updates';
+                    updateUpdaterTabAvailability();
+                    updateUpdateButtonState();
+                    return;
+                }
+              const ahead = Number(data.commitsAhead) || 0;
+              const behind = Number(data.commitsBehind) || 0;
             const aheadCommits = Array.isArray(data.aheadCommits) ? data.aheadCommits : [];
             if (data.currentVersion && data.currentVersion.commitHash) {
                 updateCurrentVersionUI(data.currentVersion);
+            }
+            if (data.baselineVersion && data.baselineVersion.commitHash) {
+                updateBaselineVersionUI(data.baselineVersion);
             }
 
             const statusSuffix = ` of and ${behind} commit(s) behind kwader2k/koolo:main.`;
@@ -1084,7 +1257,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             statusDiv.style.color = behind > 0 ? 'var(--accent-green)' : 'var(--accent-blue)';
             updateAvailable = behind > 0;
-            updateBtn.disabled = !updateAvailable;
+            updateUpdateButtonState();
             updatesTab.textContent = 'Updates';
 
             if (upstreamDiv) {
@@ -1142,7 +1315,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (error) {
             alert('Failed to check for updates: ' + error.message);
             updateAvailable = false;
-            updateBtn.disabled = true;
+            updateUpdateButtonState();
             updatesTab.textContent = 'Check Updates';
         }
     };
@@ -1153,16 +1326,28 @@ document.addEventListener("DOMContentLoaded", function () {
         const autoRestart = typeof opts.autoRestart === 'boolean'
             ? opts.autoRestart
             : document.getElementById('auto-restart-checkbox').checked;
+        const mode = opts.mode || 'update';
+        const source = opts.source || '';
+        const forceSyncCheckbox = document.getElementById('force-sync-checkbox');
+        const forceSync = mode === 'update'
+            ? (typeof opts.forceSync === 'boolean'
+                ? opts.forceSync
+                : (forceSyncCheckbox ? forceSyncCheckbox.checked : false))
+            : false;
+        if (updaterForceSyncOnly && mode === 'update' && !forceSync) {
+            alert(updaterDisabledReason || 'Updater is locked. Enable Force Sync to continue.');
+            return;
+        }
         const updateProgress = document.getElementById('update-progress');
         const updateInfo = document.getElementById('update-info');
         const updateActions = document.getElementById('update-actions');
         const updateActivity = document.getElementById('update-activity');
         const updateActivityLabel = document.getElementById('update-activity-label');
         const updateElapsed = document.getElementById('update-elapsed');
-        const mode = opts.mode || 'update';
-        const source = opts.source || '';
         const actionLabel = mode === 'build' ? 'Build' : 'Update';
-        const confirmMessage = opts.confirmMessage || 'This will update Koolo to the latest version. Continue?';
+        const confirmMessage = opts.confirmMessage || (forceSync
+            ? `Warning: Force sync will discard local changes and reset to upstream/main before ${actionLabel.toLowerCase()}. Continue?`
+            : `This will ${actionLabel.toLowerCase()} Koolo to the latest version. Continue?`);
         const skipConfirm = opts.skipConfirm === true;
         const manageButton = opts.manageButton !== false;
         const isUpdateMode = mode === 'update';
@@ -1198,7 +1383,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Connect to WebSocket for real-time updates
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
 
-        ws.onmessage = function(event) {
+          ws.onmessage = async function(event) {
             const data = JSON.parse(event.data);
 
             if (data.type === 'updater_log') {
@@ -1208,7 +1393,37 @@ document.addEventListener("DOMContentLoaded", function () {
                 logsDiv.appendChild(logEntry);
                 logsDiv.scrollTop = logsDiv.scrollHeight;
             } else if (data.type === 'updater_error') {
-                alert(actionLabel + ' failed: ' + data.error);
+                const errorMsg = data.error || 'Unknown error';
+                if (errorMsg.startsWith(discardLocalChangesPrefix) && mode === 'update') {
+                    ws.close();
+                    updateProgress.style.display = 'none';
+                    updateInfo.style.display = 'block';
+                    updateActions.style.display = 'flex';
+                    if (updateActivity) {
+                        updateActivity.style.display = 'none';
+                    }
+                    if (updateTimer) {
+                        clearInterval(updateTimer);
+                    }
+                    if (manageButton) {
+                        updateUpdateButtonState();
+                    }
+                    const confirmMsg =
+                        'Update conflict detected or local changes present.\n' +
+                        'Force sync will discard local changes and reset to upstream/main.\n\n' +
+                        'Continue with force sync?';
+                    if (confirm(confirmMsg)) {
+                        performUpdate({
+                            mode: 'update',
+                            autoRestart: autoRestart,
+                            forceSync: true,
+                            skipConfirm: true,
+                            confirmMessage: 'Force sync will discard local changes and reset to upstream/main. Continue?'
+                        });
+                    }
+                    return;
+                }
+                alert(actionLabel + ' failed: ' + errorMsg);
                 updateProgress.style.display = 'none';
                 updateInfo.style.display = 'block';
                 updateActions.style.display = 'flex';
@@ -1219,8 +1434,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     clearInterval(updateTimer);
                 }
                 if (manageButton) {
-                    updateBtn.disabled = !updateAvailable;
+                    updateUpdateButtonState();
                 }
+                ws.close();
             } else if (data.type === 'updater_complete') {
                 document.getElementById('progress-step').textContent = actionLabel + ' completed!';
                 document.getElementById('progress-bar').style.width = '100%';
@@ -1233,8 +1449,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 updateActions.style.display = 'flex';
                 if (isUpdateMode) {
                     updateAvailable = false;
-                    updateBtn.disabled = true;
+                    updateUpdateButtonState();
                 }
+                refreshUpdaterAvailability();
                 if (updateActivity) {
                     updateActivity.style.display = 'none';
                 }
@@ -1249,14 +1466,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         try {
             const sourceParam = source ? `&source=${encodeURIComponent(source)}` : '';
-            const response = await fetch(`/api/updater/update?restart=${autoRestart}&mode=${encodeURIComponent(mode)}${sourceParam}`, {
+            const forceParam = forceSync ? `&forceSync=true` : '';
+            await fetchJson(`/api/updater/update?restart=${autoRestart}&mode=${encodeURIComponent(mode)}${sourceParam}${forceParam}`, {
                 method: 'POST'
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText);
-            }
 
             // Poll for status updates
             pollUpdateStatus();
@@ -1272,7 +1485,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 clearInterval(updateTimer);
             }
             if (manageButton) {
-                updateBtn.disabled = !updateAvailable;
+                updateUpdateButtonState();
             }
             ws.close();
         }
@@ -1281,8 +1494,11 @@ document.addEventListener("DOMContentLoaded", function () {
     function pollUpdateStatus() {
         const interval = setInterval(async () => {
             try {
-                const response = await fetch('/api/updater/status');
-                const status = await response.json();
+                const status = await fetchJson('/api/updater/status');
+                if (!status) {
+                    clearInterval(interval);
+                    return;
+                }
 
                 document.getElementById('progress-step').textContent = status.currentStep;
                 document.getElementById('progress-bar').style.width = status.progress + '%';
@@ -1300,11 +1516,14 @@ document.addEventListener("DOMContentLoaded", function () {
     window.loadBackupVersions = async function() {
         const backupsList = document.getElementById('backups-list');
         const currentExeInfo = document.getElementById('current-exe-info');
+        const rollbackDisabled = updaterForceSyncOnly;
         backupsList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);">Loading backup versions...</div>';
 
         try {
-            const response = await fetch('/api/updater/backups');
-            const data = await response.json();
+            const data = await fetchJson('/api/updater/backups');
+            if (!data) {
+                throw new Error('Invalid server response');
+            }
 
             // Display current executable
             if (data.current) {
@@ -1337,13 +1556,13 @@ document.addEventListener("DOMContentLoaded", function () {
                                 ${date} • ${sizeKB} KB
                             </div>
                         </div>
-                        <button
-                            type="button"
-                            onclick="performRollback('${backup.filePath.replace(/\\/g, '\\\\')}')"
-                            style="background: var(--bg-tertiary); color: var(--accent-pink); border: 1px solid var(--accent-pink); padding: 8px 16px; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; white-space: nowrap;"
-                        >
-                            Rollback to this version
-                        </button>
+                          <button
+                              type="button"
+                              ${rollbackDisabled ? 'disabled="disabled"' : `onclick="performRollback('${backup.filePath.replace(/\\/g, '\\\\')}')"` }
+                              style="${rollbackDisabled ? 'background: var(--bg-tertiary); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 8px 16px; border-radius: var(--radius-md); cursor: not-allowed; font-weight: 600; white-space: nowrap; opacity: 0.7;' : 'background: var(--bg-tertiary); color: var(--accent-pink); border: 1px solid var(--accent-pink); padding: 8px 16px; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; white-space: nowrap;'}"
+                          >
+                              Rollback to this version
+                          </button>
                     `;
                     backupsList.appendChild(backupDiv);
                 });
@@ -1356,6 +1575,10 @@ document.addEventListener("DOMContentLoaded", function () {
     };
 
     window.performRollback = async function(backupPath) {
+        if (updaterForceSyncOnly) {
+            alert(updaterDisabledReason || 'Updater is locked. Enable Force Sync to continue.');
+            return;
+        }
         if (!confirm(`Are you sure you want to rollback to this version?\n\nThe application will restart automatically.\n\nPath: ${backupPath}`)) {
             return;
         }
@@ -1373,7 +1596,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Connect to WebSocket for real-time updates
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
 
-        ws.onmessage = function(event) {
+          ws.onmessage = async function(event) {
             const data = JSON.parse(event.data);
 
             if (data.type === 'rollback_log') {
@@ -1393,18 +1616,13 @@ document.addEventListener("DOMContentLoaded", function () {
         };
 
         try {
-            const response = await fetch('/api/updater/rollback', {
+            await fetchJson('/api/updater/rollback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({ backupPath: backupPath })
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText);
-            }
 
             document.getElementById('rollback-progress-step').textContent = 'Rollback in progress...';
             document.getElementById('rollback-progress-bar').style.width = '75%';
@@ -1425,10 +1643,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // PR cherry-pick functionality
     let selectedPRs = new Set();
+    let prLoadSeq = 0;
     window.loadUpstreamPRs = async function() {
         const prList = document.getElementById('pr-list');
         const prInfo = '<div id="pr-info" style="color: var(--accent-blue); font-weight: 700; margin-bottom: var(--spacing-sm);">Select PR to apply to your Koolo. Conflicting PRs will be skipped automatically.</div>';
         const prActions = document.getElementById('pr-actions');
+        const prDisabled = updaterForceSyncOnly;
+        const requestId = ++prLoadSeq;
 
         prList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);">Loading pull requests...</div>';
         const existingPrInfo = document.getElementById('pr-info');
@@ -1438,8 +1659,14 @@ document.addEventListener("DOMContentLoaded", function () {
         prList.insertAdjacentHTML('beforebegin', prInfo);
 
         try {
-            const response = await fetch('/api/updater/prs?state=open&limit=20');
-            const prs = await response.json();
+            const prs = await fetchJson('/api/updater/prs?state=open&limit=20');
+            if (!Array.isArray(prs)) {
+                throw new Error('Invalid server response');
+            }
+
+            if (requestId !== prLoadSeq) {
+                return;
+            }
 
             if (prs && prs.length > 0) {
                 prList.innerHTML = '';
@@ -1448,19 +1675,23 @@ document.addEventListener("DOMContentLoaded", function () {
                     existingPrInfo.remove();
                 }
                 prList.insertAdjacentHTML('beforebegin', prInfo);
-                prActions.style.display = 'flex';
+                prActions.style.display = prDisabled ? 'none' : 'flex';
                 selectedPRs.clear();
                 updateSelectedPRs();
+
+                const revertEnabledStyle = 'background: var(--bg-tertiary); border: 1px solid var(--accent-pink); color: var(--accent-pink); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; white-space: nowrap; margin-bottom: 0px;';
+                const revertDisabledStyle = 'background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: not-allowed; font-weight: 600; white-space: nowrap; margin-bottom: 0px; opacity: 0.7;';
 
                 prs.forEach(pr => {
                     const prDiv = document.createElement('div');
                     prDiv.style.cssText = 'padding: var(--spacing-md); background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);';
+                    prDiv.dataset.pr = pr.number;
 
                     const createdDate = new Date(pr.created_at).toLocaleDateString();
 
-                    const appliedBadge = pr.applied ? `<span style="font-size: 0.72em; font-weight: 700; color: var(--accent-green); border: 1px solid var(--accent-green); padding: 2px 6px; border-radius: 999px; letter-spacing: 0.2px;">Applied</span>` : '';
+                    const appliedBadge = `<span class="pr-applied-badge" data-pr="${pr.number}" style="display: none; font-size: 0.72em; font-weight: 700; color: var(--accent-green); border: 1px solid var(--accent-green); padding: 2px 6px; border-radius: 999px; letter-spacing: 0.2px;">Applied</span>`;
                     const openButton = `<a href="https://github.com/kwader2k/koolo/pull/${pr.number}" target="_blank" rel="noopener noreferrer" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; white-space: nowrap;">Open</a>`;
-                    const revertButton = pr.canRevert ? `<button type="button" onclick="revertPR(${pr.number})" style="background: var(--bg-tertiary); border: 1px solid var(--accent-pink); color: var(--accent-pink); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; white-space: nowrap; margin-bottom: 0px;">Revert</button>` : '';
+                    const revertButton = `<button type="button" class="pr-revert-btn" data-pr="${pr.number}" disabled="disabled" style="display: none; ${revertDisabledStyle}">Revert</button>`;
                     const prActionsMarkup = `
                         <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
                             ${openButton}
@@ -1471,7 +1702,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     prDiv.innerHTML = `
                         <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-md);">
                             <label style="display: flex; gap: var(--spacing-md); cursor: pointer; align-items: start; flex: 1;">
-                                <input type="checkbox" class="pr-checkbox" data-pr="${pr.number}" style="margin-top: 4px;">
+                                <input type="checkbox" class="pr-checkbox" data-pr="${pr.number}" ${prDisabled ? 'disabled="disabled"' : ''} style="margin-top: 4px;">
                                 <div style="flex: 1;">
                                     <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
                                         <span style="font-weight: 700; color: var(--text-primary);">#${pr.number}</span>
@@ -1493,6 +1724,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 document.querySelectorAll('.pr-checkbox').forEach(checkbox => {
                     checkbox.addEventListener('change', updateSelectedPRs);
                 });
+
+                loadAppliedPRBadges(prs, prDisabled, requestId);
             } else {
                 prList.innerHTML = '<div style=\"color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);\">No open pull requests found</div>';
                 const existingPrInfo = document.getElementById('pr-info');
@@ -1513,6 +1746,69 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
+    async function loadAppliedPRBadges(prs, prDisabled, requestId) {
+        if (!Array.isArray(prs) || prs.length === 0) {
+            return;
+        }
+
+        const numbers = prs.map(pr => pr.number).join(',');
+        if (!numbers) {
+            return;
+        }
+
+        const revertEnabledStyle = 'background: var(--bg-tertiary); border: 1px solid var(--accent-pink); color: var(--accent-pink); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; white-space: nowrap; margin-bottom: 0px;';
+        const revertDisabledStyle = 'background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-secondary); padding: 6px 12px; border-radius: var(--radius-sm); cursor: not-allowed; font-weight: 600; white-space: nowrap; margin-bottom: 0px; opacity: 0.7;';
+        const prTab = document.getElementById('tab-prs');
+        if (prTab) {
+            if (!prTab.dataset.defaultLabel) {
+                prTab.dataset.defaultLabel = prTab.textContent.trim();
+            }
+            prTab.textContent = 'Syncing...';
+        }
+
+        try {
+            const appliedMap = await fetchJson(`/api/updater/prs/applied?numbers=${encodeURIComponent(numbers)}`);
+            if (requestId !== prLoadSeq || !appliedMap || typeof appliedMap !== 'object') {
+                return;
+            }
+
+            prs.forEach(pr => {
+                const info = appliedMap[pr.number];
+                const applied = info && info.applied;
+                const canRevert = info && info.canRevert;
+
+                const badge = document.querySelector(`.pr-applied-badge[data-pr="${pr.number}"]`);
+                if (badge) {
+                    badge.style.display = applied ? '' : 'none';
+                }
+
+                const revertBtn = document.querySelector(`.pr-revert-btn[data-pr="${pr.number}"]`);
+                if (!revertBtn) {
+                    return;
+                }
+
+                if (applied && canRevert) {
+                    revertBtn.style.display = '';
+                    revertBtn.disabled = prDisabled;
+                    revertBtn.style.cssText = prDisabled ? revertDisabledStyle : revertEnabledStyle;
+                    if (!prDisabled) {
+                        revertBtn.onclick = () => revertPR(pr.number);
+                    }
+                } else {
+                    revertBtn.style.display = 'none';
+                    revertBtn.disabled = true;
+                    revertBtn.onclick = null;
+                }
+            });
+        } catch (error) {
+            console.warn('Failed to load applied PRs', error);
+        } finally {
+            if (requestId === prLoadSeq && prTab && prTab.dataset.defaultLabel) {
+                prTab.textContent = prTab.dataset.defaultLabel;
+            }
+        }
+    }
+
     function updateSelectedPRs() {
         selectedPRs.clear();
         document.querySelectorAll('.pr-checkbox:checked').forEach(checkbox => {
@@ -1520,6 +1816,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         const buildBtn = document.getElementById('apply-prs-build-btn');
+        if (updaterForceSyncOnly) {
+            buildBtn.textContent = 'Apply & Build';
+            buildBtn.disabled = true;
+            return;
+        }
         if (selectedPRs.size > 0) {
             buildBtn.textContent = `Apply & Build ${selectedPRs.size} PR${selectedPRs.size > 1 ? 's' : ''}`;
             buildBtn.disabled = false;
@@ -1530,15 +1831,38 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     window.applySelectedPRsAndBuild = async function() {
-        await applySelectedPRsInternal(true);
+        await applySelectedPRsInternal(true, false);
     };
 
-    window.revertPR = async function(prNumber) {
+    const forceSyncCheckbox = document.getElementById('force-sync-checkbox');
+    const forceSyncWarning = document.getElementById('force-sync-warning');
+    const updateForceSyncWarning = () => {
+        if (!forceSyncWarning) {
+            return;
+        }
+        forceSyncWarning.style.display = forceSyncCheckbox && forceSyncCheckbox.checked ? 'block' : 'none';
+    };
+    if (forceSyncCheckbox) {
+        forceSyncCheckbox.addEventListener('change', () => {
+            updateUpdateButtonState();
+            updateForceSyncWarning();
+        });
+    }
+    updateUpdateButtonState();
+    updateForceSyncWarning();
+    refreshUpdaterAvailability();
+
+    window.revertPR = async function(prNumber, allowDiscardLocalChanges) {
+        if (updaterForceSyncOnly) {
+            alert(updaterDisabledReason || 'Updater is locked. Enable Force Sync to continue.');
+            return;
+        }
+        const allowDiscard = allowDiscardLocalChanges === true;
         const prAutoRestart = document.getElementById('pr-auto-restart-checkbox');
         const restartAfter = prAutoRestart ? prAutoRestart.checked : false;
         const confirmMsg = `Revert PR #${prNumber}?\n\nBuild will start after successful revert.`;
 
-        if (!confirm(confirmMsg)) {
+        if (!allowDiscard && !confirm(confirmMsg)) {
             return;
         }
 
@@ -1557,7 +1881,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
 
-        ws.onmessage = function(event) {
+          ws.onmessage = async function(event) {
             const data = JSON.parse(event.data);
 
             if (data.type === 'revert_log') {
@@ -1567,7 +1891,23 @@ document.addEventListener("DOMContentLoaded", function () {
                 prProgressLogs.appendChild(logEntry);
                 prProgressLogs.scrollTop = prProgressLogs.scrollHeight;
             } else if (data.type === 'revert_error') {
-                alert('Revert failed: ' + data.error);
+                const errorMsg = data.error || 'Unknown error';
+                if (errorMsg.startsWith(discardLocalChangesPrefix)) {
+                    ws.close();
+                    resetPRUI();
+                    const confirmMsg =
+                        'Local changes detected.\n' +
+                        'Discard local changes and retry reverting this PR?';
+                    if (confirm(confirmMsg)) {
+                        await revertPR(prNumber, true);
+                    }
+                    return;
+                }
+                let detailMsg = '';
+                if (data.result && data.result.conflicted && data.result.conflicted.length > 0) {
+                    detailMsg = `\n\nConflicts: ${data.result.conflicted.join(', ')}`;
+                }
+                alert('Revert failed: ' + errorMsg + detailMsg);
                 resetPRUI();
                 ws.close();
             } else if (data.type === 'revert_complete') {
@@ -1604,18 +1944,16 @@ document.addEventListener("DOMContentLoaded", function () {
         };
 
         try {
-            const response = await fetch('/api/updater/prs/revert', {
+            await fetchJson('/api/updater/prs/revert', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ prNumber: prNumber })
+                body: JSON.stringify({
+                    prNumber: prNumber,
+                    allowDiscardLocalChanges: allowDiscard
+                })
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText);
-            }
         } catch (error) {
             alert('Failed to start revert: ' + error.message);
             resetPRUI();
@@ -1623,9 +1961,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    async function applySelectedPRsInternal(buildAfter) {
+    async function applySelectedPRsInternal(buildAfter, allowDiscardLocalChanges) {
         if (selectedPRs.size === 0) {
             alert('Please select at least one PR');
+            return;
+        }
+        if (updaterForceSyncOnly) {
+            alert(updaterDisabledReason || 'Updater is locked. Enable Force Sync to continue.');
             return;
         }
 
@@ -1653,7 +1995,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Connect to WebSocket
         const ws = new WebSocket(`ws://${window.location.host}/ws`);
 
-        ws.onmessage = function(event) {
+          ws.onmessage = async function(event) {
             const data = JSON.parse(event.data);
 
             if (data.type === 'cherrypick_log') {
@@ -1663,7 +2005,30 @@ document.addEventListener("DOMContentLoaded", function () {
                 prProgressLogs.appendChild(logEntry);
                 prProgressLogs.scrollTop = prProgressLogs.scrollHeight;
             } else if (data.type === 'cherrypick_error') {
-                alert('Cherry-pick failed: ' + data.error);
+                const errorMsg = data.error || 'Unknown error';
+                if (errorMsg.startsWith(discardLocalChangesPrefix)) {
+                    const confirmMsg =
+                        'When applying a PR, a conflict may occur between local changes and the PR.\n' +
+                        'Discard local changes, sync with upstream, and continue applying the PR?';
+                    ws.close();
+                    resetPRUI();
+                    if (confirm(confirmMsg)) {
+                        await applySelectedPRsInternal(buildAfter, true);
+                    }
+                    return;
+                }
+                if (errorMsg.startsWith(confirmResetUpstreamPrefix)) {
+                    const confirmMsg =
+                        'Cherry-pick conflict detected.\n' +
+                        'Reset to upstream/main (discard local changes) and retry applying the PRs?';
+                    ws.close();
+                    resetPRUI();
+                    if (confirm(confirmMsg)) {
+                        await applySelectedPRsInternal(buildAfter, true);
+                    }
+                    return;
+                }
+                alert('Cherry-pick failed: ' + errorMsg);
                 resetPRUI();
                 ws.close();
             } else if (data.type === 'cherrypick_complete') {
@@ -1735,18 +2100,13 @@ document.addEventListener("DOMContentLoaded", function () {
         };
 
         try {
-            const response = await fetch('/api/updater/cherry-pick', {
+            await fetchJson('/api/updater/cherry-pick', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ prNumbers: prNumbers })
+                body: JSON.stringify({ prNumbers: prNumbers, allowDiscardLocalChanges: allowDiscardLocalChanges })
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText);
-            }
         } catch (error) {
             alert('Failed to start cherry-pick: ' + error.message);
             resetPRUI();
