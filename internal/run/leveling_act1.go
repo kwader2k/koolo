@@ -108,33 +108,33 @@ func (a Leveling) act1() error {
 		}
 	}
 
-	const scrollInifussUnitID = 524
-	const scrollInifussAfterAkara = 525
+	const scrollInifussUnitID = 539
+	const scrollInifussAfterAkara = 540
 
-	found524InInv := false
-	found525InInv := false
+	found539InInv := false
+	found540InInv := false
 
 	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if itm.ID == scrollInifussUnitID {
-			found524InInv = true
+			found539InInv = true
 		}
 		if itm.ID == scrollInifussAfterAkara {
-			found525InInv = true
+			found540InInv = true
 		}
 	}
 
-	if found524InInv {
-		a.ctx.Logger.Info("Unidentified Scroll of Inifuss found (ID 524). Interacting with Akara to proceed.")
+	if found539InInv {
+		a.ctx.Logger.Info("Unidentified Scroll of Inifuss found (ID 539). Interacting with Akara to proceed.")
 
 		err := action.InteractNPC(npc.Akara)
 		if err != nil {
 			return err
 		}
-		found525InInv = true
+		found540InInv = true
 	}
 	// Cain quest: entering Tristram
 	if ((a.ctx.Data.Quests[quest.Act1TheSearchForCain].HasStatus(quest.StatusStarted+quest.StatusLeaveTown) && !a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed()) ||
-		found525InInv || a.ctx.Data.Quests[quest.Act1TheSearchForCain].HasStatus(quest.StatusLeaveTown+quest.StatusEnterArea)) &&
+		found540InInv || a.ctx.Data.Quests[quest.Act1TheSearchForCain].HasStatus(quest.StatusLeaveTown+quest.StatusEnterArea)) &&
 		!a.ctx.Data.Quests[quest.Act1TheSearchForCain].Completed() && a.ctx.CharacterCfg.Game.Difficulty != difficulty.Hell {
 		return NewTristram().Run(nil)
 	}

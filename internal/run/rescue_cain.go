@@ -17,8 +17,8 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
-const ScrollInifussUnitID = 524
-const ScrollInifussAfterAkara = 525
+const ScrollInifussUnitID = 539
+const ScrollInifussAfterAkara = 540
 const ScrollInifussName = "Scroll of Inifuss"
 
 type RescueCain struct {

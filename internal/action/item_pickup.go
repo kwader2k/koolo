@@ -590,7 +590,7 @@ func shouldBePickedUp(i data.Item) bool {
 		}
 	}
 	// Specific ID checks (e.g. Book of Skill and Scroll of Inifuss).
-	if i.ID == 552 || i.ID == 524 {
+	if i.ID == 567 || i.ID == 539 {
 		return true
 	}
 
