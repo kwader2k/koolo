@@ -7,8 +7,10 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
+	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather"
 )
@@ -71,8 +73,53 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filters ...data.Mons
 	// Defer the re-enabling of item pickup to ensure it happens regardless of how the function exits
 	defer ctx.EnableItemPickup()
 
+	// Track all monsters we've seen alive for accurate kill counting (including AoE kills)
+	// Key: UnitID, Value: Monster data when first seen alive
+	trackedMonsters := make(map[data.UnitID]data.Monster)
+
 	return ctx.Char.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		enemies := d.Monsters.Enemies(filters...)
+		// Get current enemies in the area
+		currentEnemies := d.Monsters.Enemies(filters...)
+
+		// Build a set of currently alive monster IDs
+		aliveNow := make(map[data.UnitID]bool)
+		for _, m := range currentEnemies {
+			if m.Stats[stat.Life] > 0 {
+				aliveNow[m.UnitID] = true
+				// Track new monsters we haven't seen before
+				if _, tracked := trackedMonsters[m.UnitID]; !tracked {
+					trackedMonsters[m.UnitID] = m
+				}
+			}
+		}
+
+		// Check which tracked monsters are now dead (killed by any means including AoE)
+		for id, monster := range trackedMonsters {
+			if !aliveNow[id] {
+				// Monster died - send kill event
+				// isElite: Minion (pack followers), Unique, and SuperUnique are elite-tier
+				// isChampion: Champion packs (blue) are a separate category
+				// isBoss: Unique and SuperUnique are the named pack leaders
+				isElite := monster.Type == data.MonsterTypeMinion ||
+					monster.Type == data.MonsterTypeUnique ||
+					monster.Type == data.MonsterTypeSuperUnique
+				isChampion := monster.Type == data.MonsterTypeChampion
+				isBoss := monster.Type == data.MonsterTypeUnique ||
+					monster.Type == data.MonsterTypeSuperUnique
+
+				event.Send(event.MonsterKilled(
+					event.Text(ctx.Name, ""),
+					string(monster.Name),
+					isElite,
+					isChampion,
+					isBoss,
+				))
+				// Remove from tracking
+				delete(trackedMonsters, id)
+			}
+		}
+
+		enemies := currentEnemies
 
 		SortEnemiesByPriority(&enemies)
 

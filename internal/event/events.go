@@ -214,3 +214,22 @@ func ResetCompanionGameInfo(be BaseEvent, leader string) ResetCompanionGameInfoE
 		Leader:    leader,
 	}
 }
+
+// MonsterKilledEvent is sent when a monster is killed
+type MonsterKilledEvent struct {
+	BaseEvent
+	MonsterName string
+	IsElite     bool
+	IsChampion  bool
+	IsBoss      bool
+}
+
+func MonsterKilled(be BaseEvent, monsterName string, isElite, isChampion, isBoss bool) MonsterKilledEvent {
+	return MonsterKilledEvent{
+		BaseEvent:   be,
+		MonsterName: monsterName,
+		IsElite:     isElite,
+		IsChampion:  isChampion,
+		IsBoss:      isBoss,
+	}
+}

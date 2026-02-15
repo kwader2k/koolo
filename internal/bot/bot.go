@@ -29,6 +29,7 @@ type Bot struct {
 	lastActivityTime      time.Time
 	lastKnownPosition     data.Position
 	lastPositionCheckTime time.Time
+	analyticsManager      *AnalyticsManager
 	MuleManager
 }
 
@@ -65,6 +66,11 @@ func NewBot(ctx *botCtx.Context, mm MuleManager) *Bot {
 		lastPositionCheckTime: time.Now(),      // Initialize
 		MuleManager:           mm,
 	}
+}
+
+// GetAnalyticsManager returns the bot's analytics manager (may be nil if disabled)
+func (b *Bot) GetAnalyticsManager() *AnalyticsManager {
+	return b.analyticsManager
 }
 
 func (b *Bot) updateActivityAndPosition() {
@@ -412,7 +418,30 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					skipTownRoutines = true
 				}
 
+				// Track XP at run start for analytics
+				var runStartXP int64
+				if expStat, ok := b.ctx.Data.PlayerUnit.FindStat(stat.Experience, 0); ok {
+					// Treat as unsigned to handle values > 2^31-1
+					runStartXP = int64(uint32(expStat.Value))
+					b.ctx.Logger.Debug("Analytics: Run start XP", slog.Int64("xp", runStartXP))
+				} else {
+					b.ctx.Logger.Debug("Analytics: Failed to read start XP")
+				}
+
 				event.Send(event.RunStarted(event.Text(b.ctx.Name, fmt.Sprintf("Starting run: %s", r.Name())), r.Name()))
+
+				// Start analytics run with XP tracking
+				if b.analyticsManager != nil {
+					lvl, _ := b.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+					b.analyticsManager.StartRunWithXP(
+						r.Name(),
+						b.ctx.Data.PlayerUnit.Area,
+						lvl.Value,
+						b.ctx.CharacterCfg.Game.Difficulty,
+						b.ctx.Data.Game.LastGameName,
+						runStartXP,
+					)
+				}
 
 				// Update activity here because a new run sequence is starting.
 				b.updateActivityAndPosition()
@@ -458,6 +487,34 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 					}
 				} else {
 					runFinishReason = event.FinishedOK
+				}
+
+				// End analytics run with XP tracking (before sending event to avoid double counting)
+				if b.analyticsManager != nil {
+					var runEndXP int64
+					if expStat, ok := b.ctx.Data.PlayerUnit.FindStat(stat.Experience, 0); ok {
+						// Treat as unsigned to handle values > 2^31-1
+						runEndXP = int64(uint32(expStat.Value))
+						b.ctx.Logger.Debug("Analytics: Run end XP", slog.Int64("xp", runEndXP), slog.Int64("startXP", runStartXP), slog.Int64("gain", runEndXP-runStartXP))
+					} else {
+						b.ctx.Logger.Debug("Analytics: Failed to read end XP")
+					}
+					success := runFinishReason == event.FinishedOK
+
+					// Update level progress before ending the run, so that the
+					// async Save() inside EndRunWithXP persists the latest
+					// level/XP boundary values.
+					lvl, _ := b.ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
+					var lastLvlXP, nextLvlXP int64
+					if v, ok := b.ctx.Data.PlayerUnit.FindStat(stat.LastExp, 0); ok {
+						lastLvlXP = int64(uint32(v.Value))
+					}
+					if v, ok := b.ctx.Data.PlayerUnit.FindStat(stat.NextExp, 0); ok {
+						nextLvlXP = int64(uint32(v.Value))
+					}
+					b.analyticsManager.UpdateLevelProgress(lvl.Value, runEndXP, lastLvlXP, nextLvlXP)
+
+					b.analyticsManager.EndRunWithXP(success, string(runFinishReason), runEndXP)
 				}
 
 				event.Send(event.RunFinished(event.Text(b.ctx.Name, fmt.Sprintf("Finished run: %s", r.Name())), r.Name(), runFinishReason))

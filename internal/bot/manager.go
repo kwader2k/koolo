@@ -3,6 +3,7 @@ package bot
 import (
 	"fmt"
 	"log/slog"
+	"os"
 	"strconv"
 	"syscall"
 	"time"
@@ -216,6 +217,26 @@ func (mng *SupervisorManager) GetData(characterName string) *game.Data {
 	return nil
 }
 
+func (mng *SupervisorManager) GetAnalyticsManager(characterName string) *AnalyticsManager {
+	for name, supervisor := range mng.supervisors {
+		if name == characterName {
+			return supervisor.GetAnalyticsManager()
+		}
+	}
+	return nil
+}
+
+func (mng *SupervisorManager) GetAllAnalyticsManagers() map[string]*AnalyticsManager {
+	result := make(map[string]*AnalyticsManager)
+	for name, supervisor := range mng.supervisors {
+		am := supervisor.GetAnalyticsManager()
+		if am != nil {
+			result[name] = am
+		}
+	}
+	return result
+}
+
 func (mng *SupervisorManager) GetContext(characterName string) *context.Context {
 	for name, supervisor := range mng.supervisors {
 		if name == characterName {
@@ -300,6 +321,24 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 
 	muleManager := mule.NewManager(logger)
 	bot := NewBot(ctx.Context, muleManager)
+
+	// Create Analytics Manager if enabled
+	analyticsEnabled := config.Koolo.Analytics.Enabled
+	if analyticsEnabled {
+		basePath, err := os.Getwd()
+		if err != nil {
+			logger.Warn("Failed to get working directory for analytics", slog.String("error", err.Error()))
+		} else {
+			am := NewAnalyticsManager(supervisorName, basePath, logger, AnalyticsConfig{
+				HistoryDays:     config.Koolo.Analytics.HistoryDays,
+				MaxNotableDrops: config.Koolo.Analytics.MaxNotableDrops,
+				TrackAllItems:   config.Koolo.Analytics.TrackAllItems,
+			})
+			bot.analyticsManager = am
+			// Register analytics event handler
+			mng.eventListener.Register(am.HandleEvent)
+		}
+	}
 
 	statsHandler := NewStatsHandler(supervisorName, logger)
 	mng.eventListener.Register(statsHandler.Handle)

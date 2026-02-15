@@ -48,6 +48,13 @@ pingMonitor:
   highPingThreshold: 500     # Stop bot if ping exceeds this value in ms (default: 500)
   sustainedDuration: 30      # How long high ping must persist before stopping in seconds (default: 30)
 
+# Analytics - Run analytics and statistics tracking
+analytics:
+  enabled: true              # Enable run analytics dashboard
+  historyDays: 30            # Number of days to keep analytics data (default: 30)
+  maxNotableDrops: 100       # Maximum notable drops to track per session (default: 100)
+  trackAllItems: false       # Track all items (not just notable ones) - increases storage
+
 # Auto Start - Automatically start selected supervisors when Koolo starts
 autoStart:
   enabled: false         # If true, start all supervisors with autoStart=true when Koolo starts

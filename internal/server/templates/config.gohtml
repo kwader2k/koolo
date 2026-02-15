@@ -843,6 +843,58 @@
                             value="{{ if .AutoStart.DelaySeconds }}{{ .AutoStart.DelaySeconds }}{{ else }}60{{ end }}"
                     />
                 </label>
+
+                <h4>Run Analytics</h4>
+                <label>
+                    <input
+                            {{ if .Analytics.Enabled }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="analytics_enabled"
+                            value="true"
+                    />
+                    Enable run analytics dashboard
+                </label>
+                <fieldset class="grid">
+                    <label>
+                        History (days)
+                        <input
+                                name="analytics_history_days"
+                                type="number"
+                                min="1"
+                                max="365"
+                                step="1"
+                                placeholder="30"
+                                value="{{ if .Analytics.HistoryDays }}{{ .Analytics.HistoryDays }}{{ else }}30{{ end }}"
+                        />
+                        <small>Days to keep analytics data (default: 30)</small>
+                    </label>
+                    <label>
+                        Max Notable Drops
+                        <input
+                                name="analytics_max_notable_drops"
+                                type="number"
+                                min="10"
+                                max="1000"
+                                step="10"
+                                placeholder="100"
+                                value="{{ if .Analytics.MaxNotableDrops }}{{ .Analytics.MaxNotableDrops }}{{ else }}100{{ end }}"
+                        />
+                        <small>Max notable drops to track (default: 100)</small>
+                    </label>
+                </fieldset>
+                <label>
+                    <input
+                            {{ if .Analytics.TrackAllItems }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="analytics_track_all_items"
+                            value="true"
+                    />
+                    Track all items (not just notable ones - increases storage)
+                </label>
             </fieldset>
             <fieldset class="grid">
                 {{ if not .FirstRun }}

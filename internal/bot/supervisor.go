@@ -27,6 +27,7 @@ type Supervisor interface {
 	SetWindowPosition(x, y int)
 	GetData() *game.Data
 	GetContext() *ct.Context
+	GetAnalyticsManager() *AnalyticsManager
 }
 
 type baseSupervisor struct {
@@ -58,6 +59,10 @@ func (s *baseSupervisor) Stats() Stats {
 		stats.ManualModeActive = s.bot.ctx.ManualModeActive
 	}
 	return stats
+}
+
+func (s *baseSupervisor) GetAnalyticsManager() *AnalyticsManager {
+	return s.bot.GetAnalyticsManager()
 }
 
 func (s *baseSupervisor) TogglePause() {
