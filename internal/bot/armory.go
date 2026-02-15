@@ -70,6 +70,11 @@ type ArmoryCharacter struct {
 	SharedStash1  []ArmoryItem `json:"sharedStash1"`
 	SharedStash2  []ArmoryItem `json:"sharedStash2"`
 	SharedStash3  []ArmoryItem `json:"sharedStash3"`
+	SharedStash4  []ArmoryItem `json:"sharedStash4"`
+	SharedStash5  []ArmoryItem `json:"sharedStash5"`
+	GemsTab       []ArmoryItem `json:"gemsTab"`
+	MaterialsTab  []ArmoryItem `json:"materialsTab"`
+	RunesTab      []ArmoryItem `json:"runesTab"`
 	Cube          []ArmoryItem `json:"cube"`
 	Belt          []ArmoryItem `json:"belt"`
 	Mercenary     []ArmoryItem `json:"mercenary"`
@@ -318,9 +323,19 @@ func dumpArmoryData(characterName string, gameData *game.Data, gameName string) 
 				armory.SharedStash2 = append(armory.SharedStash2, armoryItem)
 			case 3:
 				armory.SharedStash3 = append(armory.SharedStash3, armoryItem)
+			case 4:
+				armory.SharedStash4 = append(armory.SharedStash4, armoryItem)
+			case 5:
+				armory.SharedStash5 = append(armory.SharedStash5, armoryItem)
 			default:
 				armory.SharedStash1 = append(armory.SharedStash1, armoryItem)
 			}
+		case item.LocationGemsTab:
+			armory.GemsTab = append(armory.GemsTab, armoryItem)
+		case item.LocationMaterialsTab:
+			armory.MaterialsTab = append(armory.MaterialsTab, armoryItem)
+		case item.LocationRunesTab:
+			armory.RunesTab = append(armory.RunesTab, armoryItem)
 		case item.LocationCube:
 			armory.Cube = append(armory.Cube, armoryItem)
 		case item.LocationMercenary:

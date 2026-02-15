@@ -247,7 +247,7 @@ func hasOrgans(ctx *context.Status) bool {
 	hornCount := 0
 	eyeCount := 0
 
-	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationMaterialsTab) {
 		switch string(itm.Name) {
 		case "MephistosBrain":
 			brainCount++
@@ -267,7 +267,7 @@ func getOrganSet(ctx *context.Status) ([]data.Item, error) {
 	hornFound := false
 	eyeFound := false
 
-	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationMaterialsTab) {
 		if !brainFound && string(itm.Name) == "MephistosBrain" {
 			organs = append(organs, itm)
 			brainFound = true
@@ -298,7 +298,7 @@ func checkForRejuv(ctx *context.Status) error {
 
 	rejuvCount := 0
 	var rejuvsInStash []data.Item
-	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationMaterialsTab) {
 		if itm.IsRejuvPotion() {
 			rejuvCount++
 			rejuvsInStash = append(rejuvsInStash, itm)
@@ -358,7 +358,7 @@ func hasKeys(ctx *context.Status) bool {
 	destructionCount := 0
 	hateCount := 0
 
-	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationMaterialsTab) {
 		switch string(itm.Name) {
 		case "KeyOfTerror":
 			terrorCount++
@@ -378,7 +378,7 @@ func getKeySet(ctx *context.Status) ([]data.Item, error) {
 	destructionFound := false
 	hateFound := false
 
-	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationMaterialsTab) {
 		if !terrorFound && string(itm.Name) == "KeyOfTerror" {
 			portalKeys = append(portalKeys, itm)
 			terrorFound = true

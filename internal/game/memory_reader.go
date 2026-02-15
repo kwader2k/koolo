@@ -288,7 +288,19 @@ func (gd *MemoryReader) GetData() Data {
 		AreaData:     currentArea,
 		Data:         d,
 		CharacterCfg: cfgCopy,
+		ExpChar:      gd.readExpChar(),
 	}
+}
+
+// readExpChar reads the expansion character type from D2R memory.
+// Returns 1=Classic, 2=LoD, 3=DLC.
+func (gd *MemoryReader) readExpChar() uint16 {
+	const expansionOffset uintptr = 0x1DEE468
+	expCharPtr := uintptr(gd.Process.ReadUInt(gd.Process.ModuleBaseAddress()+expansionOffset, memory.Uint64))
+	if expCharPtr == 0 {
+		return 0
+	}
+	return uint16(gd.Process.ReadUInt(expCharPtr+0x5C, memory.Uint16))
 }
 
 func (gd *MemoryReader) getMapSeed(playerUnit uintptr) (uint, error) {

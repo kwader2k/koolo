@@ -80,6 +80,7 @@ type Debug struct {
 type CurrentGameHelper struct {
 	BlacklistedItems []data.Item
 	PickedUpItems    map[int]int
+	CurrentStashTab  int // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
 	AreaCorrection   struct {
 		Enabled      bool
 		ExpectedArea area.ID

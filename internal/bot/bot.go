@@ -113,6 +113,8 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 	action.SwitchToLegacyMode()
 	b.ctx.RefreshGameData()
 
+	b.ctx.Logger.Info("Game loaded", slog.String("expansion", b.ctx.Data.ExpCharLabel()))
+
 	b.updateActivityAndPosition() // Initial update for activity and position
 
 	// This routine is in charge of refreshing the game data and handling cancellation, will work in parallel with any other execution

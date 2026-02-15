@@ -24,6 +24,26 @@ type Data struct {
 	data.Data
 	CharacterCfg        config.CharacterCfg
 	IsLevelingCharacter bool
+	ExpChar             uint16 // 1=Classic, 2=LoD, 3=DLC (auto-detected from memory)
+}
+
+// IsDLC returns true if the current character has the DLC expansion (ExpChar >= 3).
+func (d Data) IsDLC() bool {
+	return d.ExpChar >= 3
+}
+
+// ExpCharLabel returns a human-readable label for the expansion type.
+func (d Data) ExpCharLabel() string {
+	switch d.ExpChar {
+	case 1:
+		return "Classic"
+	case 2:
+		return "Lord of Destruction"
+	case 3:
+		return "DLC"
+	default:
+		return "Unknown"
+	}
 }
 
 func (d Data) CanTeleport() bool {

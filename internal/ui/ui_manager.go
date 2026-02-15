@@ -66,7 +66,7 @@ func GetScreenCoordsForInventoryPosition(pos data.Position, loc item.LocationTyp
 
 func getScreenCoordsForItem(itm data.Item) data.Position {
 	switch itm.Location.LocationType {
-	case item.LocationVendor, item.LocationStash, item.LocationSharedStash:
+	case item.LocationVendor, item.LocationStash, item.LocationSharedStash, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 		x := topCornerVendorWindowX + itm.Position.X*itemBoxSize + (itemBoxSize / 2)
 		y := topCornerVendorWindowY + itm.Position.Y*itemBoxSize + (itemBoxSize / 2)
 
@@ -86,7 +86,7 @@ func getScreenCoordsForItem(itm data.Item) data.Position {
 
 func getScreenCoordsForInventoryPosition(pos data.Position, loc item.LocationType) data.Position {
 	switch loc {
-	case item.LocationVendor, item.LocationStash, item.LocationSharedStash:
+	case item.LocationVendor, item.LocationStash, item.LocationSharedStash, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 		x := topCornerVendorWindowX + pos.X*itemBoxSize + (itemBoxSize / 2)
 		y := topCornerVendorWindowY + pos.Y*itemBoxSize + (itemBoxSize / 2)
 
@@ -106,7 +106,7 @@ func getScreenCoordsForInventoryPosition(pos data.Position, loc item.LocationTyp
 
 func getScreenCoordsForItemClassic(itm data.Item) data.Position {
 	switch itm.Location.LocationType {
-	case item.LocationVendor, item.LocationStash, item.LocationSharedStash:
+	case item.LocationVendor, item.LocationStash, item.LocationSharedStash, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 		x := topCornerVendorWindowXClassic + itm.Position.X*itemBoxSizeClassic + (itemBoxSizeClassic / 2)
 		y := topCornerVendorWindowYClassic + itm.Position.Y*itemBoxSizeClassic + (itemBoxSizeClassic / 2)
 
@@ -126,7 +126,7 @@ func getScreenCoordsForItemClassic(itm data.Item) data.Position {
 
 func getScreenCoordsForInventoryPositionClassic(pos data.Position, loc item.LocationType) data.Position {
 	switch loc {
-	case item.LocationVendor, item.LocationStash, item.LocationSharedStash:
+	case item.LocationVendor, item.LocationStash, item.LocationSharedStash, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
 		x := topCornerVendorWindowXClassic + pos.X*itemBoxSizeClassic + (itemBoxSizeClassic / 2)
 		y := topCornerVendorWindowYClassic + pos.Y*itemBoxSizeClassic + (itemBoxSizeClassic / 2)
 
