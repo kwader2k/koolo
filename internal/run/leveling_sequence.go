@@ -281,6 +281,11 @@ func (ls LevelingSequence) RunSequence(run Run, sequenceSettings SequenceSetting
 
 	if !sequenceSettings.SkipTownChores {
 		ls.GoToCurrentProgressionTown()
+		if ls.ctx.Data.PlayerUnit.Area == area.LutGholein {
+			if err := action.HireAct2Merc(); err != nil {
+				return false, err
+			}
+		}
 		action.PreRun(false)
 	}
 
