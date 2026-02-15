@@ -67,34 +67,16 @@ func GetBackupVersions(limit int) ([]BackupVersion, error) {
 			IsCurrent: absPath == currentExePath,
 		}
 
-		if limit <= 0 {
-			versions = append(versions, version)
-			continue
-		}
-
-		inserted := false
-		for i, existing := range versions {
-			if version.CreatedAt.After(existing.CreatedAt) {
-				versions = append(versions, BackupVersion{})
-				copy(versions[i+1:], versions[i:])
-				versions[i] = version
-				inserted = true
-				break
-			}
-		}
-		if !inserted {
-			versions = append(versions, version)
-		}
-		if len(versions) > limit {
-			versions = versions[:limit]
-		}
+		versions = append(versions, version)
 	}
 
-	if limit <= 0 {
-		// Sort by creation time (newest first)
-		sort.Slice(versions, func(i, j int) bool {
-			return versions[i].CreatedAt.After(versions[j].CreatedAt)
-		})
+	// Sort by creation time (newest first)
+	sort.Slice(versions, func(i, j int) bool {
+		return versions[i].CreatedAt.After(versions[j].CreatedAt)
+	})
+
+	if limit > 0 && len(versions) > limit {
+		versions = versions[:limit]
 	}
 
 	return versions, nil
@@ -190,6 +172,63 @@ func (u *Updater) RollbackToVersion(backupFilePath string) error {
 		return fmt.Errorf("backup file not found: %s", backupFilePath)
 	}
 
+	restoredApplied := false
+	if restored, err := restoreAppliedPRsFromBackup(absBackup); err != nil {
+		u.log(fmt.Sprintf("Warning: failed to restore applied PR list: %v", err))
+	} else if restored {
+		restoredApplied = true
+		u.log("Applied PR list restored from backup.")
+	}
+
+	commitHash := ""
+	commitPath := absBackup + ".commit"
+	if data, err := os.ReadFile(commitPath); err == nil {
+		commitHash = strings.TrimSpace(string(data))
+	}
+	if commitHash == "" {
+		commitHash = parseBackupCommitHash(absBackup)
+	}
+	if commitHash != "" {
+		shortHash := commitHash
+		if len(shortHash) > 7 {
+			shortHash = shortHash[:7]
+		}
+		ctx := repoContext{InstallDir: installDir}
+		if repoCtx, err := resolveExistingRepoContext(); err == nil {
+			ctx.RepoDir = repoCtx.RepoDir
+		}
+		if err := updateCommitFile(ctx, commitHash); err != nil {
+			u.log(fmt.Sprintf("Failed to update .commit to %s: %v", shortHash, err))
+		} else {
+			u.log(fmt.Sprintf("Updated .commit to %s", shortHash))
+		}
+		if err := checkGitInstalled(); err != nil {
+			u.log("Git not available; skipping repository sync.")
+		} else if ctx, err := resolveExistingRepoContext(); err != nil {
+			u.log("No git repository found; skipping repository sync.")
+		} else {
+			u.log(fmt.Sprintf("Syncing repository to commit %s...", shortHash))
+			if err := ensureUpstreamRemote(ctx.RepoDir); err == nil {
+				_ = gitCmd(ctx.RepoDir, "fetch", "upstream", "main").Run()
+			}
+			if output, err := gitCmd(ctx.RepoDir, "reset", "--hard", commitHash).CombinedOutput(); err != nil {
+				u.log(fmt.Sprintf("Failed to sync repository to %s: %v\n%s", shortHash, err, strings.TrimSpace(string(output))))
+			} else {
+				_ = gitCmd(ctx.RepoDir, "clean", "-fd").Run()
+				u.log(fmt.Sprintf("Repository synced to %s", shortHash))
+				if !restoredApplied {
+					if err := PruneAppliedPRsForCommit(ctx.RepoDir, commitHash); err != nil {
+						u.log(fmt.Sprintf("Warning: failed to prune applied PRs after rollback: %v", err))
+					} else {
+						u.log("Applied PR list pruned after rollback.")
+					}
+				}
+			}
+		}
+	} else {
+		u.log("No commit metadata found for selected backup; skipping repository sync.")
+	}
+
 	// Resolve current exe path
 	currentExe, _ := os.Executable()
 	absCurrentExe, _ := filepath.Abs(currentExe)
@@ -206,8 +245,13 @@ func (u *Updater) RollbackToVersion(backupFilePath string) error {
 	u.log(fmt.Sprintf("Restoring backup to: %s", destPath))
 
 	u.log("Preparing to restart application...")
-	backupName := fmt.Sprintf("pre_rollback_%s.exe", time.Now().Format("20060102_150405"))
+	u.runPreRestart()
+	backupName := buildBackupFilename("pre_rollback_", absCurrentExe)
+	if backupName == "" {
+		backupName = fmt.Sprintf("pre_rollback_%s.exe", time.Now().Format("20060102_150405"))
+	}
 	backupDest := filepath.Join(absOldVersions, backupName)
+	backupAppliedPRs(backupDest, u.log)
 	pid := os.Getpid()
 	script := fmt.Sprintf(`@echo off
 setlocal enabledelayedexpansion
@@ -256,6 +300,32 @@ del "%%~f0"
 	time.Sleep(1 * time.Second)
 	os.Exit(0)
 	return nil
+}
+
+func parseBackupCommitHash(backupPath string) string {
+	base := filepath.Base(backupPath)
+	name := strings.TrimSuffix(base, filepath.Ext(base))
+	parts := strings.Split(name, "_")
+	if len(parts) == 0 {
+		return ""
+	}
+	candidate := parts[len(parts)-1]
+	if !isHexHash(candidate) {
+		return ""
+	}
+	return candidate
+}
+
+func isHexHash(value string) bool {
+	if len(value) < 7 || len(value) > 40 {
+		return false
+	}
+	for _, r := range value {
+		if (r < '0' || r > '9') && (r < 'a' || r > 'f') && (r < 'A' || r > 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 func isPathWithinDir(baseDir, targetPath string) bool {

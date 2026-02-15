@@ -12,12 +12,35 @@ import (
 	"github.com/google/uuid"
 )
 
+const (
+	defaultUpstreamOwner = "kwader2k"
+	defaultUpstreamRepo  = "Koolo"
+)
+
+func upstreamOwner() string {
+	return defaultUpstreamOwner
+}
+
+func upstreamRepo() string {
+	return defaultUpstreamRepo
+}
+
+func upstreamSlug() string {
+	return fmt.Sprintf("%s/%s", defaultUpstreamOwner, defaultUpstreamRepo)
+}
+
+func upstreamRemoteURL() string {
+	return fmt.Sprintf("https://github.com/%s/%s.git", defaultUpstreamOwner, defaultUpstreamRepo)
+}
+
 type UpdaterStatus struct {
-	State       string // "idle", "checking", "updating", "building", "rollback", "cherry-pick", "done", "error"
-	Progress    int    // 0-100
-	CurrentStep string
-	Logs        []string
-	Error       string
+	State          string // "idle", "checking", "updating", "building", "rollback", "cherry-pick", "done", "error"
+	Progress       int    // 0-100
+	CurrentStep    string
+	Logs           []string
+	Error          string
+	ForceSyncOnly  bool   `json:"forceSyncOnly"`
+	DisabledReason string `json:"disabledReason,omitempty"`
 }
 
 type Updater struct {
@@ -110,6 +133,11 @@ func (u *Updater) log(message string) {
 	}
 	u.statusMux.Unlock()
 
+	op := u.currentOperationName()
+	if op != "" {
+		appendOperationLog(op, message)
+	}
+
 	u.logger.Info(message)
 	u.logCallbackMux.RLock()
 	callback := u.logCallback
@@ -164,8 +192,15 @@ func (u *Updater) EndOperation() {
 	u.opMux.Unlock()
 }
 
+func (u *Updater) currentOperationName() string {
+	u.opMux.Lock()
+	name := u.opName
+	u.opMux.Unlock()
+	return name
+}
+
 // ExecuteUpdate performs the full update process
-func (u *Updater) ExecuteUpdate(autoRestart bool) error {
+func (u *Updater) ExecuteUpdate(autoRestart bool, forceSync bool) error {
 	u.resetStatus("updating")
 	u.updateProgress("updating", 10, "[1/5] Preparing update...")
 
@@ -177,9 +212,15 @@ func (u *Updater) ExecuteUpdate(autoRestart bool) error {
 
 	// Step 1: Git pull
 	u.updateProgress("updating", 20, "[2/5] Updating repository...")
-	err = PerformUpdate(ctx, func(step, message string) {
-		u.log(message)
-	})
+	if forceSync {
+		err = ForceSyncToUpstream(ctx, func(step, message string) {
+			u.log(message)
+		})
+	} else {
+		err = PerformUpdate(ctx, func(step, message string) {
+			u.log(message)
+		})
+	}
 	if err != nil {
 		u.setError(err)
 		return err
@@ -330,12 +371,9 @@ func (u *Updater) backupOldExecutables(installDir string, tag string) error {
 	}
 	if skipped > 0 {
 		u.log(fmt.Sprintf("Backed up %d old executable(s); running executable will be moved after exit", backedUp))
-		if err := pruneOldVersions(oldDir, maxOldVersionBackups, u.log); err != nil {
-			u.log(fmt.Sprintf("Backup cleanup skipped: %v", err))
-		}
-		return nil
+	} else {
+		u.log(fmt.Sprintf("Backed up %d old executable(s)", backedUp))
 	}
-	u.log(fmt.Sprintf("Backed up %d old executable(s)", backedUp))
 	if err := pruneOldVersions(oldDir, maxOldVersionBackups, u.log); err != nil {
 		u.log(fmt.Sprintf("Backup cleanup skipped: %v", err))
 	}
@@ -579,11 +617,17 @@ func (u *Updater) restartApplication(tag string) error {
 	}
 	backupName := ""
 	if currentExe != "" {
-		backupName = fmt.Sprintf("%s%s_%s", prefix, time.Now().Format("20060102_150405"), filepath.Base(currentExe))
+		backupName = buildBackupFilename(prefix, currentExe)
 	}
 	backupDest := ""
 	if backupName != "" {
 		backupDest = filepath.Join(oldDir, backupName)
+	}
+	if backupDest != "" {
+		if err := os.MkdirAll(oldDir, 0o755); err != nil {
+			u.log(fmt.Sprintf("Warning: failed to create old_versions directory: %v", err))
+		}
+		backupAppliedPRs(backupDest, u.log)
 	}
 
 	// Find the newly built executable
@@ -698,8 +742,12 @@ func (u *Updater) scheduleMoveOnExit(tag string) error {
 	case "update":
 		prefix = "pre_update_"
 	}
-	backupName := fmt.Sprintf("%s%s_%s", prefix, time.Now().Format("20060102_150405"), filepath.Base(currentExe))
+	backupName := buildBackupFilename(prefix, currentExe)
 	backupDest := filepath.Join(oldDir, backupName)
+	if err := os.MkdirAll(oldDir, 0o755); err != nil {
+		u.log(fmt.Sprintf("Warning: failed to create old_versions directory: %v", err))
+	}
+	backupAppliedPRs(backupDest, u.log)
 
 	script := fmt.Sprintf(`@echo off
 cd /d "%s"
@@ -721,6 +769,38 @@ del "%%~f0"
 	return startScript(moveScript)
 }
 
+func buildBackupFilename(prefix, currentExe string) string {
+	if strings.TrimSpace(currentExe) == "" {
+		return ""
+	}
+
+	timestamp := time.Now().Format("20060102_150405")
+	commitHash := backupCommitHash()
+	if commitHash != "" {
+		return fmt.Sprintf("%s%s_%s.exe", prefix, timestamp, commitHash)
+	}
+
+	return fmt.Sprintf("%s%s_%s", prefix, timestamp, filepath.Base(currentExe))
+}
+
+func backupCommitHash() string {
+	if embedded := getEmbeddedVersion(); embedded != nil {
+		return strings.TrimSpace(embedded.fullHash())
+	}
+
+	if ctx, err := resolveExistingRepoContext(); err == nil {
+		if version, err := getCurrentVersion(ctx.RepoDir); err == nil && version != nil {
+			return strings.TrimSpace(version.fullHash())
+		}
+	}
+
+	if version, err := GetBaselineVersion(); err == nil && version != nil {
+		return strings.TrimSpace(version.fullHash())
+	}
+
+	return ""
+}
+
 // Helper functions for file operations
 func copyFile(src, dst string) error {
 	data, err := os.ReadFile(src)
@@ -731,6 +811,14 @@ func copyFile(src, dst string) error {
 }
 
 func copyDir(src, dst string) error {
+	if absSrc, err := filepath.Abs(src); err == nil {
+		if absDst, err := filepath.Abs(dst); err == nil {
+			if strings.EqualFold(absSrc, absDst) {
+				return nil
+			}
+		}
+	}
+
 	// Remove destination if it exists
 	os.RemoveAll(dst)
 

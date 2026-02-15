@@ -1,8 +1,8 @@
 package updater
 
 import (
+	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -43,25 +43,66 @@ func GetCurrentVersionNoClone() (*VersionInfo, error) {
 		return embedded, nil
 	}
 
-	workDir, err := os.Getwd()
+	ctx, err := resolveExistingRepoContext()
+	if err != nil {
+		return nil, nil
+	}
+	return getCurrentVersion(ctx.RepoDir)
+}
+
+// GetBaselineVersion returns version info based on the .commit file.
+// It does not clone a repository; commit metadata is returned only if available locally.
+func GetBaselineVersion() (*VersionInfo, error) {
+	commitPath, err := resolveCommitPath()
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	commitBytes, err := os.ReadFile(commitPath)
 	if err != nil {
 		return nil, err
 	}
 
-	if root, ok := findGitRoot(workDir); ok {
-		return getCurrentVersion(root)
-	}
-
-	repoDir := filepath.Join(workDir, sourceDirName)
-	isRepo, err := isGitRepo(repoDir)
-	if err != nil {
-		return nil, err
-	}
-	if !isRepo {
+	commitHash := strings.TrimSpace(string(commitBytes))
+	if commitHash == "" {
 		return nil, nil
 	}
 
-	return getCurrentVersion(repoDir)
+	version := &VersionInfo{
+		CommitHash:     shortHash(commitHash),
+		CommitDate:     time.Time{},
+		CommitMsg:      "",
+		Branch:         "upstream/main",
+		commitHashFull: commitHash,
+	}
+
+	ctx, err := resolveExistingRepoContext()
+	if err != nil {
+		return version, nil
+	}
+
+	if err := gitCmd(ctx.RepoDir, "cat-file", "-e", fmt.Sprintf("%s^{commit}", commitHash)).Run(); err != nil {
+		return version, nil
+	}
+
+	dateCmd := gitCmd(ctx.RepoDir, "show", "-s", "--format=%ci", commitHash)
+	dateOut, err := dateCmd.Output()
+	if err == nil {
+		if parsed, parseErr := time.Parse("2006-01-02 15:04:05 -0700", strings.TrimSpace(string(dateOut))); parseErr == nil {
+			version.CommitDate = parsed
+		}
+	}
+
+	msgCmd := gitCmd(ctx.RepoDir, "show", "-s", "--format=%s", commitHash)
+	msgOut, err := msgCmd.Output()
+	if err == nil {
+		version.CommitMsg = strings.TrimSpace(string(msgOut))
+	}
+
+	return version, nil
 }
 
 func (v *VersionInfo) fullHash() string {
