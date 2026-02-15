@@ -3,6 +3,7 @@ package character
 import (
 	"fmt"
 	"log/slog"
+	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -12,6 +13,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/pather"
 )
 
 const (
@@ -213,6 +215,43 @@ func (s Hammerdin) KillPindle() error {
 }
 
 func (s Hammerdin) KillNihlathak() error {
+	// Find Nihlathak first
+	nih, found := s.Data.Monsters.FindOne(npc.Nihlathak, data.MonsterTypeSuperUnique)
+	if !found {
+		s.Logger.Info("Nihlathak not found")
+		return nil
+	}
+
+	// Gather enemies within radius 15 around Nihlathak
+	nearby := []data.Monster{}
+	for _, m := range s.Data.Monsters.Enemies() {
+		if m.Stats[stat.Life] <= 0 {
+			continue
+		}
+		if pather.DistanceFromPoint(m.Position, nih.Position) <= 15 {
+			nearby = append(nearby, m)
+		}
+	}
+
+	// Sort by distance to player (closest first)
+	playerPos := s.Data.PlayerUnit.Position
+	sort.Slice(nearby, func(i, j int) bool {
+		di := pather.DistanceFromPoint(nearby[i].Position, playerPos)
+		dj := pather.DistanceFromPoint(nearby[j].Position, playerPos)
+		return di < dj
+	})
+
+	// Kill nearby monsters in order
+	for _, m := range nearby {
+		_ = s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+			if mm, ok := d.Monsters.FindByID(m.UnitID); ok && mm.Stats[stat.Life] > 0 {
+				return mm.UnitID, true
+			}
+			return 0, false
+		}, nil)
+	}
+
+	// Finally kill Nihlathak
 	return s.killMonsterByName(npc.Nihlathak, data.MonsterTypeSuperUnique)
 }
 
