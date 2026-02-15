@@ -15,10 +15,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
-// BuffIfRequired keeps the original behavior:
-// - checks if rebuff is needed,
-// - skips town,
-// - avoids buffing when monsters are too close.
 func BuffIfRequired() {
 	ctx := context.Get()
 
@@ -26,17 +22,23 @@ func BuffIfRequired() {
 		return
 	}
 
-	// Don't buff if we have 2 or more monsters close to the character.
-	// Don't merge with the previous if, because we want to avoid this
-	// expensive check if we don't need to buff.
+	// Monster proximity check: abort buffing if too many enemies are nearby.
+	// Builds that teleport into packs (Nova, Lightning Sorc) use relaxed
+	// thresholds so survival buffs like Energy Shield aren't perpetually skipped.
+	// All other builds keep the original conservative check.
+	proximityRadius := 15
+	proximityLimit := 2
+	if class := ctx.CharacterCfg.Character.Class; class == "nova" || class == "lightsorc" {
+		proximityRadius = 8
+		proximityLimit = 8
+	}
+
 	closeMonsters := 0
 	for _, m := range ctx.Data.Monsters {
-		if ctx.PathFinder.DistanceFromMe(m.Position) < 15 {
+		if ctx.PathFinder.DistanceFromMe(m.Position) < proximityRadius {
 			closeMonsters++
 		}
-		// cheaper to check here and end function if say first 2 already < 15
-		// so no need to compute the rest
-		if closeMonsters >= 2 {
+		if closeMonsters >= proximityLimit {
 			return
 		}
 	}
@@ -44,15 +46,6 @@ func BuffIfRequired() {
 	Buff()
 }
 
-// Buff keeps original timing / behavior:
-// - no buff in town
-// - no buff if done in last 30s
-// - pre-CTA buffs
-// - CTA (BO/BC) buffs
-// - post-CTA class buffs
-//
-// The only extension is: if config.Character.UseSwapForBuffs is true,
-// class buffs are cast from the weapon swap (offhand) instead of main hand.
 func Buff() {
 	ctx := context.Get()
 	ctx.SetLastAction("Buff")
@@ -65,10 +58,11 @@ func Buff() {
 	if ctx.Data.OpenMenus.LoadingScreen {
 		ctx.Logger.Debug("Loading screen detected. Waiting for game to load before buffing...")
 		ctx.WaitForGameToLoad()
-		utils.PingSleep(utils.Light, 400)
+
+		// Give it half a second more
+		utils.Sleep(500)
 	}
 
-	// --- Pre-CTA buffs (unchanged) ---
 	preKeys := make([]data.KeyBinding, 0)
 	for _, buff := range ctx.Char.PreCTABuffSkills() {
 		kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(buff)
@@ -90,12 +84,8 @@ func Buff() {
 		}
 	}
 
-	// --- CTA buffs (unchanged) ---
 	buffCTA()
 
-	// --- Post-CTA class buffs (with optional weapon swap) ---
-
-	// Collect post-CTA buff keybindings as before.
 	postKeys := make([]data.KeyBinding, 0)
 	for _, buff := range ctx.Char.BuffSkills() {
 		kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(buff)
@@ -107,17 +97,8 @@ func Buff() {
 	}
 
 	if len(postKeys) > 0 {
-		// Read our new toggle from config:
-		useSwapForBuffs := ctx.CharacterCfg != nil && ctx.CharacterCfg.Character.UseSwapForBuffs
-
-		// Optionally swap to offhand (CTA / buff weapon) before class buffs.
-		if useSwapForBuffs {
-			ctx.Logger.Debug("Using weapon swap for class buff skills")
-			step.SwapToCTA()
-			utils.PingSleep(utils.Light, 400)
-		}
-
 		ctx.Logger.Debug("Post CTA Buffing...")
+
 		for _, kb := range postKeys {
 			utils.Sleep(100)
 			ctx.HID.PressKeyBinding(kb)
@@ -125,44 +106,20 @@ func Buff() {
 			ctx.HID.Click(game.RightButton, 640, 340)
 			utils.Sleep(100)
 		}
-
-		// If we swapped, make sure we go back to main weapon.
-		if useSwapForBuffs {
-			utils.PingSleep(utils.Light, 400)
-			step.SwapToMainWeapon()
-		}
-	}
-
-	utils.PingSleep(utils.Light, 200)
-	buffsSuccessful := true
-	if ctaFound(*ctx.Data) {
-		if !ctx.Data.PlayerUnit.States.HasState(state.Battleorders) ||
-			!ctx.Data.PlayerUnit.States.HasState(state.Battlecommand) {
-			buffsSuccessful = false
-			ctx.Logger.Warn("CTA buffs not detected after buffing, not updating LastBuffAt")
-		}
-	}
-
-	if buffsSuccessful {
 		ctx.LastBuffAt = time.Now()
 	}
 }
 
-// IsRebuffRequired is left as original: 30s cooldown, CTA priority, and
-// simple state-based checks for known buff skills.
 func IsRebuffRequired() bool {
 	ctx := context.Get()
 	ctx.SetLastAction("IsRebuffRequired")
 
-	// Don't buff if we are in town, or we did it recently
-	// (prevents double buffing because of network lag).
+	// Don't buff if we are in town, or we did it recently (it prevents double buffing because of network lag)
 	if ctx.Data.PlayerUnit.Area.IsTown() || time.Since(ctx.LastBuffAt) < time.Second*30 {
 		return false
 	}
 
-	if ctaFound(*ctx.Data) &&
-		(!ctx.Data.PlayerUnit.States.HasState(state.Battleorders) ||
-			!ctx.Data.PlayerUnit.States.HasState(state.Battlecommand)) {
+	if ctaFound(*ctx.Data) && (!ctx.Data.PlayerUnit.States.HasState(state.Battleorders) || !ctx.Data.PlayerUnit.States.HasState(state.Battlecommand)) {
 		return true
 	}
 
@@ -173,10 +130,7 @@ func IsRebuffRequired() bool {
 			if buff == skill.HolyShield && !ctx.Data.PlayerUnit.States.HasState(state.Holyshield) {
 				return true
 			}
-			if buff == skill.FrozenArmor &&
-				(!ctx.Data.PlayerUnit.States.HasState(state.Frozenarmor) &&
-					!ctx.Data.PlayerUnit.States.HasState(state.Shiverarmor) &&
-					!ctx.Data.PlayerUnit.States.HasState(state.Chillingarmor)) {
+			if buff == skill.FrozenArmor && (!ctx.Data.PlayerUnit.States.HasState(state.Frozenarmor) && !ctx.Data.PlayerUnit.States.HasState(state.Shiverarmor) && !ctx.Data.PlayerUnit.States.HasState(state.Chillingarmor)) {
 				return true
 			}
 			if buff == skill.EnergyShield && !ctx.Data.PlayerUnit.States.HasState(state.Energyshield) {
@@ -185,14 +139,21 @@ func IsRebuffRequired() bool {
 			if buff == skill.CycloneArmor && !ctx.Data.PlayerUnit.States.HasState(state.Cyclonearmor) {
 				return true
 			}
+			if buff == skill.BurstOfSpeed && !ctx.Data.PlayerUnit.States.HasState(state.Quickness) {
+				return true
+			}
+			if buff == skill.Fade && !ctx.Data.PlayerUnit.States.HasState(state.Fade) {
+				return true
+			}
+			if buff == skill.BoneArmor && !ctx.Data.PlayerUnit.States.HasState(state.Bonearmor) {
+				return true
+			}
 		}
 	}
 
 	return false
 }
 
-// buffCTA handles the CTA weapon set: swap, cast BC/BO, swap back.
-// This is kept exactly as in the original implementation.
 func buffCTA() {
 	ctx := context.Get()
 	ctx.SetLastAction("buffCTA")
@@ -200,29 +161,25 @@ func buffCTA() {
 	if ctaFound(*ctx.Data) {
 		ctx.Logger.Debug("CTA found: swapping weapon and casting Battle Command / Battle Orders")
 
-		// Swap weapon only in case we don't have the CTA already equipped
-		// (for example chicken previous game during buff stage).
+		// Swap weapon only in case we don't have the CTA, sometimes CTA is already equipped (for example chicken previous game during buff stage)
 		if _, found := ctx.Data.PlayerUnit.Skills[skill.BattleCommand]; !found {
 			step.SwapToCTA()
-			utils.PingSleep(utils.Light, 150)
 		}
 
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.BattleCommand))
 		utils.Sleep(180)
 		ctx.HID.Click(game.RightButton, 300, 300)
 		utils.Sleep(100)
-
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.BattleOrders))
 		utils.Sleep(180)
 		ctx.HID.Click(game.RightButton, 300, 300)
 		utils.Sleep(100)
 
-		utils.PingSleep(utils.Light, 400)
+		utils.Sleep(500)
 		step.SwapToMainWeapon()
 	}
 }
 
-// ctaFound checks if the player has a CTA-like item equipped (providing both BO and BC as NonClassSkill).
 func ctaFound(d game.Data) bool {
 	for _, itm := range d.Inventory.ByLocation(item.LocationEquipped) {
 		_, boFound := itm.FindStat(stat.NonClassSkill, int(skill.BattleOrders))
