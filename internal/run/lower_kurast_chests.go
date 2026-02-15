@@ -10,6 +10,7 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/object"
 	"github.com/hectorgimenez/d2go/pkg/data/quest"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/pather"
@@ -79,8 +80,9 @@ func (run LowerKurastChests) Run(parameters *RunParameters) error {
 
 	// Move to each of the bonfires one by one
 	for _, bonfirePos := range bonFirePositions {
-		// Move to the bonfire
-		err = action.MoveToCoords(bonfirePos)
+		// Move near the bonfire (not directly to it, as it's unwalkable)
+		// Use a distance of 3 units to stop before reaching the bonfire object
+		err = action.MoveToCoords(bonfirePos, step.WithDistanceToFinish(3))
 		if err != nil {
 			return err
 		}

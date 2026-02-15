@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
@@ -64,7 +65,8 @@ func (b *AStarBuffers) index(x, y int) int {
 
 // CalculatePath finds a path using A* algorithm. If buffers is nil, allocates new buffers.
 // For optimal performance, reuse buffers across calls by creating AStarBuffers once per PathFinder.
-func CalculatePath(g *game.Grid, start, goal data.Position, canTeleport bool, buffers *AStarBuffers) ([]data.Position, int, bool) {
+// areaID for area-specific behavior, disableWallAvoidance to allow wall-hugging when approaching gaps.
+func CalculatePath(g *game.Grid, start, goal data.Position, canTeleport bool, buffers *AStarBuffers, areaID area.ID, disableWallAvoidance bool) ([]data.Position, int, bool) {
 	inBounds := func(p data.Position) bool {
 		return p.X >= 0 && p.Y >= 0 && p.X < g.Width && p.Y < g.Height
 	}
@@ -122,15 +124,62 @@ func CalculatePath(g *game.Grid, start, goal data.Position, canTeleport bool, bu
 				}
 			}
 			// Build path in reverse order, then reverse in-place
-			path := make([]data.Position, pathLen)
-			i := pathLen - 1
+			path := make([]data.Position, 0, pathLen)
 			for p := goal; p != start; p = cameFrom[idx(p.X, p.Y)] {
 				if g.Get(p.X, p.Y) != game.CollisionTypeTeleportOver {
-					path[i] = p
-					i--
+					path = append(path, p)
 				}
 			}
-			path[0] = start
+			path = append(path, start)
+
+			// Reverse the path
+			for i, j := 0, len(path)-1; i < j; i, j = i+1, j-1 {
+				path[i], path[j] = path[j], path[i]
+			}
+
+			// If final position is adjacent to a wall/teleport tile, insert a point up to 7 tiles further away
+			if len(path) > 0 && !disableWallAvoidance {
+				final := path[len(path)-1]
+				adjusted := final
+				for _, d := range directions {
+					wallX, wallY := final.X+d.X, final.Y+d.Y
+					if wallX < 0 || wallX >= g.Width || wallY < 0 || wallY >= g.Height {
+						continue
+					}
+					wallType := g.Get(wallX, wallY)
+					if wallType == game.CollisionTypeNonWalkable || wallType == game.CollisionTypeTeleportOver {
+						for dist := 7; dist >= 1; dist-- {
+							newX, newY := final.X-dist*d.X, final.Y-dist*d.Y
+							if newX < 0 || newX >= g.Width || newY < 0 || newY >= g.Height {
+								continue
+							}
+							endType := g.Get(newX, newY)
+							if endType != game.CollisionTypeNonWalkable && endType != game.CollisionTypeTeleportOver {
+								newPos := data.Position{X: newX, Y: newY}
+								// Enforce minimum 5-tile spacing from previous point (unless it's the last step)
+								// Instead of inserting, modify the final waypoint to reduce jitter
+								canModify := true
+								if len(path) >= 3 {
+									prevPos := path[len(path)-2]
+									if chebyshevDistance(newPos, prevPos) < 5 {
+										canModify = false
+									}
+								}
+								if canModify {
+									adjusted = newPos
+								}
+								break
+							}
+						}
+						break
+					}
+				}
+				// Apply adjustment if changed and not the last step (to avoid modifying the actual goal position)
+				if adjusted != final && final != goal {
+					path[len(path)-1] = adjusted
+				}
+			}
+
 			return path, len(path), true
 		}
 
@@ -154,7 +203,7 @@ func CalculatePath(g *game.Grid, start, goal data.Position, canTeleport bool, bu
 
 			currentIdx := idx(current.X, current.Y)
 			neighborIdx := idx(neighbor.X, neighbor.Y)
-			newCost := costSoFar[currentIdx] + getCost(tileType, canTeleport)
+			newCost := costSoFar[currentIdx] + getCost(tileType, canTeleport, areaID, disableWallAvoidance)
 
 			// Handicap for changing direction, this prevents zig-zagging around obstacles
 			//curDirX, curDirY := direction(cameFrom[currentIdx], current.Position)
@@ -219,7 +268,7 @@ func updateNeighbors(grid *game.Grid, node *Node, neighbors *[]data.Position, ca
 	}
 }
 
-func getCost(tileType game.CollisionType, canTeleport bool) int {
+func getCost(tileType game.CollisionType, canTeleport bool, areaID area.ID, disableWallAvoidance bool) int {
 	switch tileType {
 	case game.CollisionTypeWalkable:
 		return 1 // Walkable
@@ -228,6 +277,16 @@ func getCost(tileType game.CollisionType, canTeleport bool) int {
 	case game.CollisionTypeObject:
 		return 4 // Soft blocker
 	case game.CollisionTypeLowPriority:
+		// If wall-avoidance is disabled (approaching a gap for teleport), allow wall-hugging
+		if disableWallAvoidance {
+			return 5 // Low cost to allow movement near walls
+		}
+		// For narrow maps, use much lower cost to allow wall-hugging when necessary
+		// This matches closer to walkable tiles to permit navigation in tight corridors
+		if game.IsNarrowMapArea(areaID) {
+			return 10
+		}
+		// For normal areas, use higher cost to avoid walls (but not as aggressive as before)
 		return 20
 	case game.CollisionTypeTeleportOver:
 		if canTeleport {
@@ -248,4 +307,20 @@ func heuristic(a, b data.Position) int {
 	dx := math.Abs(float64(a.X - b.X))
 	dy := math.Abs(float64(a.Y - b.Y))
 	return int(dx + dy + (math.Sqrt(2)-2)*math.Min(dx, dy))
+}
+
+// chebyshevDistance returns the Chebyshev distance (max of |dx|, |dy|) between two positions
+func chebyshevDistance(a, b data.Position) int {
+	dx := a.X - b.X
+	if dx < 0 {
+		dx = -dx
+	}
+	dy := a.Y - b.Y
+	if dy < 0 {
+		dy = -dy
+	}
+	if dx > dy {
+		return dx
+	}
+	return dy
 }

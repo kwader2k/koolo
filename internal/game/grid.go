@@ -1,6 +1,20 @@
 package game
 
-import "github.com/hectorgimenez/d2go/pkg/data"
+import (
+	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
+)
+
+// IsNarrowMapArea checks if an area has narrow hallways that require wall-hugging
+func IsNarrowMapArea(a area.ID) bool {
+	switch a {
+	case area.MaggotLairLevel1, area.MaggotLairLevel2, area.MaggotLairLevel3,
+		area.PalaceCellarLevel3, area.PalaceCellarLevel2, area.PalaceCellarLevel1,
+		area.ArcaneSanctuary, area.ClawViperTempleLevel2, area.RiverOfFlame, area.ChaosSanctuary:
+		return true
+	}
+	return false
+}
 
 const (
 	CollisionTypeNonWalkable CollisionType = iota
@@ -22,6 +36,16 @@ type Grid struct {
 	Width         int
 	Height        int
 	CollisionGrid []CollisionType // flat 1D array: index = y*Width + x
+}
+
+func (g *Grid) CanTeleportTo(p data.Position) bool {
+	p = g.RelativePosition(p)
+	if p.X < 0 || p.X >= g.Width || p.Y < 0 || p.Y >= g.Height {
+		return false
+	}
+	positionType := g.Get(p.X, p.Y)
+
+	return positionType != CollisionTypeNonWalkable && positionType != CollisionTypeTeleportOver && positionType != CollisionTypeObject
 }
 
 // Get returns the collision type at (x, y). No bounds checking.
@@ -54,6 +78,7 @@ func NewGrid(rawCollisionGrid [][]CollisionType, offsetX, offsetY int, canTelepo
 	}
 
 	// Let's lower the priority for the walkable tiles that are close to non-walkable tiles, so we can avoid walking too close to walls and obstacles
+	// Using 2-tile radius to balance wall-avoidance with allowing necessary wall-hugging in narrow corridors
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			collisionType := grid.Get(x, y)
