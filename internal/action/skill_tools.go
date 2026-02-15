@@ -549,8 +549,15 @@ func calculateSkillPositionInUI(mainSkill bool, skillID skill.ID) (data.Position
 		}
 	}
 	skillsInPage := pageSkills[targetSkill.Desc().Page]
-	slices.Sort(skillsInPage)
-	for i, skills := range skillsInPage {
+
+	skillsInRow := make([]skill.ID, 0)
+	for _, skID := range skillsInPage {
+		if skill.Skills[skID].Desc().ListRow == targetSkill.Desc().ListRow {
+			skillsInRow = append(skillsInRow, skID)
+		}
+	}
+	slices.Sort(skillsInRow)
+	for i, skills := range skillsInRow {
 		if skills == targetSkill.ID {
 			column = i
 			break
@@ -582,9 +589,10 @@ func calculateSkillPositionInUI(mainSkill bool, skillID skill.ID) (data.Position
 			Y: ui.SkillListFirstSkillYClassic - ui.SkillListSkillOffsetClassic*row,
 		}, true
 	}
-	skillOffsetX := ui.MainSkillListFirstSkillX - (ui.SkillListSkillOffset * (len(skillsInPage) - (column + 1)))
+	skillOffsetX := ui.MainSkillListFirstSkillX - (ui.SkillListSkillOffset * (len(skillsInRow) - (column + 1)))
 	if !mainSkill {
-		skillOffsetX = ui.SecondarySkillListFirstSkillX + (ui.SkillListSkillOffset * (len(skillsInPage) - (column + 1)))
+		// D2R Secondary list: Low ID at Right (Anchor), High ID at Left.
+		skillOffsetX = ui.SecondarySkillListFirstSkillX - (ui.SkillListSkillOffset * column)
 	}
 	return data.Position{
 		X: skillOffsetX,
