@@ -64,7 +64,7 @@ inventory:
   rejuvPotionCount: 0     # Number of rejuvenation potions to keep in inventory
 
 character:
-  class: sorceress # Allowed values: sorceress, lightning, hammerdin, foh, dragondin, paladin (leveling only), barb_leveling
+  class: sorceress # Allowed values: sorceress, lightning, hammerdin, foh, dragondin, paladin (leveling only), barb_leveling, warlock_leveling
   useMerc: true
   stashToShared: false
   useTeleport: true # If set to false, bot will not use teleport skill and will walk to the destination
