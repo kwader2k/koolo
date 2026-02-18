@@ -504,6 +504,8 @@ func resolveSkillClassFromBuild(build string) string {
 		return "dru"
 	case "assassin", "trapsin", "mosaic":
 		return "ass"
+	case "warlock_leveling":
+		return "war"
 	default:
 		return ""
 	}
