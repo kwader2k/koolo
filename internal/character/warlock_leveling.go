@@ -265,11 +265,13 @@ func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 func (s WarlockLeveling) StatPoints() []context.StatAllocation {
 	stats := []context.StatAllocation{
-		{Stat: stat.Vitality, Points: 60},
+		{Stat: stat.Vitality, Points: 30},
+		{Stat: stat.Energy, Points: 35},
+		{Stat: stat.Vitality, Points: 45},
 		{Stat: stat.Strength, Points: 30},
-		{Stat: stat.Vitality, Points: 100},
+		{Stat: stat.Vitality, Points: 85},
 		{Stat: stat.Strength, Points: 35},
-		{Stat: stat.Vitality, Points: 105},
+		{Stat: stat.Vitality, Points: 90},
 		{Stat: stat.Strength, Points: 40},
 		{Stat: stat.Vitality, Points: 999},
 	}
