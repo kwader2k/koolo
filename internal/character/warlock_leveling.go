@@ -179,6 +179,9 @@ func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
 	hasTainted := false
 	hasDefiler := false
 	for _, m := range s.Data.Monsters {
+		if !m.IsPet() {
+			continue
+		}
 		switch m.Name {
 		case npc.WarGoatman:
 			hasGoatman = true
