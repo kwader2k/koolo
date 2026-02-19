@@ -301,14 +301,12 @@ func (s WarlockLeveling) SkillPoints() []skill.ID {
 			skill.FlameWave, skill.FlameWave, skill.FlameWave,
 			skill.SigilRancor, // Izual
 			skill.SigilDeath,  // Izual
-			// Level 24-29: FlameWave
+			// Level 24-36: Max FlameWave
 			skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave,
-			skill.FlameWave,
-			// Level 30-36: Apocalypse
-			skill.Apocalypse, skill.Apocalypse, skill.Apocalypse,
-			skill.Apocalypse, skill.Apocalypse, skill.Apocalypse,
+			skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave,
+			skill.FlameWave, skill.FlameWave,
 			skill.FlameWave, // Radament NM
-			// Level 37-Respec (49): Apocalyse
+			// Level 37-Respec (49): Apocalypse
 			skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse,
 			skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse,
 			skill.Apocalypse, skill.Apocalypse,
@@ -389,8 +387,6 @@ func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 				} else {
 					step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(1, 3))
 				}
-			} else if s.Data.PlayerUnit.Skills[skill.Apocalypse].Level > 0 && mana.Value > 15 {
-				step.SecondaryAttack(skill.Apocalypse, boss.UnitID, 3, step.Distance(5, 10))
 			} else if s.Data.PlayerUnit.Skills[skill.FlameWave].Level > 0 && mana.Value > 8 {
 				step.SecondaryAttack(skill.FlameWave, boss.UnitID, 4, step.Distance(8, 13))
 			} else if s.Data.PlayerUnit.Skills[skill.RingOfFire].Level > 0 && mana.Value > 5 {
