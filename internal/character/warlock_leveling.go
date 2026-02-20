@@ -173,16 +173,38 @@ func (s WarlockLeveling) BuffSkills() []skill.ID {
 }
 
 func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
+	maxSummons := min(1+action.GetSkillTotalLevel(skill.DemonicMastery)/10, 3)
+
+	currentSummons := uint(0)
 	for _, m := range s.Data.Monsters {
-		if m.IsPet() && (m.Name == npc.WarGoatman || m.Name == npc.Tainted3 || m.Name == npc.WarDefiler) {
-			return nil
+		if m.States.HasState(state.BindDemon) {
+			currentSummons++
+		}
+		if m.IsPet() {
+			switch m.Name {
+			case npc.WarGoatman, npc.Tainted3, npc.WarDefiler:
+				currentSummons++
+			}
 		}
 	}
 
+	if currentSummons >= maxSummons {
+		return nil
+	}
+
+	remaining := maxSummons - currentSummons
 	for _, summon := range []skill.ID{skill.SummonDefiler, skill.SummonTainted, skill.SummonGoatman} {
-		if _, found := s.Data.KeyBindings.KeyBindingForSkill(summon); found {
-			return []skill.ID{summon}
+		if action.GetSkillTotalLevel(summon) <= 0 {
+			continue
 		}
+		if _, found := s.Data.KeyBindings.KeyBindingForSkill(summon); !found {
+			continue
+		}
+		skills := make([]skill.ID, remaining)
+		for i := range skills {
+			skills[i] = summon
+		}
+		return skills
 	}
 
 	return nil
