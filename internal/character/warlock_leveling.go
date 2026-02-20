@@ -16,7 +16,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
-	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 var _ context.LevelingCharacter = (*WarlockLeveling)(nil)
@@ -61,8 +60,6 @@ func (s WarlockLeveling) KillMonsterSequence(
 	completedAttackLoops := 0
 	previousUnitID := 0
 	var lastReposition time.Time
-	var lastConsume time.Time
-
 	for {
 		context.Get().PauseIfNotPriority()
 
@@ -128,10 +125,6 @@ func (s WarlockLeveling) KillMonsterSequence(
 			}
 		} else {
 			// Post-respec: Magic-focused build
-			if time.Since(lastConsume) > time.Second && mana.Value > 6 && s.castConsumeOnNearbyCorpse(10) {
-				lastConsume = time.Now()
-			}
-
 			opts := []step.AttackOption{step.Distance(warlockMinDistance, warlockMaxDistance)}
 			if onCooldown {
 				if s.Data.PlayerUnit.Skills[skill.MiasmaChains].Level > 0 && mana.Value > 5 {
@@ -251,7 +244,6 @@ func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 			skill.SummonGoatman,
 			skill.SummonTainted,
 			skill.SummonDefiler,
-			skill.Consume,
 		}
 	}
 
@@ -325,7 +317,6 @@ func (s WarlockLeveling) SkillPoints() []skill.ID {
 			// Summoning prereqs and utility
 			skill.SummonGoatman, skill.DemonicMastery, skill.BloodOath,
 			skill.SummonTainted, skill.SummonDefiler,
-			skill.Consume,
 			// Main damage: MiasmaBolt → MiasmaChains → EnhancedEntropy → Abyss
 			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
 			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
@@ -354,8 +345,6 @@ func (s WarlockLeveling) SkillPoints() []skill.ID {
 func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 	s.Logger.Info(fmt.Sprintf("Starting kill sequence for %v...", bossNPC))
 	startTime := time.Now()
-	lastConsume := time.Time{}
-
 	for {
 		context.Get().PauseIfNotPriority()
 
@@ -405,10 +394,6 @@ func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 				step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(1, 3))
 			}
 		} else {
-			if time.Since(lastConsume) > time.Second && mana.Value > 6 && s.castConsumeOnNearbyCorpse(10) {
-				lastConsume = time.Now()
-			}
-
 			if onCooldown {
 				if s.Data.PlayerUnit.Skills[skill.MiasmaChains].Level > 0 && mana.Value > 5 {
 					step.SecondaryAttack(skill.MiasmaChains, boss.UnitID, 3, step.Distance(10, 15))
@@ -430,43 +415,6 @@ func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 
 		time.Sleep(time.Millisecond * 100)
 	}
-}
-
-func (s WarlockLeveling) castConsumeOnNearbyCorpse(maxDistance int) bool {
-	if s.Data.PlayerUnit.Skills[skill.Consume].Level <= 0 {
-		return false
-	}
-
-	consumeKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Consume)
-	if !found {
-		return false
-	}
-
-	for _, corpse := range s.Data.Corpses {
-		if corpse.States.HasState(state.CorpseNoselect) || corpse.States.HasState(state.CorpseNodraw) {
-			continue
-		}
-		if s.PathFinder.DistanceFromMe(corpse.Position) > maxDistance {
-			continue
-		}
-		if !s.PathFinder.LineOfSight(s.Data.PlayerUnit.Position, corpse.Position) {
-			continue
-		}
-
-		if s.Data.PlayerUnit.RightSkill != skill.Consume {
-			s.HID.PressKeyBinding(consumeKey)
-			utils.Sleep(50)
-		}
-
-		s.HID.KeyDown(s.Data.KeyBindings.StandStill)
-		x, y := s.PathFinder.GameCoordsToScreenCords(corpse.Position.X, corpse.Position.Y)
-		s.HID.Click(game.RightButton, x, y)
-		s.HID.KeyUp(s.Data.KeyBindings.StandStill)
-		utils.Sleep(50)
-		return true
-	}
-
-	return false
 }
 
 func (s WarlockLeveling) killMonsterByName(id npc.ID, monsterType data.MonsterType, skipOnImmunities []stat.Resist) error {
