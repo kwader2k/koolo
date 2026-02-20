@@ -166,40 +166,7 @@ func (s WarlockLeveling) BuffSkills() []skill.ID {
 }
 
 func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
-	maxSummons := min(1+action.GetSkillTotalLevel(skill.DemonicMastery)/10, 3)
-
-	currentSummons := uint(0)
-	for _, m := range s.Data.Monsters {
-		if m.States.HasState(state.BindDemon) {
-			currentSummons++
-		}
-		if m.IsPet() {
-			switch m.Name {
-			case npc.WarGoatman, npc.Tainted3, npc.WarDefiler:
-				currentSummons++
-			}
-		}
-	}
-
-	if currentSummons >= maxSummons {
-		return nil
-	}
-
-	remaining := maxSummons - currentSummons
-	for _, summon := range []skill.ID{skill.SummonDefiler, skill.SummonTainted, skill.SummonGoatman} {
-		if action.GetSkillTotalLevel(summon) <= 0 {
-			continue
-		}
-		if _, found := s.Data.KeyBindings.KeyBindingForSkill(summon); !found {
-			continue
-		}
-		skills := make([]skill.ID, remaining)
-		for i := range skills {
-			skills[i] = summon
-		}
-		return skills
-	}
-
+	// TODO: Summons temporarily disabled
 	return nil
 }
 
@@ -236,14 +203,12 @@ func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 	if lvl.Value >= 49 {
 		// Post-respec: Magic build with summons
+		// TODO: Summon skills temporarily removed from bindings
 		mainSkill = skill.AttackSkill
 		skillBindings = []skill.ID{
 			skill.Abyss,
 			skill.MiasmaChains,
 			skill.MiasmaBolt,
-			skill.SummonGoatman,
-			skill.SummonTainted,
-			skill.SummonDefiler,
 		}
 	}
 
