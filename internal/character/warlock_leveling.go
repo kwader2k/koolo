@@ -173,36 +173,19 @@ func (s WarlockLeveling) BuffSkills() []skill.ID {
 }
 
 func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
-	skillsList := make([]skill.ID, 0, 3)
-
-	hasGoatman := false
-	hasTainted := false
-	hasDefiler := false
 	for _, m := range s.Data.Monsters {
-		if !m.IsPet() {
-			continue
-		}
-		switch m.Name {
-		case npc.WarGoatman:
-			hasGoatman = true
-		case npc.Tainted3:
-			hasTainted = true
-		case npc.WarDefiler:
-			hasDefiler = true
+		if m.IsPet() && (m.Name == npc.WarGoatman || m.Name == npc.Tainted3 || m.Name == npc.WarDefiler) {
+			return nil
 		}
 	}
 
-	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonGoatman); found && !hasGoatman {
-		skillsList = append(skillsList, skill.SummonGoatman)
-	}
-	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonTainted); found && !hasTainted {
-		skillsList = append(skillsList, skill.SummonTainted)
-	}
-	if _, found := s.Data.KeyBindings.KeyBindingForSkill(skill.SummonDefiler); found && !hasDefiler {
-		skillsList = append(skillsList, skill.SummonDefiler)
+	for _, summon := range []skill.ID{skill.SummonDefiler, skill.SummonTainted, skill.SummonGoatman} {
+		if _, found := s.Data.KeyBindings.KeyBindingForSkill(summon); found {
+			return []skill.ID{summon}
+		}
 	}
 
-	return skillsList
+	return nil
 }
 
 func (s WarlockLeveling) ShouldResetSkills() bool {
