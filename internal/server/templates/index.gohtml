@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../assets/css/pico.min.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
+    <title>Koolo Resurrected Dashboard</title>
+</head>
+<body>
+<main class="container">
+    <div id="loading" class="loading"></div>
+    <div id="dashboard" style="display: none;">
+        <div class="dashboard-header">
+            <div class="dashboard-title-container">
+                <div class="title-with-fire">
+                    <div class="fire-wrapper">
+                        <div class="fire">
+                            <div class="fire-left">
+                                <div class="main-fire"></div>
+                            </div>
+                            <div class="fire-center">
+                                <div class="main-fire"></div>
+                            </div>
+                            <div class="fire-right">
+                                <div class="main-fire"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <h1 class="dashboard-title"><span class="title-koolo">Koolo</span><span class="title-resurrected">Resurrected</span></h1>
+                </div>
+                <span id="version" class="version-badge"></span>
+            </div>
+            <div class="dashboard-controls">
+                <button class="btn btn-outline" onclick="location.href='/config'" title="Settings">
+                    <i class="bi bi-gear"></i>
+                </button>
+                <button id="reloadConfigBtn" class="btn btn-outline" onclick="reloadConfig()" title="Reload Configs">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button class="btn btn-outline" onclick="location.href='/all-drops'" title="All Drops">
+                    <i class="bi bi-gem"></i>
+                </button>
+                <button class="btn btn-outline" onclick="location.href='/armory'" title="Armory">
+                    <i class="bi bi-shield-shaded"></i>
+                </button>
+                <button class="btn btn-outline" onclick="openPickitEditor()" title="Pickit Editor">
+                    <i class="bi bi-list-check"></i>
+                </button>
+                <button class="btn btn-outline" onclick="openDropManager()" title="Drop Manager">
+                   <i class="bi bi-arrow-down-square"></i>
+                </button>
+                <button class="btn btn-outline" onclick="triggerAutoStartOnce()" title="Auto Start Once">
+                    <i class="bi bi-play-circle"></i>
+                </button>
+                <button class="btn btn-start" onclick="location.href='/supervisorSettings'" title="Add Character">
+                    <i class="bi bi-plus"></i>
+                </button>
+                <button class="btn btn-outline attach-btn" onclick="showAttachPopup('${key}')" style="display:none;">
+                    <i class="bi bi-link-45deg btn-icon"></i>Attach
+                </button>
+            </div>
+        </div>
+        <div id="characters-container"></div>
+    </div>
+</main>
+<script src="../assets/js/dashboard.js"></script>
+</body>
+</html>

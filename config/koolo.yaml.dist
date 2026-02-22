@@ -1,0 +1,54 @@
+firstRun: true # If set to true next time the bot starts it will show the setup wizard
+useCustomSettings: true # If set to true, koolo will use config/Settings.json file to load game settings instead of default one.
+gameWindowArrangement: true # If set to true, game windows will be automatically repositioned to avoid overlapping
+debug:
+  log: true # Prints extra log information
+  screenshots: false # Saves screenshots of the game in case of errors
+  renderMap: false # Render current map data into 'cg.png' file
+  openOverlayMapOnGameStart: false # Auto-open overlay map when entering a game
+
+logSaveDirectory: logs
+D2LoDPath: 'E:\games\Diablo II' # Path to Diablo II Lord of Destruction 1.13c directory
+D2RPath: 'C:\Program Files (x86)\Diablo II Resurrected' # Path to Diablo II Resurrected directory
+
+# In order to use to Discord Bot, you need the Application Token. https://discord.com/developers/docs/intro
+discord:
+  enabled: false
+  channelId: ''
+  itemChannelId: ''
+  token: ''
+  useWebhook: false    # Use Discord webhook for alerts only
+  webhookUrl: ''       # Discord webhook URL
+  itemWebhookUrl: ''   # Discord item webhook URL (optional)
+  botAdmins: []  # Add your Discord User IDs here, e.g., ['123456789012345678']
+  enableGameCreatedMessages: false
+  enableNewRunMessages: false
+  enableRunFinishMessages: false
+  enableDiscordChickenMessages: true
+  enableDiscordErrorMessages: true
+  disableItemStashScreenshots: false
+  includePickitInfoInItemText: false
+
+telegram:
+  enabled: false
+  chatId: 0
+  token: ''
+
+ngrok:
+  enabled: false
+  sendUrl: false      # If true, send ngrok URL to Discord/Telegram when established
+  authtoken: ''      # Optional; if empty, NGROK_AUTHTOKEN env var is used
+  region: ''         # Optional (e.g. "us", "eu")
+  domain: ''         # Optional reserved domain
+  basicAuthUser: ''  # Optional
+  basicAuthPass: ''  # Optional
+# Ping Monitor - Automatically stop bot on sustained high ping
+pingMonitor:
+  enabled: false             # Set to true to enable ping monitoring
+  highPingThreshold: 500     # Stop bot if ping exceeds this value in ms (default: 500)
+  sustainedDuration: 30      # How long high ping must persist before stopping in seconds (default: 30)
+
+# Auto Start - Automatically start selected supervisors when Koolo starts
+autoStart:
+  enabled: false         # If true, start all supervisors with autoStart=true when Koolo starts
+  delaySeconds: 60       # Delay between starting each supervisor in seconds (default: 60)

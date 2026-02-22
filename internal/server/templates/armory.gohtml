@@ -1,0 +1,2978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Armory{{ if .Character }} - {{ .Character }}{{ end }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
+    <style>
+        :root {
+            --quality-low: #9CA3AF;
+            --quality-normal: #FFFFFF;
+            --quality-superior: #FFFFFF;
+            --quality-magic: #6B8AFF;
+            --quality-set: #00FF00;
+            --quality-rare: #FFFF00;
+            --quality-unique: #BFA969;
+            --quality-crafted: #FFA500;
+            --quality-runeword: #BFA969;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        /* Colorful Theme (Default) */
+        body.theme-colorful {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            color: #fff;
+        }
+        body.theme-colorful .panel { background: rgba(30,30,50,0.9); border-color: #4a4a4a; }
+        body.theme-colorful .panel-header { background: linear-gradient(180deg, rgba(40, 40, 60, 0.9) 0%, rgba(30, 30, 50, 0.9) 100%); }
+        body.theme-colorful .inventory-slot { background: rgba(20, 20, 40, 0.8); border-color: #333; }
+        body.theme-colorful .inventory-grid { background: rgba(0,0,0,0.5); border-color: #4a4a4a; }
+        body.theme-colorful .equip-slot { background: rgba(20, 20, 40, 0.8); border-color: #444; }
+        body.theme-colorful .section-title { color: #bfa969; border-color: #4a4a4a; }
+        body.theme-colorful .selector { background: rgba(30, 30, 50, 0.9); border-color: #4a4a4a; color: #fff; }
+        body.theme-colorful .btn-back { background: rgba(40, 40, 60, 0.9); border-color: #4a4a4a; color: #fff; }
+        body.theme-colorful .gold-display { background: rgba(30, 30, 50, 0.8); border-color: #4a4a4a; }
+        body.theme-colorful .stash-tab { background: rgba(40, 40, 60, 0.6); border-color: #4a4a4a; color: #888; }
+        body.theme-colorful .stash-tab.active { background: rgba(80, 80, 100, 0.8); color: #fff; }
+        body.theme-colorful .warning-banner { background: rgba(60,50,30,0.9); border-color: #8B7500; }
+        body.theme-colorful .text-muted { color: #888; }
+        body.theme-colorful .text-secondary { color: #aaa; }
+
+        /* Dark Theme */
+        body.theme-dark {
+            background: #0d0d0d;
+            color: #e0e0e0;
+        }
+        body.theme-dark .panel { background: #1a1a1a; border-color: #333; }
+        body.theme-dark .panel-header { background: #1f1f1f; }
+        body.theme-dark .inventory-slot { background: #141414; border-color: #2a2a2a; }
+        body.theme-dark .inventory-grid { background: #0a0a0a; border-color: #333; }
+        body.theme-dark .equip-slot { background: #141414; border-color: #333; }
+        body.theme-dark .section-title { color: #bfa969; border-color: #333; }
+        body.theme-dark .selector { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+        body.theme-dark .btn-back { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
+        body.theme-dark .gold-display { background: #1a1a1a; border-color: #333; }
+        body.theme-dark .stash-tab { background: #1a1a1a; border-color: #333; color: #666; }
+        body.theme-dark .stash-tab.active { background: #2a2a2a; color: #fff; }
+        body.theme-dark .warning-banner { background: #2a2200; border-color: #665500; }
+        body.theme-dark .text-muted { color: #666; }
+        body.theme-dark .text-secondary { color: #888; }
+
+        /* Light Theme */
+        body.theme-light {
+            background: #f5f5f5;
+            color: #222;
+        }
+        body.theme-light .panel { background: #ffffff; border-color: #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        body.theme-light .panel-header { background: #fafafa; }
+        body.theme-light .inventory-slot { background: #f0f0f0; border-color: #ccc; }
+        body.theme-light .inventory-grid { background: #e8e8e8; border-color: #ccc; }
+        body.theme-light .equip-slot { background: #f0f0f0; border-color: #ccc; }
+        body.theme-light .section-title { color: #8B7500; border-color: #ddd; }
+        body.theme-light .selector { background: #fff; border-color: #ccc; color: #333; }
+        body.theme-light .btn-back { background: #fff; border-color: #ccc; color: #333; }
+        body.theme-light .btn-back:hover { background: #f0f0f0; border-color: #999; }
+        body.theme-light .gold-display { background: #fff; border-color: #ddd; }
+        body.theme-light .stash-tab { background: #f0f0f0; border-color: #ccc; color: #666; }
+        body.theme-light .stash-tab.active { background: #fff; color: #333; border-bottom-color: #fff; }
+        body.theme-light .warning-banner { background: #fff8e0; border-color: #e0c000; }
+        body.theme-light .warning-banner span { color: #856404 !important; }
+        body.theme-light .warning-banner i { color: #856404 !important; }
+        body.theme-light .text-muted { color: #888; }
+        body.theme-light .text-secondary { color: #666; }
+        body.theme-light .text-white { color: #222 !important; }
+        body.theme-light .text-gray-400 { color: #666 !important; }
+        body.theme-light .text-gray-500 { color: #888 !important; }
+        body.theme-light .text-\[\#bfa969\] { color: #8B7500 !important; }
+        body.theme-light .dump-time { color: #888; }
+
+        .item-quality-low { color: var(--quality-low); }
+        .item-quality-normal { color: var(--quality-normal); }
+        .item-quality-superior { color: var(--quality-superior); }
+        .item-quality-magic { color: var(--quality-magic); }
+        .item-quality-set { color: var(--quality-set); }
+        .item-quality-rare { color: var(--quality-rare); }
+        .item-quality-unique { color: var(--quality-unique); }
+        .item-quality-crafted { color: var(--quality-crafted); }
+        .item-quality-runeword { color: var(--quality-runeword); }
+
+        .inventory-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .inventory-items-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+        }
+
+        .inventory-items-layer .inventory-item {
+            pointer-events: auto;
+        }
+
+        .inventory-grid {
+            display: grid;
+            gap: 1px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .inventory-slot {
+            width: 29px;
+            height: 29px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #333;
+            position: relative;
+        }
+
+        .inventory-slot:hover {
+            border-color: #666;
+        }
+
+        .inventory-item {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            z-index: 10;
+            transition: transform 0.1s ease, z-index 0s;
+            image-rendering: pixelated;
+        }
+
+        .inventory-item:hover {
+            transform: scale(1.05);
+            z-index: 100;
+        }
+
+        .item-tooltip {
+            display: none;
+            position: fixed;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 12px;
+            min-width: 200px;
+            max-width: 350px;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .item-tooltip.visible {
+            display: block;
+        }
+
+        .item-tooltip .item-name {
+            font-size: 14px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 8px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .item-tooltip .item-type {
+            font-size: 11px;
+            color: #888;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .item-tooltip .item-stats {
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .item-tooltip .stat-line {
+            color: #6B8AFF;
+            margin: 2px 0;
+        }
+
+        .item-tooltip .stat-line.base {
+            color: #FFFFFF;
+        }
+
+        .item-tooltip .ethereal {
+            color: #888;
+            font-style: italic;
+        }
+
+        .item-tooltip .sockets {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #333;
+        }
+
+        .item-tooltip .socket-item {
+            color: #FFA500;
+            margin: 2px 0;
+            font-size: 11px;
+        }
+
+        .item-tooltip .level-req {
+            color: #FF4444;
+            margin-top: 6px;
+            font-size: 11px;
+        }
+
+        .equipment-panel {
+            position: relative;
+            width: 350px;
+            height: 450px;
+            background-image: url('/assets/UI/equipment.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .equipment-slot {
+            position: absolute;
+            cursor: pointer;
+        }
+
+        /* Equipment slot positions (approximate, adjust based on actual image) */
+        .slot-head { top: 10px; left: 145px; width: 60px; height: 60px; }
+        .slot-neck { top: 20px; left: 220px; width: 30px; height: 30px; }
+        .slot-torso { top: 85px; left: 130px; width: 90px; height: 90px; }
+        .slot-left-arm { top: 85px; left: 30px; width: 60px; height: 120px; }
+        .slot-right-arm { top: 85px; left: 260px; width: 60px; height: 120px; }
+        .slot-left-ring { top: 210px; left: 100px; width: 30px; height: 30px; }
+        .slot-right-ring { top: 210px; left: 220px; width: 30px; height: 30px; }
+        .slot-belt { top: 190px; left: 140px; width: 60px; height: 30px; }
+        .slot-gloves { top: 230px; left: 30px; width: 60px; height: 60px; }
+        .slot-feet { top: 280px; left: 260px; width: 60px; height: 60px; }
+
+        /* New visual equipment layout */
+        .equipment-visual {
+            display: flex;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .equip-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .equip-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .equip-spacer {
+            width: 60px;
+        }
+
+        .equip-slot {
+            background: rgba(20, 20, 40, 0.8);
+            border: 2px solid #444;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .equip-slot:hover {
+            border-color: #666;
+        }
+
+        .equip-head { width: 60px; height: 60px; }
+        .equip-torso { width: 60px; height: 90px; }
+        .equip-weapon { width: 60px; height: 120px; }
+        .equip-shield { width: 60px; height: 90px; }
+        .equip-gloves { width: 60px; height: 60px; }
+        .equip-boots { width: 60px; height: 60px; }
+        .equip-belt { width: 60px; height: 30px; }
+        .equip-neck { width: 30px; height: 30px; }
+        .equip-ring { width: 28px; height: 28px; }
+
+        .equip-slot-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .equip-accessories {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .equip-rings {
+            display: flex;
+            gap: 4px;
+        }
+
+        .equip-item {
+            width: 100%;
+            height: 100%;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            image-rendering: pixelated;
+        }
+
+        .equip-item:hover {
+            filter: brightness(1.2);
+        }
+
+        .stash-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 8px;
+        }
+
+        .stash-tab {
+            padding: 6px 16px;
+            background: rgba(40, 40, 60, 0.8);
+            border: 1px solid #444;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            color: #888;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .stash-tab:hover {
+            background: rgba(60, 60, 80, 0.8);
+            color: #aaa;
+        }
+
+        .stash-tab.active {
+            background: rgba(80, 80, 100, 0.8);
+            color: #fff;
+            border-bottom-color: transparent;
+        }
+
+        .stash-content {
+            display: none;
+        }
+
+        .stash-content.active {
+            display: block;
+        }
+
+        /* Item Selection Styles */
+        .inventory-item.selectable {
+            cursor: pointer;
+        }
+
+        .inventory-item.selectable:hover {
+            outline: 2px solid rgba(107, 138, 255, 0.6);
+            outline-offset: 1px;
+        }
+
+        .inventory-item.selected {
+            outline: 2px solid #4CAF50 !important;
+            outline-offset: 1px;
+            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
+        }
+
+        .inventory-item.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: #4CAF50;
+            color: white;
+            font-size: 10px;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Selection Mode Toggle */
+        .selection-mode-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: rgba(40, 40, 60, 0.9);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+
+        .selection-mode-toggle:hover {
+            background: rgba(60, 60, 80, 0.9);
+            border-color: #666;
+        }
+
+        .selection-mode-toggle.active {
+            background: rgba(76, 175, 80, 0.3);
+            border-color: #4CAF50;
+            color: #4CAF50;
+        }
+
+        /* Floating Action Button for Drop */
+        .drop-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            border-radius: 28px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.4);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .drop-fab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.5);
+        }
+
+        .drop-fab.visible {
+            display: flex;
+        }
+
+        .drop-fab .badge {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        /* Drop Modal */
+        .drop-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drop-modal-overlay.visible {
+            display: flex;
+        }
+
+        .drop-modal {
+            background: rgba(30, 30, 50, 0.98);
+            border: 1px solid #4a4a4a;
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 400px;
+            max-width: 500px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .drop-modal h3 {
+            color: #bfa969;
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .drop-modal-items {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            border: 1px solid #333;
+        }
+
+        .drop-modal-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+
+        .drop-modal-item .item-icon {
+            width: 24px;
+            height: 24px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+        }
+
+        .drop-modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .drop-modal-form label {
+            font-size: 13px;
+            color: #aaa;
+            margin-bottom: 4px;
+        }
+
+        .drop-modal-form input {
+            padding: 10px 12px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .drop-modal-form input:focus {
+            outline: none;
+            border-color: #6B8AFF;
+        }
+
+        .drop-modal-actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .drop-modal-actions button {
+            flex: 1;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-drop-cancel {
+            background: rgba(60, 60, 80, 0.8);
+            border: 1px solid #4a4a4a;
+            color: #aaa;
+        }
+
+        .btn-drop-cancel:hover {
+            background: rgba(80, 80, 100, 0.8);
+            color: #fff;
+        }
+
+        .btn-drop-confirm {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            border: none;
+            color: white;
+        }
+
+        .btn-drop-confirm:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-drop-confirm:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        /* Selection info bar */
+        .selection-info {
+            display: none;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: rgba(76, 175, 80, 0.15);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+            border-radius: 6px;
+            margin-bottom: 12px;
+        }
+
+        .selection-info.visible {
+            display: flex;
+        }
+
+        .selection-info .count {
+            font-weight: 600;
+            color: #4CAF50;
+        }
+
+        .btn-clear-selection {
+            margin-left: auto;
+            padding: 4px 12px;
+            background: rgba(255, 100, 100, 0.2);
+            border: 1px solid rgba(255, 100, 100, 0.4);
+            border-radius: 4px;
+            color: #ff6b6b;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .btn-clear-selection:hover {
+            background: rgba(255, 100, 100, 0.3);
+        }
+
+        /* ========== SEARCH & FILTER STYLES ========== */
+        .search-container {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-input-wrapper i {
+            position: absolute;
+            left: 12px;
+            color: #888;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 12px 12px 40px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #6B8AFF;
+        }
+
+        .search-filters {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-chip {
+            padding: 4px 12px;
+            background: rgba(40, 40, 60, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-chip:hover {
+            border-color: #6B8AFF;
+        }
+
+        .filter-chip.active {
+            background: rgba(107, 138, 255, 0.3);
+            border-color: #6B8AFF;
+            color: #6B8AFF;
+        }
+
+        .search-results {
+            margin-top: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .search-result-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(30, 30, 50, 0.6);
+            border: 1px solid #333;
+            border-radius: 6px;
+            margin-bottom: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .search-result-item:hover {
+            background: rgba(40, 40, 60, 0.8);
+            border-color: #4a4a4a;
+        }
+
+        .search-result-icon {
+            width: 32px;
+            height: 32px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            image-rendering: pixelated;
+        }
+
+        .search-result-info {
+            flex: 1;
+        }
+
+        .search-result-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .search-result-location {
+            font-size: 11px;
+            color: #888;
+            margin-top: 2px;
+        }
+
+        .search-result-character {
+            padding: 2px 8px;
+            background: rgba(107, 138, 255, 0.2);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #6B8AFF;
+        }
+
+        /* ========== CROSS-CHARACTER VIEW STYLES ========== */
+        .cross-char-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .cross-char-card {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .cross-char-header {
+            padding: 12px 16px;
+            background: rgba(40, 40, 60, 0.8);
+            border-bottom: 1px solid #4a4a4a;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cross-char-header h4 {
+            margin: 0;
+            font-size: 14px;
+            color: #bfa969;
+        }
+
+        .cross-char-header .char-info {
+            font-size: 11px;
+            color: #888;
+        }
+
+        .cross-char-items {
+            padding: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .mini-item {
+            width: 28px;
+            height: 28px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            border: 1px solid #333;
+            border-radius: 4px;
+            cursor: pointer;
+            image-rendering: pixelated;
+        }
+
+        .mini-item:hover {
+            border-color: #6B8AFF;
+            transform: scale(1.1);
+        }
+
+        /* ========== RUNEWORD PLANNER STYLES ========== */
+        .runeword-planner {
+            margin-top: 16px;
+        }
+
+        .runeword-section {
+            margin-bottom: 24px;
+        }
+
+        .runeword-section h4 {
+            color: #bfa969;
+            margin: 0 0 12px 0;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .runeword-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+        }
+
+        .runeword-card {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .runeword-card:hover {
+            border-color: #6B8AFF;
+            background: rgba(40, 40, 60, 0.8);
+        }
+
+        .runeword-card.can-make {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .runeword-card.almost {
+            border-color: #FFA500;
+            background: rgba(255, 165, 0, 0.1);
+        }
+
+        .runeword-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #bfa969;
+            margin-bottom: 4px;
+        }
+
+        .runeword-name a {
+            color: inherit;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .runeword-name a:hover {
+            color: #d4c088;
+            text-decoration: underline;
+        }
+
+        .runeword-bases {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .runeword-runes {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .rune-slot {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .rune-slot.have {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        .rune-slot.missing {
+            background: rgba(255, 100, 100, 0.2);
+            color: #ff6b6b;
+        }
+
+        .runeword-stats {
+            margin-top: 8px;
+            font-size: 11px;
+            color: #6B8AFF;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .rune-inventory {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(20, 20, 40, 0.6);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+
+        .rune-count {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            background: rgba(40, 40, 60, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .rune-count .rune-name {
+            color: #FFA500;
+        }
+
+        .rune-count .count {
+            color: #4CAF50;
+            font-weight: 600;
+        }
+
+        /* Base tags for runeword planner */
+        .runeword-available-bases {
+            margin-top: 6px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .runeword-no-bases {
+            margin-top: 6px;
+        }
+
+        .base-tag {
+            padding: 2px 6px;
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.4);
+            border-radius: 4px;
+            font-size: 10px;
+            color: #4CAF50;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .base-tag:hover {
+            background: rgba(76, 175, 80, 0.4);
+            border-color: rgba(76, 175, 80, 0.7);
+            color: #6fcf73;
+        }
+
+        .base-tag-more {
+            padding: 2px 6px;
+            background: rgba(100, 100, 100, 0.2);
+            border-radius: 4px;
+            font-size: 10px;
+            color: #888;
+        }
+
+        /* ========== TABS FOR ARMORY VIEWS ========== */
+        .armory-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #4a4a4a;
+            padding-bottom: 4px;
+        }
+
+        .armory-tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -5px;
+        }
+
+        .armory-tab:hover {
+            color: #bfa969;
+        }
+
+        .armory-tab.active {
+            color: #bfa969;
+            border-bottom-color: #bfa969;
+        }
+
+        .armory-view {
+            display: none;
+        }
+
+        .armory-view.active {
+            display: block;
+        }
+
+        /* ========== KEYBOARD SHORTCUTS HELP ========== */
+        .shortcuts-help {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            padding: 8px 12px;
+            background: rgba(30, 30, 50, 0.9);
+            border: 1px solid #4a4a4a;
+            border-radius: 6px;
+            font-size: 11px;
+            color: #888;
+            z-index: 100;
+        }
+
+        .shortcuts-help kbd {
+            padding: 2px 6px;
+            background: rgba(60, 60, 80, 0.8);
+            border: 1px solid #555;
+            border-radius: 3px;
+            font-family: monospace;
+            color: #bfa969;
+        }
+
+        /* ========== CONTEXT MENU ========== */
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: rgba(30, 30, 50, 0.98);
+            border: 1px solid #4a4a4a;
+            border-radius: 6px;
+            padding: 4px 0;
+            min-width: 160px;
+            z-index: 3000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .context-menu.visible {
+            display: block;
+        }
+
+        .context-menu-item {
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.1s;
+        }
+
+        .context-menu-item:hover {
+            background: rgba(107, 138, 255, 0.2);
+        }
+
+        .context-menu-item i {
+            width: 16px;
+            color: #888;
+        }
+
+        .armory-row {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .armory-row > div {
+            flex: 1 1 33.33%;
+            min-width: 0;
+        }
+
+        .section-title {
+            font-size: 16px;
+            color: #bfa969;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #4a4a4a;
+            padding-bottom: 6px;
+        }
+
+        .character-header {
+            border: 1px solid;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .selector {
+            border: 1px solid;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .selector:focus {
+            outline: none;
+            border-color: #6B8AFF;
+        }
+
+        .gold-display {
+            background: rgba(30, 30, 50, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            padding: 8px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gold-display .gold-icon {
+            color: #FFD700;
+        }
+
+        .gold-display .gold-amount {
+            color: #FFD700;
+            font-weight: bold;
+        }
+
+        .dump-time {
+            color: #666;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+
+        .no-armory-message {
+            background: rgba(40, 40, 60, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            color: #888;
+        }
+
+        .no-armory-message h2 {
+            color: #bfa969;
+            margin-bottom: 16px;
+        }
+
+        .btn-back {
+            background: rgba(40, 40, 60, 0.9);
+            border: 1px solid #4a4a4a;
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-back:hover {
+            background: rgba(60, 60, 80, 0.9);
+            border-color: #666;
+        }
+    </style>
+    <script>
+        // Apply theme immediately to prevent flash of unstyled content
+        (function() {
+            var theme = localStorage.getItem('armoryTheme') || 'colorful';
+            document.documentElement.classList.add('theme-' + theme);
+        })();
+    </script>
+</head>
+<body class="text-white theme-colorful">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-8">
+            <a href="/" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back to Dashboard
+            </a>
+            <h1 class="text-2xl font-bold text-[#bfa969]">
+                <i class="bi bi-shield-shaded mr-2"></i>Armory
+            </h1>
+            <div class="flex items-center gap-4">
+                <select class="selector theme-selector" onchange="changeTheme(this.value)" title="Theme">
+                    <option value="colorful">Colorful</option>
+                    <option value="dark">Dark</option>
+                    <option value="light">Light</option>
+                </select>
+                <select class="selector" onchange="loadCharacter(this.value)">
+                    <option value="">Select Character...</option>
+                    {{ range .Characters }}
+                    <option value="{{ . }}" {{ if eq . $.Character }}selected{{ end }}>{{ . }}</option>
+                    {{ end }}
+                </select>
+            </div>
+        </div>
+
+        {{ if .Error }}
+        <div class="no-armory-message">
+            <h2><i class="bi bi-exclamation-triangle"></i> No Armory Data</h2>
+            <p>{{ .Error }}</p>
+            <p class="mt-4">Start the character in a game to generate armory data.</p>
+        </div>
+        {{ else if .Armory }}
+        
+        <!-- Search Bar (Always Visible) -->
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="bi bi-search"></i>
+                <input type="text" class="search-input" id="globalSearch" placeholder="Search items across all characters... (Press / to focus)" autocomplete="off">
+            </div>
+            <div class="search-filters">
+                <span class="filter-chip active" data-filter="all">All</span>
+                <span class="filter-chip" data-filter="unique">Unique</span>
+                <span class="filter-chip" data-filter="set">Set</span>
+                <span class="filter-chip" data-filter="runeword">Runeword</span>
+                <span class="filter-chip" data-filter="rune">Runes</span>
+                <span class="filter-chip" data-filter="charm">Charms</span>
+                <span class="filter-chip" data-filter="jewelry">Jewelry</span>
+            </div>
+            <div class="search-results" id="searchResults" style="display: none;"></div>
+        </div>
+
+        <!-- Armory Tabs -->
+        <div class="armory-tabs">
+            <button class="armory-tab active" data-view="character"><i class="bi bi-person-fill"></i> Character</button>
+            <button class="armory-tab" data-view="cross-character"><i class="bi bi-people-fill"></i> All Characters</button>
+            <button class="armory-tab" data-view="runeword-planner"><i class="bi bi-gem"></i> Runeword Planner</button>
+        </div>
+
+        <!-- Character View (Default) -->
+        <div class="armory-view active" id="view-character">
+        
+        <!-- Character Info -->
+        <div class="character-header panel panel-header">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold">{{ .Armory.CharacterName }}</h2>
+                    <p class="text-gray-400">Level {{ .Armory.Level }} {{ .Armory.Class }}</p>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="gold-display">
+                        <i class="bi bi-coin gold-icon"></i>
+                        <span class="gold-amount">{{ .Armory.Gold }}</span>
+                        <span class="text-gray-500">(carried)</span>
+                    </div>
+                    <div class="gold-display">
+                        <i class="bi bi-safe gold-icon"></i>
+                        <span class="gold-amount">{{ index .Armory.StashedGold 0 }}</span>
+                        <span class="text-gray-500">(stashed)</span>
+                    </div>
+                </div>
+            </div>
+            <p class="dump-time">Last updated: {{ .Armory.DumpTime.Format "Jan 02, 2006 15:04:05" }} (Game: {{ .Armory.GameName }})</p>
+        </div>
+
+        <!-- Warning Notice -->
+        <div class="warning-banner rounded-lg p-3 mb-4 flex items-center gap-3 border" style="max-width: 1100px; margin: 0 auto 16px auto;">
+            <i class="bi bi-exclamation-triangle-fill text-[#FFD700] text-xl"></i>
+            <span class="text-[#FFD700] text-sm">PLEASE NOTE: There might be some images missing, if you find a missing image please report it to bug section.</span>
+        </div>
+
+        <!-- Row 1: Equipped | Inventory | Belt -->
+        <div class="panel border rounded-lg flex flex-wrap armory-row">
+            <!-- Equipment Panel -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-person-fill mr-2"></i>Equipped</h3>
+                <div class="equipment-visual">
+                    <!-- Visual equipment layout -->
+                    <div class="equip-grid">
+                        <!-- Row 1: Head -->
+                        <div class="equip-row">
+                            <div class="equip-spacer"></div>
+                            <div class="equip-slot equip-head" data-slot="head">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "head" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-spacer"></div>
+                        </div>
+                        <!-- Row 2: Weapon, Torso, Amulet + Shield -->
+                        <div class="equip-row">
+                            <div class="equip-slot equip-weapon" data-slot="left_arm">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "left_arm" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot equip-torso" data-slot="torso">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "torso" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot-group">
+                                <div class="equip-slot equip-neck" data-slot="neck">
+                                    {{ range .Armory.Equipped }}{{ if eq .BodyLocation "neck" }}
+                                    <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                         style="background-image: url('/items/{{ .ImageName }}');"
+                                         data-item='{{ . | json }}'
+                                         onmouseenter="showTooltip(event, this)"
+                                         onmouseleave="hideTooltip()"
+                                         onmousemove="moveTooltip(event)">
+                                    </div>
+                                    {{ end }}{{ end }}
+                                </div>
+                                <div class="equip-slot equip-shield" data-slot="right_arm">
+                                    {{ range .Armory.Equipped }}{{ if eq .BodyLocation "right_arm" }}
+                                    <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                         style="background-image: url('/items/{{ .ImageName }}');"
+                                         data-item='{{ . | json }}'
+                                         onmouseenter="showTooltip(event, this)"
+                                         onmouseleave="hideTooltip()"
+                                         onmousemove="moveTooltip(event)">
+                                    </div>
+                                    {{ end }}{{ end }}
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Row 3: Gloves, Belt + Rings, Boots -->
+                        <div class="equip-row">
+                            <div class="equip-slot equip-gloves" data-slot="gloves">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "gloves" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot-group">
+                                <div class="equip-slot equip-belt" data-slot="belt">
+                                    {{ range .Armory.Equipped }}{{ if eq .BodyLocation "belt" }}
+                                    <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                         style="background-image: url('/items/{{ .ImageName }}');"
+                                         data-item='{{ . | json }}'
+                                         onmouseenter="showTooltip(event, this)"
+                                         onmouseleave="hideTooltip()"
+                                         onmousemove="moveTooltip(event)">
+                                    </div>
+                                    {{ end }}{{ end }}
+                                </div>
+                                <div class="equip-rings">
+                                    <div class="equip-slot equip-ring" data-slot="left_ring">
+                                        {{ range .Armory.Equipped }}{{ if eq .BodyLocation "left_ring" }}
+                                        <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                             style="background-image: url('/items/{{ .ImageName }}');"
+                                             data-item='{{ . | json }}'
+                                             onmouseenter="showTooltip(event, this)"
+                                             onmouseleave="hideTooltip()"
+                                             onmousemove="moveTooltip(event)">
+                                        </div>
+                                        {{ end }}{{ end }}
+                                    </div>
+                                    <div class="equip-slot equip-ring" data-slot="right_ring">
+                                        {{ range .Armory.Equipped }}{{ if eq .BodyLocation "right_ring" }}
+                                        <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                             style="background-image: url('/items/{{ .ImageName }}');"
+                                             data-item='{{ . | json }}'
+                                             onmouseenter="showTooltip(event, this)"
+                                             onmouseleave="hideTooltip()"
+                                             onmousemove="moveTooltip(event)">
+                                        </div>
+                                        {{ end }}{{ end }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="equip-slot equip-boots" data-slot="feet">
+                                {{ range .Armory.Equipped }}{{ if eq .BodyLocation "feet" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inventory -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-grid-3x3-gap mr-2"></i>Inventory</h3>
+                <div class="inventory-container">
+                    <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(4, 29px);">
+                        {{ range $row := iterate 4 }}
+                        {{ range $col := iterate 10 }}
+                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                        {{ end }}
+                        {{ end }}
+                    </div>
+                    <div class="inventory-items-layer">
+                        {{ range .Armory.Inventory }}
+                        <div class="inventory-item"
+                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)"
+                             oncontextmenu="showItemContextMenu(event, this)">
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Belt -->
+            <div class="p-4 flex-1 min-w-[200px]">
+                <h3 class="section-title"><i class="bi bi-columns-gap mr-2"></i>Belt</h3>
+                <div class="inventory-container">
+                    <div class="inventory-grid" style="grid-template-columns: repeat(4, 29px); grid-template-rows: repeat(4, 29px);">
+                        {{ range $row := iterate 4 }}
+                        {{ range $col := iterate 4 }}
+                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                        {{ end }}
+                        {{ end }}
+                    </div>
+                    <div class="inventory-items-layer">
+                        {{ range .Armory.Belt }}
+                        <div class="inventory-item"
+                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: 29px; height: 29px; background-image: url('/items/{{ .ImageName }}');"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)"
+                             oncontextmenu="showItemContextMenu(event, this)">
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row 2: Stash | Cube | Mercenary -->
+        <div class="panel border rounded-lg flex flex-wrap mt-6 armory-row">
+            <!-- Stash -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;"><i class="bi bi-box-seam mr-2"></i>Stash</h3>
+                    <button class="selection-mode-toggle" id="selectionModeBtn" onclick="toggleSelectionMode()">
+                        <i class="bi bi-check2-square"></i>
+                        <span>Select Items</span>
+                    </button>
+                </div>
+                
+                <!-- Selection Info Bar -->
+                <div class="selection-info" id="selectionInfo">
+                    <i class="bi bi-info-circle"></i>
+                    <span><span class="count" id="selectedCount">0</span> items selected</span>
+                    <button class="btn-clear-selection" onclick="clearSelection()">Clear</button>
+                </div>
+                
+                <div class="stash-tabs">
+                    <button class="stash-tab active" onclick="showStashTab('personal')">Personal</button>
+                    <button class="stash-tab" onclick="showStashTab('shared1')">Shared 1</button>
+                    <button class="stash-tab" onclick="showStashTab('shared2')">Shared 2</button>
+                    <button class="stash-tab" onclick="showStashTab('shared3')">Shared 3</button>
+                </div>
+                
+                <!-- Personal Stash -->
+                <div id="stash-personal" class="stash-content active">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.Stash }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Stash 1 -->
+                <div id="stash-shared1" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash1 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Stash 2 -->
+                <div id="stash-shared2" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash2 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Shared Stash 3 -->
+                <div id="stash-shared3" class="stash-content">
+                    <div class="inventory-container">
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer">
+                            {{ range .Armory.SharedStash3 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cube -->
+            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+                <h3 class="section-title"><i class="bi bi-box mr-2"></i>Horadric Cube</h3>
+                <div class="inventory-container">
+                    <div class="inventory-grid" style="grid-template-columns: repeat(3, 29px); grid-template-rows: repeat(4, 29px);">
+                        {{ range $row := iterate 4 }}
+                        {{ range $col := iterate 3 }}
+                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                        {{ end }}
+                        {{ end }}
+                    </div>
+                    <div class="inventory-items-layer">
+                        {{ range .Armory.Cube }}
+                        <div class="inventory-item"
+                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                             data-item='{{ . | json }}'
+                             onmouseenter="showTooltip(event, this)"
+                             onmouseleave="hideTooltip()"
+                             onmousemove="moveTooltip(event)"
+                             oncontextmenu="showItemContextMenu(event, this)">
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+            <!-- Mercenary -->
+            <div class="p-4 flex-1 min-w-[200px]">
+                <h3 class="section-title"><i class="bi bi-person-badge mr-2"></i>Mercenary</h3>
+                {{ if .Armory.Mercenary }}
+                <div class="equipment-visual">
+                    <div class="equip-grid">
+                        <!-- Row 1: Head -->
+                        <div class="equip-row">
+                            <div class="equip-spacer"></div>
+                            <div class="equip-slot equip-head" data-slot="head">
+                                {{ range .Armory.Mercenary }}{{ if eq .BodyLocation "head" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-spacer"></div>
+                        </div>
+                        <!-- Row 2: Weapon, Torso -->
+                        <div class="equip-row">
+                            <div class="equip-slot equip-weapon" data-slot="left_arm">
+                                {{ range .Armory.Mercenary }}{{ if eq .BodyLocation "left_arm" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-slot equip-torso" data-slot="torso">
+                                {{ range .Armory.Mercenary }}{{ if eq .BodyLocation "torso" }}
+                                <div class="equip-item item-quality-{{ .Quality | lower }}"
+                                     style="background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)">
+                                </div>
+                                {{ end }}{{ end }}
+                            </div>
+                            <div class="equip-spacer"></div>
+                        </div>
+                    </div>
+                </div>
+                {{ else }}
+                <p class="text-gray-500 text-sm">No mercenary</p>
+                {{ end }}
+            </div>
+        </div>
+        
+        </div><!-- End Character View -->
+
+        <!-- Cross-Character View -->
+        <div class="armory-view" id="view-cross-character">
+            <div class="search-container">
+                <h3 style="color: #bfa969; margin-bottom: 16px;"><i class="bi bi-people-fill"></i> All Characters Stash Overview</h3>
+                <p style="color: #888; margin-bottom: 16px; font-size: 13px;">View items across all characters. Click a character card to see their full armory.</p>
+            </div>
+            <div class="cross-char-grid" id="crossCharGrid">
+                <!-- Will be populated by JavaScript -->
+                <div style="text-align: center; padding: 40px; color: #888;">
+                    <i class="bi bi-hourglass-split" style="font-size: 24px;"></i>
+                    <p style="margin-top: 8px;">Loading all characters...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Runeword Planner View -->
+        <div class="armory-view" id="view-runeword-planner">
+            <div class="runeword-planner">
+                <h3 style="color: #bfa969; margin-bottom: 8px;"><i class="bi bi-gem"></i> Runeword Planner</h3>
+                <p style="color: #888; margin-bottom: 16px; font-size: 13px;">Analyzes runes across all characters to show which runewords you can make.</p>
+                
+                <!-- Your Rune Inventory -->
+                <div class="runeword-section">
+                    <h4><i class="bi bi-collection"></i> Your Runes (All Characters)</h4>
+                    <div class="rune-inventory" id="runeInventory">
+                        <span style="color: #888;">Loading rune inventory...</span>
+                    </div>
+                </div>
+
+                <!-- Can Make Now -->
+                <div class="runeword-section">
+                    <h4><i class="bi bi-check-circle-fill" style="color: #4CAF50;"></i> Can Make Now</h4>
+                    <div class="runeword-list" id="canMakeList">
+                        <span style="color: #888;">Analyzing...</span>
+                    </div>
+                </div>
+
+                <!-- Almost Complete -->
+                <div class="runeword-section">
+                    <h4><i class="bi bi-hourglass-split" style="color: #FFA500;"></i> Almost Complete (Missing 1-2 Runes)</h4>
+                    <div class="runeword-list" id="almostList">
+                        <span style="color: #888;">Analyzing...</span>
+                    </div>
+                </div>
+
+                <!-- All Runewords Reference -->
+                <div class="runeword-section">
+                    <h4><i class="bi bi-book"></i> All Runewords Reference</h4>
+                    <div style="margin-bottom: 12px;">
+                        <input type="text" class="search-input" id="runewordSearch" placeholder="Search runewords by name, runes, or base type..." style="max-width: 400px;">
+                    </div>
+                    <div class="runeword-list" id="allRunewordsList">
+                        <!-- Will be populated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{ else }}
+        <div class="no-armory-message">
+            <h2><i class="bi bi-shield-shaded"></i> Select a Character</h2>
+            <p>Choose a character from the dropdown to view their armory.</p>
+        </div>
+        {{ end }}
+    </div>
+
+    <!-- Context Menu -->
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="copyItemStats()">
+            <i class="bi bi-clipboard"></i> Copy Item Stats
+        </div>
+        <div class="context-menu-item" onclick="copyItemName()">
+            <i class="bi bi-type"></i> Copy Item Name
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div class="shortcuts-help" id="shortcutsHelp">
+        <kbd>/</kbd> Search &nbsp; <kbd>S</kbd> Selection &nbsp; <kbd>1-4</kbd> Stash Tabs &nbsp; <kbd>Esc</kbd> Close
+    </div>
+
+    <!-- Drop Selected Items FAB -->
+    <button class="drop-fab" id="dropFab" onclick="openDropModal()">
+        <i class="bi bi-box-arrow-down"></i>
+        Drop Selected
+        <span class="badge" id="dropFabCount">0</span>
+    </button>
+
+    <!-- Drop Modal -->
+    <div class="drop-modal-overlay" id="dropModalOverlay" onclick="closeDropModalOnOverlay(event)">
+        <div class="drop-modal">
+            <h3><i class="bi bi-box-arrow-down"></i> Drop Items</h3>
+            <p style="color: #888; font-size: 13px; margin-bottom: 16px;">
+                The bot will join the specified game and drop these items on the ground.
+            </p>
+            
+            <div class="drop-modal-items" id="dropModalItems">
+                <!-- Items will be populated by JS -->
+            </div>
+            
+            <div class="drop-modal-form">
+                <div>
+                    <label for="dropGameName">Game Name *</label>
+                    <input type="text" id="dropGameName" placeholder="Enter game name..." autocomplete="off">
+                </div>
+                <div>
+                    <label for="dropGamePassword">Password (optional)</label>
+                    <input type="password" id="dropGamePassword" placeholder="Enter password..." autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="drop-modal-actions">
+                <button class="btn-drop-cancel" onclick="closeDropModal()">Cancel</button>
+                <button class="btn-drop-confirm" id="dropConfirmBtn" onclick="executeDropRequest()">
+                    <i class="bi bi-send"></i> Drop Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tooltip -->
+    <div id="item-tooltip" class="item-tooltip"></div>
+
+    <script>
+        // Current character name for API calls
+        const currentCharacter = '{{ .Character }}';
+        
+        // Selection state
+        let selectionMode = false;
+        let selectedItems = new Map(); // key: DOM element, value: item data
+        let itemIdCounter = 0; // For generating unique IDs
+
+        function loadCharacter(name) {
+            if (name) {
+                window.location.href = '/armory?character=' + encodeURIComponent(name);
+            }
+        }
+
+        function showStashTab(tab) {
+            // Hide all stash contents
+            document.querySelectorAll('.stash-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.stash-tab').forEach(el => el.classList.remove('active'));
+            
+            // Show selected tab
+            document.getElementById('stash-' + tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // ============ SELECTION MODE ============
+        
+        function toggleSelectionMode() {
+            selectionMode = !selectionMode;
+            const btn = document.getElementById('selectionModeBtn');
+            const stashItems = document.querySelectorAll('#stash-personal .inventory-item, #stash-shared1 .inventory-item, #stash-shared2 .inventory-item, #stash-shared3 .inventory-item');
+            
+            if (selectionMode) {
+                btn.classList.add('active');
+                btn.innerHTML = '<i class="bi bi-x-square"></i><span>Exit Selection</span>';
+                stashItems.forEach(item => {
+                    item.classList.add('selectable');
+                    item.addEventListener('click', handleItemClick);
+                });
+            } else {
+                btn.classList.remove('active');
+                btn.innerHTML = '<i class="bi bi-check2-square"></i><span>Select Items</span>';
+                stashItems.forEach(item => {
+                    item.classList.remove('selectable');
+                    item.removeEventListener('click', handleItemClick);
+                });
+                clearSelection();
+            }
+        }
+
+        function handleItemClick(event) {
+            event.stopPropagation();
+            if (!selectionMode) return;
+            
+            const itemElement = event.currentTarget;
+            const itemData = JSON.parse(itemElement.dataset.item);
+            
+            // Use the DOM element itself as the key for guaranteed uniqueness
+            if (selectedItems.has(itemElement)) {
+                selectedItems.delete(itemElement);
+                itemElement.classList.remove('selected');
+            } else {
+                selectedItems.set(itemElement, {
+                    data: itemData,
+                    stashTab: getItemStashTab(itemElement)
+                });
+                itemElement.classList.add('selected');
+            }
+            
+            updateSelectionUI();
+        }
+
+        function getItemStashTab(element) {
+            if (element.closest('#stash-personal')) return 'personal';
+            if (element.closest('#stash-shared1')) return 'shared1';
+            if (element.closest('#stash-shared2')) return 'shared2';
+            if (element.closest('#stash-shared3')) return 'shared3';
+            return 'unknown';
+        }
+
+        function clearSelection() {
+            selectedItems.forEach((item, element) => {
+                element.classList.remove('selected');
+            });
+            selectedItems.clear();
+            updateSelectionUI();
+        }
+
+        function updateSelectionUI() {
+            const count = selectedItems.size;
+            const fab = document.getElementById('dropFab');
+            const fabCount = document.getElementById('dropFabCount');
+            const selectionInfo = document.getElementById('selectionInfo');
+            const selectedCount = document.getElementById('selectedCount');
+            
+            if (count > 0) {
+                fab.classList.add('visible');
+                fabCount.textContent = count;
+                selectionInfo.classList.add('visible');
+                selectedCount.textContent = count;
+            } else {
+                fab.classList.remove('visible');
+                selectionInfo.classList.remove('visible');
+            }
+        }
+
+        // ============ DROP MODAL ============
+        
+        function openDropModal() {
+            if (selectedItems.size === 0) return;
+            
+            const overlay = document.getElementById('dropModalOverlay');
+            const itemsContainer = document.getElementById('dropModalItems');
+            
+            // Populate items list
+            let html = '';
+            selectedItems.forEach((item, element) => {
+                const qualityClass = 'item-quality-' + (item.data.quality || 'normal').toLowerCase();
+                const displayName = item.data.identifiedName || item.data.runewordName || item.data.name;
+                html += `
+                    <div class="drop-modal-item">
+                        <div class="item-icon" style="background-image: url('/items/${item.data.imageName}');"></div>
+                        <span class="${qualityClass}">${displayName}</span>
+                        <span style="color: #666; font-size: 11px; margin-left: auto;">(${item.stashTab})</span>
+                    </div>
+                `;
+            });
+            itemsContainer.innerHTML = html;
+            
+            overlay.classList.add('visible');
+            document.getElementById('dropGameName').focus();
+        }
+
+        function closeDropModal() {
+            document.getElementById('dropModalOverlay').classList.remove('visible');
+            document.getElementById('dropGameName').value = '';
+            document.getElementById('dropGamePassword').value = '';
+        }
+
+        function closeDropModalOnOverlay(event) {
+            if (event.target === event.currentTarget) {
+                closeDropModal();
+            }
+        }
+
+        async function executeDropRequest() {
+            const gameName = document.getElementById('dropGameName').value.trim();
+            const password = document.getElementById('dropGamePassword').value.trim();
+            
+            if (!gameName) {
+                alert('Please enter a game name');
+                document.getElementById('dropGameName').focus();
+                return;
+            }
+            
+            if (!currentCharacter) {
+                alert('No character selected');
+                return;
+            }
+            
+            // Build custom items list from selection
+            // Only items that don't fit into runes/gems/keys go to customItems
+            const customItems = [];
+            const itemQuantities = {};
+            
+            selectedItems.forEach((item) => {
+                const itemName = item.data.name;
+                if (!itemQuantities[itemName]) {
+                    itemQuantities[itemName] = 0;
+                }
+                itemQuantities[itemName]++;
+            });
+            
+            // Build filter with exact quantities
+            const filter = {
+                enabled: true,
+                DropperOnlySelected: true, // Exclusive mode - only drop selected items
+                customItems: [],  // Will be populated only for non-rune/gem/key items
+                selectedRunes: [],
+                selectedGems: [],
+                selectedKeyTokens: [],
+                allowedQualities: []
+            };
+            
+            // Categorize items into appropriate filter arrays WITH quantity limits
+            Object.entries(itemQuantities).forEach(([name, qty]) => {
+                const lowerName = name.toLowerCase();
+                const normalizedName = lowerName.replace(/\s+/g, ''); // Remove spaces for matching
+                
+                if (isRune(name)) {
+                    // It's a rune - add with quantity limit
+                    // Use the original name as the API expects it (e.g., "BerRune" or "berrune")
+                    filter.selectedRunes.push({ name: normalizedName, quantity: qty });
+                } else if (isGem(name)) {
+                    // It's a gem - add with quantity limit
+                    filter.selectedGems.push({ name: normalizedName, quantity: qty });
+                } else if (isKeyOrToken(name)) {
+                    // It's a key or token - add with quantity limit
+                    // Normalize to match the format expected by drop filters (e.g., "keyofdestruction")
+                    filter.selectedKeyTokens.push({ name: normalizedName, quantity: qty });
+                } else {
+                    // Other items go to customItems (no quantity support in current API)
+                    customItems.push(name);
+                }
+            });
+            
+            filter.customItems = customItems;
+            
+            const requestBody = {
+                room: gameName,
+                password: password,
+                filter: filter
+            };
+            
+            const confirmBtn = document.getElementById('dropConfirmBtn');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Requesting...';
+            
+            try {
+                // Step 1: Queue the drop request
+                const dropResponse = await fetch(`/api/Drop/start-Dropper?supervisor=${encodeURIComponent(currentCharacter)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!dropResponse.ok) {
+                    const errorText = await dropResponse.text();
+                    throw new Error('Failed to queue drop: ' + errorText);
+                }
+                
+                // Step 2: Start the supervisor (this will work for both online and offline)
+                // For online supervisors, this is a no-op; for offline, it starts them
+                confirmBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting bot...';
+                
+                const startResponse = await fetch(`/start?characterName=${encodeURIComponent(currentCharacter)}`);
+                
+                if (!startResponse.ok) {
+                    // Check if it's just "already running" which is fine
+                    const startError = await startResponse.text();
+                    if (!startError.includes('already') && !startError.includes('running')) {
+                        console.warn('Start supervisor response:', startError);
+                        // Don't throw - the drop request is already queued
+                    }
+                }
+                
+                closeDropModal();
+                clearSelection();
+                toggleSelectionMode(); // Exit selection mode
+                showNotification('Drop request queued! The bot will join the game and drop items.', 'success');
+                
+            } catch (error) {
+                console.error('Drop request failed:', error);
+                showNotification(error.message || 'Failed to send drop request', 'error');
+            } finally {
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="bi bi-send"></i> Drop Now';
+            }
+        }
+
+        function isGem(name) {
+            const gemTypes = ['amethyst', 'diamond', 'emerald', 'ruby', 'sapphire', 'topaz', 'skull'];
+            const lowerName = name.toLowerCase();
+            return gemTypes.some(gem => lowerName.includes(gem));
+        }
+
+        function isKeyOrToken(name) {
+            // Match both formats: "KeyOfDestruction" and "keyofdestruction"
+            const keyTokenPatterns = ['keyofterror', 'keyofhate', 'keyofdestruction', 'tokenofabsolution'];
+            const lowerName = name.toLowerCase().replace(/\s+/g, ''); // Remove spaces and lowercase
+            return keyTokenPatterns.some(kt => lowerName.includes(kt));
+        }
+
+        function isRune(name) {
+            // Match rune names like "ElRune", "BerRune", etc.
+            const lowerName = name.toLowerCase();
+            return lowerName.endsWith('rune');
+        }
+
+        function showNotification(message, type) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                border-radius: 8px;
+                color: white;
+                font-size: 14px;
+                z-index: 3000;
+                animation: slideIn 0.3s ease;
+                ${type === 'success' ? 'background: #4CAF50;' : 'background: #f44336;'}
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Add animation keyframes
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes fadeOut {
+                from { opacity: 1; }
+                to { opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+
+        const tooltip = document.getElementById('item-tooltip');
+
+        function showTooltip(event, element) {
+            const itemData = JSON.parse(element.dataset.item);
+            tooltip.innerHTML = formatItemTooltip(itemData);
+            tooltip.classList.add('visible');
+            moveTooltip(event);
+        }
+
+        function hideTooltip() {
+            tooltip.classList.remove('visible');
+        }
+
+        function moveTooltip(event) {
+            const x = event.clientX + 15;
+            const y = event.clientY + 15;
+            
+            // Prevent tooltip from going off screen
+            const rect = tooltip.getBoundingClientRect();
+            const maxX = window.innerWidth - rect.width - 20;
+            const maxY = window.innerHeight - rect.height - 20;
+            
+            tooltip.style.left = Math.min(x, maxX) + 'px';
+            tooltip.style.top = Math.min(y, maxY) + 'px';
+        }
+
+        function formatItemTooltip(item) {
+            let html = '';
+            
+            // Item name with quality color
+            const qualityClass = 'item-quality-' + item.quality.toLowerCase();
+            let displayName = item.identifiedName || item.name;
+            
+            // For runewords, show runeword name
+            if (item.isRuneword && item.runewordName) {
+                displayName = item.runewordName;
+            }
+            
+            html += `<div class="item-name ${qualityClass}">${displayName}</div>`;
+            
+            // Base item name for uniques/sets/runewords
+            if ((item.quality === 'Unique' || item.quality === 'Set' || item.isRuneword) && item.name !== displayName) {
+                html += `<div class="item-type">${item.name}</div>`;
+            }
+            
+            // Defense
+            if (item.defense > 0) {
+                html += `<div class="stat-line base">Defense: ${item.defense}</div>`;
+            }
+            
+            // Damage
+            if (item.minDamage > 0 || item.maxDamage > 0) {
+                if (item.minDamage > 0 && item.maxDamage > 0) {
+                    html += `<div class="stat-line base">Damage: ${item.minDamage} to ${item.maxDamage}</div>`;
+                }
+            }
+            
+            // Durability
+            if (item.maxDurability > 0) {
+                html += `<div class="stat-line base">Durability: ${item.durability} of ${item.maxDurability}</div>`;
+            }
+            
+            // Level requirement
+            if (item.levelReq > 0) {
+                html += `<div class="level-req">Required Level: ${item.levelReq}</div>`;
+            }
+            
+            // Stats (filter out already shown stats)
+            const shownStatIds = [31, 72, 73, 92]; // Defense, Durability, MaxDurability, Level
+            if (item.stats && item.stats.length > 0) {
+                html += '<div class="item-stats">';
+                for (const stat of item.stats) {
+                    if (!shownStatIds.includes(stat.id) && stat.string) {
+                        html += `<div class="stat-line">${stat.string}</div>`;
+                    }
+                }
+                html += '</div>';
+            }
+            
+            // Ethereal
+            if (item.ethereal) {
+                html += `<div class="ethereal">Ethereal (Cannot be Repaired)</div>`;
+            }
+            
+            // Socketed items
+            if (item.sockets && item.sockets.length > 0) {
+                html += '<div class="sockets">';
+                html += `<div style="color: #888; font-size: 11px;">Socketed (${item.sockets.length}):</div>`;
+                for (const socketItem of item.sockets) {
+                    html += `<div class="socket-item">${socketItem.name}</div>`;
+                }
+                html += '</div>';
+            }
+            
+            return html;
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            const overlay = document.getElementById('dropModalOverlay');
+            const isModalOpen = overlay && overlay.classList.contains('visible');
+            const searchInput = document.getElementById('globalSearch');
+            const runewordSearchInput = document.getElementById('runewordSearch');
+            const isSearchFocused = document.activeElement === searchInput || document.activeElement === runewordSearchInput;
+            const isInputFocused = document.activeElement.tagName === 'INPUT';
+            
+            if (event.key === 'Escape') {
+                if (isModalOpen) {
+                    closeDropModal();
+                } else if (selectionMode) {
+                    toggleSelectionMode();
+                } else if (isSearchFocused) {
+                    document.activeElement.blur();
+                    clearSearch();
+                }
+                hideContextMenu();
+            }
+            
+            if (event.key === 'Enter' && isModalOpen) {
+                event.preventDefault();
+                executeDropRequest();
+            }
+
+            // Keyboard shortcuts (only when not typing)
+            if (!isInputFocused && !isModalOpen) {
+                // / to focus search
+                if (event.key === '/') {
+                    event.preventDefault();
+                    searchInput.focus();
+                }
+                // S to toggle selection mode
+                if (event.key === 's' || event.key === 'S') {
+                    event.preventDefault();
+                    toggleSelectionMode();
+                }
+                // 1-4 for stash tabs
+                if (event.key >= '1' && event.key <= '4') {
+                    const tabs = ['personal', 'shared1', 'shared2', 'shared3'];
+                    const tabIndex = parseInt(event.key) - 1;
+                    const tabBtn = document.querySelector(`.stash-tab[onclick*="${tabs[tabIndex]}"]`);
+                    if (tabBtn) tabBtn.click();
+                }
+            }
+        });
+
+        // ============ TABS ============
+        document.querySelectorAll('.armory-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                const view = this.dataset.view;
+                
+                // Update tab active state
+                document.querySelectorAll('.armory-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update view visibility
+                document.querySelectorAll('.armory-view').forEach(v => v.classList.remove('active'));
+                document.getElementById('view-' + view).classList.add('active');
+                
+                // Load data for views if needed
+                if (view === 'cross-character') {
+                    loadCrossCharacterView();
+                } else if (view === 'runeword-planner') {
+                    loadRunewordPlanner();
+                }
+            });
+        });
+
+        // ============ SEARCH ============
+        let allArmoryData = null;
+        let activeFilter = 'all';
+
+        document.getElementById('globalSearch').addEventListener('input', debounce(performSearch, 300));
+        
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                activeFilter = this.dataset.filter;
+                performSearch();
+            });
+        });
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        async function fetchAllArmoryData() {
+            if (allArmoryData) return allArmoryData;
+            try {
+                const response = await fetch('/api/armory/all');
+                allArmoryData = await response.json();
+                return allArmoryData;
+            } catch (error) {
+                console.error('Failed to fetch armory data:', error);
+                return {};
+            }
+        }
+
+        async function performSearch() {
+            const query = document.getElementById('globalSearch').value.toLowerCase().trim();
+            const resultsContainer = document.getElementById('searchResults');
+            
+            if (query.length < 2) {
+                resultsContainer.style.display = 'none';
+                return;
+            }
+
+            const data = await fetchAllArmoryData();
+            const results = [];
+
+            for (const [charName, armory] of Object.entries(data)) {
+                // Note: API returns lowercase property names
+                const locations = [
+                    { items: armory.equipped || [], location: 'Equipped' },
+                    { items: armory.inventory || [], location: 'Inventory' },
+                    { items: armory.stash || [], location: 'Personal Stash' },
+                    { items: armory.sharedStash1 || [], location: 'Shared Stash 1' },
+                    { items: armory.sharedStash2 || [], location: 'Shared Stash 2' },
+                    { items: armory.sharedStash3 || [], location: 'Shared Stash 3' },
+                    { items: armory.cube || [], location: 'Cube' },
+                    { items: armory.belt || [], location: 'Belt' },
+                ];
+
+                for (const loc of locations) {
+                    for (const item of loc.items) {
+                        if (matchesSearch(item, query) && matchesFilter(item)) {
+                            results.push({
+                                item: item,
+                                character: charName,
+                                location: loc.location
+                            });
+                        }
+                    }
+                }
+            }
+
+            renderSearchResults(results);
+        }
+
+        function matchesSearch(item, query) {
+            const searchFields = [
+                item.name?.toLowerCase() || '',
+                item.identifiedName?.toLowerCase() || '',  // Unique/Set item names
+                item.baseName?.toLowerCase() || '',
+                item.runewordName?.toLowerCase() || '',    // Runeword names
+                (item.stats || []).map(s => s.string?.toLowerCase() || '').join(' ')
+            ];
+            return searchFields.some(field => field.includes(query));
+        }
+
+        function matchesFilter(item) {
+            if (activeFilter === 'all') return true;
+            if (activeFilter === 'unique') return item.quality === 'Unique';
+            if (activeFilter === 'set') return item.quality === 'Set';
+            if (activeFilter === 'runeword') return item.isRuneword;
+            if (activeFilter === 'rune') return item.name?.toLowerCase().endsWith('rune');
+            if (activeFilter === 'charm') return item.name?.toLowerCase().includes('charm');
+            if (activeFilter === 'jewelry') return ['ring', 'amulet'].some(t => item.name?.toLowerCase().includes(t));
+            return true;
+        }
+
+        function renderSearchResults(results) {
+            const container = document.getElementById('searchResults');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<div style="color: #888; text-align: center; padding: 20px;">No items found</div>';
+                container.style.display = 'block';
+                return;
+            }
+
+            container.innerHTML = results.slice(0, 50).map(r => {
+                const escapedItem = escapeHtmlAttr(JSON.stringify(r.item));
+                // Show identifiedName for unique/set, runewordName for runewords, else base name
+                const displayName = r.item.identifiedName || r.item.runewordName || r.item.name;
+                return `
+                <div class="search-result-item" onclick="goToCharacter('${r.character}')" data-item='${escapedItem}'
+                     oncontextmenu="showItemContextMenu(event, this)">
+                    <div class="search-result-icon" style="background-image: url('/items/${r.item.imageName || 'unknown.png'}');"></div>
+                    <div class="search-result-info">
+                        <div class="search-result-name item-quality-${(r.item.quality || 'normal').toLowerCase()}">${escapeHtml(displayName)}</div>
+                        <div class="search-result-location">${r.location}</div>
+                    </div>
+                    <span class="search-result-character">${r.character}</span>
+                </div>
+                `;
+            }).join('');
+            
+            if (results.length > 50) {
+                container.innerHTML += `<div style="color: #888; text-align: center; padding: 10px; font-size: 12px;">...and ${results.length - 50} more results</div>`;
+            }
+            
+            container.style.display = 'block';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function escapeHtmlAttr(text) {
+            return text.replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        }
+
+        function clearSearch() {
+            document.getElementById('globalSearch').value = '';
+            document.getElementById('searchResults').style.display = 'none';
+        }
+
+        function goToCharacter(name) {
+            window.location.href = '/armory?character=' + encodeURIComponent(name);
+        }
+
+        // ============ CROSS-CHARACTER VIEW ============
+        async function loadCrossCharacterView() {
+            const data = await fetchAllArmoryData();
+            const grid = document.getElementById('crossCharGrid');
+            
+            if (Object.keys(data).length === 0) {
+                grid.innerHTML = '<div style="color: #888; text-align: center; padding: 40px;">No character data available</div>';
+                return;
+            }
+
+            grid.innerHTML = Object.entries(data).map(([name, armory]) => {
+                // Note: API returns lowercase property names
+                const allItems = [
+                    ...(armory.stash || []),
+                    ...(armory.sharedStash1 || []),
+                    ...(armory.sharedStash2 || []),
+                    ...(armory.sharedStash3 || [])
+                ];
+                
+                const notableItems = allItems.filter(i => 
+                    i.quality === 'Unique' || i.quality === 'Set' || i.isRuneword || i.name?.toLowerCase().endsWith('rune')
+                ).slice(0, 20);
+
+                return `
+                    <div class="cross-char-card" onclick="goToCharacter('${name}')">
+                        <div class="cross-char-header">
+                            <h4>${escapeHtml(name)}</h4>
+                            <span class="char-info">Level ${armory.level || '?'} ${armory.class || ''}</span>
+                        </div>
+                        <div class="cross-char-items">
+                            ${notableItems.length > 0 ? notableItems.map(item => {
+                                const escapedItem = escapeHtmlAttr(JSON.stringify(item));
+                                return `
+                                <div class="mini-item item-quality-${(item.quality || 'normal').toLowerCase()}"
+                                     style="background-image: url('/items/${item.imageName || 'unknown.png'}');"
+                                     title="${escapeHtml(item.name)}"
+                                     data-item='${escapedItem}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onclick="event.stopPropagation()">
+                                </div>
+                                `;
+                            }).join('') : '<span style="color: #666; font-size: 12px;">No notable items</span>'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ============ RUNEWORD PLANNER ============
+        const RUNEWORDS = [
+            { name: "Spirit", runes: ["Tal", "Thul", "Ort", "Amn"], bases: "Sword, Shield", level: 25, stats: "+2 All Skills, 25-35% FCR, 55% FHR, +89-112 Mana" },
+            { name: "Insight", runes: ["Ral", "Tir", "Tal", "Sol"], bases: "Polearm, Staff", level: 27, stats: "Meditation Aura, +1-6 Crit Strike, +35% FCR" },
+            { name: "Lore", runes: ["Ort", "Sol"], bases: "Helm", level: 27, stats: "+1 All Skills, +10 Energy, +30 Light Res" },
+            { name: "Stealth", runes: ["Tal", "Eth"], bases: "Body Armor", level: 17, stats: "+25% FRW, +25% FCR, +25% FHR" },
+            { name: "Smoke", runes: ["Nef", "Lum"], bases: "Body Armor", level: 37, stats: "+50 All Res, +20% FHR, +10 Energy" },
+            { name: "Ancient's Pledge", runes: ["Ral", "Ort", "Tal"], bases: "Shield", level: 21, stats: "+43% All Res, +50% Enhanced Defense" },
+            { name: "Rhyme", runes: ["Shael", "Eth"], bases: "Shield", level: 29, stats: "Cannot Be Frozen, +25% All Res, 40% MF" },
+            { name: "Leaf", runes: ["Tir", "Ral"], bases: "Staff", level: 19, stats: "+3 Fire Skills, +33% Fire Dmg" },
+            { name: "Malice", runes: ["Ith", "El", "Eth"], bases: "Melee Weapon", level: 15, stats: "+33% ED, -25% Target Defense, Open Wounds" },
+            { name: "Steel", runes: ["Tir", "El"], bases: "Sword, Axe, Mace", level: 13, stats: "+20% ED, +25% IAS, +3 Min Dmg" },
+            { name: "Strength", runes: ["Amn", "Tir"], bases: "Melee Weapon", level: 25, stats: "+35% ED, +25% Crushing Blow, +20 Str" },
+            { name: "Zephyr", runes: ["Ort", "Eth"], bases: "Missile Weapon", level: 21, stats: "+33% ED, +25% FRW, +66 AR" },
+            { name: "Honor", runes: ["Amn", "El", "Ith", "Tir", "Sol"], bases: "Melee Weapon", level: 27, stats: "+1 All Skills, +160% ED, +10 Str" },
+            { name: "King's Grace", runes: ["Amn", "Ral", "Thul"], bases: "Sword, Scepter", level: 25, stats: "+100% ED vs Demons/Undead, +150 AR" },
+            { name: "Holy Thunder", runes: ["Eth", "Ral", "Ort", "Tal"], bases: "Scepter", level: 21, stats: "+60% Lightning Dmg, +10 Max Dmg, +60% Light Res" },
+            { name: "White", runes: ["Dol", "Io"], bases: "Wand", level: 35, stats: "+3 P&B Skills, +20% FCR, +13 Mana" },
+            { name: "Treachery", runes: ["Shael", "Thul", "Lem"], bases: "Body Armor", level: 43, stats: "Fade, +45% IAS, +20% FHR" },
+            { name: "Lionheart", runes: ["Hel", "Lum", "Fal"], bases: "Body Armor", level: 41, stats: "+20% ED, +25 Str, +20 All Stats, +50 Life" },
+            { name: "Duress", runes: ["Shael", "Um", "Thul"], bases: "Body Armor", level: 47, stats: "+200% ED, +45% Open Wounds, +33% Crushing Blow" },
+            { name: "Gloom", runes: ["Fal", "Um", "Pul"], bases: "Body Armor", level: 47, stats: "Dim Vision, +30% All Res, +200-260% ED" },
+            { name: "Prudence", runes: ["Mal", "Tir"], bases: "Body Armor", level: 49, stats: "+140-170% ED, +25% All Res, +17 MDR" },
+            { name: "Rain", runes: ["Ort", "Mal", "Ith"], bases: "Body Armor", level: 49, stats: "+2 Druid Skills, +100-150 Mana, +5% Mana Steal" },
+            { name: "Stone", runes: ["Shael", "Um", "Pul", "Lum"], bases: "Body Armor", level: 47, stats: "+290% ED, +60% FHR, +16 Str/Vit" },
+            { name: "Venom", runes: ["Tal", "Dol", "Mal"], bases: "Weapon", level: 49, stats: "Venom, +273 Poison Dmg, +20% Poison Pierce" },
+            { name: "Crescent Moon", runes: ["Shael", "Um", "Tir"], bases: "Axe, Sword, Polearm", level: 47, stats: "-35% Enemy Light Res, Chain Lightning, +180-220% ED" },
+            { name: "Lawbringer", runes: ["Amn", "Lem", "Ko"], bases: "Sword, Hammer, Scepter", level: 43, stats: "Decrepify, Sanctuary Aura, Slain Monsters RIP" },
+            { name: "Oath", runes: ["Shael", "Pul", "Mal", "Lum"], bases: "Axe, Mace, Sword", level: 49, stats: "+210-340% ED, +30% IAS, Indestructible" },
+            { name: "Passion", runes: ["Dol", "Ort", "Eld", "Lem"], bases: "Weapon", level: 43, stats: "+25% IAS, Zeal, Berserk, +1 All Skills" },
+            { name: "Rift", runes: ["Hel", "Ko", "Lem", "Gul"], bases: "Polearm, Scepter", level: 53, stats: "Frozen Orb, Tornado, +20% AR, +5-10 Magic Absorb" },
+            { name: "Call to Arms", runes: ["Amn", "Ral", "Mal", "Ist", "Ohm"], bases: "Weapon", level: 57, stats: "Battle Orders/Command/Cry, +1 All Skills" },
+            { name: "Heart of the Oak", runes: ["Ko", "Vex", "Pul", "Thul"], bases: "Staff, Mace", level: 55, stats: "+3 All Skills, +40% FCR, +30-40% All Res" },
+            { name: "Harmony", runes: ["Tir", "Ith", "Sol", "Ko"], bases: "Missile Weapon", level: 39, stats: "Vigor Aura, +200-275% ED, +2 Skills" },
+            { name: "Melody", runes: ["Shael", "Ko", "Nef"], bases: "Missile Weapon", level: 39, stats: "+3 Bow/Xbow Skills, +50% ED, Knockback" },
+            { name: "Wrath", runes: ["Pul", "Lum", "Ber", "Mal"], bases: "Missile Weapon", level: 63, stats: "Decrepify, Life Tap, +300% Dmg vs Demons" },
+            { name: "Brand", runes: ["Jah", "Lo", "Mal", "Gul"], bases: "Missile Weapon", level: 65, stats: "Bone Spear, +260-340% ED, Knockback" },
+            { name: "Grief", runes: ["Eth", "Tir", "Lo", "Mal", "Ral"], bases: "Sword, Axe", level: 59, stats: "+340-400 Dmg, -25% Target Defense, Venom" },
+            { name: "Death", runes: ["Hel", "El", "Vex", "Ort", "Gul"], bases: "Sword, Axe", level: 55, stats: "+300-385% ED, Indestructible, 100% Deadly Strike" },
+            { name: "Last Wish", runes: ["Jah", "Mal", "Jah", "Sur", "Jah", "Ber"], bases: "Sword, Hammer, Axe", level: 65, stats: "Might Aura, Life Tap, Fade, +330-375% ED" },
+            { name: "Breath of the Dying", runes: ["Vex", "Hel", "El", "Eld", "Zod", "Eth"], bases: "Weapon", level: 69, stats: "+350-400% ED, 60% IAS, +30 All Attributes, Prevent Monster Heal" },
+            { name: "Infinity", runes: ["Ber", "Mal", "Ber", "Ist"], bases: "Polearm", level: 63, stats: "Conviction Aura, +255-325% ED, -45-55% Enemy Light Res" },
+            { name: "Enigma", runes: ["Jah", "Ith", "Ber"], bases: "Body Armor", level: 65, stats: "Teleport, +2 All Skills, +45% FRW, +0.75 Str/Level" },
+            { name: "Chains of Honor", runes: ["Dol", "Um", "Ber", "Ist"], bases: "Body Armor", level: 63, stats: "+2 All Skills, +200% Demon Dmg, +65% All Res, 8% Life Leech" },
+            { name: "Fortitude", runes: ["El", "Sol", "Dol", "Lo"], bases: "Weapon, Body Armor", level: 59, stats: "+300% ED (Weapon) or +200% ED +25-30 All Res (Armor), Chilling Armor" },
+            { name: "Exile", runes: ["Vex", "Ohm", "Ist", "Dol"], bases: "Paladin Shield", level: 57, stats: "Defiance Aura, Life Tap, +220-260% ED, Repairs Durability" },
+            { name: "Phoenix", runes: ["Vex", "Vex", "Lo", "Jah"], bases: "Weapon, Shield", level: 65, stats: "Redemption Aura, +350-400% ED, -28% Enemy Fire Res, +15-21 Fire Absorb" },
+            { name: "Doom", runes: ["Hel", "Ohm", "Um", "Lo", "Cham"], bases: "Axe, Polearm, Hammer", level: 67, stats: "Holy Freeze Aura, +330-370% ED, +45% IAS" },
+            { name: "Destruction", runes: ["Vex", "Lo", "Ber", "Jah", "Ko"], bases: "Polearm, Sword", level: 65, stats: "Volcano, Molten Boulder, +350% ED, +100% Crushing Blow" },
+            { name: "Eternity", runes: ["Amn", "Ber", "Ist", "Sol", "Sur"], bases: "Melee Weapon", level: 63, stats: "Indestructible, +260-310% ED, Slow 33%, Cannot Be Frozen" },
+            { name: "Dream", runes: ["Io", "Jah", "Pul"], bases: "Helm, Shield", level: 65, stats: "Holy Shock Aura, +10% FCR, +20-30% FHR, +150-220 Defense" },
+            { name: "Dragon", runes: ["Sur", "Lo", "Sol"], bases: "Body Armor, Shield", level: 61, stats: "Holy Fire Aura, +3-5 Hydra, +360 Defense vs Missile" },
+            { name: "Faith", runes: ["Ohm", "Jah", "Lem", "Eld"], bases: "Missile Weapon", level: 65, stats: "Fanaticism Aura, +1-2 All Skills, +330% ED, +300% AR" },
+            { name: "Ice", runes: ["Amn", "Shael", "Jah", "Lo"], bases: "Missile Weapon", level: 65, stats: "Holy Freeze Aura, +200-260% ED, -20% Enemy Cold Res" },
+            { name: "Pride", runes: ["Cham", "Sur", "Io", "Lo"], bases: "Polearm", level: 67, stats: "Concentration Aura, +260-300% ED, +1-99 Lightning Dmg" },
+            { name: "Silence", runes: ["Dol", "Eld", "Hel", "Ist", "Tir", "Vex"], bases: "Weapon", level: 55, stats: "+2 All Skills, +200% ED, 75% All Res, Hit Blinds" },
+            { name: "Beast", runes: ["Ber", "Tir", "Um", "Mal", "Lum"], bases: "Axe, Scepter, Hammer", level: 63, stats: "Fanaticism Aura, Werebear, +260-290% ED, +25-40 Str" },
+            { name: "Famine", runes: ["Fal", "Ohm", "Ort", "Jah"], bases: "Axe, Hammer", level: 65, stats: "+320-370% ED, +12% Life Steal, Prevent Monster Heal" },
+            { name: "Plague", runes: ["Cham", "Shael", "Um"], bases: "Sword", level: 67, stats: "Lower Res, Cleansing Aura, +260-289% ED, -23% Enemy Poison Res" },
+            { name: "Fury", runes: ["Jah", "Gul", "Eth"], bases: "Melee Weapon", level: 65, stats: "+209% ED, +40% IAS, Prevent Monster Heal, Open Wounds" },
+            { name: "Hand of Justice", runes: ["Sur", "Cham", "Amn", "Lo"], bases: "Weapon", level: 67, stats: "Holy Fire Aura, +280-330% ED, -20% Enemy Fire Res" },
+            { name: "Kingslayer", runes: ["Mal", "Um", "Gul", "Fal"], bases: "Sword, Axe", level: 53, stats: "+230-270% ED, +33% Crushing Blow, +40% Open Wounds" },
+            { name: "Voice of Reason", runes: ["Lem", "Ko", "El", "Eld"], bases: "Sword, Mace", level: 43, stats: "Frozen Orb, Ice Blast, +50% Cold Dmg, Cannot Be Frozen" },
+            { name: "Bone", runes: ["Sol", "Um", "Um"], bases: "Body Armor", level: 47, stats: "+2 Necro Skills, +100-150 Mana, +30% All Res" },
+            { name: "Enlightenment", runes: ["Pul", "Ral", "Sol"], bases: "Body Armor", level: 45, stats: "+2 Sorc Skills, +5% Max Fire Res, +30% Fire Res" },
+            { name: "Myth", runes: ["Hel", "Amn", "Nef"], bases: "Body Armor", level: 25, stats: "+2 Barb Skills, Howl, +10% Run/Walk" },
+            { name: "Peace", runes: ["Shael", "Thul", "Amn"], bases: "Body Armor", level: 29, stats: "+2 Amazon Skills, Slow Missiles, +30% Cold Res" },
+            { name: "Principle", runes: ["Ral", "Gul", "Eld"], bases: "Body Armor", level: 53, stats: "+2 Paladin Skills, Holy Bolt, +100-150% Dmg vs Undead" },
+            { name: "Delirium", runes: ["Lem", "Ist", "Io"], bases: "Helm", level: 51, stats: "Delirium Transform, +2 All Skills, +261 Defense" },
+            { name: "Radiance", runes: ["Nef", "Sol", "Ith"], bases: "Helm", level: 27, stats: "+75% ED, +9 Energy, +10 Vitality, +33 Mana" },
+            { name: "Nadir", runes: ["Nef", "Tir"], bases: "Helm", level: 13, stats: "Cloak of Shadows, +50% Gold Find, +13 Mana After Kill" },
+            { name: "Spirit Weapon", runes: ["Tal", "Thul", "Ort", "Amn"], bases: "Sword", level: 25, stats: "+2 All Skills, 25-35% FCR, +89-112 Mana" },
+            { name: "Spirit Shield", runes: ["Tal", "Thul", "Ort", "Amn"], bases: "Shield", level: 25, stats: "+2 All Skills, 25-35% FCR, +55% FHR" },
+            { name: "Edge", runes: ["Tir", "Tal", "Amn"], bases: "Missile Weapon", level: 25, stats: "Thorns Aura, +35% IAS, Prevent Monster Heal" },
+            { name: "Memory", runes: ["Lum", "Io", "Sol", "Eth"], bases: "Staff", level: 37, stats: "+3 Sorc Skills, +33% FCR, +20% Mana Regeneration, +3 Energy Shield" },
+            { name: "Splendor", runes: ["Eth", "Lum"], bases: "Shield", level: 37, stats: "+1 All Skills, +20% FCR, +20% FHR, +10% MF" },
+            { name: "Obsession", runes: ["Zod", "Ist", "Lem", "Lum", "Io", "Nef"], bases: "Staff", level: 69, stats: "+4 All Skills, +65% FCR, +24% FHR, All Res +60-70" },
+            { name: "Flickering Flame", runes: ["Nef", "Pul", "Vex"], bases: "Helm", level: 55, stats: "Fire Mastery, -10-15% Enemy Fire Res, +3 Fire Skills" },
+            { name: "Mist", runes: ["Cham", "Shael", "Gul", "Thul", "Ith"], bases: "Missile Weapon", level: 67, stats: "Concentration Aura, +325-375% ED, +3 All Skills" },
+            { name: "Pattern", runes: ["Tal", "Ort", "Thul"], bases: "Claw", level: 23, stats: "+30% FHR, +40-80% ED, +6 Dex/Str" },
+            { name: "Unbending Will", runes: ["Fal", "Io", "Ith", "Eld", "El", "Hel"], bases: "Sword", level: 41, stats: "+330-370% ED, +20-30% IAS, +75% Bonus AR" },
+            { name: "Wisdom", runes: ["Pul", "Ith", "Eld"], bases: "Helm", level: 45, stats: "+33% Pierce, Cannot Be Frozen, +5 Mana After Kill, 15-25% MF" },
+            { name: "Wind", runes: ["Sur", "El"], bases: "Melee Weapon", level: 61, stats: "+120-160% ED, +40% FHR, Ignore Target Defense, -50% Target Defense" },
+        ];
+
+        let runeInventory = {};
+
+        async function loadRunewordPlanner() {
+            const data = await fetchAllArmoryData();
+            console.log('Runeword Planner - Fetched data:', data);
+            runeInventory = {};
+
+            // Count all runes across all characters
+            for (const [charName, armory] of Object.entries(data)) {
+                console.log('Processing character:', charName, armory);
+                // Note: API returns lowercase property names (stash, sharedStash1, etc.)
+                const allItems = [
+                    ...(armory.stash || []),
+                    ...(armory.sharedStash1 || []),
+                    ...(armory.sharedStash2 || []),
+                    ...(armory.sharedStash3 || []),
+                    ...(armory.inventory || []),
+                    ...(armory.cube || [])
+                ];
+                console.log('All items count:', allItems.length);
+
+                for (const item of allItems) {
+                    // Check by itemType first (most reliable), then fall back to name pattern
+                    const isRune = item.itemType === 'rune' || 
+                                   (item.name && item.name.toLowerCase().endsWith('rune'));
+                    if (isRune && item.name) {
+                        // Handle both "RalRune" and "Ral Rune" formats
+                        const runeName = item.name.replace(/Rune$/i, '').replace(/ $/, '');
+                        console.log('Found rune:', item.name, '->', runeName);
+                        runeInventory[runeName] = (runeInventory[runeName] || 0) + 1;
+                    }
+                }
+            }
+
+            console.log('Final rune inventory:', runeInventory);
+            
+            // Scan for available bases (socketed items)
+            scanForBases(data);
+            
+            renderRuneInventory();
+            analyzeRunewords();
+            renderAllRunewords();
+        }
+
+        function renderRuneInventory() {
+            const container = document.getElementById('runeInventory');
+            const runeOrder = ['El', 'Eld', 'Tir', 'Nef', 'Eth', 'Ith', 'Tal', 'Ral', 'Ort', 'Thul', 'Amn', 'Sol', 'Shael', 'Dol', 'Hel', 'Io', 'Lum', 'Ko', 'Fal', 'Lem', 'Pul', 'Um', 'Mal', 'Ist', 'Gul', 'Vex', 'Ohm', 'Lo', 'Sur', 'Ber', 'Jah', 'Cham', 'Zod'];
+            
+            const sortedRunes = Object.entries(runeInventory)
+                .sort((a, b) => runeOrder.indexOf(a[0]) - runeOrder.indexOf(b[0]));
+
+            if (sortedRunes.length === 0) {
+                container.innerHTML = '<span style="color: #888;">No runes found across your characters</span>';
+                return;
+            }
+
+            container.innerHTML = sortedRunes.map(([rune, count]) => `
+                <div class="rune-count">
+                    <span class="rune-name">${rune}</span>
+                    <span class="count">×${count}</span>
+                </div>
+            `).join('');
+        }
+
+        // Base type mappings for runeword matching
+        const BASE_TYPE_MAP = {
+            'sword': ['swor', 'sword'],
+            'axe': ['axe'],
+            'mace': ['mace', 'club', 'scep', 'hamm'],
+            'hammer': ['hamm'],
+            'scepter': ['scep'],
+            'polearm': ['pole', 'spea'],
+            'staff': ['staf'],
+            'wand': ['wand'],
+            'helm': ['helm', 'pelt', 'phlm', 'circ'],
+            'body armor': ['tors', 'armor'],
+            'shield': ['shie', 'ashd', 'head'],
+            'paladin shield': ['ashd'],
+            'missile weapon': ['bow', 'xbow', 'abow', 'axbo'],
+            'melee weapon': ['swor', 'axe', 'mace', 'club', 'scep', 'hamm', 'pole', 'spea'],
+            'weapon': ['swor', 'axe', 'mace', 'club', 'scep', 'hamm', 'pole', 'spea', 'bow', 'xbow', 'staf', 'wand'],
+            'claw': ['h2h', 'h2h2', 'ashd'],
+        };
+
+        let availableBases = []; // Stores socketed items from stash
+
+        function getSocketCount(item) {
+            // First check socketCount field
+            if (item.socketCount > 0) return item.socketCount;
+            
+            // Then check stats array for stat ID 194 (Socketed)
+            if (item.stats) {
+                const socketStat = item.stats.find(s => s.id === 194);
+                if (socketStat) return socketStat.value;
+            }
+            
+            // Check baseStats array too
+            if (item.baseStats) {
+                const socketStat = item.baseStats.find(s => s.id === 194);
+                if (socketStat) return socketStat.value;
+            }
+            
+            return 0;
+        }
+
+        function scanForBases(data) {
+            availableBases = [];
+            
+            for (const [charName, armory] of Object.entries(data)) {
+                const allItems = [
+                    ...(armory.stash || []),
+                    ...(armory.sharedStash1 || []),
+                    ...(armory.sharedStash2 || []),
+                    ...(armory.sharedStash3 || []),
+                    ...(armory.inventory || []),
+                    ...(armory.cube || [])
+                ];
+
+                for (const item of allItems) {
+                    // Skip items that already have runes/gems socketed
+                    if (item.sockets && item.sockets.length > 0) continue;
+                    // Skip runewords
+                    if (item.isRuneword) continue;
+                    
+                    // Get socket count from various sources
+                    const sockets = getSocketCount(item);
+                    
+                    // Only include items with sockets (hasSockets or socketCount > 0)
+                    if (sockets > 0 || item.hasSockets) {
+                        const finalSockets = sockets > 0 ? sockets : 0;
+                        if (finalSockets > 0) {
+                            availableBases.push({
+                                name: item.name,
+                                itemType: item.itemType,
+                                sockets: finalSockets,
+                                ethereal: item.ethereal,
+                                character: charName,
+                                quality: item.quality,
+                                defense: item.defense,
+                                imageName: item.imageName
+                            });
+                        }
+                    }
+                }
+            }
+            
+            console.log('Available bases found:', availableBases);
+        }
+
+        function getMatchingBases(runewordBases, socketCount) {
+            const baseTypes = runewordBases.toLowerCase().split(',').map(b => b.trim());
+            const matches = [];
+
+            for (const base of availableBases) {
+                if (base.sockets !== socketCount) continue;
+                
+                const itemType = (base.itemType || '').toLowerCase();
+                
+                for (const baseType of baseTypes) {
+                    const typePatterns = BASE_TYPE_MAP[baseType] || [baseType];
+                    if (typePatterns.some(pattern => itemType.includes(pattern))) {
+                        matches.push(base);
+                        break;
+                    }
+                }
+            }
+            
+            return matches;
+        }
+
+        function analyzeRunewords() {
+            const canMake = [];
+            const almost = [];
+
+            for (const rw of RUNEWORDS) {
+                const { have, missing, status } = checkRunewordRunes(rw.runes);
+                const matchingBases = getMatchingBases(rw.bases, rw.runes.length);
+                
+                if (missing.length === 0) {
+                    canMake.push({ ...rw, have, missing, status, matchingBases });
+                } else if (missing.length <= 2) {
+                    almost.push({ ...rw, have, missing, status, matchingBases });
+                }
+            }
+
+            renderRunewordList('canMakeList', canMake, true);
+            renderRunewordList('almostList', almost, false);
+        }
+
+        function checkRunewordRunes(runes) {
+            const tempInventory = { ...runeInventory };
+            const have = [];
+            const missing = [];
+            const status = []; // Track have/missing status for each position
+
+            for (const rune of runes) {
+                if (tempInventory[rune] && tempInventory[rune] > 0) {
+                    have.push(rune);
+                    status.push(true); // This position has the rune
+                    tempInventory[rune]--;
+                } else {
+                    missing.push(rune);
+                    status.push(false); // This position is missing the rune
+                }
+            }
+
+            return { have, missing, status };
+        }
+
+        function renderRunewordList(containerId, runewords, canMake) {
+            const container = document.getElementById(containerId);
+            
+            if (runewords.length === 0) {
+                container.innerHTML = `<span style="color: #888;">${canMake ? 'No runewords can be made with current runes' : 'No runewords are close to completion'}</span>`;
+                return;
+            }
+
+            container.innerHTML = runewords.map(rw => {
+                const basesHtml = rw.matchingBases && rw.matchingBases.length > 0 
+                    ? `<div class="runeword-available-bases">
+                         <span style="color: #4CAF50; font-size: 11px;"><i class="bi bi-check-circle"></i> Available bases:</span>
+                         ${rw.matchingBases.slice(0, 3).map(b => 
+                           `<a href="/armory?character=${encodeURIComponent(b.character)}" class="base-tag" title="View ${b.character}'s Armory${b.ethereal ? ' (Ethereal)' : ''}">${b.name}${b.ethereal ? ' ⚡' : ''}</a>`
+                         ).join('')}
+                         ${rw.matchingBases.length > 3 ? `<span class="base-tag-more">+${rw.matchingBases.length - 3} more</span>` : ''}
+                       </div>`
+                    : (canMake ? `<div class="runeword-no-bases"><span style="color: #ff6b6b; font-size: 11px;"><i class="bi bi-x-circle"></i> No suitable bases found</span></div>` : '');
+                
+                return `
+                <div class="runeword-card ${canMake ? 'can-make' : 'almost'}">
+                    <div class="runeword-name"><a href="${getRunewordWikiUrl(rw.name)}" target="_blank" title="View on Diablo Wiki">${rw.name} <i class="bi bi-box-arrow-up-right" style="font-size: 10px; opacity: 0.6;"></i></a></div>
+                    <div class="runeword-bases">${rw.bases} (${rw.runes.length} sockets, Level ${rw.level})</div>
+                    <div class="runeword-runes">
+                        ${rw.runes.map((r, i) => `<span class="rune-slot ${rw.status[i] ? 'have' : 'missing'}">${r}</span>`).join('')}
+                    </div>
+                    ${basesHtml}
+                    <div class="runeword-stats">${rw.stats}</div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function getRunewordWikiUrl(name) {
+            // Convert runeword name to wiki URL format
+            // Replace spaces with underscores, handle special characters
+            const urlName = name.replace(/'/g, '%27').replace(/ /g, '_');
+            return `https://diablo.fandom.com/wiki/${urlName}_Rune_Word`;
+        }
+
+        function renderAllRunewords() {
+            const container = document.getElementById('allRunewordsList');
+            container.innerHTML = RUNEWORDS.map(rw => {
+                const { have, missing, status } = checkRunewordRunes(rw.runes);
+                return `
+                    <div class="runeword-card">
+                        <div class="runeword-name"><a href="${getRunewordWikiUrl(rw.name)}" target="_blank" title="View on Diablo Wiki">${rw.name} <i class="bi bi-box-arrow-up-right" style="font-size: 10px; opacity: 0.6;"></i></a></div>
+                        <div class="runeword-bases">${rw.bases} (Level ${rw.level})</div>
+                        <div class="runeword-runes">
+                            ${rw.runes.map((r, i) => `<span class="rune-slot ${status[i] ? 'have' : 'missing'}">${r}</span>`).join('')}
+                        </div>
+                        <div class="runeword-stats">${rw.stats}</div>
+                    </div>
+                `;
+            }).join('');
+
+            // Setup search
+            document.getElementById('runewordSearch').addEventListener('input', function() {
+                const query = this.value.toLowerCase();
+                document.querySelectorAll('#allRunewordsList .runeword-card').forEach(card => {
+                    const text = card.textContent.toLowerCase();
+                    card.style.display = text.includes(query) ? '' : 'none';
+                });
+            });
+        }
+
+        // ============ CONTEXT MENU ============
+        let contextMenuTarget = null;
+
+        function showItemContextMenu(event, element) {
+            event.preventDefault();
+            event.stopPropagation();
+            
+            // Hide the tooltip so it doesn't block the context menu
+            hideTooltip();
+            
+            contextMenuTarget = element;
+            const menu = document.getElementById('contextMenu');
+            
+            // Use clientX/clientY for fixed positioning (viewport-relative)
+            let x = event.clientX;
+            let y = event.clientY;
+            
+            // Temporarily show to get dimensions
+            menu.style.visibility = 'hidden';
+            menu.classList.add('visible');
+            const menuRect = menu.getBoundingClientRect();
+            menu.style.visibility = '';
+            
+            // Adjust if menu would go off-screen
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
+            
+            if (x + menuRect.width > viewportWidth) {
+                x = viewportWidth - menuRect.width - 10;
+            }
+            if (y + menuRect.height > viewportHeight) {
+                y = viewportHeight - menuRect.height - 10;
+            }
+            
+            // Ensure not negative
+            x = Math.max(10, x);
+            y = Math.max(10, y);
+            
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+        }
+
+        function hideContextMenu() {
+            document.getElementById('contextMenu').classList.remove('visible');
+            contextMenuTarget = null;
+        }
+
+        document.addEventListener('click', hideContextMenu);
+
+        // Right-click on items for context menu
+        document.querySelectorAll('.inventory-item, .equip-item').forEach(item => {
+            item.addEventListener('contextmenu', function(event) {
+                showItemContextMenu(event, this);
+            });
+        });
+
+        function copyItemStats() {
+            if (!contextMenuTarget) return;
+            
+            const itemData = JSON.parse(contextMenuTarget.dataset.item || '{}');
+            let text = itemData.name || 'Unknown Item';
+            
+            if (itemData.stats && itemData.stats.length > 0) {
+                text += '\n' + '-'.repeat(30);
+                for (const stat of itemData.stats) {
+                    if (stat.string) {
+                        text += '\n' + stat.string;
+                    }
+                }
+            }
+            
+            if (itemData.ethereal) {
+                text += '\nEthereal (Cannot be Repaired)';
+            }
+            
+            if (itemData.sockets && itemData.sockets.length > 0) {
+                text += '\n' + '-'.repeat(30);
+                text += '\nSocketed (' + itemData.sockets.length + '):';
+                for (const socket of itemData.sockets) {
+                    text += '\n  ' + socket.name;
+                }
+            }
+
+            navigator.clipboard.writeText(text).then(() => {
+                showCopyNotification('Item stats copied!');
+            });
+            
+            hideContextMenu();
+        }
+
+        function copyItemName() {
+            if (!contextMenuTarget) return;
+            
+            const itemData = JSON.parse(contextMenuTarget.dataset.item || '{}');
+            navigator.clipboard.writeText(itemData.name || 'Unknown Item').then(() => {
+                showCopyNotification('Item name copied!');
+            });
+            
+            hideContextMenu();
+        }
+
+        function showCopyNotification(message) {
+            const notif = document.createElement('div');
+            notif.style.cssText = 'position: fixed; bottom: 80px; right: 24px; background: rgba(76, 175, 80, 0.9); color: white; padding: 12px 20px; border-radius: 8px; z-index: 3000; animation: fadeIn 0.2s;';
+            notif.textContent = message;
+            document.body.appendChild(notif);
+            setTimeout(() => notif.remove(), 2000);
+        }
+
+        // Theme handling
+        function changeTheme(theme) {
+            document.documentElement.classList.remove('theme-colorful', 'theme-dark', 'theme-light');
+            document.body.classList.remove('theme-colorful', 'theme-dark', 'theme-light');
+            document.documentElement.classList.add('theme-' + theme);
+            document.body.classList.add('theme-' + theme);
+            localStorage.setItem('armoryTheme', theme);
+        }
+
+        // Restore saved theme on page load
+        (function() {
+            const saved = localStorage.getItem('armoryTheme') || 'colorful';
+            const selector = document.querySelector('.theme-selector');
+            if (selector) {
+                selector.value = saved;
+            }
+            changeTheme(saved);
+        })();
+    </script>
+</body>
+</html>

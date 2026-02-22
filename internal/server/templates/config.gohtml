@@ -1,0 +1,1768 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark"/>
+    <link rel="stylesheet" href="../assets/css/pico.min.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <title>Koolo Resurrected Settings</title>
+    <style>
+        :root {
+            /* Primary Colors */
+            --primary: #0089eb;
+            --primary-hover: #1b9bf7;
+            --primary-light: #dcf2ff;
+
+            /* Accent Colors */
+            --accent-pink: #ff758a;
+            --accent-purple: #e391db;
+            --accent-blue: #758eff;
+            --accent-blue-bright: #1a5bff;
+            --accent-yellow: #cbc026;
+            --accent-orange: #f5ab00;
+            --accent-green: #3dba69;
+            --accent-lime: #a0b61f;
+
+            /* Background Colors */
+            --bg-primary: #1a1d24;
+            --bg-secondary: #22262e;
+            --bg-tertiary: #2a2f38;
+            --bg-hover: #32363f;
+            --bg-elevated: #2d323c;
+
+            /* Text Colors */
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --text-dim: #4a4a4a;
+
+            /* Border & Shadows */
+            --border-color: #424549;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.2);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.25);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.3);
+            --shadow-xl: 0 12px 24px rgba(0, 0, 0, 0.4);
+            --glow-primary: 0 0 20px rgba(0, 137, 235, 0.3);
+
+            /* Transitions */
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+            /* Spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+
+            /* Border Radius */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        #pr-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #pr-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #pr-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #pr-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #pr-list:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #backups-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #backups-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #backups-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #backups-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #backups-list:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #ahead-commits-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #ahead-commits-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #ahead-commits-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #ahead-commits-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #ahead-commits-list:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #current-commits-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #current-commits-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #current-commits-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #current-commits-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #current-commits-list:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        #commits-list {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+        }
+
+        #commits-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #commits-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        #commits-list::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 999px;
+            border: 2px solid transparent;
+            background-clip: content-box;
+        }
+
+        #commits-list:hover::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #151820 100%);
+            min-height: 100vh;
+        }
+
+        .notification {
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl);
+            padding: var(--spacing-xl);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-subtle);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .notification::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--primary);
+            box-shadow: var(--glow-primary);
+        }
+
+        .notification h2 {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent-blue) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-weight: 800;
+            margin-bottom: var(--spacing-lg);
+            font-size: 2em;
+        }
+
+        .notification h4 {
+            color: var(--primary);
+            font-weight: 700;
+            margin-top: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+            font-size: 1.2em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .error-message {
+            background: linear-gradient(135deg, rgba(255, 117, 138, 0.15) 0%, rgba(220, 53, 69, 0.1) 100%);
+            border: 2px solid var(--accent-pink);
+            color: #ff9aa5;
+            padding: var(--spacing-md);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--spacing-lg);
+            font-weight: 500;
+        }
+
+        fieldset {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-md);
+        }
+
+        label {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="password"],
+        input[type="number"] {
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: var(--radius-md);
+            padding: 12px var(--spacing-md);
+            transition: all var(--transition-normal);
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus,
+        input[type="number"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(0, 137, 235, 0.15);
+            outline: none;
+        }
+
+        input[type="checkbox"] {
+            accent-color: var(--primary);
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        input[type="submit"] {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
+            color: var(--text-primary);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-weight: 700;
+            cursor: pointer;
+            transition: all var(--transition-normal);
+            box-shadow: var(--shadow-sm);
+        }
+
+        input[type="submit"]:hover {
+            box-shadow: var(--glow-primary), var(--shadow-md);
+            transform: translateY(-2px);
+        }
+
+        input[type="button"].secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        input[type="button"].secondary:hover {
+            background: var(--bg-hover);
+            border-color: var(--primary);
+        }
+
+        .pulse-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            margin-left: 6px;
+            box-shadow: 0 0 0 0 rgba(61, 186, 105, 0.7);
+            animation: pulse 1.2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(61, 186, 105, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(61, 186, 105, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(61, 186, 105, 0); }
+        }
+
+        .grid {
+            display: grid;
+            gap: var(--spacing-md);
+        }
+
+        @media (min-width: 768px) {
+            fieldset.grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+<main class="container">
+    {{ if ne .ErrorMessage "" }}
+        <div class="container">
+            <div class="row">
+                <div class="col">
+                    <div class="error-message">
+                        {{ .ErrorMessage }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {{ end }}
+    <div class="notification">
+        <h2>Settings</h2>
+        <form method="post">
+            <fieldset>
+                <label>
+                    Diablo II Resurrected Path
+                    <input
+                            name="d2rpath"
+                            placeholder="C:\Program Files (x86)\Diablo II Resurrected"
+                            value="{{.D2RPath}}"
+                    />
+                </label>
+                <label>
+                    Diablo II: LoD 1.13c Path (MUST BE 1.13c, otherwise it won't work)
+                    <input
+                            name="d2lodpath"
+                            placeholder="E:\games\Diablo II"
+                            value="{{.D2LoDPath}}"
+                    />
+                </label>
+                <label>
+                    Centralized Pickit Path (leave blank if you don't want to use a single location for all pickit files)
+                    <input
+                            name="centralized_pickit_path"
+                            placeholder="E:\games\mypickits"
+                            value="{{.CentralizedPickitPath}}"
+                    />
+                </label>
+                <label>
+                    <input
+                            {{ if .UseCustomSettings }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="use_custom_settings"
+                            value="true"
+                    />
+                    Use custom game settings
+                </label>
+                <label>
+                    <input
+                            {{ if .GameWindowArrangement }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="game_window_arrangement"
+                            value="true"
+                    />
+                    Auto reposition game windows
+                </label>
+                <h4>Debug</h4>
+                <fieldset class="grid">
+                    <label>
+                        <input
+                                {{ if .Debug.Log }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="debug_log"
+                                value="true"
+                        />
+                        Debug mode (better details in logs, more noise)
+                    </label>
+                    <label>
+                        <input
+                                {{ if .Debug.Screenshots }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="debug_screenshots"
+                                value="true"
+                        />
+                        Save screenshot on error
+                    </label>
+                    <label>
+                        <input
+                                {{ if .Debug.OpenOverlayMapOnGameStart }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="debug_open_overlay_map"
+                                value="true"
+                        />
+                        Open overlay map on game start
+                    </label>
+                </fieldset>
+                <h4>Discord integration</h4>
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <label>
+                        <input
+                                {{ if .Discord.Enabled }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="discord_enabled"
+                                value="true"
+                        />
+                        Enabled (Restart required)
+                    </label>
+                    <label>
+                        <input
+                                {{ if .Discord.UseWebhook }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="discord_use_webhook"
+                                value="true"
+                                id="discord-use-webhook"
+                        />
+                        Use Webhook (alerts only, no commands needed)
+                    </label>
+                </div>
+                <p><small style="color:#fff">
+                        Use Webhook mode offers simple setup but does not support commands and advanced features.
+                    </small>
+                </p>
+                <div id="discord-bot-config" style="{{ if .Discord.UseWebhook }}display:none;{{ end }}">
+                    <input
+                            name="discord_admins"
+                            placeholder="Discord User IDs who can use bot commands separated by commas"
+                            value="{{.Discord.BotAdmins}}"
+                    />
+                    <input
+                            name="discord_token"
+                            placeholder="Token"
+                            value="{{.Discord.Token}}"
+                    />
+                    <input
+                            name="discord_channel_id"
+                            placeholder="Channel ID"
+                            value="{{ .Discord.ChannelID }}"
+                    />
+                    <input
+                            name="discord_item_channel_id"
+                            placeholder="Item Channel ID (optional)"
+                            value="{{ .Discord.ItemChannelID }}"
+                    />
+                </div>
+                <div id="discord-webhook-config" style="{{ if not .Discord.UseWebhook }}display:none;{{ end }}">
+                    <input
+                            name="discord_webhook_url"
+                            placeholder="Webhook URL"
+                            value="{{ .Discord.WebhookURL }}"
+                    />
+                    <input
+                            name="discord_item_webhook_url"
+                            placeholder="Item Webhook URL (optional)"
+                            value="{{ .Discord.ItemWebhookURL }}"
+                    />
+                </div>
+                <fieldset class="grid">
+                    <label>
+                        <input type="checkbox" name="enable_game_created_messages" value="{{ .Discord.EnableGameCreatedMessages }}" {{ if .Discord.EnableGameCreatedMessages }} checked="checked" {{ end }} />
+                        Enable Game Create Messages
+                    </label>
+                    <label>
+                        <input type="checkbox" name="enable_new_run_messages" value="{{ .Discord.EnableNewRunMessages }}" {{ if .Discord.EnableNewRunMessages }} checked="checked" {{ end }} />
+                        Enable New Run Messages
+                    </label>
+                    <label>
+                        <input type="checkbox" name="enable_run_finish_messages" value="{{ .Discord.EnableRunFinishMessages }}" {{ if .Discord.EnableRunFinishMessages }} checked="checked" {{ end }} />
+                        Enable Run Finish Messages
+                    </label>
+                    <label>
+                        <input type="checkbox" name="enable_discord_chicken_messages" value="{{ .Discord.EnableDiscordChickenMessages }}" {{ if .Discord.EnableDiscordChickenMessages }} checked="checked" {{ end }} />
+                        Enable Chicken/Death Messages
+                    </label>
+                    <label>
+                        <input type="checkbox" name="enable_discord_error_messages" value="{{ .Discord.EnableDiscordErrorMessages }}" {{ if .Discord.EnableDiscordErrorMessages }} checked="checked" {{ end }} />
+                        Enable Error Messages
+                    </label>
+                    <label>
+                        <input type="checkbox" id="discord-disable-item-stash-screenshots" name="discord_disable_item_stash_screenshots" value="{{ .Discord.DisableItemStashScreenshots }}" {{ if .Discord.DisableItemStashScreenshots }} checked="checked" {{ end }} />
+                        Disable Item Stash Screenshots (send text only)
+                    </label>
+                    <label>
+                        <input type="checkbox" id="discord-include-pickit-info" name="discord_include_pickit_info_in_item_text" value="{{ .Discord.IncludePickitInfoInItemText }}" {{ if .Discord.IncludePickitInfoInItemText }} checked="checked" {{ end }} {{ if not .Discord.DisableItemStashScreenshots }} disabled="disabled" {{ end }} />
+                        Show NIP rule (send text only)
+                    </label>
+                </fieldset>
+                <h4>Telegram integration</h4>
+                <label>
+                    <input
+                            {{ if .Telegram.Enabled }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="telegram_enabled"
+                            value="true"
+                    />
+                    Enabled (Restart required)
+                </label>
+                <input
+                        name="telegram_token"
+                        placeholder="Token"
+                        value="{{.Telegram.Token}}"
+                />
+                <input
+                        name="telegram_chat_id"
+                        placeholder="Chat ID"
+                        value="{{ .Telegram.ChatID }}"
+                />
+                <h4>ngrok tunnel</h4>
+                <p><small style="color:#f5ab00">
+                        ⚠️ Warning: ngrok exposes your local dashboard publicly. Anyone with the URL can access it without authentication unless you configure basic auth. On free plans, the URL is randomly generated and can change each time you start the app.
+                    </small>
+                </p>
+                <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                    <label>
+                        <input
+                                {{ if .Ngrok.Enabled }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="ngrok_enabled"
+                                value="true"
+                                id="ngrok-enabled"
+                        />
+                        Enabled (Restart required)
+                    </label>
+                    <label>
+                        <input
+                                {{ if .Ngrok.SendURL }}
+                                    checked="checked"
+                                {{ end }}
+                                type="checkbox"
+                                name="ngrok_send_url"
+                                value="true"
+                        />
+                        Send ngrok URL to notifications
+                    </label>
+                </div>
+                <input
+                        name="ngrok_authtoken"
+                        type="password"
+                        placeholder="Authtoken (optional, can use NGROK_AUTHTOKEN env var)"
+                        value="{{ .Ngrok.Authtoken }}"
+                />
+                <div id="ngrok-config" style="{{ if not .Ngrok.Enabled }}display:none;{{ end }}">
+                    <fieldset class="grid">
+                        <label>
+                            Basic auth user (optional)
+                            <input
+                                    name="ngrok_basic_auth_user"
+                                    placeholder="username"
+                                    value="{{ .Ngrok.BasicAuthUser }}"
+                            />
+                        </label>
+                        <label>
+                            Basic auth pass (optional)
+                            <input
+                                    name="ngrok_basic_auth_pass"
+                                    type="password"
+                                    placeholder="password"
+                                    value="{{ .Ngrok.BasicAuthPass }}"
+                            />
+                        </label>
+                        <label>
+                            Region (optional)
+                            <input
+                                    name="ngrok_region"
+                                    placeholder="us, eu, ap, etc."
+                                    value="{{ .Ngrok.Region }}"
+                            />
+                        </label>
+                        <label>
+                            Domain (optional, reserved)
+                            <input
+                                    name="ngrok_domain"
+                                    placeholder="example.ngrok.app"
+                                    value="{{ .Ngrok.Domain }}"
+                            />
+                        </label>
+                    </fieldset>
+                </div>
+                <h4>Ping Monitor</h4>
+                <label>
+                    <input
+                            {{ if .PingMonitor.Enabled }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="ping_monitor_enabled"
+                            value="true"
+                    />
+                    Enable ping monitoring (auto-stop bot on sustained high ping)
+                </label>
+                <fieldset class="grid">
+                    <label>
+                        Threshold (ms)
+                        <input
+                                name="ping_monitor_threshold"
+                                type="number"
+                                min="100"
+                                max="2000"
+                                step="50"
+                                placeholder="500"
+                                value="{{ if .PingMonitor.HighPingThreshold }}{{ .PingMonitor.HighPingThreshold }}{{ else }}500{{ end }}"
+                        />
+                        <small>Stop if ping exceeds (default: 500ms)</small>
+                    </label>
+                    <label>
+                        Duration (seconds)
+                        <input
+                                name="ping_monitor_duration"
+                                type="number"
+                                min="5"
+                                max="120"
+                                step="5"
+                                placeholder="30"
+                                value="{{ if .PingMonitor.SustainedDuration }}{{ .PingMonitor.SustainedDuration }}{{ else }}30{{ end }}"
+                        />
+                        <small>How long to persist (default: 30s)</small>
+                    </label>
+                </fieldset>
+                <div style="display: flex; align-items: center; gap: 12px; margin-top: var(--spacing-lg); margin-bottom: var(--spacing-md);">
+                    <h4 style="margin: 0;">Updater</h4>
+                    <button type="button" id="updater-how-toggle" aria-expanded="false" aria-controls="updater-how-content" style="background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 4px 10px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 0.85em; margin-bottom: 0px;">
+                        How it works
+                    </button>
+                </div>
+                <div id="updater-how-content" style="display: none; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: var(--spacing-md); margin-bottom: var(--spacing-md); color: #d6dbe5; font-size: 0.9em; line-height: 1.6;">
+                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Auto Update</div>
+                    <ul style="margin: 6px 0 12px 18px; color: #c9ced8;">
+                        <li>Updates run only when all supervisors are inactive.</li>
+                        <li>Compares your local repository with kwader2k/koolo:main and merges when updates are available.</li>
+                        <li>If conflicts occur, local changes are discarded and kwader2k/koolo:main is applied.</li>
+                        <li>If no local repository is found, the updater clones kwader2k/koolo for use.</li>
+                    </ul>
+                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">PR Application</div>
+                    <ul style="margin: 6px 0 12px 18px; color: #c9ced8;">
+                        <li>PRs are applied using cherry-pick.</li>
+                        <li>Auto-mergeable PRs are applied immediately; conflicts stop the merge.</li>
+                        <li>Applied PRs can be reverted.</li>
+                    </ul>
+                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">Rollback</div>
+                    <ul style="margin: 6px 0 0 18px; color: #c9ced8;">
+                        <li>Rollback to previous files is available.</li>
+                        <li>Rollback uses executables from the old_version folder.</li>
+                    </ul>
+                </div>
+                <div id="updater-section" style="background: var(--bg-elevated); padding: var(--spacing-lg); border-radius: var(--radius-lg); margin-bottom: var(--spacing-lg);">
+                    <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: var(--spacing-md); margin-bottom: var(--spacing-md);">
+                        <div style="min-width: 0; flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <label style="color: var(--text-secondary); font-size: 0.9em;">Current Version</label>
+                                <button type="button" id="current-commits-toggle" aria-expanded="false" aria-controls="current-commits-panel" {{ if not .CurrentVersion }}aria-disabled="true" disabled="disabled"{{ end }} style="background: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 2px 8px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; font-size: 0.75em; margin-bottom: 6px;{{ if not .CurrentVersion }} color: var(--text-secondary); cursor: not-allowed; opacity: 0.7;{{ end }}">
+                                    View current commits
+                                </button>
+                            </div>
+                            <div id="current-version-hash" style="color: var(--text-primary); font-weight: 500;">
+                                {{ if .CurrentVersion }}
+                                {{ .CurrentVersion.CommitHash }} - {{ .CurrentVersion.CommitDate }}
+                                {{ else }}
+                                Git version info (.git) not found.
+                                {{ end }}
+                            </div>
+                            <div id="current-version-msg" style="color: var(--text-secondary); font-size: 0.85em; margin-top: 4px;">
+                                {{ if .CurrentVersion }}
+                                {{ .CurrentVersion.CommitMsg }}
+                                {{ else }}
+                                Click "Check Updates" to create a .koolo-src Git clone based on the latest commits from kwader2k/koolo.
+                                {{ end }}
+                            </div>
+                        </div>
+                        <div id="updater-tabs" style="display: flex; gap: var(--spacing-sm); margin-top: var(--spacing-sm); flex-shrink: 0;">
+                            <button type="button" id="tab-updates" style="background: var(--accent-blue); color: white; border: 1px solid var(--accent-blue); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
+                                Updates
+                            </button>
+                            <button type="button" id="tab-prs" style="background: var(--bg-tertiary); border: 1px solid var(--accent-green); color: var(--accent-green); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
+                                Pull Requests
+                            </button>
+                            <button type="button" id="tab-rollback" style="background: var(--bg-tertiary); border: 1px solid var(--accent-pink); color: var(--accent-pink); padding: 8px 16px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">
+                                Rollback
+                            </button>
+                        </div>
+                    </div>
+                    <div id="current-commits-panel" style="display: none; margin-top: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 8px 10px; width: 100%;">
+                        <div id="current-commits-list" style="max-height: 240px; overflow-y: auto; font-size: 0.85em; color: var(--text-secondary); width: 100%;"></div>
+                    </div>
+
+                    <div id="update-panel">
+                    <div id="update-info" style="display: none; margin-top: var(--spacing-md);">
+                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+                            <div id="update-status" style="color: var(--accent-green); font-weight: 600; margin-bottom: var(--spacing-sm);"></div>
+                            <div id="ahead-commits-list" style="display: none; max-height: 220px; overflow-y: auto; margin-top: var(--spacing-sm);"></div>
+                            <div id="commits-list" style="max-height: 200px; overflow-y: auto; margin-top: var(--spacing-sm);"></div>
+                        </div>
+
+                        <div style="margin-top: var(--spacing-md);">
+                            <label style="display: flex; align-items: center; gap: 8px;">
+                                <input type="checkbox" id="auto-restart-checkbox" checked="checked" />
+                                <span>Restart automatically after update</span>
+                            </label>
+                        </div>
+
+                    </div>
+
+                    <div id="update-actions" style="margin-top: var(--spacing-md); display: flex; flex-direction: column; gap: var(--spacing-sm);">
+                        <button type="button" id="update-now-btn" onclick="performUpdate()" disabled style="background: var(--accent-blue); color: white; border: 1px solid var(--accent-blue); padding: 12px 24px; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; width: 100%;">
+                            Update Now
+                        </button>
+                    </div>
+
+                    <div id="update-progress" style="display: none; margin-top: var(--spacing-md);">
+                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md);">
+                            <div id="update-activity" style="display: flex; align-items: center; gap: 8px; color: var(--text-primary); font-weight: 600; margin-bottom: 6px;">
+                                <span id="update-activity-label">Update in progress</span>
+                                <span class="pulse-dot"></span>
+                                <span id="update-elapsed" style="color: var(--text-secondary); font-weight: 500; font-size: 0.85em;"></span>
+                            </div>
+                            <div id="progress-step" style="color: var(--accent-blue); font-weight: 600; margin-bottom: var(--spacing-sm);"></div>
+                            <div style="background: var(--bg-primary); height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: var(--spacing-sm);">
+                                <div id="progress-bar" style="background: linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-purple) 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <div id="progress-logs" style="max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.8em; color: var(--text-secondary);"></div>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div id="rollback-panel" style="display: none;">
+                    <div id="backup-versions-section" style="margin-top: var(--spacing-md);">
+                        <div id="current-version-display" style="margin-bottom: var(--spacing-md); padding: 10px 12px; background: var(--bg-tertiary); border-radius: var(--radius-sm); border-left: 3px solid var(--accent-green);">
+                            <div style="color: var(--text-secondary); font-size: 0.8em; margin-bottom: 2px;">Currently Running</div>
+                            <div id="current-exe-info" style="color: var(--text-primary); font-weight: 600; font-size: 0.95em;">Loading...</div>
+                        </div>
+
+                        <div id="backups-list" style="display: flex; flex-direction: column; gap: var(--spacing-sm); max-height: 260px; overflow-y: auto;">
+                            <div style="color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);">
+                                Click "Refresh" to load backup versions
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="rollback-progress" style="display: none; margin-top: var(--spacing-md);">
+                        <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md);">
+                            <div id="rollback-progress-step" style="color: var(--accent-blue); font-weight: 600; margin-bottom: var(--spacing-sm);"></div>
+                            <div style="background: var(--bg-primary); height: 24px; border-radius: 12px; overflow: hidden; margin-bottom: var(--spacing-sm);">
+                                <div id="rollback-progress-bar" style="background: linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-purple) 100%); height: 100%; width: 0%; transition: width 0.3s;"></div>
+                            </div>
+                            <div id="rollback-progress-logs" style="max-height: 150px; overflow-y: auto; font-family: monospace; font-size: 0.8em; color: var(--text-secondary);"></div>
+                        </div>
+                    </div>
+                    </div>
+
+                    <div id="pr-panel" style="display: none;">
+                    <div id="pr-section" style="margin-top: 0px;">
+                        <div style="margin-bottom: var(--spacing-md);"></div>
+
+                        <div id="pr-list" style="display: flex; flex-direction: column; gap: var(--spacing-sm); max-height: 400px; overflow-y: auto; margin-bottom: var(--spacing-md);"></div>
+
+                        <div id="pr-actions" style="display: none; flex-direction: column; gap: var(--spacing-sm);">
+                            <label style="display:flex; gap:0.75rem; align-items:center; margin-bottom: 4px;">
+                                <input type="checkbox" id="pr-auto-restart-checkbox" checked="checked">
+                                Restart automatically after PR apply
+                            </label>
+                            <button type="button" id="apply-prs-build-btn" onclick="applySelectedPRsAndBuild()" disabled style="background: var(--accent-green); color: white; border: 1px solid var(--accent-green); padding: 12px 24px; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; width: 100%;">
+                                Apply & Build
+                            </button>
+                        </div>
+
+                        <div id="pr-progress" style="display: none; margin-top: var(--spacing-md);">
+                            <div style="background: var(--bg-tertiary); padding: var(--spacing-md); border-radius: var(--radius-md);">
+                                <div id="pr-progress-step" style="color: var(--accent-blue); font-weight: 600; margin-bottom: var(--spacing-sm);">Processing...</div>
+                                <div id="pr-progress-logs" style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.8em; color: var(--text-secondary); background: var(--bg-primary); padding: var(--spacing-sm); border-radius: var(--radius-sm);"></div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <h4>Auto Start</h4>
+                <label>
+                    <input
+                            {{ if .AutoStart.Enabled }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="autostart_enabled"
+                            value="true"
+                    />
+                    Auto start selected characters on launch
+                </label>
+                <label>
+                    Delay between characters (seconds)
+                    <input
+                            name="autostart_delay"
+                            type="number"
+                            min="0"
+                            max="600"
+                            step="1"
+                            value="{{ if .AutoStart.DelaySeconds }}{{ .AutoStart.DelaySeconds }}{{ else }}60{{ end }}"
+                    />
+                </label>
+            </fieldset>
+            <fieldset class="grid">
+                {{ if not .FirstRun }}
+                    <a href="/"><input type="button" value="Cancel" class="secondary"/></a>
+                {{ end }}
+                <input type="submit" value="Save"/>
+            </fieldset>
+        </form>
+    </div>
+</main>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const webhookCheckbox = document.getElementById("discord-use-webhook");
+    const webhookConfig = document.getElementById("discord-webhook-config");
+    const botConfig = document.getElementById("discord-bot-config");
+    const ngrokEnabled = document.getElementById("ngrok-enabled");
+    const ngrokConfig = document.getElementById("ngrok-config");
+
+    if (!webhookCheckbox || !webhookConfig || !botConfig) {
+        return;
+    }
+
+    function updateDiscordFields() {
+        const useWebhook = webhookCheckbox.checked;
+        webhookConfig.style.display = useWebhook ? "" : "none";
+        botConfig.style.display = useWebhook ? "none" : "";
+    }
+
+    webhookCheckbox.addEventListener("change", updateDiscordFields);
+    updateDiscordFields();
+
+    const disableItemStashScreenshots = document.getElementById("discord-disable-item-stash-screenshots");
+    const includePickitInfo = document.getElementById("discord-include-pickit-info");
+    if (disableItemStashScreenshots && includePickitInfo) {
+        function updatePickitInfoOption() {
+            const allowPickitInfo = disableItemStashScreenshots.checked;
+            includePickitInfo.disabled = !allowPickitInfo;
+            if (!allowPickitInfo) {
+                includePickitInfo.checked = false;
+            }
+        }
+
+        disableItemStashScreenshots.addEventListener("change", updatePickitInfoOption);
+        updatePickitInfoOption();
+    }
+
+    if (!ngrokEnabled || !ngrokConfig) {
+        return;
+    }
+
+    function updateNgrokFields() {
+        ngrokConfig.style.display = ngrokEnabled.checked ? "" : "none";
+    }
+
+    ngrokEnabled.addEventListener("change", updateNgrokFields);
+    updateNgrokFields();
+
+    const howToggle = document.getElementById('updater-how-toggle');
+    const howContent = document.getElementById('updater-how-content');
+    if (howToggle && howContent) {
+        howToggle.addEventListener('click', () => {
+            const isOpen = howContent.style.display === 'block';
+            howContent.style.display = isOpen ? 'none' : 'block';
+            howToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        });
+    }
+
+    const currentCommitsToggle = document.getElementById('current-commits-toggle');
+    const currentCommitsPanel = document.getElementById('current-commits-panel');
+    const currentCommitsList = document.getElementById('current-commits-list');
+    let currentCommitsLoaded = false;
+
+    if (currentCommitsToggle && currentCommitsPanel && currentCommitsList) {
+        currentCommitsToggle.addEventListener('click', async () => {
+            const isOpen = currentCommitsPanel.style.display === 'block';
+            currentCommitsPanel.style.display = isOpen ? 'none' : 'block';
+            currentCommitsToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            if (isOpen || currentCommitsLoaded) {
+                return;
+            }
+            currentCommitsList.textContent = 'Loading current commits...';
+            try {
+                const response = await fetch('/api/updater/current-commits?limit=10');
+                if (!response.ok) {
+                    throw new Error(await response.text());
+                }
+                const commits = await response.json();
+                currentCommitsList.innerHTML = '';
+                if (Array.isArray(commits) && commits.length > 0) {
+                    commits.forEach(commit => {
+                        const commitDiv = document.createElement('div');
+                        commitDiv.style.cssText = 'padding: 6px 8px; margin-bottom: 6px; background: var(--bg-primary); border-radius: 6px; border-left: 3px solid var(--accent-blue);';
+                        commitDiv.innerHTML = `
+                            <div style="font-size: 0.75em; color: var(--text-muted);">${commit.hash} - ${commit.date}</div>
+                            <div style="color: var(--text-primary); margin-top: 4px;">${commit.message}</div>
+                        `;
+                        currentCommitsList.appendChild(commitDiv);
+                    });
+                } else {
+                    currentCommitsList.textContent = 'No commits found.';
+                }
+                currentCommitsLoaded = true;
+            } catch (error) {
+                currentCommitsList.textContent = 'Failed to load current commits.';
+            }
+        });
+    }
+
+    const updatesTab = document.getElementById('tab-updates');
+    const prsTab = document.getElementById('tab-prs');
+    const rollbackTab = document.getElementById('tab-rollback');
+    const updatePanel = document.getElementById('update-panel');
+    const prPanel = document.getElementById('pr-panel');
+    const rollbackPanel = document.getElementById('rollback-panel');
+    let prLoaded = false;
+    let rollbackLoaded = false;
+
+    updatesTab.textContent = 'Check Updates';
+
+    function updateCurrentVersionUI(currentVersion) {
+        if (!currentVersion || !currentVersion.commitHash) {
+            return;
+        }
+
+        const versionHash = document.getElementById('current-version-hash');
+        const versionMsg = document.getElementById('current-version-msg');
+        if (versionHash) {
+            const date = currentVersion.commitDate || 'unknown';
+            versionHash.textContent = `${currentVersion.commitHash} - ${date}`;
+            versionHash.style.color = 'var(--text-primary)';
+            versionHash.style.fontWeight = '500';
+        }
+        if (versionMsg) {
+            versionMsg.textContent = currentVersion.commitMsg || '';
+            versionMsg.style.color = 'var(--text-secondary)';
+            versionMsg.style.fontSize = '0.85em';
+            versionMsg.style.marginTop = '4px';
+        }
+        if (currentCommitsToggle) {
+            currentCommitsToggle.disabled = false;
+            currentCommitsToggle.removeAttribute('aria-disabled');
+            currentCommitsToggle.style.color = 'var(--text-primary)';
+            currentCommitsToggle.style.cursor = 'pointer';
+            currentCommitsToggle.style.opacity = '1';
+        }
+        currentCommitsLoaded = false;
+    }
+
+    function setUpdaterTab(tab, refresh) {
+        const isUpdates = tab === 'updates';
+        const isPRs = tab === 'prs';
+        const isRollback = tab === 'rollback';
+
+        updatePanel.style.display = isUpdates ? '' : 'none';
+        prPanel.style.display = isPRs ? '' : 'none';
+        rollbackPanel.style.display = isRollback ? '' : 'none';
+
+        if (isUpdates) {
+            updatesTab.style.background = 'var(--accent-blue)';
+            updatesTab.style.color = 'white';
+            updatesTab.style.border = '1px solid var(--accent-blue)';
+            prsTab.style.background = 'var(--bg-tertiary)';
+            prsTab.style.color = 'var(--accent-green)';
+            prsTab.style.border = '1px solid var(--accent-green)';
+            rollbackTab.style.background = 'var(--bg-tertiary)';
+            rollbackTab.style.color = 'var(--accent-pink)';
+            rollbackTab.style.border = '1px solid var(--accent-pink)';
+            if (refresh !== false && typeof checkForUpdates === 'function') {
+                checkForUpdates();
+            }
+            return;
+        }
+
+        if (isPRs) {
+            prsTab.style.background = 'var(--accent-green)';
+            prsTab.style.color = 'white';
+            prsTab.style.border = '1px solid var(--accent-green)';
+            updatesTab.style.background = 'var(--bg-tertiary)';
+            updatesTab.style.color = 'var(--accent-blue)';
+            updatesTab.style.border = '1px solid var(--accent-blue)';
+            rollbackTab.style.background = 'var(--bg-tertiary)';
+            rollbackTab.style.color = 'var(--accent-pink)';
+            rollbackTab.style.border = '1px solid var(--accent-pink)';
+            if (!prLoaded && typeof loadUpstreamPRs === 'function') {
+                prLoaded = true;
+                loadUpstreamPRs();
+            }
+            return;
+        }
+
+        if (isRollback) {
+            rollbackTab.style.background = 'var(--accent-pink)';
+            rollbackTab.style.color = 'white';
+            rollbackTab.style.border = '1px solid var(--accent-pink)';
+            updatesTab.style.background = 'var(--bg-tertiary)';
+            updatesTab.style.color = 'var(--accent-blue)';
+            updatesTab.style.border = '1px solid var(--accent-blue)';
+            prsTab.style.background = 'var(--bg-tertiary)';
+            prsTab.style.color = 'var(--accent-green)';
+            prsTab.style.border = '1px solid var(--accent-green)';
+            if (typeof loadBackupVersions === 'function') {
+                loadBackupVersions();
+            }
+        }
+    }
+
+    updatesTab.addEventListener('click', () => setUpdaterTab('updates', true));
+    prsTab.addEventListener('click', () => setUpdaterTab('prs', true));
+    rollbackTab.addEventListener('click', () => setUpdaterTab('rollback', true));
+    setUpdaterTab('updates', false);
+
+    // Updater functionality
+    let updateAvailable = false;
+    window.checkForUpdates = async function() {
+        const updateInfo = document.getElementById('update-info');
+        const updateBtn = document.getElementById('update-now-btn');
+        const statusDiv = document.getElementById('update-status');
+        const aheadCommitsList = document.getElementById('ahead-commits-list');
+        const commitsList = document.getElementById('commits-list');
+        let upstreamDiv = document.getElementById('upstream-latest');
+
+        updatesTab.textContent = 'Checking...';
+
+        try {
+            const response = await fetch('/api/updater/check');
+            const data = await response.json();
+            const ahead = Number(data.commitsAhead) || 0;
+            const behind = Number(data.commitsBehind) || 0;
+            const aheadCommits = Array.isArray(data.aheadCommits) ? data.aheadCommits : [];
+            if (data.currentVersion && data.currentVersion.commitHash) {
+                updateCurrentVersionUI(data.currentVersion);
+            }
+
+            const statusSuffix = ` of and ${behind} commit(s) behind kwader2k/koolo:main.`;
+            if (ahead > 0) {
+                statusDiv.innerHTML = `Current version is <button type="button" id="ahead-commits-toggle" aria-expanded="false" style="background: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); padding: 2px 8px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600;">${ahead} commit(s) ahead</button>${statusSuffix}`;
+            } else {
+                statusDiv.textContent = `Current version is ${ahead} commit(s) ahead${statusSuffix}`;
+            }
+            statusDiv.style.color = behind > 0 ? 'var(--accent-green)' : 'var(--accent-blue)';
+            updateAvailable = behind > 0;
+            updateBtn.disabled = !updateAvailable;
+            updatesTab.textContent = 'Updates';
+
+            if (upstreamDiv) {
+                upstreamDiv.textContent = '';
+            }
+
+            aheadCommitsList.innerHTML = '';
+            aheadCommitsList.style.display = 'none';
+            if (ahead > 0) {
+                aheadCommitsList.innerHTML = '<div style="color: var(--text-secondary); font-weight: 600; margin-bottom: 8px;">Ahead Commits:</div>';
+                if (aheadCommits.length > 0) {
+                    aheadCommits.forEach(commit => {
+                        const commitDiv = document.createElement('div');
+                        commitDiv.style.cssText = 'padding: 8px; margin-bottom: 6px; background: var(--bg-primary); border-radius: 8px; border-left: 3px solid var(--accent-purple); box-shadow: inset 0 0 0 1px var(--border-subtle);';
+                        commitDiv.innerHTML = `
+                            <div style="font-size: 0.75em; color: var(--text-muted);">${commit.hash} - ${commit.date}</div>
+                            <div style="color: var(--text-primary); margin-top: 4px;">${commit.message}</div>
+                        `;
+                        aheadCommitsList.appendChild(commitDiv);
+                    });
+                } else {
+                    const emptyDiv = document.createElement('div');
+                    emptyDiv.style.cssText = 'color: var(--text-secondary); font-size: 0.9em;';
+                    emptyDiv.textContent = 'Unable to load ahead commit details.';
+                    aheadCommitsList.appendChild(emptyDiv);
+                }
+            }
+
+            if (behind > 0) {
+                // Show commits
+                commitsList.innerHTML = '<div style="color: var(--text-secondary); font-weight: 600; margin-bottom: 8px;">Recent Changes:</div>';
+                data.newCommits.forEach(commit => {
+                    const commitDiv = document.createElement('div');
+                    commitDiv.style.cssText = 'padding: 8px; margin-bottom: 4px; background: var(--bg-primary); border-radius: 6px; border-left: 3px solid var(--accent-blue);';
+                    commitDiv.innerHTML = `
+                        <div style="font-size: 0.75em; color: var(--text-muted);">${commit.hash} - ${commit.date}</div>
+                        <div style="color: var(--text-primary); margin-top: 4px;">${commit.message}</div>
+                    `;
+                    commitsList.appendChild(commitDiv);
+                });
+            } else {
+                commitsList.innerHTML = '';
+            }
+
+            const aheadToggle = document.getElementById('ahead-commits-toggle');
+            if (aheadToggle) {
+                aheadToggle.onclick = () => {
+                    const isOpen = aheadCommitsList.style.display === 'block';
+                    aheadCommitsList.style.display = isOpen ? 'none' : 'block';
+                    aheadToggle.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                };
+            }
+
+            updateInfo.style.display = 'block';
+        } catch (error) {
+            alert('Failed to check for updates: ' + error.message);
+            updateAvailable = false;
+            updateBtn.disabled = true;
+            updatesTab.textContent = 'Check Updates';
+        }
+    };
+
+    window.performUpdate = async function(options) {
+        const opts = options || {};
+        const updateBtn = document.getElementById('update-now-btn');
+        const autoRestart = typeof opts.autoRestart === 'boolean'
+            ? opts.autoRestart
+            : document.getElementById('auto-restart-checkbox').checked;
+        const updateProgress = document.getElementById('update-progress');
+        const updateInfo = document.getElementById('update-info');
+        const updateActions = document.getElementById('update-actions');
+        const updateActivity = document.getElementById('update-activity');
+        const updateActivityLabel = document.getElementById('update-activity-label');
+        const updateElapsed = document.getElementById('update-elapsed');
+        const mode = opts.mode || 'update';
+        const source = opts.source || '';
+        const actionLabel = mode === 'build' ? 'Build' : 'Update';
+        const confirmMessage = opts.confirmMessage || 'This will update Koolo to the latest version. Continue?';
+        const skipConfirm = opts.skipConfirm === true;
+        const manageButton = opts.manageButton !== false;
+        const isUpdateMode = mode === 'update';
+
+        if (!skipConfirm && !confirm(confirmMessage)) {
+            return;
+        }
+
+        if (manageButton) {
+            updateBtn.disabled = true;
+        }
+        updateInfo.style.display = 'none';
+        updateActions.style.display = 'none';
+        updateProgress.style.display = 'block';
+        if (updateActivity) {
+            updateActivity.style.display = 'flex';
+        }
+        if (updateActivityLabel) {
+            updateActivityLabel.textContent = mode === 'build' ? 'Build in progress' : 'Update in progress';
+        }
+        let updateStart = Date.now();
+        let updateTimer = null;
+        if (updateElapsed) {
+            updateElapsed.textContent = '0s';
+            updateTimer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - updateStart) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                updateElapsed.textContent = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            }, 1000);
+        }
+
+        // Connect to WebSocket for real-time updates
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'updater_log') {
+                const logsDiv = document.getElementById('progress-logs');
+                const logEntry = document.createElement('div');
+                logEntry.textContent = data.message;
+                logsDiv.appendChild(logEntry);
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+            } else if (data.type === 'updater_error') {
+                alert(actionLabel + ' failed: ' + data.error);
+                updateProgress.style.display = 'none';
+                updateInfo.style.display = 'block';
+                updateActions.style.display = 'flex';
+                if (updateActivity) {
+                    updateActivity.style.display = 'none';
+                }
+                if (updateTimer) {
+                    clearInterval(updateTimer);
+                }
+                if (manageButton) {
+                    updateBtn.disabled = !updateAvailable;
+                }
+            } else if (data.type === 'updater_complete') {
+                document.getElementById('progress-step').textContent = actionLabel + ' completed!';
+                document.getElementById('progress-bar').style.width = '100%';
+
+                if (!autoRestart) {
+                    setTimeout(() => {
+                        alert(actionLabel + ' completed! Please restart the application to use the new version.');
+                    }, 1000);
+                }
+                updateActions.style.display = 'flex';
+                if (isUpdateMode) {
+                    updateAvailable = false;
+                    updateBtn.disabled = true;
+                }
+                if (updateActivity) {
+                    updateActivity.style.display = 'none';
+                }
+                if (updateTimer) {
+                    clearInterval(updateTimer);
+                }
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1200);
+            }
+        };
+
+        try {
+            const sourceParam = source ? `&source=${encodeURIComponent(source)}` : '';
+            const response = await fetch(`/api/updater/update?restart=${autoRestart}&mode=${encodeURIComponent(mode)}${sourceParam}`, {
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            // Poll for status updates
+            pollUpdateStatus();
+        } catch (error) {
+            alert('Failed to start ' + actionLabel.toLowerCase() + ': ' + error.message);
+            updateProgress.style.display = 'none';
+            updateInfo.style.display = 'block';
+            updateActions.style.display = 'flex';
+            if (updateActivity) {
+                updateActivity.style.display = 'none';
+            }
+            if (updateTimer) {
+                clearInterval(updateTimer);
+            }
+            if (manageButton) {
+                updateBtn.disabled = !updateAvailable;
+            }
+            ws.close();
+        }
+    };
+
+    function pollUpdateStatus() {
+        const interval = setInterval(async () => {
+            try {
+                const response = await fetch('/api/updater/status');
+                const status = await response.json();
+
+                document.getElementById('progress-step').textContent = status.currentStep;
+                document.getElementById('progress-bar').style.width = status.progress + '%';
+
+                if (status.state === 'done' || status.state === 'error') {
+                    clearInterval(interval);
+                }
+            } catch (error) {
+                clearInterval(interval);
+            }
+        }, 500);
+    }
+
+    // Backup versions functionality
+    window.loadBackupVersions = async function() {
+        const backupsList = document.getElementById('backups-list');
+        const currentExeInfo = document.getElementById('current-exe-info');
+        backupsList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);">Loading backup versions...</div>';
+
+        try {
+            const response = await fetch('/api/updater/backups');
+            const data = await response.json();
+
+            // Display current executable
+            if (data.current) {
+                const sizeKB = (data.current.size / 1024).toFixed(2);
+                const date = new Date(data.current.createdAt).toLocaleString();
+                currentExeInfo.innerHTML = `
+                    <div style="font-weight: 600;">${data.current.filename}</div>
+                    <div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">
+                        ${date} • ${sizeKB} KB
+                    </div>
+                `;
+            } else {
+                currentExeInfo.textContent = 'No executable found';
+            }
+
+            // Display backup versions
+            if (data.backups && data.backups.length > 0) {
+                backupsList.innerHTML = '';
+                data.backups.forEach((backup, index) => {
+                    const backupDiv = document.createElement('div');
+                    backupDiv.style.cssText = 'padding: var(--spacing-md); background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center;';
+
+                    const sizeKB = (backup.size / 1024).toFixed(2);
+                    const date = new Date(backup.createdAt).toLocaleString();
+
+                    backupDiv.innerHTML = `
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600; color: var(--text-primary);">${backup.filename}</div>
+                            <div style="font-size: 0.85em; color: var(--text-secondary); margin-top: 4px;">
+                                ${date} • ${sizeKB} KB
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="performRollback('${backup.filePath.replace(/\\/g, '\\\\')}')"
+                            style="background: var(--bg-tertiary); color: var(--accent-pink); border: 1px solid var(--accent-pink); padding: 8px 16px; border-radius: var(--radius-md); cursor: pointer; font-weight: 600; white-space: nowrap;"
+                        >
+                            Rollback to this version
+                        </button>
+                    `;
+                    backupsList.appendChild(backupDiv);
+                });
+            } else {
+                backupsList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);">No backup versions found</div>';
+            }
+        } catch (error) {
+            backupsList.innerHTML = `<div style="color: var(--accent-pink); text-align: center; padding: var(--spacing-lg);">Failed to load backups: ${error.message}</div>`;
+        }
+    };
+
+    window.performRollback = async function(backupPath) {
+        if (!confirm(`Are you sure you want to rollback to this version?\n\nThe application will restart automatically.\n\nPath: ${backupPath}`)) {
+            return;
+        }
+
+        const rollbackProgress = document.getElementById('rollback-progress');
+        const backupSection = document.getElementById('backup-versions-section');
+
+        backupSection.style.display = 'none';
+        rollbackProgress.style.display = 'block';
+
+        document.getElementById('rollback-progress-step').textContent = 'Starting rollback...';
+        document.getElementById('rollback-progress-bar').style.width = '10%';
+        document.getElementById('rollback-progress-logs').innerHTML = '';
+
+        // Connect to WebSocket for real-time updates
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'rollback_log') {
+                const logsDiv = document.getElementById('rollback-progress-logs');
+                const logEntry = document.createElement('div');
+                logEntry.textContent = data.message;
+                logsDiv.appendChild(logEntry);
+                logsDiv.scrollTop = logsDiv.scrollHeight;
+
+                document.getElementById('rollback-progress-bar').style.width = '50%';
+            } else if (data.type === 'rollback_error') {
+                alert('Rollback failed: ' + data.error);
+                rollbackProgress.style.display = 'none';
+                backupSection.style.display = 'block';
+                ws.close();
+            }
+        };
+
+        try {
+            const response = await fetch('/api/updater/rollback', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ backupPath: backupPath })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            document.getElementById('rollback-progress-step').textContent = 'Rollback in progress...';
+            document.getElementById('rollback-progress-bar').style.width = '75%';
+
+            // Application will restart, so inform user
+            setTimeout(() => {
+                document.getElementById('rollback-progress-step').textContent = 'Application is restarting...';
+                document.getElementById('rollback-progress-bar').style.width = '100%';
+            }, 2000);
+
+        } catch (error) {
+            alert('Failed to start rollback: ' + error.message);
+            rollbackProgress.style.display = 'none';
+            backupSection.style.display = 'block';
+            ws.close();
+        }
+    };
+
+    // PR cherry-pick functionality
+    let selectedPRs = new Set();
+    window.loadUpstreamPRs = async function() {
+        const prList = document.getElementById('pr-list');
+        const prInfo = '<div id="pr-info" style="color: var(--accent-blue); font-weight: 700; margin-bottom: var(--spacing-sm);">Select PR to apply to your Koolo. Conflicting PRs will be skipped automatically.</div>';
+        const prActions = document.getElementById('pr-actions');
+
+        prList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);">Loading pull requests...</div>';
+        const existingPrInfo = document.getElementById('pr-info');
+        if (existingPrInfo) {
+            existingPrInfo.remove();
+        }
+        prList.insertAdjacentHTML('beforebegin', prInfo);
+
+        try {
+            const response = await fetch('/api/updater/prs?state=open&limit=20');
+            const prs = await response.json();
+
+            if (prs && prs.length > 0) {
+                prList.innerHTML = '';
+                const existingPrInfo = document.getElementById('pr-info');
+                if (existingPrInfo) {
+                    existingPrInfo.remove();
+                }
+                prList.insertAdjacentHTML('beforebegin', prInfo);
+                prActions.style.display = 'flex';
+                selectedPRs.clear();
+                updateSelectedPRs();
+
+                prs.forEach(pr => {
+                    const prDiv = document.createElement('div');
+                    prDiv.style.cssText = 'padding: var(--spacing-md); background: var(--bg-tertiary); border-radius: var(--radius-md); border: 1px solid var(--border-subtle);';
+
+                    const createdDate = new Date(pr.created_at).toLocaleDateString();
+
+                    const appliedBadge = pr.applied ? `<span style="font-size: 0.72em; font-weight: 700; color: var(--accent-green); border: 1px solid var(--accent-green); padding: 2px 6px; border-radius: 999px; letter-spacing: 0.2px;">Applied</span>` : '';
+                    const openButton = `<a href="https://github.com/kwader2k/koolo/pull/${pr.number}" target="_blank" rel="noopener noreferrer" style="background: var(--bg-hover); border: 1px solid var(--border-color); color: var(--text-primary); padding: 6px 12px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; white-space: nowrap;">Open</a>`;
+                    const revertButton = pr.canRevert ? `<button type="button" onclick="revertPR(${pr.number})" style="background: var(--bg-tertiary); border: 1px solid var(--accent-pink); color: var(--accent-pink); padding: 6px 12px; border-radius: var(--radius-sm); cursor: pointer; font-weight: 600; white-space: nowrap; margin-bottom: 0px;">Revert</button>` : '';
+                    const prActionsMarkup = `
+                        <div style="display: flex; gap: 8px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+                            ${openButton}
+                            ${revertButton}
+                        </div>
+                    `;
+
+                    prDiv.innerHTML = `
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: var(--spacing-md);">
+                            <label style="display: flex; gap: var(--spacing-md); cursor: pointer; align-items: start; flex: 1;">
+                                <input type="checkbox" class="pr-checkbox" data-pr="${pr.number}" style="margin-top: 4px;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                                        <span style="font-weight: 700; color: var(--text-primary);">#${pr.number}</span>
+                                        ${appliedBadge}
+                                        <span style="color: var(--text-primary);">${pr.title}</span>
+                                    </div>
+                                    <div style="font-size: 0.85em; color: var(--text-secondary);">
+                                        by ${pr.user.login} • ${createdDate}
+                                    </div>
+                                </div>
+                            </label>
+                            ${prActionsMarkup}
+                        </div>
+                    `;
+                    prList.appendChild(prDiv);
+                });
+
+                // Add change listeners
+                document.querySelectorAll('.pr-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', updateSelectedPRs);
+                });
+            } else {
+                prList.innerHTML = '<div style=\"color: var(--text-secondary); text-align: center; padding: var(--spacing-lg);\">No open pull requests found</div>';
+                const existingPrInfo = document.getElementById('pr-info');
+                if (existingPrInfo) {
+                    existingPrInfo.remove();
+                }
+                prList.insertAdjacentHTML('beforebegin', prInfo);
+                prActions.style.display = 'none';
+            }
+        } catch (error) {
+            prList.innerHTML = `<div style=\"color: var(--accent-pink); text-align: center; padding: var(--spacing-lg);\">Failed to load PRs: ${error.message}</div>`;
+            const existingPrInfo = document.getElementById('pr-info');
+            if (existingPrInfo) {
+                existingPrInfo.remove();
+            }
+            prList.insertAdjacentHTML('beforebegin', prInfo);
+            prActions.style.display = 'none';
+        }
+    };
+
+    function updateSelectedPRs() {
+        selectedPRs.clear();
+        document.querySelectorAll('.pr-checkbox:checked').forEach(checkbox => {
+            selectedPRs.add(parseInt(checkbox.dataset.pr));
+        });
+
+        const buildBtn = document.getElementById('apply-prs-build-btn');
+        if (selectedPRs.size > 0) {
+            buildBtn.textContent = `Apply & Build ${selectedPRs.size} PR${selectedPRs.size > 1 ? 's' : ''}`;
+            buildBtn.disabled = false;
+        } else {
+            buildBtn.textContent = 'Apply & Build';
+            buildBtn.disabled = true;
+        }
+    }
+
+    window.applySelectedPRsAndBuild = async function() {
+        await applySelectedPRsInternal(true);
+    };
+
+    window.revertPR = async function(prNumber) {
+        const prAutoRestart = document.getElementById('pr-auto-restart-checkbox');
+        const restartAfter = prAutoRestart ? prAutoRestart.checked : false;
+        const confirmMsg = `Revert PR #${prNumber}?\n\nBuild will start after successful revert.`;
+
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
+        const prSection = document.getElementById('pr-section');
+        const prProgress = document.getElementById('pr-progress');
+        const prProgressLogs = document.getElementById('pr-progress-logs');
+        const prProgressStep = document.getElementById('pr-progress-step');
+
+        prSection.querySelector('#pr-list').style.display = 'none';
+        prSection.querySelector('#pr-actions').style.display = 'none';
+        prProgress.style.display = 'block';
+        prProgressLogs.innerHTML = '';
+        if (prProgressStep) {
+            prProgressStep.textContent = `Reverting PR #${prNumber}...`;
+        }
+
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'revert_log') {
+                const logEntry = document.createElement('div');
+                logEntry.textContent = data.message;
+                logEntry.style.marginBottom = '2px';
+                prProgressLogs.appendChild(logEntry);
+                prProgressLogs.scrollTop = prProgressLogs.scrollHeight;
+            } else if (data.type === 'revert_error') {
+                alert('Revert failed: ' + data.error);
+                resetPRUI();
+                ws.close();
+            } else if (data.type === 'revert_complete') {
+                const summary = `Revert complete for PR #${prNumber}.`;
+                const finalLog = document.createElement('div');
+                finalLog.textContent = summary;
+                finalLog.style.marginTop = 'var(--spacing-md)';
+                finalLog.style.padding = 'var(--spacing-sm)';
+                finalLog.style.background = 'var(--bg-elevated)';
+                finalLog.style.borderRadius = 'var(--radius-sm)';
+                prProgressLogs.appendChild(finalLog);
+                prProgressLogs.scrollTop = prProgressLogs.scrollHeight;
+
+                setTimeout(() => {
+                    alert(summary);
+                    resetPRUI();
+                    loadUpstreamPRs();
+                }, 1000);
+
+                setUpdaterTab('updates', false);
+                performUpdate({
+                    mode: 'build',
+                    confirmMessage: restartAfter
+                        ? 'This will build and restart Koolo after revert. Continue?'
+                        : 'This will build Koolo after revert. Continue?',
+                    skipConfirm: true,
+                    manageButton: false,
+                    autoRestart: restartAfter,
+                    source: 'pr'
+                });
+
+                ws.close();
+            }
+        };
+
+        try {
+            const response = await fetch('/api/updater/prs/revert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prNumber: prNumber })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+        } catch (error) {
+            alert('Failed to start revert: ' + error.message);
+            resetPRUI();
+            ws.close();
+        }
+    };
+
+    async function applySelectedPRsInternal(buildAfter) {
+        if (selectedPRs.size === 0) {
+            alert('Please select at least one PR');
+            return;
+        }
+
+        const prNumbers = Array.from(selectedPRs).sort((a, b) => a - b);
+        let confirmMsg = `Apply ${prNumbers.length} PR(s)?\n\n` +
+                         `PRs: #${prNumbers.join(', #')}\n\n` +
+                         `Conflicting PRs will be skipped automatically.`;
+        if (buildAfter) {
+            confirmMsg += `\n\nBuild will start after successful cherry-pick.`;
+        }
+
+        if (!confirm(confirmMsg)) {
+            return;
+        }
+
+        const prSection = document.getElementById('pr-section');
+        const prProgress = document.getElementById('pr-progress');
+        const prProgressLogs = document.getElementById('pr-progress-logs');
+
+        prSection.querySelector('#pr-list').style.display = 'none';
+        prSection.querySelector('#pr-actions').style.display = 'none';
+        prProgress.style.display = 'block';
+        prProgressLogs.innerHTML = '';
+
+        // Connect to WebSocket
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+
+        ws.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'cherrypick_log') {
+                const logEntry = document.createElement('div');
+                logEntry.textContent = data.message;
+                logEntry.style.marginBottom = '2px';
+                prProgressLogs.appendChild(logEntry);
+                prProgressLogs.scrollTop = prProgressLogs.scrollHeight;
+            } else if (data.type === 'cherrypick_error') {
+                alert('Cherry-pick failed: ' + data.error);
+                resetPRUI();
+                ws.close();
+            } else if (data.type === 'cherrypick_complete') {
+                const results = data.results;
+                let successCount = 0;
+                let failCount = 0;
+                let conflicts = [];
+
+                results.forEach(result => {
+                    if (result.success) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                        if (result.conflicted && result.conflicted.length > 0) {
+                            conflicts.push(`PR #${result.prNumber}: ${result.error}`);
+                        }
+                    }
+                });
+
+                let summary = `\n=== Cherry-pick Complete ===\n`;
+                summary += `✓ Success: ${successCount} PR(s)\n`;
+                if (failCount > 0) {
+                    summary += `⚠️  Skipped: ${failCount} PR(s) (conflicts)\n`;
+                    if (conflicts.length > 0) {
+                        summary += `\nConflicts:\n` + conflicts.join('\n');
+                    }
+                }
+
+                if (buildAfter && failCount === 0) {
+                    summary += `\nStarting build...`;
+                } else if (buildAfter && failCount > 0) {
+                    summary += `\nBuild skipped due to conflicts.`;
+                }
+
+                const finalLog = document.createElement('div');
+                finalLog.textContent = summary;
+                finalLog.style.marginTop = 'var(--spacing-md)';
+                finalLog.style.padding = 'var(--spacing-sm)';
+                finalLog.style.background = 'var(--bg-elevated)';
+                finalLog.style.borderRadius = 'var(--radius-sm)';
+                finalLog.style.whiteSpace = 'pre-wrap';
+                prProgressLogs.appendChild(finalLog);
+                prProgressLogs.scrollTop = prProgressLogs.scrollHeight;
+
+                setTimeout(() => {
+                    alert(summary);
+                    resetPRUI();
+                    loadUpstreamPRs(); // Reload PR list
+                }, 1000);
+
+                if (buildAfter && failCount === 0) {
+                    const prAutoRestart = document.getElementById('pr-auto-restart-checkbox');
+                    const restartAfter = prAutoRestart ? prAutoRestart.checked : false;
+                    setUpdaterTab('updates', false);
+                    performUpdate({
+                        mode: 'build',
+                        confirmMessage: restartAfter
+                            ? 'This will build and restart Koolo with the applied PRs. Continue?'
+                            : 'This will build Koolo with the applied PRs. Continue?',
+                        skipConfirm: true,
+                        manageButton: false,
+                        autoRestart: restartAfter,
+                        source: 'pr'
+                    });
+                }
+
+                ws.close();
+            }
+        };
+
+        try {
+            const response = await fetch('/api/updater/cherry-pick', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prNumbers: prNumbers })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+        } catch (error) {
+            alert('Failed to start cherry-pick: ' + error.message);
+            resetPRUI();
+            ws.close();
+        }
+    };
+
+    function resetPRUI() {
+        const prSection = document.getElementById('pr-section');
+        const prProgress = document.getElementById('pr-progress');
+
+        prSection.querySelector('#pr-list').style.display = 'flex';
+        prSection.querySelector('#pr-actions').style.display = 'flex';
+        prProgress.style.display = 'none';
+    }
+});
+</script>
+</body>
+</html>

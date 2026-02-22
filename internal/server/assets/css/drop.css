@@ -1,0 +1,501 @@
+:root {
+  /* --- Colors & Theme --- */
+  --bg-body: #1a1a1a;
+  --bg-card: rgba(16, 18, 23, 0.9);
+  --bg-card-alt: rgba(28, 32, 40, 0.92);
+  --bg-item: rgba(255, 255, 255, 0.03);
+  --bg-input: #333;
+  
+  --border-color: rgba(255, 255, 255, 0.15);
+  --text-main: #e0e0e0;
+  --text-sub: rgba(255, 255, 255, 0.65);
+  --text-accent: #58a6ff;
+
+  --primary: #58a6ff;
+  --primary-hover: #4f96e8;
+  --success: #2ecc71;
+  --warning: #ffb347;
+  --danger: #e74c3c;
+  --danger-hover: #c0392b;
+
+  /* Filter Button Specifics */
+  --filter-bg: rgba(155, 89, 182, 0.15);
+  --filter-border: rgba(155, 89, 182, 0.4);
+  --filter-text: #e0aaff;
+  --filter-hover: rgba(155, 89, 182, 0.6);
+
+  /* --- Dimensions --- */
+  --radius: 8px;
+  --spacing: 0.8rem;
+}
+
+/* --- Base & Layout --- */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-body);
+  color: var(--text-main);
+  margin: 0;
+  padding: 1rem;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+h2, h3, p { margin: 0; }
+
+.container { max-width: 1200px; margin: 0 auto; }
+
+/* Sticky Header */
+.sticky-header {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(16, 18, 23, 0.95);
+  backdrop-filter: blur(6px);
+  margin: -1rem -1rem 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  border-radius: 10px 10px 0 0 !important; 
+  overflow: hidden; 
+}
+
+/* Header Layout Fix */
+.sticky-header .card-head-row { margin-bottom: 0 !important; }
+
+.Drop-manager-header h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+.Drop-stack { margin-bottom: 1.5rem; }
+
+/* --- Drop Cards --- */
+#dm-card-list { display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; }
+
+.Drop-card {
+  background: var(--bg-card);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius);
+  padding: 1rem;
+  position: relative;
+}
+#dm-card-list .Drop-card:nth-child(even) { background: var(--bg-card-alt); }
+
+/* Card Header Row */
+.card-head-row { 
+  display: flex; justify-content: space-between; align-items: center; 
+  margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem; min-height: 34px;
+}
+.card-title-row { 
+  display: flex; align-items: center; gap: 0.5rem; height: 34px;
+}
+.card-title-text { 
+  font-size: 1.2rem; color: #fff; font-weight: 700; cursor: pointer;
+  margin-left: 20px; line-height: 1; padding-top: 3px; display: inline-block;
+}
+
+/* Form Grid */
+.Drop-form-grid {
+  display: grid; grid-template-columns: 2fr 1fr 0.8fr; gap: 0.8rem; margin-bottom: 0;
+}
+.Drop-form-grid label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; color: var(--text-sub); font-weight: 600; }
+.Drop-form-grid input {
+  background: var(--bg-input); border: 1px solid var(--border-color); color: #fff;
+  padding: 0.5rem; border-radius: 4px; font-size: 0.9rem;
+}
+.Drop-form-grid input:focus { border-color: var(--text-accent); outline: none; }
+
+/* Supervisors Area */
+.card-supervisors { border-top: 1px solid var(--border-color); padding-top: 0.8rem; }
+.card-subtitle {
+  background: none; border: none; color: var(--text-main); font-weight: 600; 
+  padding: 0; margin-bottom: 0.5rem; cursor: pointer; font-size: 0.9rem;
+}
+.card-subtitle:hover { color: var(--text-accent); }
+
+.card-supervisor-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.card-supervisor-chip {
+  display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem;
+  border: 1px solid var(--border-color); border-radius: 6px;
+  background: var(--bg-item); font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+}
+.card-supervisor-chip:has(input:checked) {
+  background: rgba(88, 166, 255, 0.15); border-color: rgba(88, 166, 255, 0.4); color: #fff;
+}
+
+/* Supervisor List (Top section) */
+#dm-supervisor-list { display: flex; flex-direction: column; gap: 0.6rem; }
+.supervisor-tag {
+  background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 6px;
+  padding: 0.6rem 0.8rem; display: flex; justify-content: space-between; align-items: center; gap: 0.8rem;
+}
+.supervisor-info { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
+.supervisor-row { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.95rem; cursor: pointer; }
+.supervisor-meta { font-size: 0.8rem; color: var(--text-sub); display: flex; gap: 0.8rem; margin-left: 24px; }
+.supervisor-actions { display: flex; gap: 0.5rem; }
+
+/* --- Components (Status, Icons) --- */
+.status-indicator { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.status-indicator.in-game { background-color: var(--success); box-shadow: 0 0 6px rgba(46, 204, 113, 0.4); }
+.status-indicator.paused { background-color: var(--warning); }
+.status-indicator.stopped { background-color: var(--danger); }
+.status-indicator.offline { background-color: #555; opacity: 0.5; }
+
+/* Pin Button */
+.icon-button {
+  background: transparent; border: none; color: var(--text-sub); cursor: pointer;
+  padding: 4px; font-size: 1.1rem; transition: color 0.2s;
+}
+.icon-button:hover, .icon-button.pinned { color: var(--text-accent); }
+
+.icon-button.card-pin-button {
+  position: absolute !important; top: 10px; left: 10px; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; opacity: 0.6; transition: all 0.2s ease;
+}
+.icon-button.card-pin-button:hover { opacity: 1; transform: scale(1.1); color: #58a6ff; }
+.icon-button.card-pin-button.pinned { opacity: 1; color: #58a6ff; transform: rotate(-15deg); }
+
+/* Ensure bootstrap icons use their icon font even if parent font overrides */
+.btn .bi {
+  font-family: "bootstrap-icons" !important;
+  speak: none;
+}
+
+.request-all-btn {
+  position: relative;
+}
+
+.request-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.4rem;
+  background: #e74c3c;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* --- Filter Modal UI --- */
+.filter-modal {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0, 0, 0, 0.85); z-index: 9999;
+  display: none; align-items: center; justify-content: center;
+}
+.filter-modal-content {
+  background: #15171e;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  width: 95%; max-width: 700px;
+  max-height: 90vh; 
+  display: flex; 
+  flex-direction: column; 
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+.filter-modal-header {
+  padding: 1.2rem; border-bottom: 1px solid var(--border-color);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.filter-modal-body { 
+  padding: 1.5rem; 
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+/* Header Actions & Toggles */
+.filter-header-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.filter-toggle {
+  display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color);
+  border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600;
+  height: 34px; margin-bottom: 0; transition: all 0.2s;
+}
+.filter-toggle:hover { background: rgba(255, 255, 255, 0.1); }
+.filter-toggle input[type="checkbox"] { margin: 0; }
+
+.filter-header-mode {
+  display: flex; width: 100%; gap: 1rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);
+}
+.filter-header-mode label {
+  flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  padding: 0.6rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);
+  border-radius: 6px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; margin-bottom: 0;
+}
+.filter-header-mode label:hover { background: rgba(255, 255, 255, 0.08); }
+.filter-header-mode label:has(input:checked) {
+  background: rgba(155, 89, 182, 0.15); border-color: rgba(155, 89, 182, 0.6); color: #e0aaff; font-weight: bold;
+}
+
+/* Filter Sections & Grid */
+.filter-section-head {
+  display: flex !important; align-items: center !important; gap: 0.6rem !important;
+  margin-bottom: 0.8rem; padding-bottom: 0.4rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); height: 30px;
+}
+.select-all-toggle { display: flex; align-items: center; margin: 0 !important; padding: 0 !important; cursor: pointer; height: 100%; }
+.select-all-toggle input[type="checkbox"] { width: 1.1rem !important; height: 1.1rem !important; margin: 0 !important; cursor: pointer; transform: translateY(1px); }
+.filter-section-head h3 { margin: 0 !important; font-size: 1.3rem !important; color: var(--text-accent); line-height: 1 !important; padding: 0 !important; display: flex; align-items: center; }
+
+.filter-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 0.5rem; margin-bottom: 1.5rem; }
+
+/* Filter Checkbox Item (Compact & Stable) */
+.filter-checkbox-item {
+  display: flex !important; align-items: center !important; justify-content: space-between !important;
+  height: 32px !important; min-height: 32px !important; padding: 0 8px !important; gap: 8px !important;
+  background: var(--bg-item); border: 1px solid var(--border-color); border-radius: 4px;
+  box-sizing: border-box !important; overflow: hidden !important;
+}
+.filter-checkbox-item label {
+  flex: 1 !important; margin: 0 !important; white-space: nowrap !important; overflow: hidden !important;
+  text-overflow: ellipsis !important; line-height: 32px !important; cursor: pointer !important; display: flex; align-items: center; gap: 0.4rem;
+}
+.filter-checkbox-item input[type="checkbox"] { margin: 0; }
+
+/* Quantity Input (Tiny & Auto-show) */
+.filter-checkbox-item input.quantity-value {
+  display: none; width: 30px !important; height: 20px !important; min-height: 20px !important;
+  margin: 0 !important; padding: 0 !important; font-size: 0.75rem !important; text-align: center !important;
+  background-color: rgba(0,0,0,0.4) !important; border: 1px solid var(--border-color) !important;
+  border-radius: 4px !important; color: var(--primary) !important;
+}
+.filter-checkbox-item input.quantity-value.active { display: block !important; }
+.filter-checkbox-item input.quantity-value::-webkit-outer-spin-button,
+.filter-checkbox-item input.quantity-value::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.filter-checkbox-item input.quantity-value { -moz-appearance: textfield; }
+
+/* --- Tasks(Queue) Modal & Cards --- */
+#dm-queue-modal { display: none; }
+#dm-queue-body { display: flex; flex-direction: column; min-height: 200px; }
+
+/* Table Header */
+.queue-table-header {
+    display: flex; align-items: center; padding: 0.7rem 1rem;
+    background: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--border-color);
+    font-weight: 700; color: var(--text-sub); font-size: 0.8rem;
+    text-transform: uppercase; letter-spacing: 0.5px; gap: 10px;
+}
+
+/* Table Row */
+.queue-table-row {
+    display: flex; align-items: center; padding: 0.7rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    transition: background 0.2s; font-size: 0.85rem; gap: 10px;
+}
+.queue-table-row:last-child { border-bottom: none; }
+.queue-table-row:hover { background: rgba(255, 255, 255, 0.03); }
+
+/* Columns */
+.col-time, .col-done { flex: 0 0 75px; color: var(--text-sub); font-size: 0.75rem; white-space: nowrap; text-align: center; }
+.col-run { flex: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-accent); font-weight: 600; padding-left: 5px; }
+.col-room { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main); font-family: monospace; }
+.col-filter { flex: 0 0 40px; text-align: center; }
+.col-sup { flex: 0 0 50px; font-weight: 600; color: var(--text-main); text-align: center; }
+.col-status { flex: 0 0 80px; text-align: center; }
+
+/* Badges */
+.q-badge { display: inline-block; padding: 2px 0; width: 100%; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; text-align: center; }
+.badge-filter-on { display: inline-block; width: 100%; text-align: center; font-size: 0.7rem; font-weight: 700; border-radius: 3px; background: rgba(46, 204, 113, 0.2); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+.badge-filter-off { display: inline-block; width: 100%; text-align: center; font-size: 0.7rem; font-weight: 700; border-radius: 3px; background: rgba(255, 255, 255, 0.05); color: #777; border: 1px solid rgba(255, 255, 255, 0.1); }
+
+/* Status Colors */
+.q-badge-pending, .q-badge-queued { background: rgba(255, 179, 71, 0.1); color: #ffb347; border: 1px solid rgba(255, 179, 71, 0.3); }
+.q-badge-running, .q-badge-active { background: rgba(88, 166, 255, 0.1); color: #58a6ff; border: 1px solid rgba(88, 166, 255, 0.3); }
+.q-badge-success, .q-badge-completed { background: rgba(46, 204, 113, 0.1); color: #2ecc71; border: 1px solid rgba(46, 204, 113, 0.3); }
+.q-badge-failed, .q-badge-error, .q-badge-timeout { background: rgba(231, 76, 60, 0.1); color: #ff6b6b; border: 1px solid rgba(231, 76, 60, 0.3); }
+
+/* --- Tables & Toast --- */
+.history-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+.history-table th, .history-table td { padding: 0.8rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.9rem; }
+.history-table th { color: var(--text-sub); font-weight: 400; }
+.history-table tr:hover td { background: var(--bg-item); }
+
+.toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 0.8rem; pointer-events: none; }
+.toast {
+  background: rgba(30, 30, 30, 0.98); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 6px; padding: 1rem 1.5rem;
+  min-width: 280px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); opacity: 0; transform: translateX(50px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: auto; font-weight: 500;
+}
+.toast.show { opacity: 1; transform: translateX(0); }
+.toast.success { border-left: 4px solid var(--success); }
+.toast.error { border-left: 4px solid var(--danger); }
+.toast.info { border-left: 4px solid var(--primary); }
+
+
+/* ==========================================================================
+   [CRITICAL] BUTTON STYLES OVERRIDE
+   ========================================================================== */
+
+button.btn, 
+.Drop-card button.btn,
+#dm-queue-modal button.btn,
+.filter-modal button.btn, 
+a.btn {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid transparent !important; box-shadow: none !important; margin-bottom: 0 !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  padding: 0.4rem 0.8rem !important; border-radius: 6px !important; font-size: 0.9rem !important;
+  font-weight: 600 !important; line-height: 1.1 !important; height: 34px !important;
+  color: var(--text-main) !important; transition: all 0.2s ease !important;
+  opacity: 1 !important; visibility: visible !important;
+}
+button.btn:hover { background-color: rgba(255, 255, 255, 0.2) !important; transform: none !important; }
+button.btn i { margin-right: 6px !important; font-size: 1.1em !important; vertical-align: middle !important; }
+button.btn.btn-small { height: 28px !important; font-size: 0.8rem !important; padding: 0 0.6rem !important; }
+
+/* 2. Primary Button (Blue) */
+button.btn-primary, 
+#dm-card-list .btn-primary, 
+#dm-request-cards, 
+#dm-card-filter-save,
+#dm-queue-modal button.btn-primary {
+  background-color: var(--primary) !important; border: 1px solid var(--primary) !important; color: #fff !important;
+}
+button.btn-primary:hover, #dm-card-list .btn-primary:hover, #dm-request-cards:hover, #dm-card-filter-save:hover, #dm-queue-modal button.btn-primary:hover {
+  background-color: var(--primary-hover) !important; border-color: var(--primary-hover) !important;
+  box-shadow: 0 4px 12px rgba(88, 166, 255, 0.4) !important; transform: translateY(-1px) !important;
+}
+
+/* 3. Danger Button (Red) */
+button.btn-danger, 
+#dm-card-list .btn-danger, 
+#dm-history-clear, 
+#dm-queue-clear, 
+#dm-card-filter-reset,
+#dm-queue-modal button.btn-danger {
+  background-color: rgba(231, 76, 60, 0.25) !important; 
+  border: 1px solid rgba(231, 76, 60, 0.6) !important; 
+  color: #ffadad !important;
+}
+button.btn-danger:hover, 
+#dm-card-list .btn-danger:hover, 
+#dm-history-clear:hover, 
+#dm-queue-clear:hover, 
+#dm-card-filter-reset:hover,
+#dm-queue-modal button.btn-danger:hover {
+  background-color: rgba(231, 76, 60, 0.8) !important; 
+  color: #fff !important; 
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.4) !important;
+}
+
+/* 4. Filter Button (Purple) */
+button.btn-filter, #dm-card-list .btn-filter {
+  background-color: var(--filter-bg) !important; border: 1px solid var(--filter-border) !important; color: var(--filter-text) !important;
+}
+button.btn-filter:hover, button.btn-filter.active, #dm-card-list .btn-filter:hover, #dm-card-list .btn-filter.active {
+  background-color: var(--filter-hover) !important; border-color: var(--filter-text) !important;
+  color: #fff !important; box-shadow: 0 0 10px rgba(155, 89, 182, 0.4) !important; font-weight: 700 !important;
+}
+
+/* 5. Close Button (Modal - Outline) */
+#dm-card-filter-close, #dm-queue-close {
+  background-color: transparent !important; border: 1px solid var(--border-color) !important; color: var(--text-sub) !important; opacity: 0.8 !important;
+  display: inline-flex !important; align-items: center !important; justify-content: center !important;
+  height: 28px !important; font-size: 0.8rem !important; padding: 0 0.6rem !important; font-weight: 600 !important;
+}
+#dm-card-filter-close:hover, #dm-queue-close:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important; border-color: var(--text-main) !important; color: var(--text-main) !important; opacity: 1 !important;
+}
+
+/* 6. Queue Button (Orange) */
+#dm-open-queue.btn-queue {
+  background-color: var(--warning) !important; border: 1px solid var(--warning) !important; color: #1a1a1a !important;
+}
+#dm-open-queue.btn-queue:hover {
+  background-color: #e09e3e !important; box-shadow: 0 0 10px rgba(255, 179, 71, 0.4) !important;
+}
+/* 7. Add Card Button (Green) */
+html body #dm-add-card.btn {
+  background-color: var(--success) !important; /* #2ecc71 */
+  border: 1px solid var(--success) !important;
+  color: #fff !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+html body #dm-add-card.btn:hover {
+  background-color: #27ae60 !important;
+  border-color: #27ae60 !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(46, 204, 113, 0.4) !important;
+}
+
+/* ==========================================================================
+   [Sticky Summary Bar]
+   ========================================================================== */
+
+.filter-summary-bar {
+    background: #15171e;
+    border-top: 1px solid var(--border-color);
+    padding: 10px 15px;
+    z-index: 10;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
+
+.filter-chip-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-height: 80px;
+    overflow-y: auto;
+}
+
+.filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(88, 166, 255, 0.15);
+    border: 1px solid rgba(88, 166, 255, 0.3);
+    color: #aaddff;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.filter-chip:hover {
+    background: rgba(88, 166, 255, 0.25);
+    border-color: rgba(88, 166, 255, 0.5);
+}
+.chip-close {
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 0.8;
+    opacity: 0.6;
+}
+.chip-close:hover {
+    opacity: 1;
+    color: #fff;
+}
+
+/* ==========================================================================
+   [Filter Summary Preview]
+   ========================================================================== */
+
+.filter-summary-preview {
+    flex: 1;
+    min-width: 50px;
+    margin-left: 1rem;
+    margin-right: 0.5rem;
+    overflow: hidden;
+    white-space: nowrap; 
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    height: 34px;
+}
+
+.filter-summary-chip {
+    font-size: 0.75rem;
+    background: var(--filter-bg);
+    color: var(--filter-text);
+    padding: 2px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.filter-summary-chip.filter-more {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-sub);
+    font-style: italic;
+}

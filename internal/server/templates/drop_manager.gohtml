@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="../assets/css/pico.min.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <link rel="stylesheet" href="../assets/css/drop.css">
+    <style>
+        .drop-title-gradient {
+            color: var(--text-accent);
+        }
+    </style>
+    <title>Drop Manager</title>
+</head>
+<body>
+<div class="toast-container" id="toast-container"></div>
+<main class="container">
+<header class="Drop-manager-header" style="display:flex; justify-content:space-between; gap:1.5rem; align-items:flex-start;">
+        <div style="display:flex; align-items:center; gap:1.5rem; margin-bottom:1rem;">
+            <button class="btn btn-outline" onclick="window.location.href='/'" title="Back to Dashboard">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div>
+                <h1 style="margin:0; font-size:1.8rem;"><span class="drop-title-gradient">Drop Manager</span></h1>
+                <p class="lead" style="margin:0;">Manage drop runs. Use the settings button to choose how unfiltered runs should behave before requesting drops.</p>
+            </div>
+        </div>
+        <button id="dm-drop-mode-settings" class="btn btn-outline btn-small drop-settings-button" type="button" style="align-self:flex-start; margin-top:0.25rem;">
+            <i class="bi bi-gear"></i> Drop Mode
+        </button>
+    </header>
+    <section class="Drop-stack">
+        <article class="Drop-card">
+            <div class="sticky-header">
+                <div class="card-head-row">
+                    <div style="display:flex; gap:0.6rem; align-items:center; flex-wrap:wrap; margin-left: 0.5rem;">
+                        <h2 style="margin:0; font-size:1rem; font-weight:600;">Drop Table</h2>
+                    </div>
+                    <div class="Drop-head-actions" style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                        <button id="dm-add-card" class="btn btn-small add-card-btn" type="button">
+                            <i class="bi bi-plus-circle"></i> Add Drop
+                        </button>
+                        <button id="dm-open-queue" class="btn btn-queue btn-small" type="button">
+                            <i class="bi bi-list-task"></i> Tasks
+                        </button>
+                        <button id="dm-request-cards" class="btn btn-primary btn-small request-all-btn" type="button">
+                            <i class="bi bi-send-fill"></i> Request
+                            <span class="request-badge">All</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="dm-card-list" class="Drop-stack" style="margin-bottom:0;"></div>
+        </article>
+
+        <div style="display:none;">
+            <input type="text" id="dm-room" value="">
+            <input type="text" id="dm-password" value="">
+            <input type="number" id="dm-delay" value="15">
+            <div id="dm-supervisor-list"></div>
+        </div>
+
+        <article class="Drop-card">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap;">
+                <h2 style="margin:0;">History</h2>
+                <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
+                    <button id="dm-history-clear" class="btn btn-danger btn-small" type="button" title="Clear history cache">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                </div>
+            </div>
+            <p style="margin:0.25rem 0 0.5rem 0;">Recent drop runs with status and details.</p>
+            <div class="queue-table-wrapper" style="max-height:300px; overflow-y:auto;">
+                <table class="Drop-table" id="dm-history-table">
+                    <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Card</th>
+                        <th>Supervisor</th>
+                        <th>Room</th>
+                        <th>Result</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </article>
+    </section>
+
+    <div id="dm-drop-mode-modal" class="filter-modal" style="display:none;">
+        <div class="filter-modal-content" style="max-width:500px;">
+            <div class="filter-modal-header" style="justify-content:space-between; align-items:flex-start;">
+                <h2>Drop Mode</h2>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-primary btn-small" id="dm-drop-mode-save" type="button">Save</button>
+                    <button class="btn btn-close btn-small" id="dm-drop-mode-close" type="button">Close</button>
+                </div>
+            </div>
+            <div class="filter-modal-body">
+                <p style="margin-bottom:1rem;">Select the default behavior for drop requests to avoid unfiltered runs.</p>
+                <div class="drop-mode-option">
+                    <label>
+                        <input type="radio" name="dm-drop-mode-option" value="drop-except-materials">
+                        <strong>Drop all stash items except configured materials.</strong>
+                        <p style="margin:0.25rem 0 0 1.75rem; color:var(--text-sub); font-size:0.9rem;">Standard mode (matching the previous default): only protects items specifically marked as materials.</p>
+                    </label>
+                </div>
+                <div class="drop-mode-option" style="margin-top:0.8rem;">
+                    <label>
+                        <input type="radio" name="dm-drop-mode-option" value="require-filter">
+                        <strong>Do not drop unless a filter is set.</strong>
+                        <p style="margin:0.25rem 0 0 1.75rem; color:var(--text-sub); font-size:0.9rem;">Prevents any drop request that does not carry an enabled filter.</p>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dm-queue-modal" class="filter-modal" style="display:none;">
+        <div class="filter-modal-content" style="max-width:800px;">
+            <div class="filter-modal-header">
+                <h2>Tasks</h2>
+                <div class="queue-modal-actions" style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-danger btn-small" id="dm-queue-clear" type="button" title="Clear all history logs">
+                        <i class="bi bi-trash"></i> Clear
+                    </button>
+                    <button class="btn btn-close btn-small" id="dm-queue-close" type="button">
+                        Close
+                    </button>
+                </div>
+            </div>
+            <div class="filter-modal-body">
+                <div id="dm-queue-body" class="queue-table-wrapper" style="max-height:400px; overflow-y:auto;">
+                    <p style="opacity:0.7;">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="dm-card-filter-modal" class="filter-modal" style="display: none;">
+        <div class="filter-modal-content">
+            <div class="filter-modal-header" style="flex-direction: column; align-items: stretch; gap: 0;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <h2 style="margin:0; line-height:1.2; font-size:1.6rem;">
+                        <span id="dm-card-filter-title">Room Filter</span>
+                    </h2>
+                    
+                    <div class="filter-header-actions">
+                        <label class="filter-toggle" title="Toggle entire filter on/off">
+                            <input type="checkbox" id="dm-card-filter-enabled">
+                            Enable
+                        </label>
+
+                        <button class="btn btn-primary btn-small" id="dm-card-filter-save" type="button">
+                            <i class="bi bi-funnel-fill"></i> Save
+                        </button>
+
+                        <button class="btn btn-danger btn-small" id="dm-card-filter-reset" type="button" title="Reset filter selections">
+                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        </button>
+
+                        <button class="btn btn-close btn-small" id="dm-card-filter-close" type="button">
+                            Close
+                        </button>
+                    </div>
+                </div>
+
+                <div class="filter-header-mode">
+                    <label>
+                        <input type="radio" name="dm-card-filter-mode" value="exclusive">
+                        <span>Selected Only</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="dm-card-filter-mode" value="inclusive">
+                        <span>Standard + Selected</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="filter-modal-body">
+                <div id="dm-card-filter-body">
+                    <fieldset id="dm-card-filter-fields" style="border:none; padding:0; margin:0;">
+                        
+                        <div class="filter-section">
+                            <div class="filter-section-head">
+                                <label class="select-all-toggle" title="Select all runes">
+                                    <input type="checkbox" id="dm-card-rune-selectall">
+                                </label>
+                                <h3>
+                                    Runes 
+                                    <span style="font-size:0.8rem; color:var(--text-sub); font-weight:normal; margin-left:8px;">(Qty 0 = All)</span>
+                                </h3>
+                            </div>
+                            <div class="filter-checkbox-grid" id="dm-card-rune-checkboxes"></div>
+                        </div>
+
+                        <div class="filter-section">
+                            <div class="filter-section-head">
+                                <label class="select-all-toggle" title="Select all gems">
+                                    <input type="checkbox" id="dm-card-gem-selectall">
+                                </label>
+                                <h3>
+                                    Perfect Gems
+                                    <span style="font-size:0.8rem; color:var(--text-sub); font-weight:normal; margin-left:8px;">(Qty 0 = All)</span>
+                                </h3>
+                            </div>
+                            <div class="filter-checkbox-grid" id="dm-card-gem-checkboxes"></div>
+                        </div>
+
+                        <div class="filter-section">
+                            <div class="filter-section-head">
+                                <label class="select-all-toggle" title="Select all keys & token">
+                                    <input type="checkbox" id="dm-card-keytoken-selectall">
+                                </label>
+                                <h3>Keys &amp; Token <span style="font-size:0.8rem; color:var(--text-sub); font-weight:normal; margin-left:8px;">(Qty 0 = All)</span></h3>
+                            </div>
+                            <div class="filter-checkbox-grid" id="dm-card-keytoken-checkboxes"></div>
+                        </div>
+
+                        <div class="filter-section">
+                            <div class="filter-section-head">
+                                <label class="select-all-toggle" title="Select all qualities">
+                                    <input type="checkbox" id="dm-card-quality-selectall">
+                                </label>
+                                <h3>Selectable Qualities</h3>
+                            </div>
+                            <div class="filter-checkbox-grid" id="dm-card-quality-checkboxes">
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="base"> White items</label></div>
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="magic"> Magic items</label></div>
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="rare"> Rare items</label></div>
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="set"> Set items</label></div>
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="unique"> Unique items</label></div>
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="crafted"> Crafted items</label></div>
+                                <div class="filter-checkbox-item"><label><input type="checkbox" value="runeword"> Runeword items</label></div>
+                            </div>
+                        </div>
+
+                        <div class="filter-section">
+                            <h3 style="margin-bottom:0.5rem; color:var(--text-accent);">Custom Items</h3>
+                            <label style="display:block;">
+                                <span style="font-size:0.9rem; color:var(--text-sub); margin-bottom:0.3rem; display:block;">Enter item codes (one per line, e.g. 'Crystalsword')</span>
+                                <textarea id="dm-card-custom-items" placeholder="Crystalsword"></textarea>
+                            </label>
+                        </div>
+
+                    </fieldset>
+                </div>
+            </div>
+            
+            <div class="filter-summary-bar">
+                <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:6px;">
+                    <i class="bi bi-cart3"></i> Selected Items:
+                </div>
+                <div id="dm-filter-summary-chips" class="filter-chip-container">
+                    <span style="color:#555; font-size:0.8rem;">No items selected</span>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+<script src="../assets/js/drop_manager.js"></script>
+</body>
+</html>

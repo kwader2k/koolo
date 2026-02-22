@@ -1,0 +1,37 @@
+//belts 
+[name] == spiderwebsash && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 90 # [tier] == 10000 //arach
+
+//Boots
+[name] == meshboots && [quality] == unique && [flag] != ethereal # # [tier] == 6000 //Silkweaves
+
+//Gloves
+[name] == gauntlets && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 10 # [tier] == 1000 //Frostburns
+[name] == chaingloves && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 25 && [itemmagicbonus] >= 25 # [tier] == 2000 //chancies
+[name] == lightgauntlets && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 20 # [tier] == 3000 // magefist
+
+//Helms
+[name] == shako && [quality] == unique && [flag] != ethereal # [defense] >= 98 # [tier] == 10000 // shako
+
+//Armors
+[name] == serpentskinarmor && [quality] == unique && [flag] != ethereal # # [tier] == 10000
+
+//rings
+[type] == ring && [quality] == unique # [itemabsorblightpercent]+[itemmagicbonus] >= 30 # [tier] == 8000 //wisp
+[type] == ring && [quality] == unique # [itemmaxmanapercent] >= 25 # [tier] == 10000 //stone of jordan
+
+//amulet
+[type] == amulet && [quality] == unique # [itemallskills] == 2 && [fireresist] + [lightresist] + [coldresist] >= 60 # [tier] == 10000 //mara
+
+//Weapons
+[name] == boneknife && [quality] == unique && [flag] != ethereal # # [tier] == 5000 // wizzy
+([name] == broadsword || [name] == crystalsword) && [flag] != ethereal # [maxmana] >= 89 # [tier] == 10000 //spirit weapon
+[name] == flail && [flag] != ethereal # [fireresist] >= 30 # [tier] == 15000 //hoto weapon 13000-14000
+
+//Shields
+[name] == grimshield && [quality] == unique && [flag] != ethereal # # [tier] == 500 //lidless
+[type] == shield && [flag] != ethereal # [sockets] == 2 && [fireresist] >= 25 && [lightresist] >= 25 # [maxquantity] == 1 && [tier] == 1000 //rhyme
+[type] == shield && [flag] == runeword && [flag] != ethereal # [fireresist] >= 40 && [lightresist] >= 40 && [coldresist] >= 40 # [maxquantity] == 1 && [tier] == 5000 //ancients pledge
+[name] == roundshield && [quality] == unique && [flag] != ethereal # [sockets] == 2 # [tier] == 6000 //moser
+[type] == shield && [flag] == runeword && [flag] != ethereal # [maxmana] >= 89 && [fcr] >= 25 # [tier] == 10000 //spirit shield
+[type] == shield && [flag] == runeword && [flag] != ethereal # [maxmana] >= 89 && [fcr] >= 30 # [tier] == 11000 //spirit shield
+[type] == shield && [flag] == runeword && [flag] != ethereal # [maxmana] >= 89 && [fcr] == 35 # [tier] == 12000 //spirit shield

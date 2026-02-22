@@ -1,0 +1,2298 @@
+{{$topLevelContext := .}}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark"/>
+    <link rel="stylesheet" href="../assets/css/pico.min.css">
+    <link rel="stylesheet" href="../assets/css/custom.css">
+    <link rel="stylesheet" href="../assets/css/bootstrap-icons.css">
+    <style>
+        .runeword-list-item.selected {
+            background-color: rgba(100, 150, 255, 0.25);
+            border-radius: 4px;
+        }
+
+        .rw-btn-add {
+            background-color: #1a5fff;
+            border-color: #4a8dff;
+            color: #fff;
+        }
+
+        .rw-btn-add:hover {
+            background-color: #2a6fff;
+            border-color: #5b9bff;
+            color: #fff;
+        }
+
+        #rwRerollSection strong {
+            font-size: 1.05em;
+            letter-spacing: 0.02em;
+        }
+
+        /* Keep base Add button inline to the right of the select */
+        .rw-base-add-btn {
+            width: auto;
+            flex: 0 0 auto;
+        }
+
+        /* Reroll rule card styles (aligned with reroll page) */
+        .rr-rule {
+            margin-bottom: 8px;
+            background-color: rgba(255, 255, 255, 0.02);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #333;
+            transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .rr-rule[data-editor="false"] {
+            background-color: rgba(128, 128, 128, 0.1);
+            border-color: #555;
+        }
+
+        .rr-rule[data-editor="true"] {
+            border-style: dashed;
+            opacity: 0.95;
+        }
+
+        .rr-rule-header {
+            cursor: pointer;
+        }
+
+        .rr-rule.collapsed .rr-rule-body {
+            display: none;
+        }
+
+        .rr-rule-status {
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 999px;
+            border: 1px solid #4ac3ff;
+            color: #4ac3ff;
+            margin-right: 4px;
+        }
+
+        .rr-btn-add {
+            background-color: #1a5fff;
+            border-color: #4a8dff;
+            color: #fff;
+        }
+
+        .rr-btn-add:hover {
+            background-color: #2a6fff;
+            border-color: #5b9bff;
+            color: #fff;
+        }
+
+        .rr-btn-remove {
+            background-color: #8b1f1f;
+            border-color: #ff5c5c;
+            color: #fff;
+        }
+
+        .rr-btn-remove:hover {
+            background-color: #a62828;
+            border-color: #ff7575;
+            color: #fff;
+        }
+
+        /* Reroll stat rows styling (match reroll page emphasis) */
+        .rw-target-row .rw-stat-label {
+            font-weight: 600;
+        }
+
+        .rw-target-row .rw-min-label {
+            font-size: 0.85em;
+            color: #aaa;
+        }
+
+        .rw-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .rw-back-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.6rem;
+            line-height: 1;
+            min-height: 0;
+            margin-bottom: 0;
+        }
+
+        .runeword-list-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rw-fav-btn {
+            border: none;
+            background: transparent;
+            color: #8b95a1;
+            cursor: pointer;
+            font-size: 1.15rem;
+            line-height: 1;
+            padding: 0 2px;
+            margin-bottom: 0.5rem;
+        }
+        .rw-fav-btn.active {
+            color: #f2c94c;
+        }
+
+        .rw-reroll-badge {
+            margin-left: auto;
+            width: 16px;
+            height: 16px;
+            border-radius: 999px;
+            background-color: rgba(90, 180, 255, 0.22);
+            align-items: center;
+            justify-content: center;
+            display: none;
+        }
+
+        .rw-reroll-badge i {
+            font-size: 0.8em;
+        }
+
+        .rw-reroll-target-summary {
+            font-size: 0.9rem;
+            color: #aaa;
+            font-weight: 600;
+        }
+
+        /* Hide scrollbar for runeword list but allow scrolling */
+        #rw-list::-webkit-scrollbar {
+            display: none;
+        }
+        #rw-list {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        .rw-history-modal {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .rw-history-backdrop {
+            position: absolute;
+            inset: 0;
+            background: rgba(10, 12, 18, 0.75);
+        }
+
+        .rw-history-panel {
+            position: relative;
+            z-index: 1;
+            width: min(1100px, 92vw);
+            max-height: 80vh;
+            background: rgba(26, 32, 45, 0.98);
+            border: 1px solid #3a3f4f;
+            border-radius: 10px;
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+        }
+
+        .rw-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rw-history-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .rw-history-subtitle {
+            font-size: 0.85rem;
+            color: #d8dee9;
+        }
+
+        .rw-history-controls {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 10px;
+            border-radius: 8px;
+            background: rgba(60, 70, 92, 0.35);
+            border: 1px solid #3a4358;
+            color: #e6ebf5;
+        }
+
+        .rw-history-controls label {
+            color: #e6ebf5;
+        }
+
+        .rw-history-table-wrap {
+            overflow: auto;
+            border: 1px solid #2f3546;
+            border-radius: 8px;
+        }
+
+        .rw-history-table-wrap table {
+            margin: 0;
+        }
+
+        .rw-history-table-wrap th,
+        .rw-history-table-wrap td {
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .rw-history-empty {
+            text-align: center;
+            color: #9aa3b5;
+            padding: 16px 8px;
+        }
+
+        .rw-toast {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            background: rgba(30, 120, 60, 0.95);
+            color: #e9fff1;
+            border: 1px solid #2e6c3b;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.9rem;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+            opacity: 0;
+            transform: translate(-50%, -50%) translateY(6px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .rw-toast.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) translateY(0);
+        }
+    </style>
+    <title>Runeword Settings</title>
+</head>
+<body>
+<main class="container">
+    {{ if ne .ErrorMessage "" }}
+    <div class="container">
+        <div class="row">
+            <div class="col">
+                <div class="error-message">
+                    {{ .ErrorMessage }}
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
+    <div class="rw-header">
+        <a href="/supervisorSettings?supervisor={{ .Supervisor }}">
+            <button type="button" class="secondary rw-back-btn" title="Back to character settings">&#8592;</button>
+        </a>
+        <h3 style="margin: 0;">Runeword Maker Settings for {{ .Supervisor }}</h3>
+    </div>
+    <div id="rwToast" class="rw-toast">Settings saved.</div>
+
+    <!-- Runeword Maker Global Options -->
+    <div style="margin-bottom: 12px; border-radius: 6px; border: 1px solid #4a4a4a; background: rgba(30, 35, 45, 0.9);">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 10px;">
+            <strong style="font-size: 0.8rem; color: #aab;">Runeword Maker Options</strong>
+            <button type="button" id="rwOptionsToggle" class="secondary" style="padding: 0.2rem 0.5rem; min-height: 0; font-size: 0.8rem; margin-bottom: 0; background: #3b82f6; border-color: #60a5fa; color: #fff;">Show</button>
+        </div>
+        <div id="rwOptionsPanel" style="display: none; padding: 6px 10px 8px;">
+            <div style="display: flex; flex-wrap: wrap; gap: 16px;">
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwPrioritizeBeforeCubing"
+                           form="runeword-settings-form"
+                           {{ if .Config.CubeRecipes.PrioritizeRunewords }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Enable this to prioritize Runeword Maker and reroll before Cube Recipes.">Prioritize Runewords</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwAutoUpgrade"
+                           form="runeword-settings-form"
+                           {{ if .Config.Game.RunewordMaker.AutoUpgrade }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Automatically upgrade to a better tier base when found (e.g., replace normal Spirit with exceptional)">Auto Upgrade Tiers</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwOnlyIfWearable"
+                           form="runeword-settings-form"
+                           {{ if .Config.Game.RunewordMaker.OnlyIfWearable }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Only make runewords if the character meets the strength/dexterity requirements to wear the item">Only If Wearable</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 0.4rem; margin: 0; font-size: 0.85rem;">
+                    <input type="checkbox"
+                           name="rwAutoTierByDifficulty"
+                           form="runeword-settings-form"
+                           {{ if .Config.Game.RunewordMaker.AutoTierByDifficulty }}checked{{ end }}/>
+                    <span style="white-space: nowrap; color: #f5f7ff;" title="Auto-select base tier based on difficulty: Normal=Normal, Nightmare=Exceptional, Hell=Elite">Auto Tier by Difficulty</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" autocomplete="off" class="compact-form" id="runeword-settings-form">
+        <input type="hidden" name="name" value="{{ .Supervisor }}"/>
+        <script id="rw-overrides-data" type="application/json">
+            {{ toJSON .Config.Game.RunewordOverrides }}
+        </script>
+        <script id="rw-reroll-rules-data" type="application/json">
+            {{ toJSON .Config.Game.RunewordRerollRules }}
+        </script>
+        <script id="rw-runes-data" type="application/json">
+            {{ toJSON .RunewordRuneNames }}
+        </script>
+        <script id="rw-rerollable-data" type="application/json">
+            {{ toJSON .RunewordRerollable }}
+        </script>
+
+        <div style="display: flex; gap: 20px; align-items: flex-start;">
+            <section style="flex: 3 1 0; min-width: 260px;">
+                <header>
+                    <strong>
+                        Runewords
+                        {{ if .Config.Game.IsNonLadderChar }}
+                        <span style="font-size: 0.85em; color: #ffb347;">(Non-ladder)</span>
+                        {{ end }}
+                    </strong>
+                </header>
+                <input type="text" id="rw-search" placeholder="Search runewords..." style="margin-bottom: 8px; width: 100%;">
+                <div id="rw-list" style="max-height: 480px; overflow-y: auto; border: 1px solid #333; padding: 8px;">
+                    {{ range $index, $recipe := .RunewordRecipeList }}
+                    <div class="runeword-list-item" data-runeword-name="{{ $recipe }}" data-favorite="{{ if contains $.RunewordFavoriteRecipes $recipe }}1{{ end }}" style="padding: 4px 2px; cursor: pointer;">
+                        <button type="button" class="rw-fav-btn" aria-label="Favorite runeword">&#9734;</button>
+                        {{ if contains $.RunewordFavoriteRecipes $recipe }}
+                        <input type="hidden" class="rw-fav-input" name="runewordFavoriteRecipes" value="{{ $recipe }}" />
+                        {{ end }}
+                        <input type="checkbox"
+                               class="rw-enabled-checkbox"
+                               name="runewordMakerEnabledRecipes"
+                               value="{{ $recipe }}"
+                               {{ if contains $.Config.Game.RunewordMaker.EnabledRecipes $recipe }}checked{{ end }}/>
+                        <span class="runeword-name">{{ $recipe }}</span>
+                        <span class="rw-reroll-badge" title="Reroll rules configured">
+                            <i class="bi bi-arrow-repeat"></i>
+                        </span>
+                    </div>
+                    {{ end }}
+                </div>
+            </section>
+
+            <section style="flex: 7 1 0;">
+                <div id="rw-detail-empty" style="font-size: 0.9em; color: #777; margin-top: 8px;">
+                    <strong style="display: block; color: #d8dee9; margin-bottom: 6px;">How to use</strong>
+                    <div>1) Select a runeword on the left.</div>
+                    <div>2) Set base, quality, and eth preferences.</div>
+                    <div>3) Add reroll rules if needed.</div>
+                    <div>4) Save to apply.</div>
+                </div>
+                <div id="rw-detail" style="display: none; margin-top: 8px;">
+                    <!-- Header: Title & Toggles -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 1rem; margin-bottom: 0.3rem; padding-top: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <button type="button" id="rwDetailFavBtn" class="rw-fav-btn" aria-label="Favorite runeword">&#9734;</button>
+                            <h4 id="rw-detail-title" style="margin: 0; font-size: 1.4rem;"></h4>
+                        </div>
+                        <div style="display: flex; gap: 1.5rem;">
+                            <label style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="rwEnabledToggle"/> 
+                                <span>Make Runeword</span>
+                            </label>
+                            <label style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 0.5rem;">
+                                <input type="checkbox" id="rwRerollEnabled"/> 
+                                <span>Reroll</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Maker Settings Section -->
+                    <article style="margin-bottom: 2rem; padding: 0; background: transparent; border: none; box-shadow: none;">
+                        <small style="display: block; color: var(--text-muted); margin-bottom: 0.3rem;">
+                            Specify the quality and base for crafting. Defaults to 'Any' if not specified.
+                        </small>
+                        <div class="grid">
+                            <label>
+                                Ethereal
+                                <select id="rwEthMode" name="rwEthMode">
+                                    <option value="any">Any</option>
+                                    <option value="noneth">Non-eth only</option>
+                                    <option value="eth">Eth only</option>
+                                </select>
+                            </label>
+                            <label>
+                                Quality
+                                <select id="rwQualityMode" name="rwQualityMode">
+                                    <option value="any">Normal or Superior</option>
+                                    <option value="normal">Normal only</option>
+                                    <option value="superior">Superior only</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="grid">
+                            <label style="display: block; width: 100%;">
+                                Base types <span style="font-size: 0.8em; color: #888;">(multi-select)</span>
+                                <div style="margin-top: 4px; width: 100%; display: block;">
+                                    <button type="button" id="rwBaseTypeToggle" style="display: flex; align-items: center; justify-content: space-between; width: 100%; box-sizing: border-box; gap: 6px; padding: 0.45rem 0.6rem; min-height: 2.4rem; font-size: 0.9rem; margin-bottom: 0; border: 1px solid #3a3f4f; border-radius: 6px; background: rgba(15, 18, 28, 0.6); color: #f5f7ff;">
+                                        <span id="rwBaseTypeSummary">Any</span>
+                                        <span style="opacity: 0.7;">&#9662;</span>
+                                    </button>
+                                    <div id="rwBaseTypePanel" style="display: none; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.2); border-radius: 4px; border: 1px solid #333; max-height: 220px; overflow: auto;">
+                                        <div id="rwBaseTypeContainer" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="rwBaseType" name="rwBaseType" value=""/>
+                            </label>
+                            <label>
+                                Base tier
+                                <select id="rwBaseTier" name="rwBaseTier">
+                                    <option value="">Any</option>
+                                    <option value="normal">Normal</option>
+                                    <option value="exceptional">Exceptional</option>
+                                    <option value="elite">Elite</option>
+                                </select>
+                            </label>
+                        </div>
+                        <label>
+                            Base names (optional)
+                            <div style="display: flex; align-items: center; gap: 6px; margin-top: 4px;">
+                                <select id="rwBaseNameSelect" name="rwBaseNameSelect" style="min-width: 180px;"></select>
+                                <button type="button" id="rwBaseNameAdd" class="secondary rw-btn-add rw-base-add-btn">Add</button>
+                            </div>
+                            <div id="rwBaseNameTags" style="display: flex; flex-wrap: wrap; gap: 4px 8px; margin-top: 4px;"></div>
+                            <input type="hidden" id="rwBaseName" name="rwBaseName" value=""/>
+                        </label>
+                    </article>
+
+                    <!-- Reroll Settings Section -->
+                    <div id="rwRerollSection" style="display: none;">
+                        <article style="padding: 0; background: transparent; border: none; box-shadow: none;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 1rem; margin-bottom: 0.3rem;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <h4 style="margin: 0; font-size: 1.4rem;">
+                                        Reroll
+                                    </h4>
+                                    <span id="rwRerollTargetSummary" class="rw-reroll-target-summary" style="display: none;"></span>
+                                </div>
+                                <div style="display: inline-flex; gap: 0.4rem;">
+                                    <button type="button" id="rwRerollHistory" class="secondary outline" style="font-size: 0.8rem; padding: 0.3rem 0.8rem; margin-bottom: 0;">History</button>
+                                    <button type="button" id="rwRerollAddRule" class="secondary outline" style="font-size: 0.8rem; padding: 0.3rem 0.8rem; margin-bottom: 0;">+ Add Rule</button>
+                                </div>
+                            </div>
+                            
+                            <small style="display: block; color: var(--text-muted); margin-bottom: 0.3rem;">
+                                You can reroll runewords matching the specified quality and base, and set target stats.
+                            </small>
+                            <input type="hidden" id="rrRulesJSON" name="rrRulesJSON" value=""/>
+                            <div id="rr-rules-container"></div>
+                        </article>
+                    </div>
+                    <input type="hidden" id="rwCurrentName" name="rwCurrentName" value=""/>
+                </div>
+            </section>
+        </div>
+
+        <fieldset class="grid sticky-bottom" style="margin-top: 20px;">
+            <a href="/"><input type="button" value="Cancel" class="secondary"/></a>
+            <input type="submit" id="rwSaveBtn" value="Save"/>
+        </fieldset>
+    </form>
+
+    <div id="rwHistoryModal" class="rw-history-modal" aria-hidden="true">
+        <div class="rw-history-backdrop"></div>
+        <div class="rw-history-panel">
+            <div class="rw-history-header">
+                <div>
+                    <div id="rwHistoryTitle" class="rw-history-title">Reroll History</div>
+                    <div id="rwHistorySubtitle" class="rw-history-subtitle">Showing history for the selected runeword.</div>
+                </div>
+                <div style="display: inline-flex; gap: 0.4rem;">
+                    <button type="button" id="rwHistoryClear" class="secondary outline" style="font-size: 0.85rem; padding: 0.3rem 0.8rem; margin-bottom: 0; color: #d95c5c; border-color: #d95c5c;">Clear History</button>
+                    <button type="button" id="rwHistoryClose" class="secondary outline" style="font-size: 0.85rem; padding: 0.3rem 0.8rem; margin-bottom: 0;">Close</button>
+                </div>
+            </div>
+            <div class="rw-history-controls">
+                <label style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <input type="checkbox" id="rwHistoryAllToggle" />
+                    <span>Show all runewords</span>
+                </label>
+                <span style="font-size: 0.8rem; color: #d8dee9;">Default view is the current runeword.</span>
+            </div>
+            <div class="rw-history-table-wrap">
+                <table role="grid">
+                    <thead>
+                        <tr>
+                            <th style="width: 110px;">Time</th>
+                            <th class="rw-history-col-runeword">Runeword</th>
+                            <th style="width: 60px;">#</th>
+                            <th>Target Stats</th>
+                            <th>Actual Stats</th>
+                            <th style="width: 90px;">Result</th>
+                            <th>Failure Reason</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rwHistoryBody">
+                        <tr id="rwHistoryEmptyRow">
+                            <td class="rw-history-empty" colspan="7">No history yet.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+(function () {
+    if (window.kooloRunewords && window.kooloRunewords.__initialized) {
+        return;
+    }
+
+    const rollsCache = {};
+    const basesCache = {};
+    const baseTypesCache = {};
+
+    function loadRolls(name) {
+        if (rollsCache[name]) {
+            return Promise.resolve(rollsCache[name]);
+        }
+        return fetch('/api/runewords/rolls?name=' + encodeURIComponent(name))
+            .then(function(resp) { return resp.json(); })
+            .then(function(rolls) {
+                if (!Array.isArray(rolls)) {
+                    rolls = [];
+                }
+                rollsCache[name] = rolls;
+                return rolls;
+            })
+            .catch(function() { return []; });
+    }
+
+    function loadBases(name, baseType, tier) {
+        const cacheKey = String(name) + '|' + String(baseType || '') + '|' + String(tier || '');
+        if (basesCache[cacheKey]) {
+            return Promise.resolve(basesCache[cacheKey]);
+        }
+
+        const params = new URLSearchParams();
+        params.set('name', name);
+        if (baseType) params.set('baseType', baseType);
+        if (tier) params.set('tier', tier);
+
+        return fetch('/api/runewords/bases?' + params.toString())
+            .then(function(resp) { return resp.json(); })
+            .then(function(bases) {
+                if (!Array.isArray(bases)) {
+                    bases = [];
+                }
+                basesCache[cacheKey] = bases;
+                return bases;
+            })
+            .catch(function() { return []; });
+    }
+
+    function loadBaseTypes(name) {
+        if (baseTypesCache[name]) {
+            return Promise.resolve(baseTypesCache[name]);
+        }
+        return fetch('/api/runewords/base-types?name=' + encodeURIComponent(name))
+            .then(function(resp) { return resp.json(); })
+            .then(function(types) {
+                if (!Array.isArray(types)) {
+                    types = [];
+                }
+                baseTypesCache[name] = types;
+                return types;
+            })
+            .catch(function() { return []; });
+    }
+
+    window.kooloRunewords = {
+        loadRolls: loadRolls,
+        loadBases: loadBases,
+        loadBaseTypes: loadBaseTypes,
+        __initialized: true
+    };
+})();
+    </script>
+
+    <script>
+        (function() {
+            const supervisorName = "{{ .Supervisor }}";
+            const savedFlag = {{ if .Saved }}true{{ else }}false{{ end }};
+            const searchInput = document.getElementById('rw-search');
+            const listContainer = document.getElementById('rw-list');
+            const items = Array.from(document.querySelectorAll('.runeword-list-item'));
+            const detailEmpty = document.getElementById('rw-detail-empty');
+            const detailPanel = document.getElementById('rw-detail');
+            const detailTitle = document.getElementById('rw-detail-title');
+            const detailFavBtn = document.getElementById('rwDetailFavBtn');
+            const currentNameInput = document.getElementById('rwCurrentName');
+            const enabledToggle = document.getElementById('rwEnabledToggle');
+            const rerollEnabledToggle = document.getElementById('rwRerollEnabled');
+            const rerollEnabledLabel = rerollEnabledToggle ? rerollEnabledToggle.closest('label') : null;
+            const ethModeSelect = document.getElementById('rwEthMode');
+            const qualityModeSelect = document.getElementById('rwQualityMode');
+            const targetStatsContainer = null; // Legacy placeholder, reroll handled below
+            const baseTypeContainer = document.getElementById('rwBaseTypeContainer');
+            const baseTypeInput = document.getElementById('rwBaseType');
+            const baseTypeToggle = document.getElementById('rwBaseTypeToggle');
+            const baseTypePanel = document.getElementById('rwBaseTypePanel');
+            const baseTypeSummary = document.getElementById('rwBaseTypeSummary');
+            const baseTierSelect = document.getElementById('rwBaseTier');
+            const baseNameInput = document.getElementById('rwBaseName');
+            const baseNameSelect = document.getElementById('rwBaseNameSelect');
+            const baseNameTags = document.getElementById('rwBaseNameTags');
+            const baseNameAddBtn = document.getElementById('rwBaseNameAdd');
+            const rerollSection = document.getElementById('rwRerollSection');
+            const rerollAddRuleBtn = document.getElementById('rwRerollAddRule');
+            const rerollHistoryBtn = document.getElementById('rwRerollHistory');
+            const rerollRulesContainer = document.getElementById('rr-rules-container');
+            const rerollRulesJSONInput = document.getElementById('rrRulesJSON');
+            const rerollTargetSummaryEl = document.getElementById('rwRerollTargetSummary');
+            const historyModal = document.getElementById('rwHistoryModal');
+            const historyBackdrop = historyModal ? historyModal.querySelector('.rw-history-backdrop') : null;
+            const historyCloseBtn = document.getElementById('rwHistoryClose');
+            const historyTitle = document.getElementById('rwHistoryTitle');
+            const historySubtitle = document.getElementById('rwHistorySubtitle');
+            const historyAllToggle = document.getElementById('rwHistoryAllToggle');
+            const historyRunewordCols = Array.from(document.querySelectorAll('.rw-history-col-runeword'));
+            const historyEmptyRow = document.getElementById('rwHistoryEmptyRow');
+            const historyBody = document.getElementById('rwHistoryBody');
+            const historyClearBtn = document.getElementById('rwHistoryClear');
+            const toast = document.getElementById('rwToast');
+            const saveBtn = document.getElementById('rwSaveBtn');
+            const optionsToggle = document.getElementById('rwOptionsToggle');
+            const optionsPanel = document.getElementById('rwOptionsPanel');
+            const historyStorageKey = 'koolo.runewordHistory.' + (supervisorName || 'default');
+            let rerollHistoryCache = [];
+            let rerollHistoryLoaded = false;
+            let favoriteSet = new Set();
+
+            function setFavButtonState(btn, isFav) {
+                if (!btn) return;
+                if (isFav) {
+                    btn.classList.add('active');
+                    btn.innerHTML = "&#9733;";
+                } else {
+                    btn.classList.remove('active');
+                    btn.innerHTML = "&#9734;";
+                }
+            }
+
+            function setFavoriteUI(name, isFav) {
+                const item = findItemByName(name);
+                if (item) {
+                    item.dataset.favorite = isFav ? '1' : '';
+                    setFavButtonState(item.querySelector('.rw-fav-btn'), isFav);
+                    const favInput = item.querySelector('.rw-fav-input');
+                    if (isFav && !favInput) {
+                        const input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.className = 'rw-fav-input';
+                        input.name = 'runewordFavoriteRecipes';
+                        input.value = name;
+                        item.appendChild(input);
+                    }
+                    if (!isFav && favInput) {
+                        favInput.remove();
+                    }
+                }
+                if (detailFavBtn && currentNameInput && currentNameInput.value === name) {
+                    setFavButtonState(detailFavBtn, isFav);
+                }
+            }
+
+            function updateBaseTypeSummary(checked) {
+                if (!baseTypeSummary) {
+                    return;
+                }
+                if (!checked || checked.length === 0) {
+                    baseTypeSummary.textContent = 'Any';
+                    return;
+                }
+                const labels = Array.from(checked).map(function (cb) {
+                    return cb.dataset.label || cb.value;
+                });
+                if (labels.length <= 2) {
+                    baseTypeSummary.textContent = labels.join(', ');
+                    return;
+                }
+                baseTypeSummary.textContent = String(labels.length) + ' selected';
+            }
+
+            function setOptionsPanelOpen(open) {
+                if (!optionsPanel || !optionsToggle) {
+                    return;
+                }
+                optionsPanel.style.display = open ? '' : 'none';
+                optionsToggle.textContent = open ? 'Hide' : 'Show';
+                optionsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+            }
+
+            function shouldAutoOpenOptions() {
+                if (!optionsPanel) {
+                    return false;
+                }
+                const inputs = optionsPanel.querySelectorAll('input[type="checkbox"]');
+                return Array.from(inputs).some(function (input) {
+                    return input.checked;
+                });
+            }
+            if (rerollRulesContainer) {
+                rerollRulesContainer.addEventListener('input', function(event) {
+                    if (event.target && event.target.classList && event.target.classList.contains('rr-stat-min')) {
+                        const target = event.target;
+                        const minAttr = parseFloat(target.getAttribute('min') || '0');
+                        const maxAttr = parseFloat(target.getAttribute('max') || '0');
+                        let v = parseInt(target.value, 10);
+                        if (!isNaN(minAttr) && v < minAttr) {
+                            v = Math.floor(minAttr);
+                        }
+                        if (!isNaN(maxAttr) && maxAttr > 0 && v > maxAttr) {
+                            v = Math.floor(maxAttr);
+                        }
+                        if (!isNaN(v)) {
+                            target.value = String(v);
+                        }
+                        updateRerollTargetSummary();
+                    }
+                });
+            }
+
+            const GROUP_SINGLE = 'single';
+            const GROUP_ALL_RESIST = 'allResistances';
+            const GROUP_ALL_ATTR = 'allAttributes';
+
+            function setHistoryColumns(showAll, currentName) {
+                historyRunewordCols.forEach(function(cell) {
+                    cell.style.display = showAll ? '' : 'none';
+                });
+            }
+
+            function formatHistoryTimestamp(value) {
+                if (!value) return '';
+                const dt = new Date(value);
+                if (isNaN(dt.getTime())) {
+                    return String(value);
+                }
+                const mm = String(dt.getMonth() + 1).padStart(2, '0');
+                const dd = String(dt.getDate()).padStart(2, '0');
+                const hh = String(dt.getHours()).padStart(2, '0');
+                const min = String(dt.getMinutes()).padStart(2, '0');
+                return mm + '/' + dd + ' ' + hh + ':' + min;
+            }
+
+            function loadHistoryFromStorage() {
+                try {
+                    const raw = localStorage.getItem(historyStorageKey);
+                    const parsed = raw ? JSON.parse(raw) : [];
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    return [];
+                }
+            }
+
+            function saveHistoryToStorage(entries) {
+                try {
+                    const trimmed = Array.isArray(entries) ? entries.slice(0, 200) : [];
+                    localStorage.setItem(historyStorageKey, JSON.stringify(trimmed));
+                } catch (e) {
+                    // ignore storage failures
+                }
+            }
+
+            function historyKey(entry) {
+                return String(entry.timestamp || '') + '|' + String(entry.runeword || '') + '|' + String(entry.attempt || '');
+            }
+
+            function mergeHistory(base, incoming) {
+                const merged = [];
+                const seen = new Set();
+
+                base.forEach(function(entry) {
+                    const key = historyKey(entry);
+                    if (!seen.has(key)) {
+                        merged.push(entry);
+                        seen.add(key);
+                    }
+                });
+                incoming.forEach(function(entry) {
+                    const key = historyKey(entry);
+                    if (!seen.has(key)) {
+                        merged.push(entry);
+                        seen.add(key);
+                    }
+                });
+
+                merged.sort(function(a, b) {
+                    const ta = new Date(a.timestamp || 0).getTime();
+                    const tb = new Date(b.timestamp || 0).getTime();
+                    return tb - ta;
+                });
+
+                return merged;
+            }
+
+            function renderHistory(showAll) {
+                if (!historyBody) return;
+                const currentName = currentNameInput ? currentNameInput.value : '';
+                let entries = showAll ? rerollHistoryCache : rerollHistoryCache.filter(function(entry) {
+                    return entry.runeword === currentName;
+                });
+
+                historyBody.innerHTML = '';
+
+                if (!entries.length) {
+                    const emptyRow = document.createElement('tr');
+                    const emptyCell = document.createElement('td');
+                    emptyCell.className = 'rw-history-empty';
+                    emptyCell.colSpan = showAll ? 7 : 6;
+                    if (showAll) {
+                        emptyCell.textContent = 'No history yet.';
+                    } else if (currentName) {
+                        emptyCell.textContent = 'No history for ' + currentName + ' yet.';
+                    } else {
+                        emptyCell.textContent = 'No history yet.';
+                    }
+                    emptyRow.appendChild(emptyCell);
+                    historyBody.appendChild(emptyRow);
+                    return;
+                }
+
+                entries.forEach(function(entry) {
+                    const row = document.createElement('tr');
+
+                    const timeCell = document.createElement('td');
+                    timeCell.textContent = formatHistoryTimestamp(entry.timestamp);
+                    row.appendChild(timeCell);
+
+                    const runewordCell = document.createElement('td');
+                    runewordCell.className = 'rw-history-col-runeword';
+                    runewordCell.textContent = entry.runeword || '';
+                    runewordCell.style.display = showAll ? '' : 'none';
+                    row.appendChild(runewordCell);
+
+                    const attemptCell = document.createElement('td');
+                    attemptCell.textContent = entry.attempt != null ? String(entry.attempt) : '-';
+                    row.appendChild(attemptCell);
+
+                    const targetCell = document.createElement('td');
+                    targetCell.textContent = entry.targetStats || '-';
+                    row.appendChild(targetCell);
+
+                    const actualCell = document.createElement('td');
+                    actualCell.textContent = entry.actualStats || '-';
+                    row.appendChild(actualCell);
+
+                    const resultCell = document.createElement('td');
+                    resultCell.textContent = entry.success ? 'Success' : 'Fail';
+                    row.appendChild(resultCell);
+
+                    const reasonCell = document.createElement('td');
+                    reasonCell.textContent = entry.failureReason || '-';
+                    row.appendChild(reasonCell);
+
+                    historyBody.appendChild(row);
+                });
+            }
+
+            function loadRerollHistory(force) {
+                if (rerollHistoryLoaded && !force) {
+                    return Promise.resolve(rerollHistoryCache);
+                }
+                const stored = loadHistoryFromStorage();
+                if (stored.length && rerollHistoryCache.length === 0) {
+                    rerollHistoryCache = stored;
+                }
+                const params = new URLSearchParams();
+                if (supervisorName) {
+                    params.set('supervisor', supervisorName);
+                }
+                return fetch('/api/runewords/history?' + params.toString())
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                        const incoming = Array.isArray(data) ? data : [];
+                        if (incoming.length) {
+                            rerollHistoryCache = mergeHistory(rerollHistoryCache, incoming);
+                            saveHistoryToStorage(rerollHistoryCache);
+                        }
+                        rerollHistoryLoaded = true;
+                        return rerollHistoryCache;
+                    })
+                    .catch(function() {
+                        if (rerollHistoryCache.length === 0) {
+                            rerollHistoryCache = stored;
+                        }
+                        rerollHistoryLoaded = true;
+                        return rerollHistoryCache;
+                    });
+            }
+
+            function openHistoryModal() {
+                if (!historyModal) return;
+                const currentName = currentNameInput ? currentNameInput.value : '';
+                if (historyTitle) {
+                    historyTitle.textContent = currentName ? ('Reroll History - ' + currentName) : 'Reroll History';
+                }
+                if (historySubtitle) {
+                    historySubtitle.textContent = currentName
+                        ? 'Showing history for the selected runeword.'
+                        : 'Select a runeword to focus the history view.';
+                }
+                if (historyAllToggle) {
+                    historyAllToggle.checked = false;
+                }
+                rerollHistoryLoaded = false;
+                setHistoryColumns(false, currentName);
+                historyModal.style.display = 'flex';
+                historyModal.setAttribute('aria-hidden', 'false');
+                renderHistory(false);
+                loadRerollHistory().then(function() {
+                    renderHistory(false);
+                });
+            }
+
+            function closeHistoryModal() {
+                if (!historyModal) return;
+                historyModal.style.display = 'none';
+                historyModal.setAttribute('aria-hidden', 'true');
+            }
+
+            function makeStatKey(statId, layer, group) {
+                const normalizedLayer = typeof layer === 'number' && !isNaN(layer) ? layer : 0;
+                const normalizedGroup = group || '';
+                return String(statId) + ':' + String(normalizedLayer) + ':' + normalizedGroup;
+            }
+
+            function clearRerollTargetSummary() {
+                if (!rerollTargetSummaryEl) {
+                    return;
+                }
+                rerollTargetSummaryEl.textContent = '';
+                rerollTargetSummaryEl.style.display = 'none';
+            }
+
+            function updateRerollTargetSummary() {
+                if (!rerollTargetSummaryEl || !rerollRulesContainer || !rerollEnabledToggle) {
+                    clearRerollTargetSummary();
+                    return;
+                }
+
+                if (!rerollEnabledToggle.checked) {
+                    clearRerollTargetSummary();
+                    return;
+                }
+
+                const inputs = rerollRulesContainer.querySelectorAll('input.rr-stat-min');
+                if (!inputs || inputs.length === 0) {
+                    clearRerollTargetSummary();
+                    return;
+                }
+
+                const targets = [];
+                inputs.forEach(function(input) {
+                    const baseMin = parseInt(input.getAttribute('data-base-min') || '0', 10);
+                    const val = parseInt(input.value || '0', 10);
+                    if (isNaN(val)) {
+                        return;
+                    }
+                    if (!isNaN(baseMin) && val === baseMin) {
+                        return;
+                    }
+                    const label = input.getAttribute('data-label') || 'Stat';
+                    targets.push(label + ' ' + val);
+                });
+
+                if (targets.length === 0) {
+                    clearRerollTargetSummary();
+                    return;
+                }
+
+                rerollTargetSummaryEl.textContent = '(Target: ' + targets.join(', ') + ')';
+                rerollTargetSummaryEl.style.display = '';
+            }
+
+            let runewordRuneNames = {};
+            const runesEl = document.getElementById('rw-runes-data');
+            if (runesEl && runesEl.textContent) {
+                try {
+                    const parsed = JSON.parse(runesEl.textContent);
+                    if (parsed && typeof parsed === 'object') {
+                        runewordRuneNames = parsed;
+                    }
+                } catch (e) {
+                    // ignore JSON parse errors
+                }
+            }
+
+            let rerollableMap = {};
+            const rerollableEl = document.getElementById('rw-rerollable-data');
+            if (rerollableEl && rerollableEl.textContent) {
+                try {
+                    const parsed = JSON.parse(rerollableEl.textContent);
+                    if (parsed && typeof parsed === 'object') {
+                        rerollableMap = parsed;
+                    }
+                } catch (e) {
+                    // ignore JSON parse errors
+                }
+            }
+
+            let overridesMap = {};
+            const overridesEl = document.getElementById('rw-overrides-data');
+            if (overridesEl && overridesEl.textContent) {
+                try {
+                    const parsed = JSON.parse(overridesEl.textContent);
+                    if (parsed && typeof parsed === 'object') {
+                        overridesMap = parsed;
+                    }
+                } catch (e) {
+                    // ignore JSON parse errors
+                }
+            }
+
+            let rerollRulesMap = {};
+            const rerollEl = document.getElementById('rw-reroll-rules-data');
+            if (rerollEl && rerollEl.textContent) {
+                try {
+                    const parsed = JSON.parse(rerollEl.textContent);
+                    if (parsed && typeof parsed === 'object') {
+                        rerollRulesMap = parsed;
+                    }
+                } catch (e) {
+                    // ignore JSON parse errors
+                }
+            }
+
+            function markRunewordsWithRerollBadges() {
+                if (!items || !Array.isArray(items)) {
+                    return;
+                }
+                items.forEach(function (el) {
+                    const name = el.dataset.runewordName;
+                    if (!name) {
+                        return;
+                    }
+                    const badge = el.querySelector('.rw-reroll-badge');
+                    if (!badge) {
+                        return;
+                    }
+                    const existing = (rerollRulesMap && rerollRulesMap[name]) ? rerollRulesMap[name] : [];
+                    const hasRules = Array.isArray(existing) && existing.length > 0;
+                    badge.style.display = hasRules ? 'inline-flex' : 'none';
+                });
+            }
+
+            function filterList(term) {
+                const q = (term || '').toLowerCase();
+                items.forEach((el) => {
+                    const name = el.dataset.runewordName.toLowerCase();
+                    el.style.display = !q || name.includes(q) ? 'block' : 'none';
+                });
+            }
+
+            function sortByEnabled() {
+                if (!listContainer) {
+                    return;
+                }
+                items.sort((a, b) => {
+                    const aFav = a.dataset.favorite === '1';
+                    const bFav = b.dataset.favorite === '1';
+                    if (aFav !== bFav) {
+                        return aFav ? -1 : 1; // favorites first
+                    }
+                    const aChecked = !!a.querySelector('input[type="checkbox"]')?.checked;
+                    const bChecked = !!b.querySelector('input[type="checkbox"]')?.checked;
+                    if (aChecked !== bChecked) {
+                        return aChecked ? -1 : 1; // enabled first
+                    }
+                    const nameA = (a.dataset.runewordName || '').toLowerCase();
+                    const nameB = (b.dataset.runewordName || '').toLowerCase();
+                    if (nameA < nameB) return -1;
+                    if (nameA > nameB) return 1;
+                    return 0;
+                });
+                items.forEach((el) => listContainer.appendChild(el));
+            }
+
+            function findItemByName(name) {
+                if (!name) return null;
+                return items.find((el) => el.dataset.runewordName === name) || null;
+            }
+
+            function updateBaseNames() {
+                if (!baseNameSelect || !baseNameTags) {
+                    return;
+                }
+                const rwName = currentNameInput ? currentNameInput.value : '';
+                if (!rwName) {
+                    baseNameSelect.innerHTML = '';
+                    baseNameTags.innerHTML = '';
+                    if (baseNameInput) baseNameInput.value = '';
+                    return;
+                }
+                // Get first selected base type from checkboxes (or empty if none)
+                const firstChecked = baseTypeContainer ? baseTypeContainer.querySelector('input[type="checkbox"]:checked') : null;
+                const baseType = firstChecked ? firstChecked.value : '';
+                const tier = baseTierSelect ? baseTierSelect.value : '';
+
+                baseNameSelect.innerHTML = '';
+                baseNameTags.innerHTML = '';
+
+                // Restore from current hidden input value (including unsaved changes)
+                const savedCSV = baseNameInput && baseNameInput.value ? baseNameInput.value : '';
+                const saved = savedCSV
+                    .split(',')
+                    .map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+
+                const params = new URLSearchParams();
+                params.set('name', rwName);
+                if (baseType) params.set('baseType', baseType);
+                if (tier) params.set('tier', tier);
+
+                fetch('/api/runewords/bases?' + params.toString())
+                    .then(function (resp) { return resp.json(); })
+                    .then(function (bases) {
+                        if (!Array.isArray(bases)) {
+                            return;
+                        }
+                        // Populate select options
+                        const placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.textContent = saved.length > 0 ? 'Add another base...' : 'Select base...';
+                        baseNameSelect.appendChild(placeholder);
+
+                        bases.forEach(function (b) {
+                            const opt = document.createElement('option');
+                            opt.value = b.code;
+                            opt.textContent = b.name;
+                            baseNameSelect.appendChild(opt);
+                        });
+
+                        // Render selected base tags
+                        function syncHiddenInput(codes) {
+                            if (baseNameInput) {
+                                baseNameInput.value = codes.join(',');
+                            }
+                        }
+
+                        function renderTags(codes) {
+                            baseNameTags.innerHTML = '';
+                            codes.forEach(function (code) {
+                                const base = bases.find(function (b) { return b.code === code; });
+                                const label = base ? base.name : code;
+
+                                const tag = document.createElement('span');
+                                tag.style.display = 'inline-flex';
+                                tag.style.alignItems = 'center';
+                                tag.style.gap = '4px';
+                                tag.style.padding = '2px 6px';
+                                tag.style.borderRadius = '10px';
+                                tag.style.border = '1px solid #4ac3ff';
+                                tag.style.backgroundColor = 'rgba(74, 195, 255, 0.08)';
+
+                                const text = document.createElement('span');
+                                text.textContent = label;
+
+                                const removeBtn = document.createElement('button');
+                                removeBtn.type = 'button';
+                                removeBtn.textContent = '×';
+                                removeBtn.className = 'secondary';
+                                removeBtn.style.padding = '0 4px';
+                                removeBtn.style.lineHeight = '1';
+                                removeBtn.addEventListener('click', function () {
+                                    const next = codes.filter(function (c) { return c !== code; });
+                                    syncHiddenInput(next);
+                                    renderTags(next);
+                                });
+
+                                tag.appendChild(text);
+                                tag.appendChild(removeBtn);
+                                baseNameTags.appendChild(tag);
+                            });
+                            syncHiddenInput(codes);
+                        }
+
+                        renderTags(saved);
+
+                        if (baseNameAddBtn) {
+                            baseNameAddBtn.onclick = function () {
+                                const code = baseNameSelect.value;
+                                if (!code) {
+                                    return;
+                                }
+                                const exists = saved.indexOf(code) !== -1;
+                                if (exists) {
+                                    return;
+                                }
+                                const next = saved.concat([code]);
+                                // update local saved reference and re-render
+                                while (saved.length) saved.pop();
+                                Array.prototype.push.apply(saved, next);
+                                renderTags(saved);
+                            };
+                        }
+                    })
+                    .catch(function () {
+                        // ignore errors
+                    });
+            }
+
+            // --- Shared reroll helpers for rolls/base-types/bases ---
+            const sharedRunewordAPI = window.kooloRunewords || {};
+            const loadRolls = sharedRunewordAPI.loadRolls || function() { return Promise.resolve([]); };
+            const loadBases = sharedRunewordAPI.loadBases || function() { return Promise.resolve([]); };
+            const loadBaseTypes = sharedRunewordAPI.loadBaseTypes || function() { return Promise.resolve([]); };
+
+            function buildRuleSummary(rule) {
+                if (!rule) {
+                    return 'New rule';
+                }
+
+                const eth = rule.EthMode === 'eth' ? 'Eth only' : (rule.EthMode === 'noneth' ? 'Non-eth only' : 'Any eth');
+                const qual = rule.QualityMode === 'superior' ? 'Superior only' : (rule.QualityMode === 'normal' ? 'Normal only' : 'Any quality');
+                const baseType = rule.BaseType ? ('Type: ' + rule.BaseType) : 'Any type';
+                const baseTier = rule.BaseTier ? ('Tier: ' + rule.BaseTier) : 'Any tier';
+                const baseName = rule.BaseName ? ('Base: ' + rule.BaseName) : 'Any base';
+                const statsCount = Array.isArray(rule.TargetStats) ? rule.TargetStats.length : 0;
+                const stats = statsCount > 0 ? ('Stats: ' + String(statsCount)) : 'No stat mins';
+
+                return eth + ' · ' + qual + ' · ' + baseType + ' · ' + baseTier + ' · ' + baseName + ' · ' + stats;
+            }
+
+            function buildRerollRuleBlock(ruleIndex, rule, rolls, baseTypes, runewordName) {
+                const container = document.createElement('div');
+                container.className = 'rr-rule';
+                container.dataset.editor = 'false';
+
+                const header = document.createElement('div');
+                header.className = 'rr-rule-header';
+                header.style.display = 'flex';
+                header.style.justifyContent = 'space-between';
+                header.style.alignItems = 'center';
+
+                const title = document.createElement('div');
+                const strong = document.createElement('strong');
+                strong.textContent = 'Rule #' + (ruleIndex + 1);
+                title.appendChild(strong);
+
+                const summary = document.createElement('div');
+                summary.className = 'rr-rule-summary';
+                summary.style.fontSize = '0.8em';
+                summary.style.color = '#aaa';
+                summary.style.marginTop = '2px';
+                summary.textContent = buildRuleSummary(rule);
+                title.appendChild(summary);
+
+                const headerRight = document.createElement('div');
+                headerRight.style.display = 'flex';
+                headerRight.style.alignItems = 'center';
+
+                const actionBtn = document.createElement('button');
+                actionBtn.type = 'button';
+                actionBtn.className = 'secondary rr-btn-remove';
+                actionBtn.style.marginLeft = '8px';
+                actionBtn.style.fontSize = '0.8rem';
+                actionBtn.style.padding = '0.3rem 0.8rem';
+                actionBtn.style.marginBottom = '0';
+                actionBtn.textContent = 'Remove';
+                actionBtn.onclick = function(e) {
+                    e.stopPropagation();
+                    container.remove();
+                    renumberRules();
+                    updateRerollTargetSummary();
+                };
+
+                headerRight.appendChild(actionBtn);
+                header.appendChild(title);
+                header.appendChild(headerRight);
+
+                container.appendChild(header);
+
+                const body = document.createElement('div');
+                body.className = 'rr-rule-body';
+
+                // Row 1: Ethereal / Quality
+                const row1 = document.createElement('div');
+                row1.className = 'grid';
+
+                const ethLabel = document.createElement('label');
+                ethLabel.innerHTML = 'Ethereal<select class="rr-eth-mode">' +
+                    '<option value="any">Any</option>' +
+                    '<option value="noneth">Non-eth only</option>' +
+                    '<option value="eth">Eth only</option>' +
+                    '</select>';
+                row1.appendChild(ethLabel);
+
+                const qualLabel = document.createElement('label');
+                qualLabel.innerHTML = 'Quality<select class="rr-quality-mode">' +
+                    '<option value="any">Normal or Superior</option>' +
+                    '<option value="normal">Normal only</option>' +
+                    '<option value="superior">Superior only</option>' +
+                    '</select>';
+                row1.appendChild(qualLabel);
+
+                body.appendChild(row1);
+
+                const ethSelect = ethLabel.querySelector('select.rr-eth-mode');
+                const qualSelect = qualLabel.querySelector('select.rr-quality-mode');
+                if (rule && rule.EthMode) {
+                    ethSelect.value = rule.EthMode;
+                }
+                if (rule && rule.QualityMode) {
+                    qualSelect.value = rule.QualityMode;
+                }
+
+                // Row 2: Base type / tier
+                const row2 = document.createElement('div');
+                row2.className = 'grid';
+
+                const typeLabel = document.createElement('label');
+                typeLabel.style.display = 'block';
+                typeLabel.style.width = '100%';
+                typeLabel.style.minWidth = '0';
+                typeLabel.innerHTML = 'Base types <span style="font-size: 0.8em; color: #888;">(multi-select)</span>';
+
+                const typeWrap = document.createElement('div');
+                typeWrap.style.marginTop = '4px';
+                typeWrap.style.width = '100%';
+                typeWrap.style.display = 'block';
+
+                const typeToggle = document.createElement('button');
+                typeToggle.type = 'button';
+                typeToggle.className = 'secondary';
+                typeToggle.style.display = 'flex';
+                typeToggle.style.alignItems = 'center';
+                typeToggle.style.justifyContent = 'space-between';
+                typeToggle.style.width = '100%';
+                typeToggle.style.boxSizing = 'border-box';
+                typeToggle.style.flex = '1 1 auto';
+                typeToggle.style.gap = '6px';
+                typeToggle.style.padding = '0.45rem 0.6rem';
+                typeToggle.style.minHeight = '2.4rem';
+                typeToggle.style.fontSize = '0.9rem';
+                typeToggle.style.marginBottom = '0';
+                typeToggle.style.border = '1px solid #3a3f4f';
+                typeToggle.style.borderRadius = '6px';
+                typeToggle.style.background = 'rgba(15, 18, 28, 0.6)';
+                typeToggle.style.color = '#f5f7ff';
+
+                const typeSummary = document.createElement('span');
+                typeSummary.textContent = 'Any';
+
+                const typeCaret = document.createElement('span');
+                typeCaret.style.opacity = '0.7';
+                typeCaret.innerHTML = '&#9662;';
+
+                typeToggle.appendChild(typeSummary);
+                typeToggle.appendChild(typeCaret);
+
+                const typePanel = document.createElement('div');
+                typePanel.style.display = 'none';
+                typePanel.style.marginTop = '6px';
+                typePanel.style.padding = '6px';
+                typePanel.style.background = 'rgba(0,0,0,0.2)';
+                typePanel.style.borderRadius = '4px';
+                typePanel.style.border = '1px solid #333';
+                typePanel.style.maxHeight = '220px';
+                typePanel.style.overflow = 'auto';
+
+                const typeContainer = document.createElement('div');
+                typeContainer.className = 'rr-base-type-container';
+                typeContainer.style.display = 'flex';
+                typeContainer.style.flexWrap = 'wrap';
+                typeContainer.style.gap = '8px';
+
+                typePanel.appendChild(typeContainer);
+                typeWrap.appendChild(typeToggle);
+                typeWrap.appendChild(typePanel);
+                typeLabel.appendChild(typeWrap);
+
+                const typeHidden = document.createElement('input');
+                typeHidden.type = 'hidden';
+                typeHidden.className = 'rr-base-type';
+                typeLabel.appendChild(typeHidden);
+
+                row2.appendChild(typeLabel);
+
+                const tierLabel = document.createElement('label');
+                tierLabel.innerHTML = 'Base tier<select class="rr-base-tier">' +
+                    '<option value="">Any</option>' +
+                    '<option value="normal">Normal</option>' +
+                    '<option value="exceptional">Exceptional</option>' +
+                    '<option value="elite">Elite</option>' +
+                    '</select>';
+                row2.appendChild(tierLabel);
+
+                body.appendChild(row2);
+
+                const initialTypeCSV = rule && rule.BaseType ? rule.BaseType : '';
+                const savedTypes = initialTypeCSV
+                    .split(',')
+                    .map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+                typeHidden.value = savedTypes.join(',');
+
+                function updateTypeSummary(checked) {
+                    if (!typeSummary) {
+                        return;
+                    }
+                    if (!checked || checked.length === 0) {
+                        typeSummary.textContent = 'Any';
+                        return;
+                    }
+                    const labels = Array.from(checked).map(function (cb) {
+                        return cb.dataset.label || cb.value;
+                    });
+                    if (labels.length <= 2) {
+                        typeSummary.textContent = labels.join(', ');
+                        return;
+                    }
+                    typeSummary.textContent = String(labels.length) + ' selected';
+                }
+
+                function updateTypeHiddenFromChecks() {
+                    const checked = typeContainer.querySelectorAll('input[type="checkbox"]:checked');
+                    const values = Array.from(checked).map(function (cb) { return cb.value; });
+                    typeHidden.value = values.join(',');
+                    updateTypeSummary(checked);
+                    refreshBaseSelect();
+                }
+
+                typeToggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const open = typePanel.style.display === 'none';
+                    typePanel.style.display = open ? '' : 'none';
+                });
+                document.addEventListener('click', function (e) {
+                    if (typePanel.style.display === 'none') {
+                        return;
+                    }
+                    if (typePanel.contains(e.target) || typeToggle.contains(e.target)) {
+                        return;
+                    }
+                    typePanel.style.display = 'none';
+                });
+
+                if (Array.isArray(baseTypes)) {
+                    baseTypes.forEach(function(bt) {
+                        const label = document.createElement('label');
+                        label.style.cssText = 'display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85em; cursor: pointer; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px;';
+
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.value = bt.code;
+                        cb.dataset.label = bt.label;
+                        cb.checked = savedTypes.indexOf(bt.code) !== -1;
+                        cb.addEventListener('change', updateTypeHiddenFromChecks);
+
+                        const span = document.createElement('span');
+                        span.textContent = bt.label;
+
+                        label.appendChild(cb);
+                        label.appendChild(span);
+                        typeContainer.appendChild(label);
+                    });
+                }
+
+                const tierSelect = tierLabel.querySelector('select.rr-base-tier');
+                if (rule && rule.BaseTier) {
+                    tierSelect.value = rule.BaseTier;
+                }
+
+                // Row 3: Base name (optional)
+                const baseRow = document.createElement('div');
+                baseRow.className = 'grid';
+
+                const baseLabel = document.createElement('label');
+                const baseTitle = document.createElement('span');
+                baseTitle.textContent = 'Base (optional)';
+                baseLabel.appendChild(baseTitle);
+
+                const baseControlRow = document.createElement('div');
+                baseControlRow.style.display = 'flex';
+                baseControlRow.style.alignItems = 'center';
+                baseControlRow.style.gap = '6px';
+                baseControlRow.style.marginTop = '4px';
+
+                const baseSelect = document.createElement('select');
+                baseSelect.className = 'rr-base-name-select';
+                baseSelect.style.minWidth = '160px';
+
+                const baseAddBtn = document.createElement('button');
+                baseAddBtn.type = 'button';
+                baseAddBtn.className = 'secondary rr-btn-add';
+                baseAddBtn.textContent = 'Add';
+
+                baseControlRow.appendChild(baseSelect);
+                baseControlRow.appendChild(baseAddBtn);
+
+                const baseTags = document.createElement('div');
+                baseTags.className = 'rr-base-name-tags';
+                baseTags.style.display = 'flex';
+                baseTags.style.flexWrap = 'wrap';
+                baseTags.style.gap = '4px 8px';
+                baseTags.style.marginTop = '4px';
+
+                const baseHidden = document.createElement('input');
+                baseHidden.type = 'hidden';
+                baseHidden.className = 'rr-base-name';
+
+                baseLabel.appendChild(baseControlRow);
+                baseLabel.appendChild(baseTags);
+                baseLabel.appendChild(baseHidden);
+                baseRow.appendChild(baseLabel);
+
+                body.appendChild(baseRow);
+
+                const initialBaseCSV = rule && rule.BaseName ? rule.BaseName : '';
+                const selectedBases = initialBaseCSV
+                    .split(',')
+                    .map(function (s) { return s.trim(); })
+                    .filter(function (s) { return s.length > 0; });
+
+                let currentBases = [];
+
+                function syncHidden(codes) {
+                    baseHidden.value = codes.join(',');
+                }
+
+                function renderBaseTags() {
+                    baseTags.innerHTML = '';
+                    selectedBases.forEach(function (code) {
+                        const base = currentBases.find(function (b) { return b.code === code; }) || null;
+                        const label = base ? base.name : code;
+
+                        const tag = document.createElement('span');
+                        tag.style.display = 'inline-flex';
+                        tag.style.alignItems = 'center';
+                        tag.style.gap = '4px';
+                        tag.style.padding = '2px 6px';
+                        tag.style.borderRadius = '10px';
+                        tag.style.border = '1px solid #4ac3ff';
+                        tag.style.backgroundColor = 'rgba(74, 195, 255, 0.08)';
+
+                        const text = document.createElement('span');
+                        text.textContent = label;
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.textContent = '×';
+                        removeBtn.className = 'secondary';
+                        removeBtn.style.padding = '0 4px';
+                        removeBtn.style.lineHeight = '1';
+                        removeBtn.addEventListener('click', function () {
+                            const idx = selectedBases.indexOf(code);
+                            if (idx !== -1) {
+                                selectedBases.splice(idx, 1);
+                                syncHidden(selectedBases);
+                                renderBaseTags();
+                            }
+                        });
+
+                        tag.appendChild(text);
+                        tag.appendChild(removeBtn);
+                        baseTags.appendChild(tag);
+                    });
+                    syncHidden(selectedBases);
+                }
+
+                function refreshBaseSelect() {
+                    const selectedTypeCSV = typeHidden ? typeHidden.value : '';
+                    const selectedType = selectedTypeCSV.split(',').map(function (s) { return s.trim(); }).filter(function (s) { return s.length > 0; })[0] || '';
+                    const selectedTier = tierSelect ? tierSelect.value : '';
+
+                    baseSelect.innerHTML = '';
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = selectedBases.length > 0 ? 'Select another base...' : 'Select base...';
+                    baseSelect.appendChild(placeholder);
+
+                    loadBases(runewordName, selectedType, selectedTier).then(function (bases) {
+                        if (!Array.isArray(bases)) {
+                            bases = [];
+                        }
+                        currentBases = bases;
+
+                        bases.forEach(function (b) {
+                            const opt = document.createElement('option');
+                            opt.value = b.code;
+                            opt.textContent = b.name;
+                            baseSelect.appendChild(opt);
+                        });
+
+                        renderBaseTags();
+                    }).catch(function () {
+                        currentBases = [];
+                        renderBaseTags();
+                    });
+                }
+
+                if (tierSelect) {
+                    tierSelect.addEventListener('change', refreshBaseSelect);
+                }
+
+                if (baseAddBtn) {
+                    baseAddBtn.addEventListener('click', function () {
+                        const code = baseSelect.value;
+                        if (!code) {
+                            return;
+                        }
+                        if (selectedBases.indexOf(code) !== -1) {
+                            return;
+                        }
+                        selectedBases.push(code);
+                        syncHidden(selectedBases);
+                        renderBaseTags();
+                    });
+                }
+
+                updateTypeHiddenFromChecks();
+
+                // Stats grid
+                const statsWrapper = document.createElement('div');
+                statsWrapper.style.marginTop = '6px';
+
+                if (!Array.isArray(rolls) || rolls.length === 0) {
+                    const noStats = document.createElement('small');
+                    noStats.textContent = 'No rollable stats available for this runeword.';
+                    statsWrapper.appendChild(noStats);
+                } else {
+                    const info = document.createElement('small');
+                    info.textContent = 'Adjust the target stats for rerolls. Unchanged values will default to minimum stats';
+                    statsWrapper.appendChild(info);
+
+                    const grid = document.createElement('div');
+                    grid.className = 'grid';
+                    grid.style.marginTop = '4px';
+
+                    const targetMap = {};
+                    if (rule && Array.isArray(rule.TargetStats)) {
+                        rule.TargetStats.forEach(function(ts) {
+                            var key = makeStatKey(ts.StatID, ts.Layer || 0, ts.Group || '');
+                            targetMap[key] = { min: ts.Min, group: ts.Group || '' };
+                        });
+                    }
+
+                    rolls.forEach(function(roll) {
+                        const groupTag = roll.group || GROUP_SINGLE;
+                        var key = makeStatKey(roll.statId, roll.layer || 0, groupTag);
+
+                        var entry = targetMap[key];
+                        if (!entry) {
+                            entry = targetMap[makeStatKey(roll.statId, roll.layer || 0, '')];
+                        }
+
+                        var defaultMin = entry ? entry.min : Math.floor(roll.min);
+
+                        const row = document.createElement('div');
+                        row.className = 'rw-target-row';
+
+                        row.innerHTML =
+                            '<label class="rw-stat-label">' +
+                            escapeHtml(roll.label) +
+                            '</label>' +
+                            '<label class="rw-min-label">' +
+                            'Min value [' + roll.min + ' - ' + roll.max + ']' +
+                            '<input type="number" class="rr-stat-min" min="' + String(roll.min) + '" max="' + String(roll.max) + '" value="' + String(defaultMin) + '" ' +
+                            'data-stat-id="' + String(roll.statId) + '" data-layer="' + String(roll.layer || 0) + '" data-group="' + groupTag + '" />' +
+                            '</label>';
+
+                        grid.appendChild(row);
+
+                        const statInput = row.querySelector('input.rr-stat-min');
+                        if (statInput) {
+                            const rollMinValue = Number(roll.min);
+                            const rollMaxValue = Number(roll.max);
+                            const baseMinValue = Number.isFinite(rollMinValue) ? Math.floor(rollMinValue) : 0;
+                            if (Number.isFinite(rollMaxValue)) {
+                                statInput.setAttribute('data-max', String(Math.floor(rollMaxValue)));
+                            }
+                            statInput.setAttribute('data-base-min', String(baseMinValue));
+                            statInput.setAttribute('data-label', roll.label || 'Stat');
+                        }
+                    });
+
+                    statsWrapper.appendChild(grid);
+                }
+
+                body.appendChild(statsWrapper);
+                container.appendChild(body);
+
+                header.addEventListener('click', function(event) {
+                    if (event.target === actionBtn) {
+                        return;
+                    }
+                    container.classList.toggle('collapsed');
+                });
+
+                return container;
+            }
+
+            function renumberRules() {
+                if (!rerollRulesContainer) return;
+                const blocks = rerollRulesContainer.querySelectorAll('.rr-rule');
+                blocks.forEach(function(block, idx) {
+                    const strong = block.querySelector('strong');
+                    if (strong) {
+                        strong.textContent = 'Rule #' + (idx + 1);
+                    }
+                });
+            }
+
+            function collectRulesFromDOM() {
+                const result = [];
+                if (!rerollRulesContainer) return result;
+
+                const blocks = rerollRulesContainer.querySelectorAll('.rr-rule');
+                blocks.forEach(function(block) {
+                    const ethSelect = block.querySelector('select.rr-eth-mode');
+                    const qualSelect = block.querySelector('select.rr-quality-mode');
+                    const baseTypeHidden = block.querySelector('input.rr-base-type');
+                    const tierSelect = block.querySelector('select.rr-base-tier');
+                    const baseHidden = block.querySelector('input.rr-base-name');
+
+                    const ethMode = ethSelect ? ethSelect.value : '';
+                    const qualityMode = qualSelect ? qualSelect.value : '';
+                    const baseType = baseTypeHidden ? baseTypeHidden.value : '';
+                    const baseTier = tierSelect ? tierSelect.value : '';
+                    const baseName = baseHidden ? baseHidden.value : '';
+
+                    const stats = [];
+                const inputs = block.querySelectorAll('input.rr-stat-min');
+                inputs.forEach(function(input) {
+                    const raw = input.value;
+                    let v = parseInt(raw, 10);
+                    if (isNaN(v) || v <= 0) {
+                        return; // ignore zeros / invalid values
+                    }
+                    const baseMinAttr = parseFloat(input.getAttribute('data-base-min') || '0');
+                    const maxAttr = parseFloat(input.getAttribute('data-max') || '0');
+                    if (!isNaN(baseMinAttr) && v === baseMinAttr) {
+                        return; // unchanged from base min; don't save
+                    }
+                    if (!isNaN(baseMinAttr) && v < baseMinAttr) {
+                        v = Math.floor(baseMinAttr);
+                    }
+                    if (!isNaN(maxAttr) && maxAttr > 0 && v > maxAttr) {
+                        v = Math.floor(maxAttr);
+                    }
+                    const statId = parseInt(input.getAttribute('data-stat-id') || '0', 10);
+                    const layer = parseInt(input.getAttribute('data-layer') || '0', 10);
+                    const group = input.getAttribute('data-group') || GROUP_SINGLE;
+                        stats.push({ StatID: statId, Layer: layer, Min: v, Group: group });
+                    });
+
+                    result.push({ EthMode: ethMode, QualityMode: qualityMode, BaseType: baseType, BaseTier: baseTier, BaseName: baseName, TargetStats: stats });
+                });
+
+                return result;
+            }
+
+            function syncRerollSectionVisibility(enabled) {
+                if (!rerollSection) return;
+                rerollSection.style.display = enabled ? '' : 'none';
+                if (!enabled) {
+                    clearRerollTargetSummary();
+                }
+            }
+
+            function renderRerollRulesForCurrent(name) {
+                if (!rerollRulesContainer || !name) return;
+
+                rerollRulesContainer.innerHTML = '';
+                clearRerollTargetSummary();
+                const existing = (rerollRulesMap && rerollRulesMap[name]) ? rerollRulesMap[name] : [];
+                const hasRules = Array.isArray(existing) && existing.length > 0;
+
+                if (!rerollEnabledToggle) return;
+
+                rerollEnabledToggle.checked = hasRules;
+                if (!hasRules) {
+                    syncRerollSectionVisibility(false);
+                    return;
+                }
+
+                syncRerollSectionVisibility(true);
+
+                Promise.all([loadRolls(name), loadBaseTypes(name)])
+                    .then(function (all) {
+                        var rolls = all[0] || [];
+                        var baseTypes = all[1] || [];
+
+                        existing.forEach(function (rule, idx) {
+                            const block = buildRerollRuleBlock(idx, rule, rolls, baseTypes, name);
+                            rerollRulesContainer.appendChild(block);
+                        });
+                        renumberRules();
+                        updateRerollTargetSummary();
+                    })
+                    .catch(function () {
+                        // ignore
+                        updateRerollTargetSummary();
+                    });
+            }
+
+            function addRuleBlockForCurrent(name, rule) {
+                if (!rerollRulesContainer || !name) return;
+
+                const index = rerollRulesContainer.querySelectorAll('.rr-rule').length;
+
+                Promise.all([loadRolls(name), loadBaseTypes(name)])
+                    .then(function (all) {
+                        var rolls = all[0] || [];
+                        var baseTypes = all[1] || [];
+
+                        const block = buildRerollRuleBlock(index, rule || null, rolls, baseTypes, name);
+                        rerollRulesContainer.appendChild(block);
+                        renumberRules();
+                        updateRerollTargetSummary();
+                    })
+                    .catch(function () {
+                        // ignore
+                        updateRerollTargetSummary();
+                    });
+            }
+
+            function buildDefaultRuleFromCurrent() {
+                const name = currentNameInput ? currentNameInput.value : '';
+                if (!name) return null;
+
+                return {
+                    EthMode: ethModeSelect ? (ethModeSelect.value || 'any') : 'any',
+                    QualityMode: qualityModeSelect ? (qualityModeSelect.value || 'any') : 'any',
+                    BaseType: baseTypeInput ? (baseTypeInput.value || '') : '',
+                    BaseTier: baseTierSelect ? (baseTierSelect.value || '') : '',
+                    BaseName: baseNameInput ? (baseNameInput.value || '') : '',
+                    TargetStats: []
+                };
+            }
+
+            // Simple HTML escaping for labels
+            function escapeHtml(str) {
+                if (str == null) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    filterList(searchInput.value);
+                });
+            }
+
+            if (baseTypeToggle && baseTypePanel) {
+                baseTypeToggle.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const open = baseTypePanel.style.display === 'none';
+                    baseTypePanel.style.display = open ? '' : 'none';
+                });
+                document.addEventListener('click', function (e) {
+                    if (baseTypePanel.style.display === 'none') {
+                        return;
+                    }
+                    if (baseTypePanel.contains(e.target) || baseTypeToggle.contains(e.target)) {
+                        return;
+                    }
+                    baseTypePanel.style.display = 'none';
+                });
+            }
+
+            if (optionsToggle) {
+                setOptionsPanelOpen(shouldAutoOpenOptions());
+                optionsToggle.addEventListener('click', function () {
+                    const open = optionsPanel && optionsPanel.style.display === 'none';
+                    setOptionsPanelOpen(!!open);
+                });
+            }
+
+            items.forEach((el) => {
+                const checkbox = el.querySelector('input[type="checkbox"]');
+                const favBtn = el.querySelector('.rw-fav-btn');
+                if (favBtn) {
+                    const name = el.dataset.runewordName || '';
+                    if (el.dataset.favorite === '1') {
+                        favoriteSet.add(name);
+                    }
+                    setFavoriteUI(name, favoriteSet.has(name));
+                    favBtn.addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        const current = el.dataset.runewordName || '';
+                        if (!current) {
+                            return;
+                        }
+                        const next = !favoriteSet.has(current);
+                        if (next) {
+                            favoriteSet.add(current);
+                        } else {
+                            favoriteSet.delete(current);
+                        }
+                        setFavoriteUI(current, next);
+                        sortByEnabled();
+                    });
+                }
+
+                el.addEventListener('click', function(e) {
+                    // ignore direct clicks on the checkbox so it can toggle independently
+                    if (e.target && e.target.tagName === 'INPUT') {
+                        return;
+                    }
+                    const name = el.dataset.runewordName;
+                    if (!name) {
+                        return;
+                    }
+
+                    items.forEach(function(item) { item.classList.remove('selected'); });
+                    el.classList.add('selected');
+
+                    if (detailEmpty) {
+                        detailEmpty.style.display = 'none';
+                    }
+                    if (detailPanel) {
+                        detailPanel.style.display = '';
+                    }
+                    if (detailTitle) {
+                        const runeLabel = runewordRuneNames && runewordRuneNames[name];
+                        let html = '<span style="font-size: 1.4rem; font-weight: 600;">' + name + '</span>';
+                        if (runeLabel) {
+                            html += ' <span style="font-size: 0.85rem; color: #aaa;">(' + runeLabel + ')</span>';
+                        }
+                        detailTitle.innerHTML = html;
+                    }
+                    if (detailFavBtn) {
+                        setFavButtonState(detailFavBtn, favoriteSet.has(name));
+                    }
+                    if (currentNameInput) {
+                        currentNameInput.value = name;
+                    }
+
+                    const ov = overridesMap ? overridesMap[name] : null;
+
+                    if (ethModeSelect) {
+                        ethModeSelect.value = (ov && ov.EthMode) ? ov.EthMode : 'any';
+                    }
+                    if (qualityModeSelect) {
+                        qualityModeSelect.value = (ov && ov.QualityMode) ? ov.QualityMode : 'any';
+                    }
+                    if (baseTierSelect) {
+                        baseTierSelect.value = (ov && ov.BaseTier) ? ov.BaseTier : '';
+                    }
+                    if (baseNameInput) {
+                        baseNameInput.value = (ov && ov.BaseName) ? ov.BaseName : '';
+                    }
+
+                    if (enabledToggle && checkbox) {
+                        enabledToggle.checked = checkbox.checked;
+                    }
+
+                    // --- Embedded reroll UI: render existing rules as editable cards ---
+                    if (rerollRulesContainer) {
+                        rerollRulesContainer.innerHTML = '';
+                    }
+                    clearRerollTargetSummary();
+
+                    const isRerollable = rerollableMap && Object.prototype.hasOwnProperty.call(rerollableMap, name) ? !!rerollableMap[name] : false;
+                    if (rerollEnabledLabel) {
+                        // Hide the entire "Enabled reroll" control when not applicable
+                        rerollEnabledLabel.style.display = isRerollable ? '' : 'none';
+                    }
+
+                    if (!isRerollable) {
+                        if (rerollEnabledToggle) {
+                            rerollEnabledToggle.checked = false;
+                            rerollEnabledToggle.disabled = true;
+                        }
+                        syncRerollSectionVisibility(false);
+                    } else {
+                        if (rerollEnabledToggle) {
+                            rerollEnabledToggle.disabled = false;
+                        }
+                        renderRerollRulesForCurrent(name);
+                    }
+
+                    // Load base item types for this runeword into checkboxes
+                    if (baseTypeContainer && baseTypeInput) {
+                        baseTypeContainer.innerHTML = '';
+
+                        // Helper to update hidden input from checked boxes
+                        function updateBaseTypeInput() {
+                            var checked = baseTypeContainer.querySelectorAll('input[type="checkbox"]:checked');
+                            var values = Array.from(checked).map(function(cb) { return cb.value; });
+                            baseTypeInput.value = values.join(',');
+                            // Update base names when selection changes
+                            updateBaseNames();
+                            updateBaseTypeSummary(checked);
+                        }
+
+                        fetch('/api/runewords/base-types?name=' + encodeURIComponent(name))
+                            .then(function(resp) { return resp.json(); })
+                            .then(function(bases) {
+                                if (!Array.isArray(bases) || bases.length === 0) {
+                                    baseTypeContainer.innerHTML = '<span style="color: #888; font-size: 0.85em;">No base types available</span>';
+                                    updateBaseTypeSummary([]);
+                                    return;
+                                }
+
+                                const ov = overridesMap ? overridesMap[name] : null;
+                                let savedBaseTypes = ov && ov.BaseType ? ov.BaseType.split(',').map(function(s) { return s.trim(); }) : [];
+
+                                bases.forEach(function(bt) {
+                                    var label = document.createElement('label');
+                                    label.style.cssText = 'display: flex; align-items: center; gap: 4px; margin: 0; font-size: 0.85em; cursor: pointer; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 3px;';
+
+                                    var cb = document.createElement('input');
+                                    cb.type = 'checkbox';
+                                    cb.value = bt.code;
+                                    cb.dataset.label = bt.label;
+                                    cb.checked = savedBaseTypes.indexOf(bt.code) !== -1;
+                                    cb.addEventListener('change', updateBaseTypeInput);
+
+                                    var span = document.createElement('span');
+                                    span.textContent = bt.label;
+
+                                    label.appendChild(cb);
+                                    label.appendChild(span);
+                                    baseTypeContainer.appendChild(label);
+                                });
+
+                                // Set initial hidden input value
+                                updateBaseTypeInput();
+                            })
+                            .catch(function() {
+                                baseTypeContainer.innerHTML = '<span style="color: #888; font-size: 0.85em;">Failed to load base types</span>';
+                                updateBaseTypeSummary([]);
+                            });
+                    }
+                    // TODO: load saved override values for this runeword into the fields.
+                });
+
+                if (checkbox) {
+                    checkbox.addEventListener('change', function() {
+                        if (enabledToggle && currentNameInput && currentNameInput.value === el.dataset.runewordName) {
+                            enabledToggle.checked = checkbox.checked;
+                        }
+                        sortByEnabled();
+                    });
+                }
+            });
+
+            if (enabledToggle) {
+                enabledToggle.addEventListener('change', function() {
+                    const name = currentNameInput ? currentNameInput.value : '';
+                    const item = findItemByName(name);
+                    if (!item) {
+                        return;
+                    }
+                    const cb = item.querySelector('input[type="checkbox"]');
+                    if (cb) {
+                        cb.checked = enabledToggle.checked;
+                    }
+                    sortByEnabled();
+                });
+            }
+
+            if (detailFavBtn) {
+                detailFavBtn.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    const current = currentNameInput ? currentNameInput.value : '';
+                    if (!current) {
+                        return;
+                    }
+                    const next = !favoriteSet.has(current);
+                    if (next) {
+                        favoriteSet.add(current);
+                    } else {
+                        favoriteSet.delete(current);
+                    }
+                    setFavoriteUI(current, next);
+                    sortByEnabled();
+                });
+            }
+
+            // Base type change handler is now attached to checkboxes in the loadBaseTypes code
+
+            if (baseTierSelect) {
+                baseTierSelect.addEventListener('change', function () {
+                    updateBaseNames();
+                });
+            }
+
+            // Reroll enable toggle controls visibility and can create a default rule.
+            if (rerollEnabledToggle && rerollSection) {
+                rerollEnabledToggle.addEventListener('change', function () {
+                    const enabled = !!rerollEnabledToggle.checked;
+                    const name = currentNameInput ? currentNameInput.value : '';
+
+                    if (!enabled) {
+                        syncRerollSectionVisibility(false);
+                        if (rerollRulesContainer) {
+                            rerollRulesContainer.innerHTML = '';
+                        }
+                        if (rerollRulesJSONInput) {
+                            rerollRulesJSONInput.value = '';
+                        }
+                        return;
+                    }
+
+                    syncRerollSectionVisibility(true);
+
+                    if (!name) {
+                        return;
+                    }
+
+                    const existing = (rerollRulesMap && rerollRulesMap[name]) ? rerollRulesMap[name] : [];
+                    const hasExisting = Array.isArray(existing) && existing.length > 0;
+
+                    if (hasExisting) {
+                        renderRerollRulesForCurrent(name);
+                    } else if (rerollRulesContainer) {
+                        const defaultRule = buildDefaultRuleFromCurrent();
+                        if (defaultRule) {
+                            addRuleBlockForCurrent(name, defaultRule);
+                        }
+                    }
+                });
+            }
+
+            if (rerollAddRuleBtn) {
+                rerollAddRuleBtn.addEventListener('click', function () {
+                    const name = currentNameInput ? currentNameInput.value : '';
+                    if (!name) return;
+
+                    const rule = buildDefaultRuleFromCurrent();
+                    addRuleBlockForCurrent(name, rule);
+                    if (rerollEnabledToggle) {
+                        rerollEnabledToggle.checked = true;
+                    }
+                    syncRerollSectionVisibility(true);
+                });
+            }
+
+            if (rerollHistoryBtn) {
+                rerollHistoryBtn.addEventListener('click', function () {
+                    openHistoryModal();
+                });
+            }
+
+            if (historyAllToggle) {
+                historyAllToggle.addEventListener('change', function () {
+                    const currentName = currentNameInput ? currentNameInput.value : '';
+                    const showAll = !!historyAllToggle.checked;
+                    setHistoryColumns(showAll, currentName);
+                    renderHistory(showAll);
+                });
+            }
+
+            if (historyCloseBtn) {
+                historyCloseBtn.addEventListener('click', function () {
+                    closeHistoryModal();
+                });
+            }
+
+            if (historyClearBtn) {
+                historyClearBtn.addEventListener('click', function () {
+                    rerollHistoryCache = [];
+                    rerollHistoryLoaded = true;
+                    saveHistoryToStorage([]);
+                    renderHistory(!!(historyAllToggle && historyAllToggle.checked));
+                });
+            }
+
+            if (historyBackdrop) {
+                historyBackdrop.addEventListener('click', function () {
+                    closeHistoryModal();
+                });
+            }
+
+            function startHistoryAutoSync() {
+                loadRerollHistory(true);
+                setInterval(function () {
+                    if (document.hidden) {
+                        return;
+                    }
+                    loadRerollHistory(true);
+                }, 60000);
+            }
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') {
+                    closeHistoryModal();
+                }
+            });
+
+            const form = document.querySelector('form');
+            if (form && rerollRulesJSONInput && rerollEnabledToggle) {
+                form.addEventListener('submit', function (event) {
+                    const name = currentNameInput ? currentNameInput.value : '';
+                    if (!name) {
+                        rerollRulesJSONInput.value = '';
+                        return;
+                    }
+                    if (!rerollEnabledToggle.checked) {
+                        rerollRulesJSONInput.value = '';
+                        return;
+                    }
+
+                    const rules = collectRulesFromDOM();
+                    const hasTargetStats = Array.isArray(rules) && rules.some(function(rule) {
+                        return Array.isArray(rule.TargetStats) && rule.TargetStats.length > 0;
+                    });
+                    if (!hasTargetStats) {
+                        if (event && typeof event.preventDefault === 'function') {
+                            event.preventDefault();
+                        }
+                        alert('No reroll target stats configured. Please set at least one stat above its minimum before saving.');
+                        return;
+                    }
+
+                    rerollRulesJSONInput.value = JSON.stringify(rules || []);
+                });
+            }
+
+            if (form && saveBtn) {
+                form.addEventListener('submit', function (event) {
+                    if (event.defaultPrevented) {
+                        return;
+                    }
+                    saveBtn.disabled = true;
+                    saveBtn.value = 'Saving...';
+                    saveBtn.style.opacity = '0.6';
+                    saveBtn.style.cursor = 'not-allowed';
+                });
+            }
+
+            if (savedFlag && toast) {
+                toast.classList.add('show');
+                setTimeout(function () {
+                    toast.classList.remove('show');
+                }, 2400);
+            }
+
+            // Initial sort so enabled runewords appear first
+            sortByEnabled();
+            markRunewordsWithRerollBadges();
+            startHistoryAutoSync();
+        })();
+    </script>
+</main>
+</body>
+</html>

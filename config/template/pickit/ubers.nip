@@ -1,0 +1,18 @@
+// Items to pick up during Uber runs
+
+// Potions
+[name] == superhealingpotion
+[name] == supermanapotion
+[name] == fullrejuvenationpotion
+
+// Uber organs
+[name] == mephistosbrain
+[name] == baalseye
+[name] == diabloshorn
+
+// Hellfire Torch (Large Charm Unique)
+[name] == largecharm && [quality] == unique
+
+// Annihilus (Small Charm Unique)
+[name] == smallcharm && [quality] == unique
+

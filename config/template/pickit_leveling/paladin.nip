@@ -1,0 +1,114 @@
+// IGNORED by default, this directory is ONLY evaluated DURING the character leveling process.
+// Rules here are included ADDITIONALLY to the main pickit rules
+
+[name] == talrune # # [maxquantity] == 4
+[name] == ethrune # # [maxquantity] == 1
+[name] == ralrune # # [maxquantity] == 3
+[name] == ortrune # # [maxquantity] == 3
+[name] == solrune # # [maxquantity] == 3
+[name] == tirrune # # [maxquantity] == 2
+[name] == thulrune # # [maxquantity] == 3
+[name] == amnrune # # [maxquantity] == 2
+[name] == shaelrune # # [maxquantity] == 3
+[name] == eldrune # # [maxquantity] == 1
+[name] == elrune # # [maxquantity] == 1
+[name] == nefrune # # [maxquantity] == 1
+[name] == lumrune # # [maxquantity] == 1
+[name] == korune # # [maxquantity] == 2
+[name] == helrune # # [maxquantity] == 5
+[name] == iorune # # [maxquantity] == 1
+[name] == lemrune
+[name] == pulrune
+[name] == umrune
+[name] == malrune
+[name] == istrune
+[name] == gulrune
+[name] == vexrune
+[name] == ohmrune
+[name] == lorune
+[name] == surrune
+[name] == berrune
+[name] == jahrune
+[name] == chamrune
+[name] == zodrune
+
+//gems
+//[name] == chippedamethyst # # [maxquantity] == 2
+//[name] == chippeddiamond # # [maxquantity] == 2
+//[name] == chippedemerald # # [maxquantity] == 2
+//[name] == chippedruby # # [maxquantity] = 2
+//[name] == chippedsapphire # # [maxquantity] == 2
+//[name] == chippedskull # # [maxquantity] == 2
+//[name] == chippedtopaz # # [maxquantity] == 5
+//[name] == flawedamethyst # # [maxquantity] == 5
+//[name] == flaweddiamond # # [maxquantity] == 5
+//[name] == flawedemerald # # [maxquantity] == 5
+//[name] == flawedruby # # [maxquantity] == 5
+//[name] == flawedsapphire # # [maxquantity] == 5
+//[name] == flawedskull # # [maxquantity] == 5
+//[name] == flawedtopaz # # [maxquantity] == 5
+//[name] == amethyst # # [maxquantity] == 2
+//[name] == diamond # # [maxquantity] == 2
+//[name] == emerald # # [maxquantity] == 2
+//[name] == ruby # # [maxquantity] == 2
+//[name] == skull # # [maxquantity] == 2
+//[name] == sapphire # # [maxquantity] == 2
+//[name] == topaz # # [maxquantity] == 2
+[name] == flawlessamethyst # # [maxquantity] == 2
+//[name] == flawlessdiamond # # [maxquantity] == 2
+//[name] == flawlessemerald # # [maxquantity] == 2
+//[name] == flawlessruby # # [maxquantity] == 2
+//[name] == flawlesssapphire # # [maxquantity] == 2
+//[name] == flawlessskull # # [maxquantity] == 2
+//[name] == flawlesstopaz # # [maxquantity] == 2
+[name] == perfectamethyst # # [maxquantity] == 5
+//[name] == perfectdiamond # # [maxquantity] == 5
+//[name] == perfectemerald # # [maxquantity] == 5
+//[name] == perfectruby # # [maxquantity] == 5
+//[name] == perfectsapphire # # [maxquantity] == 5
+//[name] == perfectskull # # [maxquantity] == 5
+//[name] == perfecttopaz # # [maxquantity] == 5
+
+// potions
+[name] == minorhealingpotion
+[name] == lighthealingpotion
+[name] == healingpotion
+[name] == greaterhealingpotion
+[name] == superhealingpotion
+[name] == minormanapotion
+[name] == lightmanapotion
+[name] == manapotion
+[name] == greatermanapotion
+[name] == supermanapotion
+[name] == rejuvenationpotion
+[name] == fullrejuvenationpotion
+
+// Bases
+[name] == crystalsword && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1 // Spirit
+[Name] == Flail && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 5 # [MaxQuantity] == 1 // CTA
+[type] == shield # [sockets] == 4 # # [maxquantity] == 1 // Spirit
+[type] == shield # [sockets] == 3  # # [maxquantity] == 1 // Ancient's Pledge
+[type] == polearm && [quality] <= superior # [sockets] == 4 # [MaxQuantity] == 1 // any insight polearm
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == elite # [sockets] == 4
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == exceptional # [sockets] == 4 # [MaxQuantity] == 1
+[type] == armor # [sockets] == 3 # # [maxquantity] == 1 // Treachery
+[type] == armor # [sockets] == 2 # # [maxquantity] == 1 // Stealth
+[type] == helm # [sockets] == 2 # # [maxquantity] == 1 // Lore
+[name] == scimitar # [sockets] == 2 # # [maxquantity] == 1 // steel
+[name] == shortstaff # [sockets] == 2 # # [maxquantity] == 1 //Leaf
+[type] == helm && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1 // bulwark
+
+// Paladin Shields
+[name] == rondache && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1
+[name] == rondache && [flag] != ethereal # [sockets] == 3 # # [maxquantity] == 1
+[name] == akarantarge && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1
+[name] == akarantarge && [flag] != ethereal # [sockets] == 3 # # [maxquantity] == 1
+[name] == aerinshield && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1
+[name] == aerinshield && [flag] != ethereal # [sockets] == 3 # # [maxquantity] == 1
+[name] == akaranrondache && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1
+[name] == akaranrondache && [flag] != ethereal # [sockets] == 3 # # [maxquantity] == 1
+[name] == heraldicshield && [flag] != ethereal # [sockets] == 4 # # [maxquantity] == 1
+[name] == heraldicshield && [flag] != ethereal # [sockets] == 3 # # [maxquantity] == 1
+
+
+

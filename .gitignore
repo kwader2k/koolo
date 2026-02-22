@@ -1,0 +1,13 @@
+/.idea
+/.vscode
+/.github
+/bin
+/build
+/stats
+/screenshots
+/logs
+
+/config/*
+!/config/template
+!/config/koolo.yaml.dist
+!/config/Settings.json

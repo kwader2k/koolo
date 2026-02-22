@@ -1,0 +1,171 @@
+// IGNORED by default, this directory is ONLY evaluated DURING the character leveling process.
+// Rules here are included ADDITIONALLY to the main pickit rules
+
+// ============================================
+// RUNES
+// ============================================
+[name] == talrune # # [maxquantity] == 4
+[name] == ethrune # # [maxquantity] == 3
+[name] == ralrune # # [maxquantity] == 3
+[name] == ortrune # # [maxquantity] == 3
+[name] == solrune # # [maxquantity] == 3
+[name] == tirrune # # [maxquantity] == 4
+[name] == thulrune # # [maxquantity] == 3
+[name] == ithrune # # [maxquantity] == 2
+[name] == amnrune # # [maxquantity] == 3
+[name] == shaelrune # # [maxquantity] == 3
+[name] == eldrune # # [maxquantity] == 1
+[name] == elrune # # [maxquantity] == 3
+[name] == nefrune # # [maxquantity] == 1
+[name] == lumrune # # [maxquantity] == 1
+[name] == korune # # [maxquantity] == 2
+[name] == helrune # # [maxquantity] == 5
+[name] == iorune # # [maxquantity] == 1
+[name] == lemrune
+[name] == pulrune
+[name] == umrune
+[name] == malrune
+[name] == istrune
+[name] == gulrune
+[name] == vexrune
+[name] == ohmrune
+[name] == lorune
+[name] == surrune
+[name] == berrune
+[name] == jahrune
+[name] == chamrune
+[name] == zodrune
+
+// ============================================
+// GEMS & POTIONS
+// ============================================
+//gems
+[name] == flawlessamethyst # # [maxquantity] == 3
+
+// potions
+[name] == minorhealingpotion
+[name] == lighthealingpotion
+[name] == healingpotion
+[name] == greaterhealingpotion
+[name] == superhealingpotion
+[name] == minormanapotion
+[name] == lightmanapotion
+[name] == manapotion
+[name] == greatermanapotion
+[name] == supermanapotion
+[name] == rejuvenationpotion
+[name] == fullrejuvenationpotion
+
+// ============================================
+// BASES FOR RUNEWORDS
+// ============================================
+// Spirit bases (4 sockets)
+[name] == crystalsword && [flag] != ethereal # [sockets] == 4 # [maxquantity] == 1
+[name] == broadsword && [flag] != ethereal # [sockets] == 4 # [maxquantity] == 1
+[name] == longsword && [flag] != ethereal # [sockets] == 4 # [maxquantity] == 1
+
+// Ancient's Pledge base (3 sockets shield)
+[type] == shield # [sockets] == 3  # [maxquantity] == 1
+
+// Rhyme base (2 sockets shield)
+[type] == shield # [sockets] == 2  # [maxquantity] == 1
+
+// Insight polearm bases (4 sockets)
+[type] == polearm && [quality] <= superior # [sockets] == 4 # [maxquantity] == 1
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [class] == elite # [sockets] == 4
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [class] == exceptional # [sockets] == 4 # [maxquantity] == 1
+
+// Other runeword bases
+[type] == armor # [sockets] == 3 # [maxquantity] == 1 // Treachery
+[type] == armor # [sockets] == 2 # [maxquantity] == 1 // Stealth
+[type] == helm # [sockets] == 2 # [maxquantity] == 1 // Lore
+
+// ============================================
+// RUNEWORDS - WEAPONS
+// ============================================
+// Heart of the Oak
+([type] == mace || [name] == flail) && [flag] != ethereal # [itemallskills] == 3 && [fcr] >= 40 # [tier] == 12000 // Heart of the Oak (top priority)
+
+// Spirit (recognized by +89-112 Max Mana)
+([name] == broadsword || [name] == crystalsword || [name] == longsword) && [flag] != ethereal && [type] != shield # [maxmana] >= 89 # [tier] == 8000 // Spirit weapon
+
+// Strength
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [itemcrushingblow] >= 25 # [tier] == 5000 // Strength runeword
+
+// Malice (recognized by +33% Enhanced Damage and +100% Open Wounds)
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [itemopenwounds] >= 99 # [tier] == 4500 // Malice runeword
+
+// Black
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [enhanceddamage] >= 120 && [itemcrushingblow] >= 40 // Black runeword
+
+// Steel
+([type] == mace || [type] == club || [name] == flail) && [flag] != ethereal # [enhanceddamage] >= 20 && [tohit] >= 25 # [tier] == 250 // Steel runeword
+[type] == hammer && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Hammers
+[type] == scepter && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Scepters
+[name] == flail && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 250 // Flails
+[type] == mace && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 180 // One-handed maces
+[type] == club && [quality] >= magic && [flag] != ethereal # [sockets] == 0 # [tier] == 180 // Clubs
+
+// ============================================
+// RUNEWORDS - SHIELDS
+// ============================================
+// Ancient's Pledge
+[type] == shield # [sockets] == 3 && [fireresist] + [coldresist] + [lightresist] + [poisonresist] >= 40 # [tier] == 15000 // Ancient's Pledge (top priority shield)
+
+// Rhyme
+[type] == shield # [sockets] == 2 && [fireresist] + [coldresist] + [lightresist] + [poisonresist] >= 20 # [tier] == 12000 // Rhyme (second priority shield)
+
+// Other good shields for level 31+ (lower tier to ensure Ancient's Pledge and Rhyme priority)
+[name] == roundshield && [quality] == unique && [flag] != ethereal # [sockets] == 2 # [tier] == 2000 # [maxquantity] == 1 // Moser's Blessed Circle (req lvl 31)
+[name] == kiteshield && [quality] == unique && [flag] != ethereal # [toblock] >= 25 && [fireresist] + [coldresist] + [lightresist] + [poisonresist] >= 15 # [tier] == 1500 # [maxquantity] == 1 // Steelclash (req lvl 17)
+[name] == spikedshield && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 60 # [tier] == 1000 # [maxquantity] == 1 // Swordback Hold (req lvl 15)
+
+// ============================================
+// UNIQUE ITEMS
+// ============================================
+// Belts
+[name] == spiderwebsash && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 90 # [tier] == 10000 # [maxquantity] == 1 // arachnid mesh
+
+// Helms
+[name] == shako && [quality] == unique && [flag] != ethereal # [defense] >= 98 # [tier] == 10000 # [maxquantity] == 1 // harlequin crest
+[name] == slayerguard && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 150 && [lifeleech] >= 3 # [tier] == 10000 # [maxquantity] == 1 // arreat's face
+
+// Gloves
+[name] == heavygloves && [quality] == unique && [flag] != ethereal # [tier] == 10000 # [maxquantity] == 1 // bloodfist
+[name] == chaingloves && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 25 && [itemmagicbonus] >= 25 # [tier] == 10000 # [maxquantity] == 1 // chance guards
+
+// Rings
+[type] == ring && [quality] == unique # [dexterity] >= 15 && [tohit] >= 150 # [tier] == 10000 # [maxquantity] == 1 // ravenfrost
+[type] == ring && [quality] == unique # [itemmaxmanapercent] >= 25 # [tier] == 10000 # [maxquantity] == 1 // stone of jordan
+[type] == ring && [quality] == unique # [magicdamagereduction] >= 12 # [tier] == 2000 # [maxquantity] == 1 // dwarf star
+
+// Amulets
+[type] == amulet && [quality] == unique # [lightresist] >= 35 # [tier] == 10000 # [maxquantity] == 1 // highlord's wrath
+
+// Boots
+[name] == warboots && [quality] == unique && [flag] != ethereal # [tier] == 10000 # [maxquantity] == 1 // gore rider
+[name] == meshboots && [quality] == unique && [flag] != ethereal # [tier] == 10000 # [maxquantity] == 1 // silkweave
+[name] == battleboots && [quality] == set # [fireresist] >= 40 # [tier] == 6000 # [maxquantity] == 1 // aldur's advance
+
+// Unique weapons
+[name] == flail && [quality] == unique && [flag] != ethereal # [manaleech] >= 5 # [tier] == 1000 # [maxquantity] == 1 // the general's tan do li ga (best unique)
+[name] == mace && [quality] == unique && [flag] != ethereal # [itemcrushingblow] >= 33 # [tier] == 800 # [maxquantity] == 1 // crushflange
+[name] == morningstar && [quality] == unique && [flag] != ethereal # [itemopenwounds] >= 25 # [tier] == 800 # [maxquantity] == 1 // bloodrise
+[name] == warhammer && [quality] == unique && [flag] != ethereal # [tohit] >= 138 # [tier] == 500 # [maxquantity] == 1 // ironstone
+[name] == club && [quality] == unique && [flag] != ethereal # [lightresist] >= 60 # [tier] == 200 # [maxquantity] == 1 // felloak
+[name] == spikedclub && [quality] == unique && [flag] != ethereal # [itemattackertakesdamage] >= 3 # [tier] == 100 # [maxquantity] == 1 // stoutnail
+
+// Boss-specific items (Crushing Blow and Cannot Be Frozen) - no tier, just pickup
+[name] == lightplatedboots && [quality] == unique && [flag] != ethereal # [maxquantity] == 1 // Goblin Toe (Crushing Blow boots)
+[name] == demonhidegloves && [quality] == unique && [flag] != ethereal # [itemcrushingblow] >= 5 && [poisonresist] >= 30 # [maxquantity] == 1 // Venom Grip (Crushing Blow gloves)
+[name] == mace && [quality] == unique && [flag] != ethereal # [itemcrushingblow] >= 33 # [maxquantity] == 1 // Crushflange (Crushing Blow mace)
+[name] == barbedclub && [quality] == unique && [flag] != ethereal # [itemcrushingblow] >= 20 && [itemopenwounds] >= 25 && [enhanceddamage] >= 130 # [maxquantity] == 1 // Fleshrender (Crushing Blow barbed club)
+
+// ============================================
+// OTHER RUNEWORDS
+// ============================================
+// Lore
+[type] == helm # [sockets] == 2 && [itemallskills] == 1 && [lightresist] >= 30 # [tier] == 5000 // Lore runeword
+
+// Stealth
+[type] == armor # [sockets] == 2 && [frw] >= 25 && [fcr] >= 25 # [tier] == 5000 // Stealth runeword

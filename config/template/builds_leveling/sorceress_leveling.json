@@ -1,0 +1,7 @@
+{
+	"nips" : [
+		"sorceress_leveling.nip",
+		"common.nip",
+		"common-caster.nip"
+	]
+}

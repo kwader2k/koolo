@@ -1,0 +1,6 @@
+//Amulet
+[type] == amulet && [quality] == unique # [dexterity] >= 25	# [tier] == 5000 //cat's eye
+[type] == amulet && [quality] == unique # [lightresist] >= 35 # [tier] == 10000 //Highlord
+
+//Boots
+[name] == scarabshellboots && [quality] == unique # [enhanceddefense] >= 140 # [tier] == 15000 // sandstorm trek

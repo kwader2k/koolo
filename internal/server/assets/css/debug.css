@@ -1,0 +1,630 @@
+/* ========================================
+   DEBUG INTERFACE - MODERNIZED
+   Using shared color system
+   ======================================== */
+
+:root {
+    /* Debug-specific colors */
+    --debug-bg: #1e2124;
+    --debug-secondary-bg: #2c2f33;
+    --debug-accent: #0089eb;
+    --debug-accent-light: #99aab5;
+    --debug-success: #00a76f;
+    --debug-null: #ED4245;
+    --debug-border: #424549;
+    --debug-hover: #32363a;
+    
+    /* Global colors */
+    --text-primary: #ffffff;
+    --text-secondary: #a0a0a0;
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--debug-bg) 0%, #141619 100%);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+/* ========================================
+   HEADER
+   ======================================== */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 15px 20px;
+    background: var(--debug-secondary-bg);
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--debug-border);
+    position: relative;
+    overflow: hidden;
+}
+
+header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--debug-accent) 0%, #7289da 100%);
+}
+
+h1 {
+    margin: 0;
+    font-size: 24px;
+    color: var(--debug-accent);
+    background-clip: text;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.version-tag {
+    background: var(--debug-null);
+    color: var(--text-primary);
+    padding: 5px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(237, 66, 69, 0.3);
+    transition: transform 150ms ease;
+}
+
+.version-tag:hover {
+    transform: translateY(-2px);
+}
+
+/* ========================================
+   SUPERVISOR NAME
+   ======================================== */
+#supervisor-name {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--debug-accent);
+    margin: 20px 0;
+    text-align: center;
+    padding: 12px;
+    background: rgba(88, 101, 242, 0.1);
+    border-radius: 8px;
+    border: 1px solid rgba(88, 101, 242, 0.3);
+}
+
+/* ========================================
+   STICKY CONTROLS
+   ======================================== */
+#sticky-controls {
+    position: sticky;
+    top: 0;
+    background: var(--debug-secondary-bg);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border: 1px solid var(--debug-border);
+}
+
+#left-controls, #right-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+#left-controls {
+    flex-grow: 1;
+}
+
+#refresh-controls, #search-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#refresh-interval, #search-input {
+    padding: 8px 12px;
+    background: var(--debug-bg);
+    border: 2px solid var(--debug-border);
+    color: var(--text-primary);
+    border-radius: 6px;
+    font-size: 14px;
+    transition: all 150ms ease;
+}
+
+#refresh-interval {
+    width: 70px;
+}
+
+#search-input {
+    width: 220px;
+}
+
+#refresh-interval:focus,
+#search-input:focus {
+    outline: none;
+    border-color: var(--debug-accent);
+    box-shadow: 0 0 0 3px rgba(88, 101, 242, 0.2);
+}
+
+/* ========================================
+   BUTTONS
+   ======================================== */
+button {
+    background: var(--debug-accent); 
+    color: var(--text-primary);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 150ms ease;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+    background: var(--debug-accent); 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 8px rgba(88, 101, 242, 0.4);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+#search-prev-btn, #search-next-btn {
+    margin: 0;
+    padding: 6px 12px;
+}
+
+#search-results {
+    font-weight: 700;
+    color: var(--debug-accent-light);
+    min-width: 60px;
+    text-align: center;
+    padding: 4px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+}
+
+#copy-data-btn {
+    background: var(--debug-success); 
+}
+
+#copy-data-btn:hover {
+    background: var(--debug-success); 
+    transform: translateY(-2px); 
+    box-shadow: 0 4px 8px rgba(159, 242, 87, 0.2);
+}
+
+#copy-data-btn svg {
+    margin-right: 5px;
+}
+
+/* ========================================
+   DEBUG CONTAINER
+   ======================================== */
+#debug-container {
+    background: var(--debug-secondary-bg);
+    border: 1px solid var(--debug-border);
+    border-radius: 8px;
+    overflow: auto;
+    max-height: calc(100vh - 220px);
+    padding: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Custom Scrollbar */
+#debug-container::-webkit-scrollbar {
+    width: 10px;
+}
+
+#debug-container::-webkit-scrollbar-track {
+    background: var(--debug-bg);
+    border-radius: 5px;
+}
+
+#debug-container::-webkit-scrollbar-thumb {
+    background: var(--debug-accent);
+    border-radius: 5px;
+    transition: background 150ms ease;
+}
+
+#debug-container::-webkit-scrollbar-thumb:hover {
+    background: #7289da;
+}
+
+/* ========================================
+   TREE VIEW
+   ======================================== */
+.tree-view {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 14px;
+}
+
+.tree-node {
+    margin: 5px 0;
+    padding: 8px;
+    border: 1px solid var(--debug-border);
+    border-radius: 6px;
+    background: var(--debug-bg);
+    transition: all 150ms ease;
+}
+
+.tree-node:hover {
+    background: var(--debug-hover);
+    border-color: var(--debug-accent);
+}
+
+.tree-label {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 150ms ease;
+    gap: 6px;
+}
+
+.tree-label:hover {
+    background: var(--debug-hover);
+}
+
+.tree-key {
+    color: var(--debug-accent-light);
+    margin-right: 5px;
+    font-weight: 600;
+}
+
+.tree-value {
+    color: var(--debug-success);
+    font-weight: 500;
+}
+
+.tree-value.null {
+    color: var(--debug-null);
+    font-style: italic;
+}
+
+.tree-toggle {
+    cursor: pointer;
+    color: var(--debug-accent);
+    margin-right: 5px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: transform 150ms ease;
+    user-select: none;
+}
+
+.tree-toggle:hover {
+    transform: scale(1.2);
+}
+
+.large-dataset-notice {
+    color: var(--debug-accent);
+    font-style: italic;
+    margin-top: 5px;
+    padding: 8px;
+    background: rgba(88, 101, 242, 0.1);
+    border-radius: 4px;
+    border-left: 3px solid var(--debug-accent);
+    font-size: 13px;
+}
+
+/* ========================================
+   COPY BUTTON
+   ======================================== */
+.copy-btn {
+    background: var(--debug-accent-light); 
+    color: var(--debug-bg);
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+    opacity: 0;
+    transition: all 150ms ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.tree-node:hover > .tree-label .copy-btn {
+    opacity: 1;
+}
+
+.copy-btn:hover {
+    background: var(--debug-accent-light); 
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(153, 170, 181, 0.4);
+}
+
+.copy-btn:active {
+    transform: translateY(0);
+}
+
+/* ========================================
+   HIGHLIGHT
+   ======================================== */
+.highlight {
+    background: rgba(255, 193, 7, 0.3) !important;
+    border-radius: 4px;
+    animation: highlightPulse 1s ease;
+    box-shadow: 0 0 10px rgba(255, 193, 7, 0.5);
+}
+
+@keyframes highlightPulse {
+    0%, 100% {
+        background: rgba(255, 193, 7, 0.3);
+    }
+    50% {
+        background: rgba(255, 193, 7, 0.5);
+    }
+}
+
+/* ========================================
+   SECTION DIVIDER
+   ======================================== */
+.section-divider {
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, var(--debug-accent) 50%, transparent 100%);
+    margin: 20px 0;
+    opacity: 0.3;
+}
+
+/* ========================================
+   LOADING STATE
+   ======================================== */
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.loading-spinner {
+    border: 4px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    border-top: 4px solid var(--debug-accent);
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    box-shadow: 0 0 20px rgba(88, 101, 242, 0.5);
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* ========================================
+   COLLAPSIBLE CHILDREN
+   ======================================== */
+.tree-node > div {
+    margin-left: 20px;
+    border-left: 2px solid var(--debug-border);
+    padding-left: 12px;
+    margin-top: 8px;
+}
+
+.tree-node > div:empty {
+    display: none;
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 1024px) {
+    #sticky-controls {
+        flex-direction: column;
+        gap: 12px;
+    }
+    
+    #left-controls, #right-controls {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    #search-input {
+        width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+    
+    h1 {
+        font-size: 20px;
+    }
+    
+    #refresh-controls, #search-container {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    #refresh-interval, #search-input {
+        width: 100%;
+    }
+    
+    button {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .tree-node > div {
+        margin-left: 10px;
+        padding-left: 8px;
+    }
+}
+
+/* ========================================
+   KEYBOARD FOCUS
+   ======================================== */
+button:focus-visible,
+input:focus-visible {
+    outline: 3px solid var(--debug-accent);
+    outline-offset: 2px;
+}
+
+/* ========================================
+   ACCESSIBILITY
+   ======================================== */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (prefers-contrast: high) {
+    .tree-node {
+        border-width: 2px;
+    }
+    
+    button {
+        border: 2px solid var(--text-primary);
+    }
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.hidden {
+    display: none !important;
+}
+
+.fade-in {
+    animation: fadeIn 300ms ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-in {
+    animation: slideIn 300ms ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* ========================================
+   TOOLTIP (for future use)
+   ======================================== */
+[data-tooltip] {
+    position: relative;
+    cursor: help;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%) translateY(-8px);
+    padding: 6px 12px;
+    background: var(--debug-secondary-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--debug-border);
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms ease;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+[data-tooltip]:hover::after {
+    opacity: 1;
+}
+
+/* ========================================
+   PERFORMANCE OPTIMIZATION
+   ======================================== */
+.tree-node,
+.tree-label,
+button {
+    will-change: transform;
+}
+
+/* Reduce paint areas */
+.tree-node:hover {
+    isolation: isolate;
+}
+
+/* GPU acceleration for animations */
+@keyframes spin {
+    0% { transform: rotate(0deg) translateZ(0); }
+    100% { transform: rotate(360deg) translateZ(0); }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+@media print {
+    #sticky-controls,
+    button,
+    .copy-btn {
+        display: none;
+    }
+    
+    body {
+        background: white;
+        color: black;
+    }
+    
+    .tree-node {
+        border: 1px solid #ccc;
+        page-break-inside: avoid;
+    }
+    
+    .tree-value {
+        color: #000;
+    }
+}

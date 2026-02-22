@@ -1,0 +1,38 @@
+//belts 
+[type] == belt && [quality] < magic && [flag] != ethereal # # [tier] == 1
+[type] == belt && [quality] < magic && [name] != sash && [name] != lightbelt && [flag] != ethereal # # [tier] == 100
+[type] == belt && [quality] >= magic && [name] != sash && [name] != lightbelt && [flag] != ethereal # ([durability] >=1 || [ItemReplenishDurability] >= 1 || [ItemIndestructible] >= 1) # [tier] == 250
+[type] == belt && [quality] >= magic && ([class] == exceptional || [class] == elite) && [flag] != ethereal # ([durability] >=1 || [ItemReplenishDurability] >= 1 || [ItemIndestructible] >= 1) # [tier] == 500
+
+[name] == demonhidesash && [quality] == unique && [flag] != ethereal # [damageresist] >= 10 # [tier] == 1000 //string of ears
+
+//boots
+[name] == battleboots && [quality] == set && [flag] != ethereal # # [tier] == 3000 //aldur
+[name] == demonhideboots && [quality] == unique && [flag] != ethereal # # [tier] == 4000 // infernostride
+[name] == sharkskinboots && [quality] == unique && [flag] != ethereal # # [tier] == 5000 //Waterwalks
+[name] == battleboots && [quality] == unique && [flag] != ethereal # # [tier] == 10000 //War travellers
+
+//helms
+[type] == helm && [flag] != ethereal # [sockets] == 2 && [lightresist] >= 30 && [itemallskills] == 1 # [tier] == 1000 // Lore
+[name] == warhat && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 100 # [tier] == 2000 // peasant crown (1 @ skills/40mana/40life)
+[name] == sallet && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 160 # [tier] == 3000 // rockstopper (10%dr/20-40@res/30life)
+
+//Armor
+[type] == armor && [flag] != ethereal # [fcr] == 25 # [tier] == 1000 // stealth
+[type] == armor && [flag] != ethereal # [fireresist] == 50 && [lightresist] == 50 # [tier] == 2000 //smoke
+[type] == armor && [class] == elite && [flag] != ethereal # [fireresist] == 50 && [lightresist] == 50 # [tier] == 3000 //elite smoke
+
+[name] == cuirass && [quality] == unique && [flag] != ethereal # # [tier] == 4000
+[name] == mageplate && [quality] == unique && [flag] != ethereal # # [tier] == 5000
+[name] == russetarmor && [quality] == unique && [flag] != ethereal # # [tier] == 6000
+[name] == mesharmor && [quality] == unique && [flag] != ethereal # # [tier] == 7000
+[name] == russetarmor && [quality] == unique && [flag] == ethereal # # [tier] == 8000
+
+//Shields
+[type] == shield && [flag] != ethereal # [sockets] == 2 && [fireresist] >= 25 && [lightresist] >= 25 # [maxquantity] == 1 && [tier] == 1000 //rhyme
+[type] == shield && [flag] != ethereal # [sockets] == 3 && [coldresist] >= 43 && [fireresist] >= 48 && [lightresist] >= 48 && [poisonresist] >= 48 # [tier] == 2000 //ancient's pledge
+
+//Rings
+[type] == ring && [quality] == unique # [magicdamagereduction] >= 12 # [tier] == 5000 //dwarf
+[type] == ring && [quality] == unique # [Dexterity] >= 10 && [ToHit] >= 100 # [tier] == 6000 //raven
+[type] == ring && [quality] == unique # [lifeleech] >= 3 && [MaxStamina] == 50 # [tier] == 9000 //bul kathos

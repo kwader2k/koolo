@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/assets/css/pico.min.css">
+    <link rel="stylesheet" href="/assets/css/custom.css">
+    <link rel="stylesheet" href="/assets/css/sequence_editor.css">
+    <title>Leveling Sequence Editor</title>
+</head>
+<body>
+<main class="container">
+    <div class="editor-header">
+        <div>
+            <h1>Leveling Sequence Editor</h1>
+            <p>Build and fine-tune leveling sequences for your characters.</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn ghost" type="button" id="sequenceEditorCloseBtn">&#x2715; Close Editor</button>
+        </div>
+    </div>
+
+    <section id="editorMessages"></section>
+
+    <section class="card control-card">
+        <div class="control-row">
+            <div class="status-group">
+                <span id="currentSequenceLabel">Unsaved sequence</span>
+                <span id="dirtyIndicator" class="dirty-indicator" hidden>Unsaved changes</span>
+            </div>
+            <div class="control-actions">
+                <button id="loadSequenceBtn" class="btn primary" type="button">Open Sequence</button>
+                <button id="saveSequenceBtn" class="btn primary" type="button" disabled>Save</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="sequenceEditorPanel" class="sequence-editor-content" hidden>
+        <nav class="tab-bar">
+            <button class="tab active" data-tab="normal" type="button">Normal</button>
+            <button class="tab" data-tab="nightmare" type="button">Nightmare</button>
+            <button class="tab" data-tab="hell" type="button">Hell</button>
+        </nav>
+
+        <div id="tab-normal" class="tab-panel active" data-difficulty="normal">
+            <div class="card">
+                <div class="section-header">
+                    <h3>Before Quests</h3>
+                    <button class="btn small outline add-run-btn" type="button" data-difficulty="normal" data-section="beforeQuests">+ Add Run</button>
+                </div>
+                <div class="sequence-list" data-difficulty="normal" data-section="beforeQuests"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Quests</h3>
+                </div>
+                <div class="quest-list" data-difficulty="normal"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>After Quests</h3>
+                    <button class="btn small outline add-run-btn" type="button" data-difficulty="normal" data-section="afterQuests">+ Add Run</button>
+                </div>
+                <div class="sequence-list" data-difficulty="normal" data-section="afterQuests"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Difficulty Progression</h3>
+                </div>
+                <div class="condition-list" data-difficulty="normal"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Config Adjustments</h3>
+                    <button class="btn small outline add-config-btn" type="button" data-difficulty="normal">+ Add Config Block</button>
+                </div>
+                <div class="config-settings" data-difficulty="normal"></div>
+            </div>
+        </div>
+
+        <div id="tab-nightmare" class="tab-panel" data-difficulty="nightmare">
+            <div class="card">
+                <div class="section-header">
+                    <h3>Before Quests</h3>
+                    <button class="btn small outline add-run-btn" type="button" data-difficulty="nightmare" data-section="beforeQuests">+ Add Run</button>
+                </div>
+                <div class="sequence-list" data-difficulty="nightmare" data-section="beforeQuests"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Quests</h3>
+                </div>
+                <div class="quest-list" data-difficulty="nightmare"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>After Quests</h3>
+                    <button class="btn small outline add-run-btn" type="button" data-difficulty="nightmare" data-section="afterQuests">+ Add Run</button>
+                </div>
+                <div class="sequence-list" data-difficulty="nightmare" data-section="afterQuests"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Difficulty Progression</h3>
+                </div>
+                <div class="condition-list" data-difficulty="nightmare"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Config Adjustments</h3>
+                    <button class="btn small outline add-config-btn" type="button" data-difficulty="nightmare">+ Add Config Block</button>
+                </div>
+                <div class="config-settings" data-difficulty="nightmare"></div>
+            </div>
+        </div>
+
+        <div id="tab-hell" class="tab-panel" data-difficulty="hell">
+            <div class="card">
+                <div class="section-header">
+                    <h3>Before Quests</h3>
+                    <button class="btn small outline add-run-btn" type="button" data-difficulty="hell" data-section="beforeQuests">+ Add Run</button>
+                </div>
+                <div class="sequence-list" data-difficulty="hell" data-section="beforeQuests"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Quests</h3>
+                </div>
+                <div class="quest-list" data-difficulty="hell"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>After Quests</h3>
+                    <button class="btn small outline add-run-btn" type="button" data-difficulty="hell" data-section="afterQuests">+ Add Run</button>
+                </div>
+                <div class="sequence-list" data-difficulty="hell" data-section="afterQuests"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Difficulty Progression</h3>
+                </div>
+                <div class="condition-list" data-difficulty="hell"></div>
+            </div>
+            <div class="card">
+                <div class="section-header">
+                    <h3>Config Adjustments</h3>
+                    <button class="btn small outline add-config-btn" type="button" data-difficulty="hell">+ Add Config Block</button>
+                </div>
+                <div class="config-settings" data-difficulty="hell"></div>
+            </div>
+        </div>
+    </section>
+</main>
+<script type="module" src="/assets/js/sequence_editor/index.js"></script>
+</body>
+</html>

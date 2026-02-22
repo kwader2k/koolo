@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pickit Editor</title>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #1a1a1a; color: #ddd; }
+        .header { background: #2a2a2a; padding: 20px; border-bottom: 2px solid #4CAF50; }
+        .header h1 { margin: 0; color: #4CAF50; }
+        .pickit-container { display: flex; height: calc(100vh - 100px); gap: 20px; padding: 20px; }
+        .item-browser, .rule-editor { flex: 1; overflow-y: auto; background: #2a2a2a; border-radius: 8px; padding: 20px; }
+        .item-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .item-table thead { position: sticky; top: 0; background: #2a2a2a; z-index: 10; }
+        .item-table th { padding: 12px; text-align: left; background: #333; border-bottom: 2px solid #4CAF50; font-weight: bold; }
+        .item-table td { padding: 10px; border-bottom: 1px solid #333; }
+        .item-table tr { cursor: pointer; transition: background 0.2s; }
+        .item-table tr:hover { background: #333; }
+        .item-table tr.selected { background: #4CAF50; color: white; }
+        .category-badge { padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .category-uniques { background: #d4af37; color: #000; }
+        .category-sets { background: #4CAF50; color: #fff; }
+        .category-runes { background: #ff9800; color: #fff; }
+        .category-gems { background: #9C27B0; color: #fff; }
+        .category-charms { background: #2196F3; color: #fff; }
+        .category-bases { background: #607D8B; color: #fff; }
+        .search-input, .filter-select { padding: 10px; background: #333; border: 1px solid #444; border-radius: 4px; color: #ddd; margin-right: 10px; }
+        .search-input { flex: 1; min-width: 200px; }
+        .form-group { margin-bottom: 15px; }
+        .form-label { font-weight: bold; margin-bottom: 8px; display: block; }
+        .form-input { width: 100%; padding: 10px; background: #333; border: 1px solid #444; border-radius: 4px; color: #ddd; box-sizing: border-box; }
+        .quality-options { display: flex; flex-wrap: wrap; gap: 15px; }
+        .quality-radio { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .btn { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-right: 10px; }
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-secondary { background: #666; color: white; }
+        .btn-danger { background: #f44336; color: white; }
+        .nip-preview { background: #1e1e1e; padding: 15px; border-radius: 4px; font-family: monospace; color: #4CAF50; }
+        .stat-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .stat-row select, .stat-row input { padding: 8px; background: #333; border: 1px solid #444; border-radius: 4px; color: #ddd; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid #444; }
+        .tab-button { padding: 10px 20px; background: none; border: none; color: #999; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab-button.active { color: #4CAF50; border-bottom-color: #4CAF50; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        #validation { padding: 10px; border-radius: 4px; margin-top: 10px; display: none; }
+        #validation.error { background: rgba(244,67,54,0.1); border: 1px solid #f44336; color: #f44336; }
+        #validation.success { background: rgba(76,175,80,0.1); border: 1px solid #4CAF50; color: #4CAF50; }
+        #validation.warning { background: rgba(255,152,0,0.1); border: 1px solid #ff9800; color: #ff9800; }
+        .template-card { background: #333; padding: 15px; border-radius: 6px; margin-bottom: 10px; cursor: pointer; }
+        .template-card:hover { background: #444; }
+        .template-name { font-weight: bold; color: #4CAF50; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; }
+        .modal.active { display: flex; align-items: center; justify-content: center; }
+        .modal-content { background: #2a2a2a; padding: 30px; border-radius: 8px; max-width: 600px; width: 90%; }
+        .modal-content h2 { margin-top: 0; color: #4CAF50; }
+        .file-list { max-height: 300px; overflow-y: auto; margin: 20px 0; }
+        .file-item { padding: 10px; background: #333; margin: 5px 0; border-radius: 4px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+        .file-item:hover { background: #444; }
+        .file-item.selected { background: #4CAF50; color: white; }
+    </style>
+</head>
+<body>
+    <!-- File Configuration Modal -->
+    <div id="fileConfigModal" class="modal">
+        <div class="modal-content">
+            <h2>Select Pickit Folder</h2>
+            <p>Browse to your pickit directory to load .nip files:</p>
+            <div class="form-group">
+                <label class="form-label">Pickit Directory Path</label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" class="form-input" id="pickitPath" placeholder="e.g., G:\koolo\config\MyChar\pickit" style="flex: 1;">
+                    <button class="btn btn-secondary" onclick="browseFolder()">Browse</button>
+                </div>
+                <small style="color: #888; display: block; margin-top: 5px;">
+                    Enter the full path to your pickit folder or click Browse
+                </small>
+            </div>
+            <div id="foundFiles" class="file-list"></div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button class="btn btn-primary" onclick="saveFileConfig()">Load Files</button>
+                <button class="btn btn-secondary" onclick="closeFileConfigModal()">Cancel</button>
+                <button class="btn btn-secondary" onclick="scanForFiles()">Scan Directory</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="header">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1>NIP Pickit Editor</h1>
+            <button class="btn btn-primary" onclick="showFileConfigModal()" style="margin: 0;">
+                📁 Select Pickit Folder
+            </button>
+        </div>
+    </div>
+    <div class="pickit-container">
+        <div class="item-browser">
+            <h2>Items</h2>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search items by name..." oninput="filterItems()">
+            </div>
+            <div class="tabs">
+                <button class="tab-button active" onclick="showCategory('All')">All</button>
+                <button class="tab-button" onclick="showCategory('Uniques')">Uniques</button>
+                <button class="tab-button" onclick="showCategory('Sets')">Sets</button>
+                <button class="tab-button" onclick="showCategory('Runes')">Runes</button>
+                <button class="tab-button" onclick="showCategory('Gems')">Gems</button>
+                <button class="tab-button" onclick="showCategory('Charms')">Charms</button>
+                <button class="tab-button" onclick="showCategory('Bases')">Bases</button>
+            </div>
+            <div id="browseTab" class="tab-content active">
+                <div style="overflow-y: auto; max-height: calc(100vh - 350px);">
+                    <table class="item-table" id="itemTable">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Type</th>
+                                <th>Category</th>
+                                <th>Level</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="rule-editor">
+            <h2>Rule Builder</h2>
+            <div class="form-group" style="background: #1e1e1e; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <label class="form-label">Pickit File</label>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <select class="form-input" id="pickitFile" style="flex: 1;">
+                        <option value="general.nip">general.nip</option>
+                        <option value="uniques.nip">uniques.nip</option>
+                        <option value="runes.nip">runes.nip</option>
+                        <option value="charms.nip">charms.nip</option>
+                    </select>
+                    <button class="btn btn-secondary" onclick="loadPickitFile()">Load</button>
+                    <button class="btn btn-secondary" onclick="createNewFile()">New</button>
+                </div>
+            </div>
+            <div id="loadedRulesSection" style="display: none; background: #1e1e1e; padding: 15px; border-radius: 6px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="margin: 0;">Loaded Rules (<span id="rulesCount">0</span>)</h3>
+                    <button class="btn btn-secondary" onclick="closeLoadedRules()">Close</button>
+                </div>
+                <div id="loadedRulesList" style="max-height: 400px; overflow-y: auto; background: #2d2d2d; padding: 10px; border-radius: 4px;">
+                    <!-- Rules will be displayed here -->
+                </div>
+            </div>
+            <div id="editorForm">
+                <div class="form-group">
+                    <label class="form-label">Item Name</label>
+                    <input type="text" class="form-input" id="itemName" placeholder="Select an item or type manually" oninput="updateNIPPreview()">
+                </div>
+                <div class="form-group" id="qualityContainer">
+                    <label class="form-label">Quality</label>
+                    <div class="quality-options">
+                        <label class="quality-radio"><input type="radio" name="quality" value="normal" onchange="updateNIPPreview()"> Normal</label>
+                        <label class="quality-radio"><input type="radio" name="quality" value="magic" onchange="updateNIPPreview()"> Magic</label>
+                        <label class="quality-radio"><input type="radio" name="quality" value="rare" onchange="updateNIPPreview()"> Rare</label>
+                        <label class="quality-radio"><input type="radio" name="quality" value="set" onchange="updateNIPPreview()"> Set</label>
+                        <label class="quality-radio"><input type="radio" name="quality" value="unique" onchange="updateNIPPreview()"> Unique</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Sockets</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <select class="form-input" id="socketOperator" style="width: 100px;" onchange="updateNIPPreview()">
+                            <option value="">Any</option>
+                            <option value="==">=</option>
+                            <option value=">=">&gt;=</option>
+                            <option value="<=">&lt;=</option>
+                            <option value=">">&gt;</option>
+                            <option value="<">&lt;</option>
+                        </select>
+                        <input type="number" class="form-input" id="socketValue" placeholder="Number of sockets" min="0" max="6" style="flex: 1;" oninput="updateNIPPreview()">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Ethereal</label>
+                    <div class="quality-options">
+                        <label class="quality-radio"><input type="radio" name="ethereal" value="" onchange="updateNIPPreview()" checked> Any</label>
+                        <label class="quality-radio"><input type="radio" name="ethereal" value="ethereal" onchange="updateNIPPreview()"> Ethereal</label>
+                        <label class="quality-radio"><input type="radio" name="ethereal" value="!= ethereal" onchange="updateNIPPreview()"> Non-Ethereal</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label"><input type="checkbox" id="enableStats" onchange="toggleStats()"> Add Stat Requirements</label>
+                </div>
+                <div id="statsContainer" style="display: none;">
+                    <div class="form-group">
+                        <label class="form-label">Stats</label>
+                        <div id="statsRows"></div>
+                        <button class="btn btn-secondary" onclick="addStat()">+ Add Stat</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Max Quantity (0 = unlimited)</label>
+                    <input type="number" class="form-input" id="maxQuantity" value="0" min="0" oninput="updateNIPPreview()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Comments</label>
+                    <input type="text" class="form-input" id="comments" placeholder="Optional notes..." oninput="updateNIPPreview()">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">NIP Preview</label>
+                    <div class="nip-preview" id="nipPreview">// Select an item to see NIP syntax</div>
+                </div>
+                <div id="validation"></div>
+                <div style="margin-top: 20px;">
+                    <button class="btn btn-primary" onclick="saveRule()">Save Rule</button>
+                    <button class="btn btn-secondary" onclick="validateRule()">Validate</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/assets/js/pickit_editor.js"></script>
+</body>
+</html>

@@ -1,0 +1,77 @@
+// IGNORED by default, this directory is ONLY evaluated DURING the character leveling process.
+// Rules here are included ADDITIONALLY to the main pickit rules
+
+[name] == talrune # # [maxquantity] == 4
+[name] == ethrune # # [maxquantity] == 1
+[name] == ralrune # # [maxquantity] == 3
+[name] == ortrune # # [maxquantity] == 3
+[name] == solrune # # [maxquantity] == 3
+[name] == tirrune # # [maxquantity] == 1
+[name] == thulrune # # [maxquantity] == 3
+[name] == amnrune # # [maxquantity] == 2
+[name] == shaelrune # # [maxquantity] == 3
+[name] == eldrune # # [maxquantity] == 1
+[name] == nefrune # # [maxquantity] == 1
+[name] == lumrune # # [maxquantity] == 1
+[name] == korune # # [maxquantity] == 2
+[name] == helrune # # [maxquantity] == 5
+[name] == iorune # # [maxquantity] == 1
+[name] == lemrune
+[name] == pulrune
+[name] == umrune
+[name] == malrune
+[name] == istrune
+[name] == gulrune
+[name] == vexrune
+[name] == ohmrune
+[name] == lorune
+[name] == surrune
+[name] == berrune
+[name] == jahrune
+[name] == chamrune
+[name] == zodrune
+
+//gems
+//[name] == chippedamethyst # # [maxquantity] == 2
+//[name] == chippeddiamond # # [maxquantity] == 2
+//[name] == chippedemerald # # [maxquantity] == 2
+//[name] == chippedruby # # [maxquantity] = 2
+//[name] == chippedsapphire # # [maxquantity] == 2
+//[name] == chippedskull # # [maxquantity] == 2
+//[name] == chippedtopaz # # [maxquantity] == 5
+//[name] == flawedamethyst # # [maxquantity] == 5
+//[name] == flaweddiamond # # [maxquantity] == 5
+//[name] == flawedemerald # # [maxquantity] == 5
+//[name] == flawedruby # # [maxquantity] == 5
+//[name] == flawedsapphire # # [maxquantity] == 5
+//[name] == flawedskull # # [maxquantity] == 5
+//[name] == flawedtopaz # # [maxquantity] == 5
+[name] == flawlessamethyst # # [maxquantity] == 3
+
+// potions
+[name] == minorhealingpotion
+[name] == lighthealingpotion
+[name] == healingpotion
+[name] == greaterhealingpotion
+[name] == superhealingpotion
+[name] == minormanapotion
+[name] == lightmanapotion
+[name] == manapotion
+[name] == greatermanapotion
+[name] == supermanapotion
+[name] == rejuvenationpotion
+[name] == fullrejuvenationpotion
+
+//Bases
+
+([Name] == CrystalSword || [Name] == BroadSword) && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 4 # [MaxQuantity] == 1 // spirit
+[Name] == Flail && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 5 # [MaxQuantity] == 1 // CTA
+[type] == polearm && [quality] <= superior # [sockets] == 4 # [MaxQuantity] == 1 // any insight polearm
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == elite # [sockets] == 4
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == exceptional # [sockets] == 4 # [MaxQuantity] == 1
+[Type] == Armor && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1
+[Type] == Armor && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 3 # [MaxQuantity] == 1
+[type] == helm && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1
+[name] == monarch && [quality] <= superior # [sockets] == 4 # [maxquantity] == 1
+[Type] == Shield && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1
+[type] == helm && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1 // bulwark
