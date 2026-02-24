@@ -674,7 +674,18 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 				}
 			}
 		} else {
-			// Full reset: clicking the Shared tab lands on page 1, then navigate forward
+			// The game remembers the last shared page visited, so clicking
+			// the Shared tab does NOT always land on page 1. Force-reset to
+			// page 1 by clicking prev the maximum number of times, then
+			// navigate forward to the target page.
+			sharedPages := ctx.Data.Inventory.SharedStashPages
+			if sharedPages == 0 {
+				sharedPages = 3
+			}
+			for i := 0; i < sharedPages-1; i++ {
+				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
+				utils.PingSleep(utils.Medium, 250)
+			}
 			nextClicks := tab - 2
 			for i := 0; i < nextClicks; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashNextPageX, ui.SharedStashNextPageY)
@@ -729,6 +740,18 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 				}
 			}
 		} else {
+			// The game remembers the last shared page visited, so clicking
+			// the Shared tab does NOT always land on page 1. Force-reset to
+			// page 1 by clicking prev the maximum number of times, then
+			// navigate forward to the target page.
+			sharedPages := ctx.Data.Inventory.SharedStashPages
+			if sharedPages == 0 {
+				sharedPages = 3
+			}
+			for i := 0; i < sharedPages-1; i++ {
+				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageXClassic, ui.SharedStashPrevPageYClassic)
+				utils.PingSleep(utils.Medium, 250)
+			}
 			nextClicks := tab - 2
 			for i := 0; i < nextClicks; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashNextPageXClassic, ui.SharedStashNextPageYClassic)
@@ -742,8 +765,12 @@ func OpenStash() error {
 	ctx := context.Get()
 	ctx.SetLastAction("OpenStash")
 
-	// Reset tab tracker — stash always opens on personal tab
-	ctx.CurrentGame.CurrentStashTab = 1
+	// The first stash open each game always lands on the personal tab.
+	// Subsequent opens remember the last tab/page, so we keep CurrentStashTab as-is.
+	if !ctx.CurrentGame.HasOpenedStash {
+		ctx.CurrentGame.CurrentStashTab = 1
+		ctx.CurrentGame.HasOpenedStash = true
+	}
 
 	bank, found := ctx.Data.Objects.FindOne(object.Bank)
 	if !found {
@@ -762,7 +789,8 @@ func CloseStash() error {
 	ctx := context.Get()
 	ctx.SetLastAction("CloseStash")
 
-	ctx.CurrentGame.CurrentStashTab = 0 // Reset tab tracker on close
+	// Do NOT reset CurrentStashTab — the game remembers the last tab/page
+	// when the stash is reopened within the same game.
 
 	if ctx.Data.OpenMenus.Stash {
 		ctx.HID.PressKey(win.VK_ESCAPE)

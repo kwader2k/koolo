@@ -29,6 +29,12 @@ func CubeAddItems(items ...data.Item) error {
 		if err != nil {
 			return err
 		}
+		// The first stash open each game lands on personal; subsequent opens
+		// remember the last tab/page.
+		if !ctx.CurrentGame.HasOpenedStash {
+			ctx.CurrentGame.CurrentStashTab = 1
+			ctx.CurrentGame.HasOpenedStash = true
+		}
 	}
 	// Clear messages like TZ change or public game spam.  Prevent bot from clicking on messages
 	ClearMessages()
