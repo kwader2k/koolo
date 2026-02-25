@@ -82,9 +82,20 @@ func openStash(ctx *context.Status) error {
 		return errors.New("stash not found")
 	}
 
-	return action.InteractObject(bank, func() bool {
+	err := action.InteractObject(bank, func() bool {
 		return ctx.Data.OpenMenus.Stash
 	})
+	if err != nil {
+		return err
+	}
+
+	// The first stash open each game lands on personal; subsequent opens
+	// remember the last tab/page.
+	if !ctx.CurrentGame.HasOpenedStash {
+		ctx.CurrentGame.CurrentStashTab = 1
+		ctx.CurrentGame.HasOpenedStash = true
+	}
+	return nil
 }
 
 func IsInNoTPArea(ctx *context.Status) bool {

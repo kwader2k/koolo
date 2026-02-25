@@ -56,6 +56,7 @@ type Context struct {
 	HealthManager             *health.Manager
 	Char                      Character
 	LastBuffAt                time.Time
+	LastCastAt                time.Time
 	ContextDebug              map[Priority]*Debug
 	CurrentGame               *CurrentGameHelper
 	SkillPointIndex           int // NEW FIELD: Tracks the next skill to consider from the character's SkillPoints() list
@@ -80,7 +81,8 @@ type Debug struct {
 type CurrentGameHelper struct {
 	BlacklistedItems []data.Item
 	PickedUpItems    map[int]int
-	CurrentStashTab  int // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
+	CurrentStashTab  int  // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
+	HasOpenedStash   bool // True after the first stash open this game; the first open always lands on personal tab, subsequent opens remember the last position
 	AreaCorrection   struct {
 		Enabled      bool
 		ExpectedArea area.ID
@@ -180,7 +182,6 @@ func (ctx *Context) RefreshGameData() {
 		ctx.IsLevelingCharacter = &isLevelingCharacter
 	}
 	ctx.Data.IsLevelingCharacter = *ctx.IsLevelingCharacter
-
 }
 
 func (ctx *Context) RefreshInventory() {
