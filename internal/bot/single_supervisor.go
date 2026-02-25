@@ -31,7 +31,7 @@ const menuActionTimeout = 30 * time.Second
 // Define constants for the in-game activity monitor
 const (
 	activityCheckInterval = 15 * time.Second
-	maxStuckDuration      = 3 * time.Minute
+	maxStuckDuration      = 90 * time.Second
 )
 
 type SinglePlayerSupervisor struct {
@@ -481,8 +481,8 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 						stuckDuration := time.Since(stuckSince)
 
-						// After 90 seconds stuck, try dropping mouse item
-						if stuckDuration > 90*time.Second {
+						// After 40 seconds stuck, try dropping mouse item
+						if stuckDuration > 40*time.Second {
 							if len(s.bot.ctx.Data.Inventory.ByLocation(item.LocationCursor)) > 0 && !droppedMouseItem {
 								s.bot.ctx.Logger.Warn("Player stuck for 90 seconds - Clicking to drop mouse item - Continuing to monitor for movement...")
 								s.bot.ctx.HID.Click(game.LeftButton, 500, 500)

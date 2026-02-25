@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather"
+	"github.com/hectorgimenez/koolo/internal/ui"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -144,7 +145,7 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 		// Click on item if mouse is hovering over
 		if currentItem.UnitID == ctx.GameReader.GameReader.GetData().HoverData.UnitID {
 			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
-			utils.PingSleep(utils.Light, 150)
+			utils.PingSleep(utils.Medium, 500)
 
 			if waitingForInteraction.IsZero() {
 				waitingForInteraction = time.Now()
@@ -157,6 +158,32 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 		if isChestorShrineHovered() {
 			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
 			time.Sleep(50 * time.Millisecond)
+		}
+
+		if spiralAttempt%8 == 0 {
+			ctx.Logger.Debug("Performing random movement to prevent getting stuck", "attempt", spiralAttempt)
+			ctx.PathFinder.RandomMovement()
+			time.Sleep(300 * time.Millisecond)
+			MoveTo(it.Position)
+			time.Sleep(500 * time.Millisecond)
+
+			//First check if there's a destructible nearby
+			if obj, found := ctx.PathFinder.GetClosestDestructible(ctx.Data.PlayerUnit.Position); found {
+				if obj.Selectable {
+					x, y := ui.GameCoordsToScreenCords(obj.Position.X, obj.Position.Y)
+					ctx.HID.Click(game.LeftButton, x, y)
+
+					// Adaptive delay for obstacle interaction based on ping
+					time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 100)))
+				}
+			} else if door, found := ctx.PathFinder.GetClosestDoor(ctx.Data.PlayerUnit.Position); found {
+				//There's a door really close, try to open it
+				doorToOpen := *door
+				InteractObject(doorToOpen, func() bool {
+					door, found := ctx.Data.Objects.FindByID(door.ID)
+					return found && !door.Selectable
+				})
+			}
 		}
 
 		spiralAttempt++
