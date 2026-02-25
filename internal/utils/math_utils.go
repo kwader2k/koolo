@@ -18,6 +18,14 @@ func CalculateDistance(p1, p2 data.Position) float64 {
 	return math.Sqrt(dx*dx + dy*dy)
 }
 
+// Abs Return the absolute value of a number
+func Abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
+
 func IsZeroPosition(v data.Position) bool {
 	return v.X == 0 && v.Y == 0
 }

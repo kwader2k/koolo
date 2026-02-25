@@ -71,6 +71,7 @@ type Context struct {
 	IsBossEquipmentActive     bool          // flag for barb leveling
 	Drop                      *drop.Manager // Drop: Per-supervisor Drop manager
 	IsAllocatingStatsOrSkills atomic.Bool   // Prevents stuck detection during stat/skill allocation
+	PathStuckDetector         interface{}   // Path stuck detection (stored as interface{} to avoid import cycle)
 }
 
 type Debug struct {
