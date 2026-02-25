@@ -680,7 +680,7 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 			// navigate forward to the target page.
 			sharedPages := ctx.Data.Inventory.SharedStashPages
 			if sharedPages == 0 {
-				sharedPages = 3
+				sharedPages = 5
 			}
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
