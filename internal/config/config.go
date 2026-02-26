@@ -430,12 +430,6 @@ type CharacterCfg struct {
 		TalRashaTombs struct {
 			OpenChests bool `yaml:"openChests"`
 		} `yaml:"tal_rasha_tombs"`
-		BoneAsh struct {
-			OpenChests bool `yaml:"openChests"`
-		} `yaml:"bone_ash"`
-		Jail struct {
-			OpenChests bool `yaml:"openChests"`
-		} `yaml:"jail"`
 		LowerKurast struct {
 			OpenChests bool `yaml:"openChests"`
 		} `yaml:"lower_kurast"`

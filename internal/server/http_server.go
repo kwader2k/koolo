@@ -2866,10 +2866,6 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		cfg.Game.TalRashaTombs.OpenChests = r.Form.Has("gameTalRashaTombsOpenChests")
 
-		cfg.Game.BoneAsh.OpenChests = r.Form.Has("gameBoneAshOpenChests")
-
-		cfg.Game.Jail.OpenChests = r.Form.Has("gameJailOpenChests")
-
 		cfg.Game.FlayerJungle.OpenChests = r.Form.Has("gameFlayerJungleOpenChests")
 
 		cfg.Game.LowerKurast.OpenChests = r.Form.Has("gameLowerKurastOpenChests")
@@ -3335,10 +3331,6 @@ func (s *HttpServer) applyRunDetails(values url.Values, cfg *config.CharacterCfg
 			cfg.Game.RiverOfFlame.OpenChests = values.Has("gameRiverOfFlameOpenChests")
 		case "tal_rasha_tombs":
 			cfg.Game.TalRashaTombs.OpenChests = values.Has("gameTalRashaTombsOpenChests")
-		case "bone_ash":
-			cfg.Game.BoneAsh.OpenChests = values.Has("gameBoneAshOpenChests")
-		case "jail":
-			cfg.Game.Jail.OpenChests = values.Has("gameJailOpenChests")
 		case "lower_kurast":
 			cfg.Game.LowerKurast.OpenChests = values.Has("gameLowerKurastOpenChests")
 		case "cows":

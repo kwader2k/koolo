@@ -56,7 +56,7 @@ func (b BoneAsh) killBoneash() error {
 
 	if monsterPosition == (data.Position{}) {
 		b.ctx.Logger.Warn("Bone Ash run: super unique not found, exploring area")
-		if err := action.ClearCurrentLevelEx(b.ctx.CharacterCfg.Game.BoneAsh.OpenChests, data.MonsterAnyFilter(), func() bool {
+		if err := action.ClearCurrentLevelEx(true, data.MonsterAnyFilter(), func() bool {
 			if monster, found := b.ctx.Data.Monsters.FindOne(npc.BurningDeadMage, data.MonsterTypeSuperUnique); found {
 				monsterPosition = monster.Position
 				b.ctx.Logger.Warn("Bone Ash run: super unique found during exploration")
