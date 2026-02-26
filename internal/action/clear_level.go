@@ -35,6 +35,9 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 
 	openAllChests := ctx.CharacterCfg.Game.InteractWithChests
 	openSuperOnly := ctx.CharacterCfg.Game.InteractWithSuperChests && !openAllChests
+	if !openAllChests && !openSuperOnly {
+		openChests = false
+	}
 
 	// We can make this configurable later, but 20 is a good starting radius.
 	const pickupRadius = 20
