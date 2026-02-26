@@ -2860,6 +2860,20 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Mausoleum.OpenChests = r.Form.Has("gameMausoleumOpenChests")
 		cfg.Game.Mausoleum.FocusOnElitePacks = r.Form.Has("gameMausoleumFocusOnElitePacks")
 
+		cfg.Game.Cave.OpenChests = r.Form.Has("gameCaveOpenChests")
+
+		cfg.Game.RiverOfFlame.OpenChests = r.Form.Has("gameRiverOfFlameOpenChests")
+
+		cfg.Game.TalRashaTombs.OpenChests = r.Form.Has("gameTalRashaTombsOpenChests")
+
+		cfg.Game.BoneAsh.OpenChests = r.Form.Has("gameBoneAshOpenChests")
+
+		cfg.Game.Jail.OpenChests = r.Form.Has("gameJailOpenChests")
+
+		cfg.Game.FlayerJungle.OpenChests = r.Form.Has("gameFlayerJungleOpenChests")
+
+		cfg.Game.LowerKurast.OpenChests = r.Form.Has("gameLowerKurastOpenChests")
+
 		cfg.Game.DrifterCavern.OpenChests = r.Form.Has("gameDrifterCavernOpenChests")
 		cfg.Game.DrifterCavern.FocusOnElitePacks = r.Form.Has("gameDrifterCavernFocusOnElitePacks")
 
@@ -2878,6 +2892,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Game.Tristram.OnlyFarmRejuvs = r.Form.Has("gameTristramOnlyFarmRejuvs")
 
 		cfg.Game.Nihlathak.ClearArea = r.Form.Has("gameNihlathakClearArea")
+
 		cfg.Game.Summoner.KillFireEye = r.Form.Has("gameSummonerKillFireEye")
 
 		cfg.Game.Baal.KillBaal = r.Form.Has("gameBaalKillBaal")
@@ -3312,6 +3327,20 @@ func (s *HttpServer) applyRunDetails(values url.Values, cfg *config.CharacterCfg
 			cfg.Game.Pit.OpenChests = values.Has("gamePitOpenChests")
 			cfg.Game.Pit.FocusOnElitePacks = values.Has("gamePitFocusOnElitePacks")
 			cfg.Game.Pit.OnlyClearLevel2 = values.Has("gamePitOnlyClearLevel2")
+		case "cave":
+			cfg.Game.Cave.OpenChests = values.Has("gameCaveOpenChests")
+		case "flayer_jungle":
+			cfg.Game.FlayerJungle.OpenChests = values.Has("gameFlayerJungleOpenChests")
+		case "river_of_flame":
+			cfg.Game.RiverOfFlame.OpenChests = values.Has("gameRiverOfFlameOpenChests")
+		case "tal_rasha_tombs":
+			cfg.Game.TalRashaTombs.OpenChests = values.Has("gameTalRashaTombsOpenChests")
+		case "bone_ash":
+			cfg.Game.BoneAsh.OpenChests = values.Has("gameBoneAshOpenChests")
+		case "jail":
+			cfg.Game.Jail.OpenChests = values.Has("gameJailOpenChests")
+		case "lower_kurast":
+			cfg.Game.LowerKurast.OpenChests = values.Has("gameLowerKurastOpenChests")
 		case "cows":
 			cfg.Game.Cows.OpenChests = values.Has("gameCowsOpenChests")
 		case "pindleskin":

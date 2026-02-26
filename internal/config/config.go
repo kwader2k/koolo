@@ -418,6 +418,27 @@ type CharacterCfg struct {
 			UseAntidoesDeprecated bool `yaml:"useAntidoes,omitempty"`
 			UseAntidotes          bool `yaml:"useAntidotes"`
 		}
+		Cave struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"cave"`
+		FlayerJungle struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"flayer_jungle"`
+		RiverOfFlame struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"river_of_flame"`
+		TalRashaTombs struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"tal_rasha_tombs"`
+		BoneAsh struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"bone_ash"`
+		Jail struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"jail"`
+		LowerKurast struct {
+			OpenChests bool `yaml:"openChests"`
+		} `yaml:"lower_kurast"`
 		Duriel struct {
 			UseThawing bool `yaml:"useThawing"`
 		}

@@ -45,5 +45,5 @@ func (a RiverOfFlame) Run(parameters *RunParameters) error {
 	}
 
 	// Clear River of Flame
-	return action.ClearCurrentLevel(true, data.MonsterAnyFilter())
+	return action.ClearCurrentLevel(a.ctx.CharacterCfg.Game.RiverOfFlame.OpenChests, data.MonsterAnyFilter())
 }

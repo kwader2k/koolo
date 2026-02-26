@@ -71,6 +71,48 @@
     </fieldset>
 {{ end }}
 
+{{ define "cave" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameCaveOpenChests" {{ if .Config.Game.Cave.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
+{{ define "flayer_jungle" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameFlayerJungleOpenChests" {{ if .Config.Game.FlayerJungle.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
+{{ define "river_of_flame" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameRiverOfFlameOpenChests" {{ if .Config.Game.RiverOfFlame.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
+{{ define "tal_rasha_tombs" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameTalRashaTombsOpenChests" {{ if .Config.Game.TalRashaTombs.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
+{{ define "lower_kurast" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameLowerKurastOpenChests" {{ if .Config.Game.LowerKurast.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
+{{ define "bone_ash" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameBoneAshOpenChests" {{ if .Config.Game.BoneAsh.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
+{{ define "jail" }}
+    <fieldset>
+        <label><input type="checkbox" name="gameJailOpenChests" {{ if .Config.Game.Jail.OpenChests }}checked{{ end }}> Open chests</label>
+    </fieldset>
+{{ end }}
+
 {{ define "drifter_cavern" }}
     <fieldset>
         <label><input type="checkbox" name="gameDrifterCavernOpenChests" {{ if .Config.Game.DrifterCavern.OpenChests }}checked{{ end }}> Open chests</label>

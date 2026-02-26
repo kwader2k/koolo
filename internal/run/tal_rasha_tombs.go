@@ -78,14 +78,14 @@ func (a TalRashaTombs) Run(parameters *RunParameters) error {
 
 		// If we can teleport, clear the full level first to maximize coverage.
 		if a.ctx.Data.CanTeleport() {
-			if err = action.ClearCurrentLevel(true, data.MonsterAnyFilter()); err != nil {
+			if err = action.ClearCurrentLevel(a.ctx.CharacterCfg.Game.TalRashaTombs.OpenChests, data.MonsterAnyFilter()); err != nil {
 				return err
 			}
 		} else {
 			if targetObject.Name == 0 {
 				// Clear the tomb until finding the special room.
 				a.ctx.Logger.Warn("Tal Rasha Tombs run: special room not found, exploring tomb")
-				if err = action.ClearCurrentLevelEx(true, data.MonsterAnyFilter(), func() bool {
+				if err = action.ClearCurrentLevelEx(a.ctx.CharacterCfg.Game.TalRashaTombs.OpenChests, data.MonsterAnyFilter(), func() bool {
 					targetObject = findSpecialRoom()
 					if targetObject.Name != 0 {
 						a.ctx.Logger.Warn("Tal Rasha Tombs run: special room found during exploration")

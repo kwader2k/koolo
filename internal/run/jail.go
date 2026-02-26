@@ -71,7 +71,7 @@ func (j Jail) killPitspawn() error {
 
 	if monsterPosition == (data.Position{}) {
 		j.ctx.Logger.Warn("Jail run: super unique not found, exploring area")
-		if err := action.ClearCurrentLevelEx(true, data.MonsterAnyFilter(), func() bool {
+		if err := action.ClearCurrentLevelEx(j.ctx.CharacterCfg.Game.Jail.OpenChests, data.MonsterAnyFilter(), func() bool {
 			if monster, found := j.ctx.Data.Monsters.FindOne(npc.Tainted, data.MonsterTypeSuperUnique); found {
 				monsterPosition = monster.Position
 				j.ctx.Logger.Warn("Jail run: super unique found during exploration")

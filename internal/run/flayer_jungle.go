@@ -41,5 +41,5 @@ func (a FlayerJungle) Run(parameters *RunParameters) error {
 	}
 
 	// Clear Flayer Jungle
-	return action.ClearCurrentLevel(true, data.MonsterAnyFilter())
+	return action.ClearCurrentLevel(a.ctx.CharacterCfg.Game.FlayerJungle.OpenChests, data.MonsterAnyFilter())
 }

@@ -33,7 +33,7 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 	ctx := context.Get()
 	ctx.SetLastAction("ClearCurrentLevel")
 
-	openAllChests := ctx.CharacterCfg.Game.InteractWithChests
+	openAllChests := ctx.CharacterCfg.Game.InteractWithChests || openChests
 	openSuperOnly := ctx.CharacterCfg.Game.InteractWithSuperChests && !openAllChests
 	if !openAllChests && !openSuperOnly {
 		openChests = false

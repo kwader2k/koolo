@@ -49,7 +49,7 @@ func (c Cave) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	return action.ClearCurrentLevel(true, data.MonsterAnyFilter())
+	return action.ClearCurrentLevel(c.ctx.CharacterCfg.Game.Cave.OpenChests, data.MonsterAnyFilter())
 }
 
 func (c Cave) killColdcrow() error {
@@ -60,7 +60,7 @@ func (c Cave) killColdcrow() error {
 
 	if monsterPosition == (data.Position{}) {
 		c.ctx.Logger.Warn("Cave run: super unique not found, exploring area")
-		if err := action.ClearCurrentLevelEx(true, data.MonsterAnyFilter(), func() bool {
+		if err := action.ClearCurrentLevelEx(c.ctx.CharacterCfg.Game.Cave.OpenChests, data.MonsterAnyFilter(), func() bool {
 			if monster, found := c.ctx.Data.Monsters.FindOne(npc.DarkRanger, data.MonsterTypeSuperUnique); found {
 				monsterPosition = monster.Position
 				c.ctx.Logger.Warn("Cave run: super unique found during exploration")

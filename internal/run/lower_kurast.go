@@ -42,6 +42,6 @@ func (a LowerKurast) Run(parameters *RunParameters) error {
 	}
 
 	// Clear Lower Kurast
-	return action.ClearCurrentLevel(true, data.MonsterAnyFilter())
+	return action.ClearCurrentLevel(a.ctx.CharacterCfg.Game.LowerKurast.OpenChests, data.MonsterAnyFilter())
 
 }
