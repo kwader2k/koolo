@@ -328,6 +328,7 @@ type CharacterCfg struct {
 			BossStaticThreshold int  `yaml:"boss_static_threshold"`
 			StaticFieldOnElites bool `yaml:"static_field_on_elites"`
 			StaticFieldOnAll    bool `yaml:"static_field_on_all"`
+			UseInfinity         bool `yaml:"use_infinity"`
 		} `yaml:"lightning_sorceress"`
 		HydraOrbSorceress struct {
 		} `yaml:"hydraorb_sorceress"`
