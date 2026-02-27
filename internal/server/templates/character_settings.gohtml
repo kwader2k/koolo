@@ -841,6 +841,29 @@
                 </div>
                 <div class="lightsorc-options" style="display: none;">
                     <fieldset class="grid">
+                        <label>
+                            Boss Static HP (%)
+                            <input type="number"
+                                name="lightSorcBossStaticThreshold"
+                                min="1"
+                                max="100"
+                                step="1"
+                                value="{{ .Config.Character.LightningSorceress.BossStaticThreshold }}">
+                        </label>
+                        <label>
+                            <input type="checkbox" name="lightSorcStaticFieldOnElites"
+                                {{ if .Config.Character.LightningSorceress.StaticFieldOnElites }}checked{{ end }}/>
+                            Static Field on Elites, Champions &amp; Super Uniques
+                        </label>
+                        <label>
+                            <input type="checkbox" name="lightSorcStaticFieldOnAll"
+                                {{ if .Config.Character.LightningSorceress.StaticFieldOnAll }}checked{{ end }}/>
+                            Static Field on all monsters
+                        </label>
+                        <label>
+                            <input type="checkbox" name="lightSorcUseInfinity" {{ if .Config.Character.LightningSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity
+                        </label>
                     </fieldset>
                 </div>
                 <div class="hydraorb-options" style="display: none;">

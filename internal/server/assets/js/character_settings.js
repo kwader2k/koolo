@@ -657,7 +657,7 @@ document.addEventListener('DOMContentLoaded', function () {
             whirlwindBarbOptions.style.display = 'block';
         } else if (selectedClass === 'barb_leveling') {
             barbLevelingOptions.style.display = 'block';
-        } else if (selectedClass === 'nova' || selectedClass === 'lightsorc') {
+        } else if (selectedClass === 'nova') {
             novaSorceressOptions.style.display = 'block';
             updateNovaSorceressOptions();
         } else if (selectedClass === 'lightsorc') {
