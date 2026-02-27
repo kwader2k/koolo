@@ -2340,6 +2340,27 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 
 	// Lightning Sorceress specific options
 	if cfg.Character.Class == "lightsorc" {
+		bossStaticThreshold, err := strconv.Atoi(values.Get("lightSorcBossStaticThreshold"))
+		if err == nil {
+			minThreshold := 65
+			switch cfg.Game.Difficulty {
+			case difficulty.Normal:
+				minThreshold = 1
+			case difficulty.Nightmare:
+				minThreshold = 33
+			case difficulty.Hell:
+				minThreshold = 50
+			}
+			if bossStaticThreshold >= minThreshold && bossStaticThreshold <= 100 {
+				cfg.Character.LightningSorceress.BossStaticThreshold = bossStaticThreshold
+			} else {
+				cfg.Character.LightningSorceress.BossStaticThreshold = minThreshold
+			}
+		} else {
+			cfg.Character.LightningSorceress.BossStaticThreshold = 65
+		}
+		cfg.Character.LightningSorceress.StaticFieldOnElites = values.Get("lightSorcStaticFieldOnElites") == "on"
+		cfg.Character.LightningSorceress.StaticFieldOnAll = values.Get("lightSorcStaticFieldOnAll") == "on"
 	}
 
 	// Hydra Orb Sorceress specific options
