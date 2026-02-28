@@ -99,7 +99,7 @@ func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
 
 	s.bot.ctx.HID.Click(game.LeftButton, 6, 6)
 
-	utils.Sleep(1000)
+	utils.Sleep(1000, 1000)
 
 	switch d {
 
@@ -117,11 +117,11 @@ func (s *SinglePlayerSupervisor) changeDifficulty(d difficulty.Difficulty) {
 
 	}
 
-	utils.Sleep(1000)
+	utils.Sleep(1000, 1000)
 
 	s.bot.ctx.HID.Click(game.LeftButton, 6, 6)
 
-	utils.Sleep(1000)
+	utils.Sleep(1000, 1000)
 
 }
 
@@ -168,7 +168,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 
 		s.bot.ctx.Logger.Info("Manual mode: waiting for window repositioning...")
-		time.Sleep(5 * time.Second)
+		utils.Sleep(5000, 5000) // Wait for any automatic window repositioning to finish
 
 		// Pause/resume cycle to free resources
 		s.bot.ctx.Logger.Info("Manual mode: pausing...")
@@ -176,7 +176,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		s.bot.ctx.MemoryInjector.RestoreMemory()
 		event.Send(event.GamePaused(event.Text(s.name, "Manual mode active"), true))
 
-		time.Sleep(500 * time.Millisecond)
+		utils.Sleep(500, 1000)
 
 		s.bot.ctx.Logger.Info("Manual mode: resuming...")
 		s.bot.ctx.MemoryInjector.Load()
@@ -191,7 +191,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			case <-ctx.Done():
 				return nil
 			default:
-				utils.Sleep(1000)
+				utils.Sleep(1000, 1000)
 			}
 		}
 	}
@@ -264,11 +264,11 @@ func (s *SinglePlayerSupervisor) Start() error {
 						return err
 					}
 					if err.Error() == "loading screen" || err.Error() == "" || err.Error() == "idle" {
-						utils.Sleep(100)
+						utils.Sleep(1000, 1000)
 						continue
 					}
 					s.bot.ctx.Logger.Error(fmt.Sprintf("Error during menu flow: %s", err.Error()))
-					utils.Sleep(1000)
+					utils.Sleep(1000, 1000)
 					continue
 				}
 			case <-time.After(maxTimeNotInGame):
@@ -316,7 +316,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			automapKB := s.bot.ctx.Data.KeyBindings.Automap
 			if automapKB.Key1[0] != 0 || automapKB.Key2[0] != 0 {
 				s.bot.ctx.HID.PressKeyBinding(automapKB)
-				utils.PingSleep(utils.Light, 50)
+				utils.PingSleep(utils.Light, 50, 1000)
 			} else {
 				s.bot.ctx.Logger.Debug("Open overlay map on game start is enabled, but no automap key binding is set")
 			}
@@ -325,7 +325,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		if s.bot.ctx.Data.IsLevelingCharacter && s.bot.ctx.Data.ActiveWeaponSlot != 0 {
 			for attempt := 0; attempt < 3 && s.bot.ctx.Data.ActiveWeaponSlot != 0; attempt++ {
 				s.bot.ctx.HID.PressKeyBinding(s.bot.ctx.Data.KeyBindings.SwapWeapons)
-				utils.PingSleep(utils.Light, 150)
+				utils.PingSleep(utils.Light, 150, 1000)
 				s.bot.ctx.RefreshGameData()
 			}
 			if s.bot.ctx.Data.ActiveWeaponSlot != 0 {
@@ -526,7 +526,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			if errors.Is(err, drop.ErrInterrupt) {
 				s.bot.ctx.Logger.Info("Drop interrupt received. Exiting game and restarting loop.")
 				s.bot.ctx.Manager.ExitGame()
-				utils.Sleep(2000)
+				utils.Sleep(2000, 2000)
 				timeSpentNotInGameStart = time.Now()
 				continue
 			}
@@ -542,7 +542,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			}
 
 			s.bot.ctx.Logger.Info("Waiting 5 seconds for game client to close completely...")
-			utils.Sleep(int(5 * time.Second / time.Millisecond))
+			utils.Sleep(5000, 5000)
 
 			timeout := time.After(15 * time.Second)
 			for s.bot.ctx.Manager.InGame() {
@@ -557,7 +557,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 					return ErrUnrecoverableClientState
 				default:
 					s.bot.ctx.Logger.Debug("Still detected as in game, waiting for RefreshGameData to update...")
-					utils.Sleep(int(500 * time.Millisecond / time.Millisecond))
+					utils.Sleep(500, 1000)
 					s.bot.ctx.RefreshGameData()
 				}
 			}
@@ -604,7 +604,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			return errors.New(errMsg)
 		}
 		s.bot.ctx.Logger.Info("Game finished successfully. Waiting 3 seconds for client to close.")
-		utils.Sleep(int(3 * time.Second / time.Millisecond))
+		utils.Sleep(3000, 1000)
 		s.bot.ctx.GameReader.ClearMapData() // Free map data memory while not in game
 		s.bot.ctx.Data.Areas = nil          // Clear context's map reference to allow GC
 		s.bot.ctx.Data.AreaData = game.AreaData{}
@@ -664,12 +664,12 @@ func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
 				return err
 			}
 			if err.Error() == "loading screen" || err.Error() == "" || err.Error() == "idle" {
-				utils.Sleep(100)
+				utils.Sleep(100, 1000)
 				continue
 			}
 			return err
 		}
-		utils.Sleep(100)
+		utils.Sleep(100, 1000)
 	}
 
 	if waitErr := config.WaitForKeyBindings(kbResult.SaveDir, characterName, cfg.AuthMethod, 45*time.Second); waitErr != nil {
@@ -687,7 +687,7 @@ func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
 		} else {
 			exitDeadline := time.Now().Add(15 * time.Second)
 			for s.bot.ctx.Manager.InGame() && time.Now().Before(exitDeadline) {
-				utils.Sleep(250)
+				utils.Sleep(250, 1000)
 				s.bot.ctx.RefreshGameData()
 			}
 		}
@@ -727,7 +727,7 @@ func (s *SinglePlayerSupervisor) HandleMenuFlow() error {
 	s.bot.ctx.RefreshGameData()
 
 	if s.bot.ctx.Data.OpenMenus.LoadingScreen {
-		utils.Sleep(500)
+		utils.Sleep(500, 1000)
 		return fmt.Errorf("loading screen")
 	}
 
@@ -736,7 +736,7 @@ func (s *SinglePlayerSupervisor) HandleMenuFlow() error {
 	if s.bot.ctx.GameReader.IsInCharacterCreationScreen() {
 		s.bot.ctx.Logger.Debug("[Menu Flow]: We're in character creation screen, exiting ...")
 		s.bot.ctx.HID.PressKey(0x1B)
-		time.Sleep(2000 * time.Millisecond)
+		utils.Sleep(2000, 1000)
 		if s.bot.ctx.GameReader.IsInCharacterCreationScreen() {
 			return errors.New("[Menu Flow]: Failed to exit character creation screen")
 		}
@@ -751,7 +751,7 @@ func (s *SinglePlayerSupervisor) HandleMenuFlow() error {
 	if isDismissableModalPresent {
 		s.bot.ctx.Logger.Debug("[Menu Flow]: Detected dismissable modal with text: " + text)
 		s.bot.ctx.HID.PressKey(0x1B)
-		time.Sleep(1000 * time.Millisecond)
+		utils.Sleep(1000, 1000)
 
 		isDismissableModalStillPresent, _ := s.bot.ctx.GameReader.IsDismissableModalPresent()
 		if isDismissableModalStillPresent {
@@ -821,7 +821,7 @@ func (s *SinglePlayerSupervisor) HandleStandardMenuFlow() error {
 		s.bot.ctx.Logger.Debug("[Menu Flow]: We're at the lobby screen, but we shouldn't be, going back to character selection screen ...")
 
 		s.bot.ctx.HID.PressKey(0x1B)
-		time.Sleep(2000 * time.Millisecond)
+		utils.Sleep(2000, 1000)
 
 		if s.bot.ctx.GameReader.IsInLobby() {
 			return fmt.Errorf("[Menu Flow]: Failed to exit lobby")
@@ -842,7 +842,7 @@ func (s *SinglePlayerSupervisor) HandleCompanionMenuFlow() error {
 	gamePassword := s.bot.ctx.CharacterCfg.Companion.CompanionGamePassword
 
 	if gameName == "" {
-		utils.Sleep(2000)
+		utils.Sleep(2000, 1000)
 		return fmt.Errorf("idle")
 	}
 
@@ -888,7 +888,7 @@ func (s *SinglePlayerSupervisor) tryEnterLobby() error {
 		}
 
 		s.bot.ctx.HID.Click(game.LeftButton, 744, 650)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 1000)
 		retryCount++
 	}
 

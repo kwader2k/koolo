@@ -295,7 +295,7 @@ outer:
 					lastError = fmt.Errorf("failed to pick up item after multiple attempts due to movement state: %w", err)
 					break
 				}
-				time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 100)))
+				utils.PingSleep(utils.Light, 100, 500)
 				continue
 			}
 
@@ -371,7 +371,7 @@ outer:
 
 			// Screenshot with show items on
 			ctx.HID.KeyDown(ctx.Data.KeyBindings.ShowItems)
-			time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 200)))
+			utils.PingSleep(utils.Light, 200, 500)
 			screenshot := ctx.GameReader.Screenshot()
 			event.Send(event.ItemBlackListed(event.WithScreenshot(ctx.Name, fmt.Sprintf("Item %s [%s] BlackListed in Area:%s", itemToPickup.Name, itemToPickup.Quality.ToString(), ctx.Data.PlayerUnit.Area.Area().Name), screenshot), data.Drop{Item: itemToPickup}))
 			ctx.HID.KeyUp(ctx.Data.KeyBindings.ShowItems)

@@ -7,6 +7,7 @@ import (
 
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/utils"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
@@ -67,7 +68,7 @@ func (f Foh) waitForCastComplete() bool {
 			return true
 		}
 
-		time.Sleep(16 * time.Millisecond) // Small sleep to avoid hammering CPU
+		utils.Sleep(16, 100) // Small sleep to avoid hammering CPU
 	}
 
 	return false
@@ -314,7 +315,7 @@ func (f Foh) KillCouncil() error {
 	}
 
 	// Wait a moment for items to settle
-	time.Sleep(300 * time.Millisecond)
+	utils.Sleep(300, 100)
 
 	// Re-enable item pickup and do a final pickup pass
 	err = action.ItemPickup(40)
@@ -379,7 +380,7 @@ func (f Foh) KillDiablo() error {
 			if diabloFound {
 				return nil
 			}
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

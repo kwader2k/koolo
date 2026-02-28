@@ -1,8 +1,6 @@
 package run
 
 import (
-	"time"
-
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -11,6 +9,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 type KhalimsHeart struct {
@@ -92,7 +91,7 @@ func (kh KhalimsHeart) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	time.Sleep(4000 * time.Millisecond)
+	utils.Sleep(4000, 1000)
 
 	err = action.MoveToArea(area.SewersLevel2Act3)
 	if err != nil {

@@ -85,7 +85,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 	}
 
 	a.ctx.RefreshGameData()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	err = action.MoveTo(func() (data.Position, bool) {
 		anya, found := a.ctx.Data.Objects.FindOne(object.FrozenAnya)
@@ -105,13 +105,13 @@ func (a Anya) Run(parameters *RunParameters) error {
 	//If potion is not in inventory, interact with anya & go get it
 	if !a.hasPotion() {
 		for range 3 {
-			utils.Sleep(300)
+			utils.Sleep(300, 200)
 			err = action.InteractObject(anya, nil)
 			if err != nil {
 				return err
 			}
 		}
-		utils.Sleep(300)
+		utils.Sleep(300, 200)
 
 		err = action.ReturnTown()
 		if err != nil {
@@ -130,7 +130,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 				return err
 			}
 			a.ctx.RefreshGameData()
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 			if a.hasScroll() || a.hasPotion() {
 				break
 			}
@@ -144,7 +144,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 		if err != nil {
 			return err
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 	}
 
 	//Unfreeze anya
@@ -153,7 +153,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	utils.Sleep(10000)
+	utils.Sleep(10000, 2000) // Wait for Anya to be unfrozen and dialog to complete
 
 	err = action.ReturnTown()
 	if err != nil {
@@ -167,7 +167,7 @@ func (a Anya) Run(parameters *RunParameters) error {
 			return err
 		}
 		a.ctx.RefreshGameData()
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		if a.hasScroll() {
 			break
 		}
@@ -192,14 +192,14 @@ func (a Anya) tryUseScroll() bool {
 		a.ctx.Logger.Info("ScrollOfResistance found in inventory, attempting to use it.")
 		step.CloseAllMenus()
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(500) // Give time for inventory to open and data to refresh
+		utils.Sleep(500, 200) // Give time for inventory to open and data to refresh
 
 		// Re-find the item after opening inventory to ensure correct screen position
 		if itm, foundAgain := a.ctx.Data.Inventory.Find("ScrollOfResistance"); foundAgain {
 			screenPos := ui.GetScreenCoordsForItem(itm)
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 			a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-			utils.Sleep(500) // Give time for the scroll to be used
+			utils.Sleep(500, 200) // Give time for the scroll to be used
 			a.ctx.Logger.Info("ScrollOfResistance used.")
 		} else {
 			a.ctx.Logger.Warn("ScrollOfResistance disappeared from inventory before it could be used.")

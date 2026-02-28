@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"math/rand"
 	"time"
 )
 
@@ -38,6 +39,28 @@ func SetPingGetter(getter func() int) {
 	pingGetter = getter
 }
 
+// addRandomJitter adds a random duration between 0-1000ms
+// Returns random milliseconds to make bot behavior more human-like
+func addRandomJitter(randomize int) int {
+	if randomize <= 0 {
+		randomize = 3000 // Default jitter up to 1000ms
+	}
+	return rand.Intn(randomize) // 0-randomize ms
+}
+
+// Sleep provides a Sleep function that randomize the sleep time up/down to a maximum of 30%
+func Sleep(milliseconds int, randomize int) {
+	jitter := addRandomJitter(randomize)
+
+	time.Sleep(time.Duration(milliseconds+jitter) * time.Millisecond)
+}
+
+func SleepDuration(duration time.Duration, randomize int) {
+	jitter := addRandomJitter(randomize)
+
+	time.Sleep(duration + time.Duration(jitter)*time.Millisecond)
+}
+
 // GetCurrentPing retrieves the current ping value
 // Returns 50ms if pingGetter not initialized (safe default)
 func GetCurrentPing() int {
@@ -69,14 +92,15 @@ func PingMultiplier(multiplier PingMultiplierType, minimum int) int {
 	return adjusted
 }
 
-// PingSleep waits for minimum + (multiplier * ping)
+// PingSleep waits for minimum + (multiplier * ping) + random jitter (0-1000ms)
 // multiplier: sensitivity level (use PingMultiplierLight/Medium/Critical constants)
 // minimum: base delay in milliseconds
 // This is the primary function to use for ping-based delays
-func PingSleep(multiplier PingMultiplierType, minimum int) {
+func PingSleep(multiplier PingMultiplierType, minimum int, randomize int) {
 	ms := PingMultiplier(multiplier, minimum)
+	jitter := addRandomJitter(randomize)
 
-	time.Sleep(time.Duration(ms) * time.Millisecond)
+	time.Sleep(time.Duration(ms+jitter) * time.Millisecond)
 }
 
 // RetryDelay calculates escalating delay for retry attempts
@@ -99,10 +123,11 @@ func RetryDelay(attemptNumber int, basePing float64, minimumMs int) int {
 	return delay
 }
 
-// RetrySleep waits with escalating delay based on attempt number
+// RetrySleep waits with escalating delay based on attempt number + random jitter (0-1000ms)
 func RetrySleep(attemptNumber int, basePing float64, minimumMs int) {
 	ms := RetryDelay(attemptNumber, basePing, minimumMs)
-	time.Sleep(time.Duration(ms) * time.Millisecond)
+	jitter := addRandomJitter(500)
+	time.Sleep(time.Duration(ms+jitter) * time.Millisecond)
 }
 
 // PingAwareTimeout calculates timeout based on ping with cap

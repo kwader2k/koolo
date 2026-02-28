@@ -10,6 +10,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/ui"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 func InteractNPC(npcID npc.ID) error {
@@ -18,9 +19,9 @@ func InteractNPC(npcID npc.ID) error {
 
 	const (
 		maxAttempts     = 8
-		minMenuOpenWait = 300 * time.Millisecond
+		minMenuOpenWait = 300
 		maxDistance     = 15
-		hoverWait       = 800 * time.Millisecond
+		hoverWait       = 800
 	)
 
 	var targetNPCID data.UnitID
@@ -36,7 +37,7 @@ func InteractNPC(npcID npc.ID) error {
 				if currentNPC, found := ctx.Data.Monsters.FindByID(targetNPCID); found {
 					currentDistance := pather.DistanceFromPoint(currentNPC.Position, ctx.Data.PlayerUnit.Position)
 					if currentDistance <= maxDistance {
-						time.Sleep(minMenuOpenWait)
+						utils.Sleep(minMenuOpenWait, 1000)
 						return nil
 					}
 				}
@@ -44,7 +45,7 @@ func InteractNPC(npcID npc.ID) error {
 
 			// Wrong NPC, too far, or NPC moved - close menu and retry
 			CloseAllMenus()
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 1000)
 			targetNPCID = 0
 			continue
 		}
@@ -54,7 +55,7 @@ func InteractNPC(npcID npc.ID) error {
 			if attempts == maxAttempts-1 {
 				return fmt.Errorf("NPC %d not found after %d attempts", npcID, maxAttempts)
 			}
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 1000)
 			continue
 		}
 
@@ -77,10 +78,10 @@ func InteractNPC(npcID npc.ID) error {
 			if currentNPC, found := ctx.Data.Monsters.FindOne(npcID, data.MonsterTypeNone); found && currentNPC.IsHovered {
 				targetNPCID = currentNPC.UnitID
 				ctx.HID.Click(game.LeftButton, x, y)
-				time.Sleep(minMenuOpenWait)
+				utils.Sleep(minMenuOpenWait, 1000)
 				break
 			}
-			time.Sleep(50 * time.Millisecond)
+			utils.Sleep(50, 1000)
 		}
 	}
 

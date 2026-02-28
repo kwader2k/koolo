@@ -148,7 +148,7 @@ func (s AmazonLeveling) KillMonsterSequence(
 			if time.Since(lastValkyrie) > delayBetweenValkyrieSummons {
 				step.SecondaryAttack(skill.Valkyrie, id, 1, step.Distance(1, maxAmazonLevelingDistance))
 				lastValkyrie = time.Now()
-				utils.Sleep(200)
+				utils.Sleep(200, 300)
 				continue
 			}
 		}
@@ -358,7 +358,7 @@ func (s AmazonLeveling) KillDiablo() error {
 			}
 
 			// Keep waiting...
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 2000)
 			continue
 		}
 

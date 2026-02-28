@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"fmt"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -29,10 +28,10 @@ func ToKeyBinding(keyCode byte) data.KeyBinding {
 
 // holdKey simulates holding a key down for a specified duration.
 func (a Leveling) HoldKey(keyCode byte, durationMs int) {
-	kb := ToKeyBinding(keyCode)                              // Convert byte to data.KeyBinding
-	a.ctx.HID.KeyDown(kb)                                    // Simulate pressing the key down
-	time.Sleep(time.Duration(durationMs) * time.Millisecond) // Wait for the specified duration
-	a.ctx.HID.KeyUp(kb)                                      // Simulate releasing the key
+	kb := ToKeyBinding(keyCode)  // Convert byte to data.KeyBinding
+	a.ctx.HID.KeyDown(kb)        // Simulate pressing the key down
+	utils.Sleep(durationMs, 100) // Wait for the specified duration
+	a.ctx.HID.KeyUp(kb)          // Simulate releasing the key
 }
 
 func (a Leveling) act4() error {
@@ -72,15 +71,15 @@ func (a Leveling) act4() error {
 		}
 
 		err = action.InteractObject(harrogathPortal, func() bool {
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx := context.Get()
 			return !ctx.Manager.InGame()
 		})
 
 		// Skip Cinematic
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 		a.HoldKey(win.VK_SPACE, 2000)
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 		a.HoldKey(win.VK_SPACE, 2000)
 
 		return nil
@@ -157,15 +156,15 @@ func (a Leveling) act4() error {
 		}
 
 		err = action.InteractObject(harrogathPortal, func() bool {
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx := context.Get()
 			return !ctx.Manager.InGame()
 		})
 
 		// Skip Cinematic
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 		a.HoldKey(win.VK_SPACE, 2000)
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 		a.HoldKey(win.VK_SPACE, 2000)
 
 		return nil
@@ -198,15 +197,15 @@ func (a Leveling) act4() error {
 		}
 
 		err = action.InteractObject(harrogathPortal, func() bool {
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx := context.Get()
 			return !ctx.Manager.InGame()
 		})
 
 		// Skip Cinematic
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 		a.HoldKey(win.VK_SPACE, 2000)
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 		a.HoldKey(win.VK_SPACE, 2000)
 
 		return nil

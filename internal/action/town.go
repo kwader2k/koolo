@@ -3,7 +3,6 @@ package action
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/item"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
@@ -35,7 +34,7 @@ func StashFull() bool {
 
 	for _, tabIndex := range tabsToCheck {
 		SwitchStashTab(tabIndex)
-		time.Sleep(time.Millisecond * 500)
+		utils.Sleep(500, 2000)
 		ctx.RefreshGameData()
 
 		sharedItems := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)

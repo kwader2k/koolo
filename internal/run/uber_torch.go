@@ -51,7 +51,7 @@ func (t Torch) Run(parameters *RunParameters) error {
 		t.ctx.Logger.Warn(fmt.Sprintf("Failed to check/fill rejuvs: %v", err))
 	}
 
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	t.ctx.RefreshGameData()
 
 	hasBattleOrders := t.ctx.Data.PlayerUnit.States.HasState(state.Battleorders)
@@ -61,13 +61,13 @@ func (t Torch) Run(parameters *RunParameters) error {
 		if err := action.WayPoint(area.FrigidHighlands); err != nil {
 			t.ctx.Logger.Warn(fmt.Sprintf("Failed to visit Frigid Highlands waypoint: %v", err))
 		} else {
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			t.ctx.RefreshGameData()
 			if !t.ctx.Data.PlayerUnit.Area.IsTown() || t.ctx.Data.PlayerUnit.Area != area.Harrogath {
 				if err := action.WayPoint(area.Harrogath); err != nil {
 					t.ctx.Logger.Warn(fmt.Sprintf("Failed to return to Harrogath: %v", err))
 				} else {
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					t.ctx.RefreshGameData()
 				}
 			}
@@ -104,7 +104,7 @@ func (t Torch) Run(parameters *RunParameters) error {
 		t.ctx.Logger.Warn(fmt.Sprintf("Failed to return to town: %v", err))
 	}
 
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	goToMalahIfInHarrogath(t.ctx)
 	if err := action.VendorRefill(action.VendorRefillOpts{ForceRefill: true, SellJunk: true, BuyConsumables: true}); err != nil {
@@ -166,13 +166,13 @@ func (t Torch) mephisto() error {
 		return fmt.Errorf("failed to reach lure position: %w", err)
 	}
 	t.ctx.RefreshGameData()
-	utils.Sleep(1300)
+	utils.Sleep(1300, 100)
 
 	if err := action.MoveToCoords(mephSafePos()); err != nil {
 		return fmt.Errorf("failed to reach safe spot: %w", err)
 	}
 	t.ctx.RefreshGameData()
-	utils.Sleep(1200)
+	utils.Sleep(1200, 100)
 	t.ctx.RefreshGameData()
 
 	const maxDistance = 20
@@ -204,13 +204,13 @@ func (t Torch) mephisto() error {
 			return fmt.Errorf("failed to reach lure position on retry: %w", err)
 		}
 		t.ctx.RefreshGameData()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		if err := action.MoveToCoords(mephSafePos()); err != nil {
 			return fmt.Errorf("failed to reach safe spot on retry: %w", err)
 		}
 		t.ctx.RefreshGameData()
-		utils.Sleep(1200)
+		utils.Sleep(1200, 100)
 		t.ctx.RefreshGameData()
 	}
 
@@ -218,7 +218,7 @@ func (t Torch) mephisto() error {
 		return fmt.Errorf("failed to return to town after Mephisto: %w", err)
 	}
 
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	if err := vendorRefillOrHeal(t.ctx); err != nil {
 		t.ctx.Logger.Warn(fmt.Sprintf("Failed to visit vendor/heal: %v", err))
 	}
@@ -255,20 +255,20 @@ func (t Torch) baal() error {
 		return fmt.Errorf("failed to reach lure position: %w", err)
 	}
 	t.ctx.RefreshGameData()
-	utils.Sleep(1000)
+	utils.Sleep(1000, 100)
 
 	if err := action.MoveToCoords(diaSafeFirst()); err != nil {
 		return fmt.Errorf("failed to reach safe spot: %w", err)
 	}
 	t.ctx.RefreshGameData()
-	utils.Sleep(1000)
+	utils.Sleep(1000, 100)
 
 	for _, p := range diaSafeSeq() {
 		if err := action.MoveToCoords(p); err != nil {
 			return fmt.Errorf("failed to reach safe spot: %w", err)
 		}
 		t.ctx.RefreshGameData()
-		utils.Sleep(1000)
+		utils.Sleep(1000, 100)
 	}
 
 	t.ctx.RefreshGameData()
@@ -345,13 +345,13 @@ func (t Torch) baal() error {
 			return fmt.Errorf("failed to reach lure position on retry: %w", err)
 		}
 		t.ctx.RefreshGameData()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		if err := action.MoveToCoords(diaSafeFirst()); err != nil {
 			return fmt.Errorf("failed to reach safe spot on retry: %w", err)
 		}
 		t.ctx.RefreshGameData()
-		utils.Sleep(1200)
+		utils.Sleep(1200, 100)
 		t.ctx.RefreshGameData()
 	}
 
@@ -359,7 +359,7 @@ func (t Torch) baal() error {
 		return fmt.Errorf("failed to return to town after Baal/Diablo: %w", err)
 	}
 
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	if err := vendorRefillOrHeal(t.ctx); err != nil {
 		t.ctx.Logger.Warn(fmt.Sprintf("Failed to visit vendor/heal: %v", err))
 	}
@@ -401,16 +401,16 @@ func (t *Torch) diablo() error {
 		if err := t.returnToUberTristram(); err != nil {
 			return fmt.Errorf("failed to return to Uber Tristram: %w", err)
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		t.ctx.RefreshGameData()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		t.ctx.EnableItemPickup()
 	}
 
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	t.ctx.RefreshGameData()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	diabloAlive := false
 	baalAlive := false
@@ -564,7 +564,7 @@ func (t *Torch) safeTorch() error {
 	if err := openStash(t.ctx); err != nil {
 		return fmt.Errorf("failed to open stash: %w", err)
 	}
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	t.ctx.RefreshGameData()
 
 	torchItem, found := findTorchInInventory(t.ctx, 0)
@@ -584,7 +584,7 @@ func (t *Torch) safeTorch() error {
 	t.savedTorchStashTab = tab
 
 	step.CloseAllMenus()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	t.ctx.RefreshGameData()
 
 	return nil
@@ -603,7 +603,7 @@ func (t *Torch) searchForTorch() error {
 	if err := action.MoveToCoords(torchMiddlePos(), step.WithIgnoreMonsters()); err != nil {
 		t.ctx.Logger.Warn(fmt.Sprintf("Failed to teleport to middle coordinate: %v", err))
 	} else {
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		t.ctx.RefreshGameData()
 	}
 
@@ -634,7 +634,7 @@ func (t *Torch) searchForTorch() error {
 					t.ctx.Logger.Warn(fmt.Sprintf("ItemPickup returned error (may be normal): %v", err))
 				}
 
-				utils.Sleep(2000)
+				utils.Sleep(2000, 100)
 				t.ctx.RefreshGameData()
 
 				for _, invItem := range t.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
@@ -673,7 +673,7 @@ func (t *Torch) restoreTorch() error {
 	if err := openStash(t.ctx); err != nil {
 		return fmt.Errorf("failed to open stash: %w", err)
 	}
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	t.ctx.RefreshGameData()
 
 	var newTorch data.Item
@@ -720,7 +720,7 @@ func (t *Torch) restoreTorch() error {
 	}
 
 	step.CloseAllMenus()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	t.ctx.RefreshGameData()
 
 	return nil

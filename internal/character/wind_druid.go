@@ -66,7 +66,7 @@ func (s WindDruid) waitForCastComplete() bool {
 			return true
 		}
 
-		time.Sleep(16 * time.Millisecond) // Small delay to avoid busy-waiting
+		utils.Sleep(16, 100) // Small delay to avoid busy-waiting
 	}
 
 	return false // Returns false if timeout is reached
@@ -310,7 +310,7 @@ func (s WindDruid) KillDiablo() error {
 				return nil
 			}
 			// Keep waiting..
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

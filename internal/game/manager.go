@@ -42,7 +42,7 @@ func (gm *Manager) ExitGame() error {
 			fmt.Println("Quit menu detected, attempting to click exit button.")
 			// The click coordinates for the quit menu button are typically around the center, slightly above
 			gm.hid.Click(LeftButton, gm.gr.GameAreaSizeX/2, int(float64(gm.gr.GameAreaSizeY)/2.2))
-			utils.Sleep(100) // Give it time to process the click and transition out of game
+			utils.Sleep(100, 100) // Give it time to process the click and transition out of game
 			if !gm.gr.InGame() {
 				return nil
 			}
@@ -60,13 +60,13 @@ func (gm *Manager) ExitGame() error {
 		if data.OpenMenus.QuitMenu {
 			fmt.Println("Quit menu opened after ESC, attempting to click exit button.")
 			gm.hid.Click(LeftButton, gm.gr.GameAreaSizeX/2, int(float64(gm.gr.GameAreaSizeY)/2.2))
-			utils.Sleep(100) // Give it time to process the click and transition out of game
+			utils.Sleep(100, 100) // Give it time to process the click and transition out of game
 			if !gm.gr.InGame() {
 				return nil
 			}
 		}
 
-		utils.Sleep(50) // Wait before the next attempt
+		utils.Sleep(50, 100) // Wait before the next attempt
 	}
 
 	return errors.New("error exiting game! Timeout after multiple attempts")
@@ -81,7 +81,7 @@ func (gm *Manager) NewGame() error {
 		if gm.gr.IsInCharacterSelectionScreen() {
 			break
 		} else {
-			utils.Sleep(500)
+			utils.Sleep(500, 1000)
 		}
 	}
 
@@ -97,14 +97,14 @@ func (gm *Manager) NewGame() error {
 	createX := difficultyPosition[cfg.Game.Difficulty].X
 	createY := difficultyPosition[cfg.Game.Difficulty].Y
 	gm.hid.Click(LeftButton, 600, 650)
-	utils.Sleep(250)
+	utils.Sleep(250, 250)
 	gm.hid.Click(LeftButton, createX, createY)
 
 	for range 12 {
 		if gm.gr.InGame() {
 			return nil
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 1000)
 	}
 
 	return errors.New("timeout")
@@ -120,7 +120,7 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 
 	// Click "Create game" tab
 	gm.hid.Click(LeftButton, 845, 54)
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 
 	difficultyPosition := map[difficulty.Difficulty]struct {
 		X, Y int
@@ -133,7 +133,7 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 	cfg, _ := config.GetCharacter(gm.supervisorName)
 	difficultyPos := difficultyPosition[cfg.Game.Difficulty]
 	gm.hid.Click(LeftButton, difficultyPos.X, difficultyPos.Y)
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 
 	// Click the game name textbox, delete text and type new game name
 	gm.hid.Click(LeftButton, 1000, 116)
@@ -145,7 +145,7 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 
 	// Same for password
 	gm.hid.Click(LeftButton, 1000, 161)
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 	gamePassword := cfg.Companion.GamePassword
 	if gamePassword != "" {
 		gm.clearGameNameOrPasswordField()
@@ -159,12 +159,12 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 		if gm.gr.InGame() {
 			return gameName, nil
 		}
-		utils.Sleep(1000)
+		utils.Sleep(1000, 1000)
 
 		panel := gm.gr.GetPanel("DismissableModal")
 		if panel.PanelName != "" && panel.PanelEnabled && panel.PanelVisible {
 			gm.hid.PressKey(win.VK_ESCAPE)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 1000)
 			return gameName, errors.New("error creating game! Got error message")
 		}
 	}
@@ -176,22 +176,22 @@ func (gm *Manager) JoinOnlineGame(gameName, password string) error {
 
 	// Click "Join game" tab
 	gm.hid.Click(LeftButton, 977, 54)
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 
 	// Click the game name textbox, delete text and type new game name
 	gm.hid.Click(LeftButton, 950, 100)
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 	gm.clearGameNameOrPasswordField()
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 	for _, ch := range gameName {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
 	}
 
 	// Same for password
 	gm.hid.Click(LeftButton, 1130, 100)
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 	gm.clearGameNameOrPasswordField()
-	utils.Sleep(200)
+	utils.Sleep(200, 200)
 	for _, ch := range password {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
 	}
@@ -201,13 +201,13 @@ func (gm *Manager) JoinOnlineGame(gameName, password string) error {
 		if gm.gr.InGame() {
 			return nil
 		}
-		utils.Sleep(1000)
+		utils.Sleep(1000, 1000)
 
 		// Check if we got an error message while trying to join the game
 		panel := gm.gr.GetPanel("DismissableModal")
 		if panel.PanelName != "" && panel.PanelEnabled && panel.PanelVisible {
 			gm.hid.PressKey(win.VK_ESCAPE)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 1000)
 			return errors.New("error joining game! Got error message")
 		}
 	}

@@ -221,7 +221,7 @@ func (ctx *Context) SetPickingItems(value bool) {
 func (s *Status) PauseIfNotPriority() {
 	// This prevents bot from trying to move when loading screen is shown.
 	if s.Data.OpenMenus.LoadingScreen {
-		time.Sleep(time.Millisecond * 5)
+		utils.Sleep(100, 100)
 	}
 
 	for s.Priority != s.ExecutionPriority {
@@ -229,16 +229,16 @@ func (s *Status) PauseIfNotPriority() {
 			panic("Bot is stopped")
 		}
 
-		time.Sleep(time.Millisecond * 10)
+		utils.Sleep(10, 100)
 	}
 }
 func (ctx *Context) WaitForGameToLoad() {
 	for ctx.Data.OpenMenus.LoadingScreen {
-		time.Sleep(100 * time.Millisecond)
+		utils.Sleep(100, 100)
 		ctx.RefreshGameData()
 	}
 	// Add a small buffer to ensure everything is fully loaded
-	time.Sleep(300 * time.Millisecond)
+	utils.Sleep(300, 100)
 }
 
 func (ctx *Context) Cleanup() {

@@ -91,7 +91,7 @@ func (h Hellforge) Run(parameters *RunParameters) error {
 
 	for h.ctx.PathFinder.DistanceFromMe(hellforge.Position) < 5 {
 		h.ctx.PathFinder.RandomMovement()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 
 	err = action.ReturnTown()
@@ -119,7 +119,7 @@ func (h Hellforge) Run(parameters *RunParameters) error {
 	start := time.Now()
 	for time.Since(start) < time.Millisecond*6000 {
 		action.ItemPickup(20)
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 	}
 
 	action.ReturnTown()
@@ -145,7 +145,7 @@ func (h Hellforge) breakStone() error {
 		}); err != nil {
 			return err
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		return nil
 	})
 }

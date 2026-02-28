@@ -245,23 +245,23 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 				// Merc check (Fast)
 				if b.ctx.CharacterCfg.BackToTown.MercDied && b.ctx.Data.MercHPPercent() <= 0 && b.ctx.CharacterCfg.Character.UseMerc {
-					time.Sleep(200 * time.Millisecond)
+					utils.Sleep(200, 1000)
 				}
 
 				// Legacy/Portrait/Chat checks (Fast, Read-only/Input-gated) only for non DLC Characters
 				if b.ctx.CharacterCfg.ClassicMode && !b.ctx.Data.LegacyGraphics && !b.ctx.Data.IsDLC() {
 					action.SwitchToLegacyMode()
-					time.Sleep(150 * time.Millisecond)
+					utils.Sleep(150, 5000)
 				}
 				// Hide merc/other players portraits if enabled
 				if b.ctx.CharacterCfg.HidePortraits && b.ctx.Data.OpenMenus.PortraitsShown {
 					action.HidePortraits()
-					time.Sleep(150 * time.Millisecond)
+					utils.Sleep(150, 100)
 				}
 				// Close chat if somehow was opened (prevention)
 				if b.ctx.Data.OpenMenus.ChatOpen {
 					b.ctx.HID.PressKey(b.ctx.Data.KeyBindings.Chat.Key1[0])
-					time.Sleep(150 * time.Millisecond)
+					utils.Sleep(150, 100)
 				}
 
 				// Max Level Check (Fast, Read-only)

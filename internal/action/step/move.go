@@ -183,7 +183,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 					// Area transitioned and collision data loaded - movement objective achieved
 					return nil
 				}
-				utils.Sleep(100)
+				utils.Sleep(100, 500)
 				ctx.RefreshGameData()
 			}
 			// If we timeout waiting for collision data, return error
@@ -219,7 +219,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 						break
 					}
 					ctx.PathFinder.RandomMovement()
-					utils.Sleep(250)
+					utils.Sleep(250, 500)
 				}
 				if interactErr != nil {
 					return interactErr
@@ -238,7 +238,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		//If teleporting, sleep for the cast duration
 		if ctx.Data.CanTeleport() {
 			if time.Since(lastRun) < ctx.Data.PlayerCastDuration() {
-				time.Sleep(ctx.Data.PlayerCastDuration() - time.Since(lastRun))
+				utils.SleepDuration(ctx.Data.PlayerCastDuration()-time.Since(lastRun), 500)
 				continue
 			}
 		}
@@ -313,7 +313,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 				ctx.HID.Click(game.LeftButton, x, y)
 
 				// Adaptive delay for obstacle interaction based on ping
-				time.Sleep(time.Millisecond * time.Duration(utils.PingMultiplier(utils.Light, 100)))
+				utils.PingSleep(utils.Light, 100, 200)
 			} else if door, found := ctx.PathFinder.GetClosestDoor(ctx.Data.PlayerUnit.Position); found {
 				//There's a door really close, try to open it
 				doorToOpen := *door

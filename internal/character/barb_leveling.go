@@ -17,6 +17,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 var _ context.LevelingCharacter = (*BarbLeveling)(nil)
@@ -149,7 +150,7 @@ func (s BarbLeveling) KillMonsterSequence(
 			s.executeAttackBoss(id, monster.Name, hasDualOneHand, &lastHowlCast, &lastBattleCryCast, &lastWarCryCast, &lastBerserkCast, &leapAttackExecuted)
 			completedAttackLoops++
 			previousUnitID = int(id)
-			time.Sleep(time.Millisecond * 100)
+			utils.Sleep(100, 200)
 			continue
 		}
 
@@ -176,7 +177,7 @@ func (s BarbLeveling) KillMonsterSequence(
 			s.executeAttackUnderLevel6(id, &lastHowlCast)
 			completedAttackLoops++
 			previousUnitID = int(id)
-			time.Sleep(time.Millisecond * 100)
+			utils.Sleep(100, 100)
 			continue
 		}
 
@@ -194,7 +195,7 @@ func (s BarbLeveling) KillMonsterSequence(
 
 		completedAttackLoops++
 		previousUnitID = int(id)
-		time.Sleep(time.Millisecond * 100)
+		utils.Sleep(100, 100)
 	}
 }
 
@@ -214,7 +215,7 @@ func (s BarbLeveling) killBoss(bossNPC npc.ID) error {
 		context.Get().PauseIfNotPriority()
 		if s.Data.PlayerUnit.Area.IsTown() {
 			timeout = time.Now().Add(30 * time.Second)
-			time.Sleep(time.Second / 2)
+			utils.Sleep(500, 100)
 			continue
 		}
 
@@ -225,7 +226,7 @@ func (s BarbLeveling) killBoss(bossNPC npc.ID) error {
 				s.Logger.Info(fmt.Sprintf("Boss %d not found, assuming dead.", bossNPC))
 				return nil
 			}
-			time.Sleep(time.Second / 2)
+			utils.Sleep(500, 100)
 			continue
 		}
 
@@ -240,7 +241,7 @@ func (s BarbLeveling) killBoss(bossNPC npc.ID) error {
 
 		s.executeAttackBoss(boss.UnitID, bossNPC, hasDualOneHand, &lastHowlCast, &lastBattleCryCast, &lastWarCryCast, &lastBerserkCast, &leapAttackExecuted)
 
-		time.Sleep(time.Millisecond * 100)
+		utils.Sleep(100, 100)
 	}
 }
 

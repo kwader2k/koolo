@@ -149,7 +149,7 @@ func enterTownPortal(ctx *context.Status, portal data.Object) error {
 		mX, mY := ui.GameCoordsToScreenCords(objectX, objectY)
 
 		ctx.HID.Click(game.LeftButton, mX, mY)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		maxWaitAttempts := 30
 		for waitAttempt := 0; waitAttempt < maxWaitAttempts; waitAttempt++ {
@@ -157,7 +157,7 @@ func enterTownPortal(ctx *context.Status, portal data.Object) error {
 			if ctx.Data.PlayerUnit.Area != area.UberTristram && ctx.Data.PlayerUnit.Area.IsTown() {
 				return nil
 			}
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 		}
 
 		if attempt < maxAttempts-1 {
@@ -223,7 +223,7 @@ func findUberTristramPortal(ctx *context.Status) (data.Object, error) {
 
 func enterUberTristramPortal(ctx *context.Status, portal data.Object) error {
 	step.CloseAllMenus()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	ctx.RefreshGameData()
 
 	portalObj, found := ctx.Data.Objects.FindByID(portal.ID)
@@ -235,7 +235,7 @@ func enterUberTristramPortal(ctx *context.Status, portal data.Object) error {
 	mX, mY := ui.GameCoordsToScreenCords(objectX, objectY)
 
 	ctx.HID.Click(game.LeftButton, mX, mY)
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 
 	maxWaitAttempts := 30
 	for attempt := 0; attempt < maxWaitAttempts; attempt++ {
@@ -243,7 +243,7 @@ func enterUberTristramPortal(ctx *context.Status, portal data.Object) error {
 		if ctx.Data.PlayerUnit.Area == area.UberTristram {
 			return nil
 		}
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 	}
 
 	return fmt.Errorf("timeout waiting for area change to Uber Tristram")
@@ -353,9 +353,9 @@ func checkForRejuv(ctx *context.Status) error {
 		case item.LocationMaterialsTab:
 			action.SwitchStashTab(action.StashTabMaterials)
 		}
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.RefreshGameData()
-		utils.Sleep(150)
+		utils.Sleep(150, 100)
 
 		// For stacked DLC items, each Ctrl+click takes one from the stack
 		clicksNeeded := 1
@@ -369,9 +369,9 @@ func checkForRejuv(ctx *context.Status) error {
 		stashCoords := ui.GetScreenCoordsForItem(rejuv)
 		for c := 0; c < clicksNeeded; c++ {
 			ctx.HID.ClickWithModifier(game.LeftButton, stashCoords.X, stashCoords.Y, game.CtrlKey)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			ctx.RefreshGameData()
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		}
 		moved += clicksNeeded
 	}
@@ -458,7 +458,7 @@ func clearPortalArea(ctx *context.Status, portalPos data.Position) error {
 		if err := action.MoveToCoords(portalPos, step.WithDistanceToFinish(3), step.WithIgnoreMonsters()); err != nil {
 			ctx.Logger.Warn(fmt.Sprintf("Failed to move closer to portal: %v", err))
 		} else {
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			ctx.RefreshGameData()
 		}
 	}
@@ -533,7 +533,7 @@ func goToMalahIfInHarrogath(ctx *context.Status) {
 		if err := action.MoveToCoords(malahPosition(), step.WithIgnoreMonsters()); err != nil {
 			ctx.Logger.Warn(fmt.Sprintf("Failed to move to Malah's position: %v", err))
 		} else {
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			ctx.RefreshGameData()
 		}
 	}
@@ -562,7 +562,7 @@ func vendorRefillOrHeal(ctx *context.Status) error {
 		if err := action.InteractNPC(vendorNPC); err != nil {
 			ctx.Logger.Warn(fmt.Sprintf("Failed to interact with NPC: %v", err))
 		} else {
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			step.CloseAllMenus()
 		}
 	}
@@ -597,12 +597,12 @@ func findTorchInInventory(ctx *context.Status, excludeUnitID data.UnitID) (data.
 func stashToSharedStash(ctx *context.Status, itm data.Item) (int, error) {
 	for tab := 2; tab <= 4; tab++ {
 		action.SwitchStashTab(tab)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.RefreshGameData()
 
 		invCoords := ui.GetScreenCoordsForItem(itm)
 		ctx.HID.ClickWithModifier(game.LeftButton, invCoords.X, invCoords.Y, game.CtrlKey)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.RefreshGameData()
 
 		found := false
@@ -621,14 +621,14 @@ func stashToSharedStash(ctx *context.Status, itm data.Item) (int, error) {
 
 func restoreFromSharedStash(ctx *context.Status, unitID data.UnitID, stashTab int) (data.Item, bool) {
 	action.SwitchStashTab(stashTab)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	ctx.RefreshGameData()
 
 	for _, stashItem := range ctx.Data.Inventory.ByLocation(item.LocationSharedStash) {
 		if stashItem.UnitID == unitID {
 			stashCoords := ui.GetScreenCoordsForItem(stashItem)
 			ctx.HID.ClickWithModifier(game.LeftButton, stashCoords.X, stashCoords.Y, game.CtrlKey)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			ctx.RefreshGameData()
 
 			for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
@@ -648,10 +648,10 @@ func moveItemToPosition(ctx *context.Status, itm data.Item, targetPos data.Posit
 
 	invCoords := ui.GetScreenCoordsForItem(itm)
 	ctx.HID.Click(game.LeftButton, invCoords.X, invCoords.Y)
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	targetCoords := ui.GetScreenCoordsForInventoryPosition(targetPos, item.LocationInventory)
 	ctx.HID.Click(game.LeftButton, targetCoords.X, targetCoords.Y)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	ctx.RefreshGameData()
 	return nil
 }
@@ -663,7 +663,7 @@ func standardofHeros(ctx *context.Status) error {
 				return fmt.Errorf("failed to stash Standard of Heroes: %w", err)
 			}
 			ctx.Logger.Info("Stashed Standard of Heroes before torch swap")
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			ctx.RefreshGameData()
 			return nil
 		}
@@ -687,7 +687,7 @@ func openUT(ctx *context.Status, organs []data.Item) (data.Object, error) {
 
 	if !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.RefreshGameData()
 		if !ctx.Data.OpenMenus.Inventory {
 			return data.Object{}, errors.New("failed to open inventory window")
@@ -702,7 +702,7 @@ func openUT(ctx *context.Status, organs []data.Item) (data.Object, error) {
 		return data.Object{}, fmt.Errorf("failed to close menus after transmute: %w", err)
 	}
 
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	ctx.RefreshGameData()
 	var portal data.Object
 	portalFound := false

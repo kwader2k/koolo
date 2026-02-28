@@ -71,7 +71,7 @@ func (s DruidLeveling) waitForCastComplete() bool {
 			return true
 		}
 
-		time.Sleep(16 * time.Millisecond) // Small delay to avoid busy-waiting
+		utils.Sleep(16, 100) // Small delay to avoid busy-waiting
 	}
 
 	return false // Returns false if timeout is reached
@@ -171,7 +171,7 @@ func (s DruidLeveling) KillMonsterSequence(
 					if s.Data.PlayerUnit.Mode != mode.CastingSkill {
 						step.SecondaryAttack(secondaryAttackSkill, currentTargetID, 1, step.Distance(levelingminDistance, levelingmaxDistance))
 					} else {
-						time.Sleep(time.Millisecond * 50)
+						utils.Sleep(50, 100)
 					}
 				}
 			} else {
@@ -624,7 +624,7 @@ func (s DruidLeveling) KillDiablo() error {
 				return nil
 			}
 			// Keep waiting..
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

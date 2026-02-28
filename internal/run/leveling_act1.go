@@ -218,9 +218,9 @@ func (a Leveling) goToAct2() error {
 
 	action.InteractNPC(npc.Warriv)
 	a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(1000)
+	utils.Sleep(1000, 500)
 	a.HoldKey(win.VK_SPACE, 2000)
-	utils.Sleep(1000)
+	utils.Sleep(1000, 500)
 	return nil
 }
 
@@ -325,7 +325,7 @@ func gambleAct1Belt(ctx *context.Status) error {
 	defer step.CloseAllMenus()
 
 	ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(1000)
+	utils.Sleep(1000, 500)
 
 	// Check if the shop menu is open
 	if !ctx.Data.OpenMenus.NPCShop {
@@ -357,7 +357,7 @@ func gambleAct1Belt(ctx *context.Status) error {
 		} else {
 			ctx.HID.Click(game.LeftButton, ui.GambleRefreshButtonX, ui.GambleRefreshButtonY)
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 }
 

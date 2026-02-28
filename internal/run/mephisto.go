@@ -2,7 +2,6 @@ package run
 
 import (
 	"slices"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/area"
@@ -32,7 +31,7 @@ func (m Mephisto) ToKeyBinding(keyCode byte) data.KeyBinding {
 func (m Mephisto) HoldKey(keyCode byte, durationMs int) {
 	kb := m.ToKeyBinding(keyCode)
 	m.ctx.HID.KeyDown(kb)
-	time.Sleep(time.Duration(durationMs) * time.Millisecond)
+	utils.Sleep(durationMs, 100)
 	m.ctx.HID.KeyUp(kb)
 }
 
@@ -155,7 +154,7 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 		m.ctx.Logger.Debug("Moving to bridge")
 		action.MoveToCoords(data.Position{X: 17588, Y: 8068})
 		//Wait for bridge to rise
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 
 		if isLevelingChar {
 			if err = action.ClearAreaAroundPlayer(30, m.MephistoFilter()); err != nil {
@@ -172,9 +171,9 @@ func (m Mephisto) Run(parameters *RunParameters) error {
 		})
 
 		if isLevelingChar {
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 			m.HoldKey(win.VK_SPACE, 2000)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 		}
 	}
 

@@ -24,7 +24,7 @@ func SelectRightSkill(skillID skill.ID) error {
 			// Try HID fallback only if keybinding exists
 			return selectSkillViaHIDIfAvailable(skillID)
 		}
-		utils.Sleep(50)
+		utils.Sleep(50, 100)
 		return nil
 	}
 
@@ -48,7 +48,7 @@ func SelectLeftSkill(skillID skill.ID) error {
 			// Try HID fallback only if keybinding exists
 			return selectSkillViaHIDIfAvailable(skillID)
 		}
-		utils.Sleep(50)
+		utils.Sleep(50, 100)
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func selectSkillViaHIDIfAvailable(skillID skill.ID) error {
 	}
 
 	ctx.HID.PressKeyBinding(kb)
-	utils.Sleep(50)
+	utils.Sleep(50, 100)
 	return nil
 }
 
@@ -131,7 +131,7 @@ func SelectRightSkillByKeyBinding(kb data.KeyBinding) error {
 
 	// If we can't find the skill ID, just use HID
 	ctx.HID.PressKeyBinding(kb)
-	utils.Sleep(50)
+	utils.Sleep(50, 100)
 	return nil
 }
 
@@ -149,6 +149,6 @@ func SelectLeftSkillByKeyBinding(kb data.KeyBinding) error {
 
 	// If we can't find the skill ID, just use HID
 	ctx.HID.PressKeyBinding(kb)
-	utils.Sleep(50)
+	utils.Sleep(50, 100)
 	return nil
 }

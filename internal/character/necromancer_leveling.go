@@ -622,7 +622,7 @@ func (n *NecromancerLeveling) killBoss(bossNPC npc.ID) error {
 	for time.Since(startTime) < timeout {
 		boss, found := n.Data.Monsters.FindOne(bossNPC, data.MonsterTypeUnique)
 		if !found {
-			time.Sleep(time.Second)
+			utils.Sleep(1000, 500)
 			continue
 		}
 
@@ -656,7 +656,7 @@ func (n *NecromancerLeveling) killMonsterByName(id npc.ID, monsterType data.Mons
 			}
 			return m.UnitID, true
 		}, skipOnImmunities)
-		time.Sleep(time.Millisecond * 250)
+		utils.Sleep(250, 100)
 	}
 }
 

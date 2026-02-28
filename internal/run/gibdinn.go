@@ -81,7 +81,7 @@ func (g Gidbinn) Run(parameters *RunParameters) error {
 		return !found || !obj.Selectable
 	})
 
-	utils.PingSleep(utils.Medium, 5000)
+	utils.PingSleep(utils.Medium, 5000, 1000)
 
 	for range 5 {
 		action.ClearAreaAroundPlayer(50, data.MonsterAnyFilter())
@@ -95,7 +95,7 @@ func (g Gidbinn) Run(parameters *RunParameters) error {
 			break
 		}
 
-		utils.PingSleep(utils.Medium, 2000)
+		utils.PingSleep(utils.Medium, 2000, 1000)
 	}
 
 	if !g.hasGidbinn() {

@@ -161,7 +161,7 @@ func InteractEntranceMouse(targetArea area.ID) error {
 			if ctx.Data.HoverData.UnitType == 5 || ctx.Data.HoverData.UnitType == 2 && ctx.Data.HoverData.IsHovered {
 				ctx.HID.Click(game.LeftButton, currentMouseCoords.X, currentMouseCoords.Y)
 				waitingForInteraction = true
-				utils.PingSleep(utils.Light, 200) // Light operation: Wait for click registration
+				utils.PingSleep(utils.Light, 200, 100) // Light operation: Wait for click registration
 			}
 
 			x, y := utils.Spiral(interactionAttempts)
@@ -172,7 +172,7 @@ func InteractEntranceMouse(targetArea area.ID) error {
 			currentMouseCoords = data.Position{X: lx + x, Y: ly + y}
 			ctx.HID.MovePointer(lx+x, ly+y)
 			interactionAttempts++
-			utils.PingSleep(utils.Light, 100) // Light operation: Mouse movement delay
+			utils.PingSleep(utils.Light, 100, 100) // Light operation: Mouse movement delay
 
 			lastEntranceLevel = l
 

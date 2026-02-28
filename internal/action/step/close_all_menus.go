@@ -22,7 +22,7 @@ func CloseAllMenus() error {
 			return errors.New("failed closing game menu")
 		}
 		ctx.HID.PressKey(win.VK_ESCAPE)
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		attempts++
 	}
 

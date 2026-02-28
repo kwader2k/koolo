@@ -11,6 +11,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 const (
@@ -823,7 +824,7 @@ func (s NovaSorceress) KillDiablo() error {
 				return nil
 			}
 
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 1000)
 			continue
 		}
 
