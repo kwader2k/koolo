@@ -304,6 +304,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 		event.Send(event.GameCreated(event.Text(s.name, "New game created"), s.bot.ctx.GameReader.LastGameName(), s.bot.ctx.GameReader.LastGamePass()))
 		s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
 		s.bot.ctx.LastBuffAt = time.Time{}
+		s.bot.ctx.LastCastAt = time.Time{}
 		s.logGameStart(runs)
 		s.bot.ctx.RefreshGameData()
 

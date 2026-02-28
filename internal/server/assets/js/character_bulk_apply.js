@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const levelingClasses = new Set([
         'sorceress_leveling',
-        'paladin',
+        'paladin_leveling',
         'druid_leveling',
         'amazon_leveling',
         'necromancer',

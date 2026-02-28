@@ -96,17 +96,13 @@ func clearRoomCows(room data.Room, filter data.MonsterFilter, moveClearRadius in
 		SortEnemiesByPriority(&monsters)
 
 		target := data.Monster{}
+
 		for _, m := range monsters {
 			if ctx.Char.ShouldIgnoreMonster(m) {
 				continue
 			}
-			if m.IsMonsterRaiser() {
-				target = m
-				break
-			}
-			if target.UnitID == 0 {
-				target = m
-			}
+			target = m
+			break
 		}
 
 		if target.UnitID == 0 {

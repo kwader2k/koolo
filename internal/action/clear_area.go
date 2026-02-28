@@ -2,12 +2,13 @@ package action
 
 import (
 	"fmt"
-	"sort"
+	"slices"
 	"strings"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/koolo/internal/action/step"
+	"github.com/hectorgimenez/koolo/internal/character/core"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/pather"
@@ -17,47 +18,130 @@ func ClearAreaAroundPlayer(radius int, filter data.MonsterFilter) error {
 	return ClearAreaAroundPosition(context.Get().Data.PlayerUnit.Position, radius, filter)
 }
 
-func IsPriorityMonster(m data.Monster) bool {
-	priorityMonsters := []npc.ID{
-		npc.FallenShaman,
-		npc.CarverShaman,
-		npc.DevilkinShaman,
-		npc.DarkShaman,
-		npc.WarpedShaman,
-		npc.MummyGenerator,
-		npc.BaalSubjectMummy,
-		npc.FetishShaman,
+func monsterTypePriority(monsterType data.MonsterType) int {
+	switch monsterType {
+	case data.MonsterTypeSuperUnique:
+		return 0
+	case data.MonsterTypeUnique:
+		return 1
+	case data.MonsterTypeMinion:
+		return 2
+	case data.MonsterTypeChampion:
+		return 3
+	case data.MonsterTypeNone:
+		return 4
+	default:
+		return 5
 	}
-
-	for _, priorityMonster := range priorityMonsters {
-		if m.Name == priorityMonster {
-			return true
-		}
-	}
-	return false
 }
 
 func SortEnemiesByPriority(enemies *[]data.Monster) {
+	if enemies == nil || len(*enemies) < 2 {
+		return
+	}
+
 	ctx := context.Get()
-	sort.Slice(*enemies, func(i, j int) bool {
-		monsterI := (*enemies)[i]
-		monsterJ := (*enemies)[j]
+	canTeleport := ctx.Data.CanTeleport()
+	distanceByID := make(map[data.UnitID]int, len(*enemies))
+	typeByID := make(map[data.UnitID]int, len(*enemies))
+	raiserByID := make(map[data.UnitID]int, len(*enemies))
+	var lineOfSightByID map[data.UnitID]bool
+	meleeCount := 0
+	if !canTeleport {
+		lineOfSightByID = make(map[data.UnitID]bool, len(*enemies))
+	}
 
-		isPriorityI := IsPriorityMonster(monsterI)
-		isPriorityJ := IsPriorityMonster(monsterJ)
-
-		distanceI := ctx.PathFinder.DistanceFromMe(monsterI.Position)
-		distanceJ := ctx.PathFinder.DistanceFromMe(monsterJ.Position)
-
-		if distanceI > 2 && distanceJ > 2 {
-			if isPriorityI && !isPriorityJ {
-				return true
-			} else if !isPriorityI && isPriorityJ {
-				return false
+	for _, m := range *enemies {
+		distance := ctx.PathFinder.DistanceFromMe(m.Position)
+		distanceByID[m.UnitID] = distance
+		typeByID[m.UnitID] = monsterTypePriority(m.Type)
+		if m.IsMonsterRaiser() {
+			raiserByID[m.UnitID] = 0
+		} else {
+			raiserByID[m.UnitID] = 1
+		}
+		if !canTeleport {
+			lineOfSightByID[m.UnitID] = ctx.PathFinder.LineOfSight(ctx.Data.PlayerUnit.Position, m.Position)
+			if distance <= core.MeleeRange {
+				meleeCount++
 			}
 		}
+	}
 
-		return distanceI < distanceJ
+	compareByDistance := func(monsterI, monsterJ data.Monster) int {
+		distanceI := distanceByID[monsterI.UnitID]
+		distanceJ := distanceByID[monsterJ.UnitID]
+		if distanceI < distanceJ {
+			return -1
+		}
+		if distanceI > distanceJ {
+			return 1
+		}
+
+		return 0
+	}
+	compareByTypeThenDistance := func(monsterI, monsterJ data.Monster) int {
+		// SuperUnique > Unique > Minion > Champion > None > Unknown
+		typeI := typeByID[monsterI.UnitID]
+		typeJ := typeByID[monsterJ.UnitID]
+		if typeI != typeJ {
+			if typeI < typeJ {
+				return -1
+			}
+			return 1
+		}
+
+		// Raiser > Normal
+		raiserI := raiserByID[monsterI.UnitID]
+		raiserJ := raiserByID[monsterJ.UnitID]
+		if raiserI != raiserJ {
+			if raiserI < raiserJ {
+				return -1
+			}
+			return 1
+		}
+
+		return compareByDistance(monsterI, monsterJ)
+	}
+	compareByLineOfSight := func(monsterI, monsterJ data.Monster) int {
+		losI := lineOfSightByID[monsterI.UnitID]
+		losJ := lineOfSightByID[monsterJ.UnitID]
+		if losI == losJ {
+			return 0
+		}
+		if losI {
+			return -1
+		}
+		return 1
+	}
+
+	// Teleport: Pick closest of highest type
+	if canTeleport {
+		slices.SortStableFunc(*enemies, func(monsterI, monsterJ data.Monster) int {
+			return compareByTypeThenDistance(monsterI, monsterJ)
+		})
+		return
+	}
+
+	// Melee or Surrounded: Pick closest in LoS
+	mainSkillRange := ctx.Char.MainSkillRange()
+	if mainSkillRange <= core.MeleeRange || meleeCount >= 2 {
+		slices.SortStableFunc(*enemies, func(monsterI, monsterJ data.Monster) int {
+			if cmp := compareByLineOfSight(monsterI, monsterJ); cmp != 0 {
+				return cmp
+			}
+			return compareByDistance(monsterI, monsterJ)
+		})
+
+		return
+	}
+
+	// Default: Pick closest of highest type in LoS
+	slices.SortStableFunc(*enemies, func(monsterI, monsterJ data.Monster) int {
+		if cmp := compareByLineOfSight(monsterI, monsterJ); cmp != 0 {
+			return cmp
+		}
+		return compareByTypeThenDistance(monsterI, monsterJ)
 	})
 }
 
@@ -76,35 +160,41 @@ func ClearAreaAroundPosition(pos data.Position, radius int, filters ...data.Mons
 
 		SortEnemiesByPriority(&enemies)
 
-		for _, m := range enemies {
-			distanceToTarget := pather.DistanceFromPoint(pos, m.Position)
-			if distanceToTarget > radius {
-				continue
-			}
-
+		isValidEnemy := func(m data.Monster) bool {
 			// Special case: Vizier can spawn on weird/off-grid tiles in Chaos Sanctuary.
 			isVizier := m.Type == data.MonsterTypeSuperUnique && m.Name == npc.StormCaster
 
 			// Skip monsters that exist in data but are placed on non-walkable tiles (often "underwater/off-grid").
 			if !isVizier && !ctx.Data.AreaData.IsWalkable(m.Position) {
-				continue
+				return false
 			}
 
-			validEnemy := true
 			if !ctx.Data.CanTeleport() {
 				// If no path exists, do not target it (prevents chasing "ghost" monsters).
 				_, _, pathFound := ctx.PathFinder.GetPath(m.Position)
 				if !pathFound {
-					validEnemy = false
+					return false
 				}
 
 				// Keep the door check to avoid targeting monsters behind closed doors.
 				if hasDoorBetween, _ := ctx.PathFinder.HasDoorBetween(ctx.Data.PlayerUnit.Position, m.Position); hasDoorBetween {
-					validEnemy = false
+					return false
 				}
 			}
 
-			if validEnemy {
+			return true
+		}
+
+		for _, m := range enemies {
+			distanceToTarget := pather.DistanceFromPoint(pos, m.Position)
+			if distanceToTarget > radius {
+				continue
+			}
+			if ctx.Char.ShouldIgnoreMonster(m) {
+				continue
+			}
+
+			if isValidEnemy(m) {
 				return m.UnitID, true
 			}
 		}

@@ -122,7 +122,9 @@ func (d Data) CanTeleport() bool {
 		return false // Disallow teleport if Duriel is not found or is dead
 	}
 
-	currentManaStat, foundMana := d.PlayerUnit.FindStat(stat.Mana, 0) //
+	// Check if player have enough mana during leveling before Hell
+	// TODO: Shouldn't be a hard check for everyone and not just leveling anyway?
+	currentManaStat, foundMana := d.PlayerUnit.FindStat(stat.Mana, 0)
 	if (!foundMana || currentManaStat.Value < 24) && d.IsLevelingCharacter && d.CharacterCfg.Game.Difficulty != difficulty.Hell {
 		return false
 	}
@@ -137,7 +139,7 @@ func (d Data) CanTeleport() bool {
 
 func (d Data) PlayerCastDuration() time.Duration {
 	secs := float64(d.PlayerUnit.CastingFrames())*0.04 + 0.01
-	secs = math.Max(0.30, secs)
+	secs = math.Max(0.29, secs) // Minimum cast duration is 7 frames: 0.28 + 0.01
 
 	return time.Duration(secs*1000) * time.Millisecond
 }

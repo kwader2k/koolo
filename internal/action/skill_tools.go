@@ -44,7 +44,7 @@ func EnsureSkillPoints() error {
 	// New: avoid opening skill UI on a brand-new character; this is where crashes happen.
 	clvl, _ := ctx.Data.PlayerUnit.FindStat(stat.Level, 0)
 	if clvl.Value <= 1 {
-		ctx.Logger.Debug("Level 1 character detected, skipping EnsureSkillBindings for now.")
+		ctx.Logger.Debug("Level 1 character detected, skipping EnsureSkillPoints for now.")
 		return nil
 	}
 	skillPoints, hasUnusedPoints := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
@@ -71,7 +71,7 @@ func EnsureSkillPoints() error {
 		usePacketMode = ctx.CharacterCfg.Character.DruidLeveling.UsePacketLearning
 	case "necromancer":
 		usePacketMode = ctx.CharacterCfg.Character.NecromancerLeveling.UsePacketLearning
-	case "paladin":
+	case "paladin_leveling":
 		usePacketMode = ctx.CharacterCfg.Character.PaladinLeveling.UsePacketLearning
 	}
 	skillsBuild := char.SkillPoints()

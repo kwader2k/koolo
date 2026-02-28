@@ -123,10 +123,12 @@ var (
 			stat.Vitality:       1.0,
 		},
 		data.Paladin: {
-			stat.FasterCastRate:       3.0,
-			stat.IncreasedAttackSpeed: 2.0,
-			stat.ChanceToBlock:        3.0,
-			stat.Defense:              0.2,
+			stat.FasterCastRate: -4.5,
+			// Due to autoequip being mainly used for Leveling and having Salvation aura, we priorize Poison (due to Salvation), Fire (due to Spirit) then others.
+			stat.FireResist:      1.0, // 3+1 = 4
+			stat.ColdResist:      1.0, // 2+1 = 3
+			stat.LightningResist: 0.0, // 3+0 = 3
+			stat.PoisonResist:    4.0, // 1+4 = 5
 		},
 		data.Barbarian: {
 			stat.CannotBeFrozen:       75.0,

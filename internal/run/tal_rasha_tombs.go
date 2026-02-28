@@ -105,7 +105,7 @@ func (a TalRashaTombs) Run(parameters *RunParameters) error {
 				if err := action.MoveToCoords(targetObject.Position); err != nil {
 					return err
 				}
-				if err := action.ClearAreaAroundPosition(targetObject.Position, 20, data.MonsterAnyFilter()); err != nil {
+				if err := action.ClearAreaAroundPosition(targetObject.Position, 30, data.MonsterAnyFilter()); err != nil {
 					return err
 				}
 				if targetObject.Name == object.SparklyChest && targetObject.Selectable {

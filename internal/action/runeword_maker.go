@@ -75,18 +75,22 @@ func MakeRunewords() error {
 				candidateBases = filteredBases
 			}
 			if baseItem, hasBase := hasBaseForRunewordRecipe(candidateBases, recipe); hasBase {
-				existingTier, hasExisting := currentRunewordBaseTier(ctx, recipe, baseItem.Type().Name)
+				existingBase, hasExisting := currentRunewordBase(ctx, recipe, baseItem.Type().Code)
 
 				// Check if we should skip this base due to tier upgrade logic
 				// For leveling characters: always apply tier check (existing behavior)
 				// For non-leveling: only apply if AutoUpgrade is enabled
 				shouldCheckUpgrade := isLevelingChar || cfg.Game.RunewordMaker.AutoUpgrade
-				if shouldCheckUpgrade && hasExisting && (len(recipe.BaseSortOrder) == 0 || baseItem.Desc().Tier() <= existingTier) {
-					ctx.Logger.Debug("Skipping base - existing runeword has equal or better tier in same base type",
+				if shouldCheckUpgrade && hasExisting && !isBetterRunewordBase(recipe, baseItem, existingBase) {
+					ctx.Logger.Debug("Skipping base - existing runeword has equal or better base in same base type",
 						"recipe", recipe.Name,
 						"baseType", baseItem.Type().Name,
-						"existingTier", existingTier,
-						"newBaseTier", baseItem.Desc().Tier())
+						"existingBase", existingBase.Name,
+						"existingTier", existingBase.Desc().Tier(),
+						"existingEth", existingBase.Ethereal,
+						"newBase", baseItem.Name,
+						"newBaseTier", baseItem.Desc().Tier(),
+						"newEth", baseItem.Ethereal)
 					skippedBases[baseItem.UnitID] = struct{}{}
 					continue
 				}
@@ -341,20 +345,102 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 	return step.CloseAllMenus()
 }
 
-func currentRunewordBaseTier(ctx *context.Status, recipe Runeword, baseType string) (item.Tier, bool) {
+func currentRunewordBase(ctx *context.Status, recipe Runeword, baseTypeCode string) (data.Item, bool) {
 
 	items := ctx.Data.Inventory.ByLocation(
 		item.LocationInventory,
 		item.LocationEquipped,
+		item.LocationMercenary,
 		item.LocationStash,
 		item.LocationSharedStash,
 	)
 
+	var best data.Item
+	found := false
 	for _, itm := range items {
-		if itm.RunewordName == recipe.Name && itm.Type().Name == baseType {
-			return itm.Desc().Tier(), true
+		if itm.RunewordName != recipe.Name || itm.Type().Code != baseTypeCode {
+			continue
+		}
+
+		if !found || compareRunewordBaseQuality(recipe, itm, best) < 0 {
+			best = itm
+			found = true
 		}
 	}
+
+	return best, found
+}
+
+func isBetterRunewordBase(recipe Runeword, candidate data.Item, existing data.Item) bool {
+	return compareRunewordBaseQuality(recipe, candidate, existing) < 0
+}
+
+func compareRunewordBaseQuality(recipe Runeword, a data.Item, b data.Item) int {
+	// Primary progression axis: normal < exceptional < elite.
+	if a.Desc().Tier() != b.Desc().Tier() {
+		if a.Desc().Tier() > b.Desc().Tier() {
+			return -1
+		}
+		return 1
+	}
+
+	// Within the same class tier, ethereal beats non-ethereal.
+	if a.Ethereal != b.Ethereal {
+		if a.Ethereal {
+			return -1
+		}
+		return 1
+	}
+
+	for _, statID := range recipe.BaseSortOrder {
+		aVal, aFound := baseComparisonStatValue(a, statID)
+		bVal, bFound := baseComparisonStatValue(b, statID)
+
+		if !aFound && !bFound {
+			continue
+		}
+		if aFound != bFound {
+			if aFound {
+				return -1
+			}
+			return 1
+		}
+		if aVal != bVal {
+			if aVal > bVal {
+				return -1
+			}
+			return 1
+		}
+	}
+
+	aReq := a.Desc().RequiredStrength + a.Desc().RequiredDexterity
+	bReq := b.Desc().RequiredStrength + b.Desc().RequiredDexterity
+	if aReq != bReq {
+		if aReq < bReq {
+			return -1
+		}
+		return 1
+	}
+
+	if a.Name != b.Name {
+		if a.Name < b.Name {
+			return -1
+		}
+		return 1
+	}
+
+	return 0
+}
+
+func baseComparisonStatValue(itm data.Item, statID stat.ID) (int, bool) {
+	// BaseStats keeps intrinsic base values and avoids inflated runeword final stats.
+	if value, found := itm.BaseStats.FindStat(statID, 0); found {
+		return value.Value, true
+	}
+	if value, found := itm.FindStat(statID, 0); found {
+		return value.Value, true
+	}
+
 	return 0, false
 }
 

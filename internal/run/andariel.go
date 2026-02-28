@@ -147,7 +147,7 @@ func (a Andariel) CheckConditions(parameters *RunParameters) SequencerResult {
 
 func (a Andariel) Run(parameters *RunParameters) error {
 	_, isLevelingChar := a.ctx.Char.(context.LevelingCharacter)
-	useAntidotes := a.ctx.CharacterCfg.Game.Andariel.UseAntidotes || isLevelingChar
+	useAntidotes := a.ctx.CharacterCfg.Game.Andariel.UseAntidotes || (isLevelingChar && !IsFarmingRun(parameters))
 
 	if IsQuestRun(parameters) {
 		needLeaveTown := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusRewardGranted+quest.StatusLeaveTown+quest.StatusEnterArea) || a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].HasStatus(quest.StatusCompletedBefore)

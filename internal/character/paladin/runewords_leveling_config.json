@@ -1,0 +1,226 @@
+{
+    "facts": [
+        { "name": "can_use_holyfire", "type": "skill_available", "skill": "HolyFire" },
+
+        { "name": "has_weapon_tier_ge_1000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "swor" ], "tierScoreAtLeast": 1000 } },
+        { "name": "has_weapon_tier_ge_10000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "swor" ], "tierScoreAtLeast": 10000 } },
+        { "name": "has_weapon_tier_ge_10100", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "swor" ], "tierScoreAtLeast": 10100 } },
+        { "name": "has_weapon_tier_ge_10200", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "swor" ], "tierScoreAtLeast": 10200 } },
+
+        { "name": "has_helm_tier_ge_9000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "bodyLocations": [ "head" ], "tierScoreAtLeast": 9000 } },
+        { "name": "has_helm_tier_ge_11000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "bodyLocations": [ "head" ], "tierScoreAtLeast": 11000 } },
+
+        { "name": "has_armor_tier_ge_15000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "bodyLocations": [ "torso" ], "tierScoreAtLeast": 15000 } },
+        { "name": "has_armor_tier_ge_25000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "bodyLocations": [ "torso" ], "tierScoreAtLeast": 25000 } },
+        { "name": "has_armor_tier_ge_30000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "bodyLocations": [ "torso" ], "tierScoreAtLeast": 30000 } },
+
+        { "name": "has_shield_tier_ge_5000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "ashd" ], "tierScoreAtLeast": 5000 } },
+        { "name": "has_shield_tier_ge_10000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "ashd" ], "tierScoreAtLeast": 10000 } },
+        { "name": "has_shield_tier_ge_33000", "type": "inventory_match", "query": { "locations": [ "equipped" ], "types": [ "ashd" ], "tierScoreAtLeast": 33000 } },
+
+        { "name": "has_merc_weapon_tier_ge_10000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "right_arm" ], "tierScoreSource": "merc", "tierScoreAtLeast": 10000 } },
+        { "name": "has_merc_weapon_tier_ge_22000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "right_arm" ], "tierScoreSource": "merc", "tierScoreAtLeast": 22000 } },
+        { "name": "has_merc_weapon_tier_ge_23000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "right_arm" ], "tierScoreSource": "merc", "tierScoreAtLeast": 23000 } },
+        { "name": "has_merc_weapon_tier_ge_24000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "right_arm" ], "tierScoreSource": "merc", "tierScoreAtLeast": 24000 } },
+        { "name": "has_merc_weapon_tier_ge_25000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "right_arm" ], "tierScoreSource": "merc", "tierScoreAtLeast": 25000 } },
+        { "name": "has_merc_weapon_tier_ge_25500", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "right_arm" ], "tierScoreSource": "merc", "tierScoreAtLeast": 25500 } },
+
+        { "name": "has_merc_helm_tier_ge_21000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "head" ], "tierScoreSource": "merc", "tierScoreAtLeast": 21000 } },
+        { "name": "has_merc_helm_tier_ge_22000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "head" ], "tierScoreSource": "merc", "tierScoreAtLeast": 22000 } },
+        { "name": "has_merc_helm_tier_ge_22500", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "head" ], "tierScoreSource": "merc", "tierScoreAtLeast": 22500 } },
+
+        { "name": "has_merc_armor_tier_ge_30800", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 30800 } },
+        { "name": "has_merc_armor_tier_ge_32000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 32000 } },
+        { "name": "has_merc_armor_tier_ge_32600", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 32600 } },
+        { "name": "has_merc_armor_tier_ge_32700", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 32700 } },
+        { "name": "has_merc_armor_tier_ge_32800", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 32800 } },
+        { "name": "has_merc_armor_tier_ge_32900", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 32900 } },
+        { "name": "has_merc_armor_tier_ge_33000", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 33000 } },
+        { "name": "has_merc_armor_tier_ge_33100", "type": "inventory_match", "query": { "locations": [ "mercenary" ], "bodyLocations": [ "torso" ], "tierScoreSource": "merc", "tierScoreAtLeast": 33100 } }
+    ],
+    "plan": {
+        "targets": [
+            {
+                "runeword": "Smoke",
+                "when": { "none": [ "has_armor_tier_ge_30000" ] },
+                "baseRules": [
+                    {
+                        "ruleLine": "([name] == ghostarmor || [name] == serpentskinarmor || [name] == demonhidearmor || [name] == trellisedarmor) && [quality] >= normal && [quality] <= superior && [flag] != ethereal # [sockets] == 2",
+                        "when": { "none": [ "has_armor_tier_ge_25000" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == duskshroud || [name] == wyrmhide || [name] == scarabhusk) && [quality] >= normal && [quality] <= superior && [flag] != ethereal # [sockets] == 2",
+                        "when": { "all": [ "has_armor_tier_ge_25000" ], "none": [ "has_armor_tier_ge_30000" ] }
+                    }
+                ]
+            },
+            {
+                "runeword": "Steel",
+                "when": { "all": [ "can_use_holyfire" ], "none": [ "has_weapon_tier_ge_1000" ] },
+                "baseRules": [
+                    { "ruleLine": "[name] == scimitar && [flag] != ethereal # [sockets] == 2" }
+                ]
+            },
+            {
+                "runeword": "Stealth",
+                "when": { "none": [ "has_armor_tier_ge_15000" ] },
+                "baseRules": [
+                    { "ruleLine": "([name] == ringmail || [name] == scalemail || [name] == chainmail || [name] == breastplate || [name] == lightplate) && [quality] >= normal && [quality] <= superior && [flag] != ethereal # [sockets] == 2" }
+                ]
+            },
+            {
+                "runeword": "Ancients' Pledge",
+                "when": { "none": [ "has_shield_tier_ge_5000" ] },
+                "baseRules": [
+                    { "ruleLine": "([name] == heraldicshield || [name] == aerinshield) && [flag] != ethereal && [quality] >= normal && [quality] <= superior # [sockets] == 3" }
+                ]
+            },
+            {
+                "runeword": "Strength",
+                "when": { "none": [ "has_merc_weapon_tier_ge_10000" ] },
+                "baseRules": [
+                    { "ruleLine": "([name] == scythe || [name] == warscythe) && [quality] >= normal && [quality] <= superior # [sockets] == 2" }
+                ]
+            },
+            {
+                "runeword": "Nadir",
+                "when": { "none": [ "has_helm_tier_ge_9000" ] },
+                "baseRules": [
+                    { "ruleLine": "([name] == skullcap || [name] == helm || [name] == mask || [name] == bonehelm) && [quality] >= normal && [quality] <= superior && [flag] != ethereal # [sockets] == 2" }
+                ]
+            },
+            {
+                "runeword": "Lore",
+                "when": { "none": [ "has_helm_tier_ge_11000" ] },
+                "baseRules": [
+                    { "ruleLine": "([name] == skullcap || [name] == helm || [name] == mask || [name] == bonehelm) && [quality] >= normal && [quality] <= superior && [flag] != ethereal # [sockets] == 2" }
+                ]
+            },
+            {
+                "runeword": "Spirit",
+                "when": { "none": [ "has_weapon_tier_ge_10200" ] },
+                "selection": "first_valid",
+                "baseRules": [
+                    {
+                        "ruleLine": "([name] == crystalsword || [name] == broadsword || [name] == longsword) && [flag] != ethereal # [sockets] == 4",
+                        "when": { "none": [ "has_weapon_tier_ge_10000" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == crystalsword || [name] == broadsword) && [flag] != ethereal # [sockets] == 4",
+                        "when": { "all": [ "has_weapon_tier_ge_10000" ], "none": [ "has_weapon_tier_ge_10100" ] }
+                    },
+                    {
+                        "ruleLine": "[name] == crystalsword && [flag] != ethereal # [sockets] == 4",
+                        "when": { "all": [ "has_weapon_tier_ge_10100" ], "none": [ "has_weapon_tier_ge_10200" ] }
+                    }
+                ]
+            },
+            {
+                "runeword": "Spirit",
+                "when": { "none": [ "has_shield_tier_ge_33000" ] },
+                "selection": "first_valid",
+                "baseRules": [
+                    {
+                        "ruleLine": "([name] == heraldicshield || [name] == aerinshield || [name] == protectorshield || [name] == sacredtarge) && [flag] != ethereal && [quality] >= normal && [quality] <= superior # [sockets] == 4",
+                        "when": { "none": [ "has_shield_tier_ge_10000" ] }
+                    },
+                    {
+                        "ruleLine": "[name] == sacredtarge && [flag] != ethereal && [quality] >= normal && [quality] <= superior # [fireresist] > 0 && [sockets] == 4",
+                        "when": { "all": [ "has_shield_tier_ge_10000" ], "none": [ "has_shield_tier_ge_33000" ] }
+                    }
+                ]
+            },
+            {
+                "runeword": "Insight",
+                "when": { "none": [ "has_merc_weapon_tier_ge_25500" ] },
+                "selection": "first_valid",
+                "baseRules": [
+                    {
+                        "ruleLine": "[type] == polearm && [quality] >= normal && [quality] <= superior # [sockets] == 4",
+                        "when": { "none": [ "has_merc_weapon_tier_ge_22000" ] }
+                    },
+                    {
+                        "ruleLine": "(([name] == battlescythe && [flag] == ethereal) || [name] == grimscythe || [name] == thresher || [name] == giantthresher) && [quality] >= normal && [quality] <= superior # [sockets] == 4",
+                        "when": { "all": [ "has_merc_weapon_tier_ge_22000" ], "none": [ "has_merc_weapon_tier_ge_23000" ] }
+                    },
+                    {
+                        "ruleLine": "(([name] == grimscythe && [flag] == ethereal) || [name] == thresher || [name] == giantthresher) && [quality] >= normal && [quality] <= superior # [sockets] == 4",
+                        "when": { "all": [ "has_merc_weapon_tier_ge_23000" ], "none": [ "has_merc_weapon_tier_ge_24000" ] }
+                    },
+                    {
+                        "ruleLine": "(([name] == thresher && [flag] == ethereal) || [name] == giantthresher) && [quality] >= normal && [quality] <= superior # [sockets] == 4",
+                        "when": { "all": [ "has_merc_weapon_tier_ge_24000" ], "none": [ "has_merc_weapon_tier_ge_25000" ] }
+                    },
+                    {
+                        "ruleLine": "[name] == giantthresher && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 4",
+                        "when": { "all": [ "has_merc_weapon_tier_ge_25000" ], "none": [ "has_merc_weapon_tier_ge_25500" ] }
+                    }
+                ]
+            },
+            {
+                "runeword": "Cure",
+                "when": { "none": [ "has_merc_helm_tier_ge_22500" ] },
+                "selection": "first_valid",
+                "baseRules": [
+                    {
+                        "ruleLine": "[type] == helm && [quality] >= normal && [quality] <= superior # [sockets] == 3",
+                        "when": { "none": [ "has_merc_helm_tier_ge_21000" ] }
+                    },
+                    {
+                        "ruleLine": "[type] == helm && ([class] == exceptional || [class] == elite) && [quality] >= normal && [quality] <= superior # [sockets] == 3",
+                        "when": { "all": [ "has_merc_helm_tier_ge_21000" ], "none": [ "has_merc_helm_tier_ge_22000" ] }
+                    },
+                    {
+                        "ruleLine": "[type] == helm && [class] == elite && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 3",
+                        "when": { "all": [ "has_merc_helm_tier_ge_22000" ], "none": [ "has_merc_helm_tier_ge_22500" ] }
+                    }
+                ]
+            },
+            {
+                "runeword": "Treachery",
+                "when": { "none": [ "has_merc_armor_tier_ge_33100" ] },
+                "selection": "first_valid",
+                "baseRules": [
+                    {
+                        "ruleLine": "([name] == linkedmail || [name] == tigulatedmail || [name] == mesharmor || [name] == cuirass || [name] == russetarmor || [name] == templarcoat || [name] == sharktootharmor || [name] == mageplate || [name] == wirefleece || [name] == diamondmail || [name] == loricatedmail || [name] == greathauberk || [name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior # [sockets] == 3",
+                        "when": { "none": [ "has_merc_armor_tier_ge_30800" ] }
+                    },
+                    {
+                        "ruleLine": "(([name] == linkedmail || [name] == tigulatedmail || [name] == mesharmor || [name] == cuirass || [name] == russetarmor || [name] == templarcoat || [name] == sharktootharmor || [name] == mageplate) && [flag] == ethereal || [name] == wirefleece || [name] == diamondmail || [name] == loricatedmail || [name] == greathauberk || [name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_30800" ], "none": [ "has_merc_armor_tier_ge_32000" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == wirefleece || [name] == diamondmail || [name] == loricatedmail || [name] == greathauberk || [name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_32000" ], "none": [ "has_merc_armor_tier_ge_32600" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == diamondmail || [name] == loricatedmail || [name] == greathauberk || [name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_32600" ], "none": [ "has_merc_armor_tier_ge_32700" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == loricatedmail || [name] == greathauberk || [name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_32700" ], "none": [ "has_merc_armor_tier_ge_32800" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == greathauberk || [name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_32800" ], "none": [ "has_merc_armor_tier_ge_32900" ] }
+                    },
+                    {
+                        "ruleLine": "([name] == balrogskin || [name] == archonplate) && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_32900" ], "none": [ "has_merc_armor_tier_ge_33000" ] }
+                    },
+                    {
+                        "ruleLine": "[name] == archonplate && [quality] >= normal && [quality] <= superior && [flag] == ethereal # [sockets] == 3",
+                        "when": { "all": [ "has_merc_armor_tier_ge_33000" ], "none": [ "has_merc_armor_tier_ge_33100" ] }
+                    }
+                ]
+            }
+        ],
+        "extraRules": [
+            {
+                "ruleLine": "[name] == scimitar && [flag] == runeword && [flag] != ethereal # [ias] == 25 && [itemopenwounds] == 50 # [tier] == 1000 // Steel (20 ed/25 ias/50 ar/50% ow/+3 min dmg/+3 max dmg/2 mana per kill/+1 light radius; req [lvl: 13 | str: 7 | dex: 21])",
+                "when": { "all": [ "can_use_holyfire" ], "none": [ "has_weapon_tier_ge_1000" ] }
+            }
+        ]
+    }
+}

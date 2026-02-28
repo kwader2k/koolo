@@ -206,6 +206,7 @@ func attack(settings attackSettings) error {
 
 		// Handle aura activation
 		if settings.aura != 0 && lastRunAt.IsZero() {
+			// TODO: support packet casting?
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(settings.aura))
 		}
 
@@ -341,6 +342,8 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 			ctx.Logger.Warn("Failed to cast Blizzard via packet, falling back to mouse", "error", err)
 			// Fall back to regular mouse casting
 			performMouseAttack(ctx, settings, x, y)
+		} else {
+			ctx.LastCastAt = time.Now()
 		}
 		return
 	}
@@ -359,6 +362,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 				ctx.Logger.Warn("Failed to cast entity skill via packet (left), falling back to mouse", "error", err)
 				performMouseAttack(ctx, settings, x, y)
 			} else {
+				ctx.LastCastAt = time.Now()
 				// Respect cast duration to avoid spamming server
 				time.Sleep(ctx.Data.PlayerCastDuration())
 			}
@@ -373,6 +377,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 					ctx.Logger.Warn("Failed to cast entity skill via packet (left), falling back to mouse", "error", err)
 					performMouseAttack(ctx, settings, x, y)
 				} else {
+					ctx.LastCastAt = time.Now()
 					// Respect cast duration to avoid spamming server
 					time.Sleep(ctx.Data.PlayerCastDuration())
 				}
@@ -382,6 +387,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 					ctx.Logger.Warn("Failed to cast entity skill via packet (right), falling back to mouse", "error", err)
 					performMouseAttack(ctx, settings, x, y)
 				} else {
+					ctx.LastCastAt = time.Now()
 					// Respect cast duration to avoid spamming server
 					time.Sleep(ctx.Data.PlayerCastDuration())
 				}
@@ -412,6 +418,7 @@ func performMouseAttack(ctx *context.Status, settings attackSettings, x, y int) 
 
 	x, y = ctx.PathFinder.GameCoordsToScreenCords(x, y)
 	ctx.HID.Click(selectedButton, x, y)
+	ctx.LastCastAt = time.Now()
 
 	if settings.shouldStandStill {
 		ctx.HID.KeyUp(ctx.Data.KeyBindings.StandStill)

@@ -657,6 +657,14 @@
   font-size: 0.85em;
 }
 
+[data-option-grid="3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+[data-option-grid="2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 /* ========================================
    STICKY BOTTOM
    ======================================== */
@@ -1088,6 +1096,11 @@
   }
 
   .recipe-grid {
+    grid-template-columns: 1fr;
+  }
+
+  [data-option-grid="3"],
+  [data-option-grid="2"] {
     grid-template-columns: 1fr;
   }
 
