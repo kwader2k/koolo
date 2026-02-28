@@ -509,11 +509,11 @@ func CubeRecipes() error {
 
 							} else {
 								DropInventoryItem(it)
-								utils.Sleep(500)
+								utils.Sleep(500, 200)
 							}
 						} else {
 							DropInventoryItem(it)
-							utils.Sleep(500)
+							utils.Sleep(500, 200)
 						}
 					}
 				}

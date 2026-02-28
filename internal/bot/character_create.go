@@ -76,12 +76,12 @@ func AutoCreateCharacter(class, name string) error {
 		return err
 	}
 	ctx.HID.Click(game.LeftButton, classPos[0], classPos[1])
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 
 	// 4. Toggle Ladder
 	if !isOfflineAuth && !ctx.CharacterCfg.Game.IsNonLadderChar {
 		ctx.HID.Click(game.LeftButton, ui.CharLadderBtnX, ui.CharLadderBtnY)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 	}
 
 	// 5. Toggle Hardcore
@@ -92,7 +92,7 @@ func AutoCreateCharacter(class, name string) error {
 			hardcoreX, hardcoreY = ui.CharOfflineHardcoreBtnX, ui.CharHardcoreBtnY
 		}
 		ctx.HID.Click(game.LeftButton, hardcoreX, hardcoreY)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 	}
 
 	// 6. Input Name
@@ -103,19 +103,19 @@ func AutoCreateCharacter(class, name string) error {
 
 	// 7. Click Create Button
 	ctx.HID.Click(game.LeftButton, ui.CharCreateBtnX, ui.CharCreateBtnY)
-	utils.Sleep(1500)
+	utils.Sleep(1500, 500)
 
 	// 8. Confirm hardcore warning dialog
 	if ctx.CharacterCfg.Game.IsHardCoreChar {
 		ctx.HID.PressKey(win.VK_RETURN)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 
 	// Wait for character selection screen and confirm the new character is visible/selected
 	for i := 0; i < 5; i++ {
 		if ctx.GameReader.IsInCharacterSelectionScreen() {
 			// Give it a moment to update selection state
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			selected := ctx.GameReader.GameReader.GetSelectedCharacterName()
 			ctx.Logger.Info("[AutoCreate] Back at selection screen",
 				slog.String("selected", selected),
@@ -126,7 +126,7 @@ func AutoCreateCharacter(class, name string) error {
 				return nil
 			}
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 
 	return errors.New("creation timeout or character not found after creation")
@@ -145,10 +145,10 @@ func selectGameVersion(ctx *context.Status) {
 	ctx.Logger.Info("[AutoCreate] Selecting game version", slog.String("gameVersion", version))
 
 	ctx.HID.Click(game.LeftButton, ui.GameVersionBtnX, ui.GameVersionBtnY)
-	utils.Sleep(gameVersionMenuOpenDelay)
+	utils.Sleep(gameVersionMenuOpenDelay, 200)
 
 	hasDLC, confident := detectWarlockDLC(ctx)
-	utils.Sleep(gameVersionPostCheckWait)
+	utils.Sleep(gameVersionPostCheckWait, 200)
 	if !confident {
 		if ctx.CharacterCfg.Game.DLCEnabled {
 			hasDLC = true
@@ -179,7 +179,7 @@ func selectGameVersion(ctx *context.Status) {
 			ctx.HID.Click(game.LeftButton, ui.GameversionWarlockX, ui.GameversionWarlockY)
 		}
 	}
-	utils.Sleep(250)
+	utils.Sleep(250, 100)
 }
 
 func cacheDLCEnabled(ctx *context.Status, hasDLC bool) {
@@ -224,7 +224,7 @@ func detectWarlockDLC(ctx *context.Status) (bool, bool) {
 	sampleRadius := 2 // 5x5 area average
 
 	ctx.HID.MovePointer(hoverX, hoverY)
-	utils.Sleep(gameVersionSampleDelay)
+	utils.Sleep(gameVersionSampleDelay, 100)
 	imgHover := ctx.GameReader.Screenshot()
 	if imgHover == nil {
 		return false, false
@@ -238,7 +238,7 @@ func detectWarlockDLC(ctx *context.Status) (bool, bool) {
 	}
 
 	ctx.HID.MovePointer(refX, refY)
-	utils.Sleep(gameVersionSampleDelay)
+	utils.Sleep(gameVersionSampleDelay, 100)
 	imgRef := ctx.GameReader.Screenshot()
 	if imgRef == nil {
 		return false, false
@@ -346,11 +346,11 @@ func ensureForegroundWindow(ctx *context.Status) {
 		win.BringWindowToTop(hwnd)
 		win.SetActiveWindow(hwnd)
 		win.SetFocus(hwnd)
-		utils.Sleep(150)
+		utils.Sleep(150, 100)
 		if win.GetForegroundWindow() == hwnd {
 			return
 		}
-		utils.Sleep(150)
+		utils.Sleep(150, 100)
 	}
 
 	ctx.Logger.Warn("[AutoCreate] Failed to set foreground window before name input")
@@ -359,9 +359,9 @@ func ensureForegroundWindow(ctx *context.Status) {
 func enterCreationScreen(ctx *context.Status) error {
 	for i := 0; i < 5; i++ {
 		ctx.HID.Click(game.LeftButton, ui.CharCreateNewBtnX, ui.CharCreateNewBtnY)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.HID.Click(game.LeftButton, ui.CharCreateNewBtnX, ui.CharCreateNewBtnY)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 200)
 		if ctx.GameReader.IsInCharacterCreationScreen() {
 			return nil
 		}
@@ -381,14 +381,14 @@ func getClassPosition(class string) ([2]int, error) {
 
 func inputCharacterName(ctx *context.Status, name string) error {
 	ctx.HID.Click(game.LeftButton, ui.CharNameInputX, ui.CharNameInputY)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 
 	// Clear existing text
 	for i := 0; i < 16; i++ {
 		ctx.HID.PressKey(win.VK_BACK)
-		utils.Sleep(20)
+		utils.Sleep(20, 100)
 	}
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	// Check for non-ASCII
 	hasNonASCII := false
@@ -411,9 +411,9 @@ func inputASCIIName(ctx *context.Status, name string) error {
 			ctx.Logger.Error("Failed to send char", slog.String("char", string(r)), slog.Any("error", err))
 			return err
 		}
-		utils.Sleep(60)
+		utils.Sleep(60, 100)
 	}
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	return nil
 }
 
@@ -425,9 +425,9 @@ func inputNonASCIIName(ctx *context.Status, name string) error {
 			ctx.Logger.Error("Failed to send unicode char", slog.String("char", string(r)), slog.Any("error", err))
 			return err
 		}
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 	}
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	return nil
 }
 

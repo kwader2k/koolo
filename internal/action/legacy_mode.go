@@ -65,7 +65,7 @@ func enableLegacyMode(ctx *context.Status, closeMiniPanel bool) bool {
 	if closeMiniPanel {
 		ctx.Logger.Debug("Closing mini panel...")
 		ctx.HID.Click(game.LeftButton, ui.CloseMiniPanelClassicX, ui.CloseMiniPanelClassicY)
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 	}
 
 	return true
@@ -73,7 +73,7 @@ func enableLegacyMode(ctx *context.Status, closeMiniPanel bool) bool {
 
 func waitForLegacyGraphicsState(ctx *context.Status, expected bool) bool {
 	for i := 0; i < legacySwitchPollAttempts; i++ {
-		utils.Sleep(legacySwitchPollDelayMs)
+		utils.Sleep(legacySwitchPollDelayMs, 1000)
 		ctx.RefreshGameData()
 		if ctx.Data.LegacyGraphics == expected {
 			return true

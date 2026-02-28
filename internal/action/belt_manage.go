@@ -50,11 +50,11 @@ func ManageBelt() error {
 	wasBeltVisible := ctx.Data.OpenMenus.BeltRows
 	if !wasBeltVisible {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.ShowBelt)
-		utils.Sleep(150)
+		utils.Sleep(150, 100)
 	}
 
 	for _, potion := range misplacedPotions {
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 		screenPos, ok := beltPositionToScreenCoords(ctx, potion.Position)
 		if !ok {
 			ctx.Logger.Warn("Unable to translate belt position to screen coords", "position", potion.Position)

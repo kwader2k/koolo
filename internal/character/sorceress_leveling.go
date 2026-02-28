@@ -854,7 +854,7 @@ func (s SorceressLeveling) KillMephisto() error {
 					s.Logger.Debug("Mephisto too far for Static Field, repositioning closer.")
 
 					step.MoveTo(monster.Position, step.WithIgnoreMonsters())
-					utils.Sleep(150)
+					utils.Sleep(150, 100)
 					continue
 				}
 
@@ -899,13 +899,13 @@ func (s SorceressLeveling) KillMephisto() error {
 		}
 
 		// Move to initial position
-		utils.Sleep(350)
+		utils.Sleep(350, 100)
 		err := step.MoveTo(data.Position{X: 17563, Y: 8072}, step.WithIgnoreMonsters())
 		if err != nil {
 			return err
 		}
 
-		utils.Sleep(350)
+		utils.Sleep(350, 100)
 
 		// Initial movement sequence
 		initialPositions := []positionAndWaitTime{
@@ -918,7 +918,7 @@ func (s SorceressLeveling) KillMephisto() error {
 			if err != nil {
 				return err
 			}
-			utils.Sleep(pos.duration)
+			utils.Sleep(pos.duration, 100)
 		}
 
 		// Clear area around position
@@ -946,11 +946,11 @@ func (s SorceressLeveling) KillMephisto() error {
 
 			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 				step.PrimaryAttack(monster.UnitID, 2, true, opts)
-				utils.Sleep(50)
+				utils.Sleep(50, 100)
 			}
 
 			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			attackCount++
 		}
 		return nil

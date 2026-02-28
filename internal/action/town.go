@@ -311,7 +311,7 @@ func InRunReturnTownRoutine() error {
 
 	if ctx.CharacterCfg.Companion.Leader {
 		UsePortalInTown()
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 		return OpenTPIfLeader()
 	}
 

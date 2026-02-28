@@ -19,10 +19,10 @@ import (
 
 // VendorRefillOpts configures vendor refill behavior
 type VendorRefillOpts struct {
-	ForceRefill    bool     // Force refill even if not needed
-	SellJunk       bool     // Sell junk items to vendor
-	BuyConsumables bool     // Buy potions, scrolls, keys (default behavior when not specified)
-	LockConfig     [][]int  // Inventory slots to protect from selling
+	ForceRefill    bool    // Force refill even if not needed
+	SellJunk       bool    // Sell junk items to vendor
+	BuyConsumables bool    // Buy potions, scrolls, keys (default behavior when not specified)
+	LockConfig     [][]int // Inventory slots to protect from selling
 }
 
 func VendorRefill(opts VendorRefillOpts) (err error) {
@@ -162,7 +162,7 @@ func shouldVisitVendor() bool {
 func SwitchVendorTab(tab int) {
 	// Ensure any chat messages that could prevent clicking on the tab are cleared
 	ClearMessages()
-	utils.Sleep(200)
+	utils.Sleep(200, 300)
 
 	ctx := context.Get()
 	ctx.SetLastStep("switchVendorTab")
@@ -174,7 +174,7 @@ func SwitchVendorTab(tab int) {
 		tabSize := ui.SwitchVendorTabBtnTabSizeClassic
 		x = x + tabSize*tab - tabSize/2
 		ctx.HID.Click(game.LeftButton, x, y)
-		utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for tab switch
+		utils.PingSleep(utils.Medium, 500, 300) // Medium operation: Wait for tab switch
 	} else {
 		x := ui.SwitchVendorTabBtnX
 		y := ui.SwitchVendorTabBtnY
@@ -182,6 +182,6 @@ func SwitchVendorTab(tab int) {
 		tabSize := ui.SwitchVendorTabBtnTabSize
 		x = x + tabSize*tab - tabSize/2
 		ctx.HID.Click(game.LeftButton, x, y)
-		utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for tab switch
+		utils.PingSleep(utils.Medium, 500, 300) // Medium operation: Wait for tab switch
 	}
 }

@@ -141,7 +141,7 @@ func GambleSingleItem(items []string, desiredQuality item.Quality) error {
 				ctx.HID.Click(game.LeftButton, ui.GambleRefreshButtonX, ui.GambleRefreshButtonY)
 			}
 
-			utils.Sleep(500)
+			utils.Sleep(500, 200)
 		}
 	}
 }
@@ -253,7 +253,7 @@ func gambleItems() error {
 				if err := step.CloseAllMenus(); err != nil {
 					return err
 				}
-				utils.Sleep(200)
+				utils.Sleep(200, 100)
 
 				vendorNPC := town.GetTownByArea(ctx.Data.PlayerUnit.Area).GamblingNPC()
 				if err := InteractNPC(vendorNPC); err != nil {
@@ -272,7 +272,7 @@ func gambleItems() error {
 
 			ctx.Logger.Debug("Refreshing.. ", slog.Int("Attempt", refreshAttempts))
 			RefreshGamblingWindow(ctx)
-			utils.Sleep(500)
+			utils.Sleep(500, 200)
 		}
 	}
 }

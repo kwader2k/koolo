@@ -107,7 +107,7 @@ func (n *NecromancerLeveling) ensureBoneArmor() {
 		step.SecondaryAttack(skill.BoneArmor, n.Data.PlayerUnit.ID, 1, step.Distance(0, 1))
 		n.lastBoneArmorCast = time.Now()
 		//n.Logger.Debug("Casting Bone Armor (buff expired)")
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		return
 	}
 
@@ -116,7 +116,7 @@ func (n *NecromancerLeveling) ensureBoneArmor() {
 		step.SecondaryAttack(skill.BoneArmor, n.Data.PlayerUnit.ID, 1, step.Distance(0, 1))
 		n.lastBoneArmorCast = time.Now()
 		//n.Logger.Debug("Refreshing Bone Armor")
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 	}
 }
 
@@ -156,7 +156,7 @@ func (n *NecromancerLeveling) castDefensiveBonePrison(boss data.Monster) {
 	step.SecondaryAttack(skill.BonePrison, boss.UnitID, 1, bonePrisonRange)
 	n.lastBonePrisonCast[boss.UnitID] = time.Now()
 	n.Logger.Debug("Casting defensive Bone Prison", "boss", boss.Name)
-	utils.Sleep(150)
+	utils.Sleep(150, 100)
 }
 
 func (n *NecromancerLeveling) castCorpseSkill(skillID skill.ID, corpse *data.Monster, maxDistance int) {
@@ -172,14 +172,14 @@ func (n *NecromancerLeveling) castCorpseSkill(skillID skill.ID, corpse *data.Mon
 
 	if ctx.Data.PlayerUnit.RightSkill != skillID {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skillID))
-		utils.Sleep(50)
+		utils.Sleep(50, 100)
 	}
 
 	ctx.HID.KeyDown(ctx.Data.KeyBindings.StandStill)
 	x, y := ctx.PathFinder.GameCoordsToScreenCords(corpse.Position.X, corpse.Position.Y)
 	ctx.HID.Click(game.RightButton, x, y)
 	ctx.HID.KeyUp(ctx.Data.KeyBindings.StandStill)
-	utils.Sleep(50)
+	utils.Sleep(50, 100)
 }
 
 // findSafeBossPosition finds a safe position to attack the boss from
@@ -266,14 +266,14 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 				step.SecondaryAttack(skill.BonePrison, targetMonster.UnitID, 1, bonePrisonRange)
 				bonePrisonnedMonsters[targetMonster.UnitID] = time.Now()
 				//n.Logger.Debug("Casting Bone Prison", "target", targetMonster.Name)
-				utils.Sleep(150)
+				utils.Sleep(150, 100)
 			}
 		}
 
 		if n.hasSkill(skill.AmplifyDamage) && !targetMonster.States.HasState(state.Amplifydamage) && time.Since(n.lastAmplifyDamageCast) > time.Second*2 {
 			step.SecondaryAttack(skill.AmplifyDamage, targetMonster.UnitID, 1, amplifyDamageRange)
 			//n.Logger.Debug("Casting Amplify Damage")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 			n.lastAmplifyDamageCast = time.Now()
 		}
 
@@ -298,7 +298,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 				if lastCastTime, found := n.lastCorpseExplosionCast[targetMonster.UnitID]; !found || time.Since(lastCastTime) > time.Second*2 {
 					n.castCorpseSkill(skill.CorpseExplosion, nearbyCorpse, int(math.Ceil(corpseExplosionMaxDistance)))
 					//n.Logger.Debug("Casting Corpse Explosion")
-					utils.Sleep(150)
+					utils.Sleep(150, 100)
 					n.lastCorpseExplosionCast[targetMonster.UnitID] = time.Now()
 					completedAttackLoops++
 					previousUnitID = int(id)
@@ -326,7 +326,7 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 				if nearbyCorpse != nil {
 					n.castCorpseSkill(skill.RaiseSkeleton, nearbyCorpse, RaiseSkeletonMaxDistance)
 					//n.Logger.Debug("Casting Raise Skeleton")
-					utils.Sleep(300) // Give time for skeleton to spawn
+					utils.Sleep(300, 100) // Give time for skeleton to spawn
 					completedAttackLoops++
 					previousUnitID = int(id)
 					continue
@@ -335,19 +335,19 @@ func (n *NecromancerLeveling) KillMonsterSequence(
 
 			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 3))
 			//n.Logger.Debug("Using Basic attack (pre-Teeth)")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		} else if n.Data.PlayerUnit.MPPercent() < 15 && lvl.Value < 12 || lvl.Value < 2 {
 			step.PrimaryAttack(targetMonster.UnitID, 1, false, step.Distance(1, 2))
 			//n.Logger.Debug("Using Basic attack")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		} else if n.hasSkill(skill.BoneSpear) {
 			step.PrimaryAttack(targetMonster.UnitID, 3, true, boneSpearRange)
 			//n.Logger.Debug("Casting Bone Spear")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		} else if n.hasSkill(skill.Teeth) {
 			step.SecondaryAttack(skill.Teeth, targetMonster.UnitID, 3, boneSpearRange)
 			//n.Logger.Debug("Casting Teeth")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		}
 
 		completedAttackLoops++
@@ -559,7 +559,7 @@ func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.
 					n.Logger.Debug("Moving to safe position")
 					step.MoveTo(safePos, step.WithIgnoreMonsters())
 					lastRepositionTime = time.Now()
-					utils.Sleep(150)
+					utils.Sleep(150, 100)
 					continue
 				}
 			}
@@ -570,7 +570,7 @@ func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.
 			step.SecondaryAttack(skill.AmplifyDamage, boss.UnitID, 1, amplifyDamageRange)
 			n.Logger.Debug("Casting Amplify Damage on boss")
 			n.lastAmplifyDamageCast = time.Now()
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		}
 
 		// Attack with appropriate skill
@@ -582,33 +582,33 @@ func (n *NecromancerLeveling) killBossSequence(bossNPC npc.ID, monsterType data.
 				// Move to get line of sight
 				n.Logger.Debug("No line of sight, moving closer")
 				step.MoveTo(boss.Position)
-				utils.Sleep(200)
+				utils.Sleep(200, 100)
 				continue
 			}
 
 			step.PrimaryAttack(boss.UnitID, 3, true, boneSpearRange)
 			n.Logger.Debug("Casting Bone Spear on boss")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		} else if n.hasSkill(skill.Teeth) {
 			if !n.PathFinder.LineOfSight(n.Data.PlayerUnit.Position, boss.Position) {
 				n.Logger.Debug("No line of sight, moving closer")
 				step.MoveTo(boss.Position)
-				utils.Sleep(200)
+				utils.Sleep(200, 100)
 				continue
 			}
 
 			step.SecondaryAttack(skill.Teeth, boss.UnitID, 3, boneSpearRange)
 			n.Logger.Debug("Casting Teeth on boss")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		} else if lvl.Value < 2 || n.Data.PlayerUnit.MPPercent() < 15 {
 			// Basic attack for very low level or out of mana
 			step.PrimaryAttack(boss.UnitID, 2, false, step.Distance(1, 5))
 			n.Logger.Debug("Using basic attack on boss")
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		} else {
 			// This shouldn't happen, but fallback to basic attack
 			step.PrimaryAttack(boss.UnitID, 2, false, step.Distance(1, 5))
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		}
 
 		completedAttackLoops++
@@ -772,7 +772,7 @@ func (n *NecromancerLeveling) KillAncients() error {
 		// Move to safe position near platform center for better positioning
 		if minDistance > 15 {
 			step.MoveTo(data.Position{X: 10062, Y: 12639}, step.WithIgnoreMonsters())
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 		}
 
 		n.Logger.Info("Engaging ancient", "name", closest.Name, "distance", minDistance)

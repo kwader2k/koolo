@@ -59,7 +59,7 @@ func BuyAct2Flails(ctx *context.Status) error {
 		}
 		// Trade option for Fara (first option is repair, second is trade)
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 200)
 
 		ctx.GameReader.GetData()
 		if !ctx.Data.OpenMenus.NPCShop {
@@ -70,7 +70,7 @@ func BuyAct2Flails(ctx *context.Status) error {
 
 		// Switch to weapons tab (tab 2, zero-indexed)
 		SwitchVendorTab(2)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.GameReader.GetData()
 
 		bought := false
@@ -105,7 +105,7 @@ func BuyAct2Flails(ctx *context.Status) error {
 			// Force shop refresh by zone hop
 			ctx.Logger.Debug("Refreshing vendors", "stillNeed", need, "attempt", t+1)
 			refreshVendors()
-			utils.Sleep(250)
+			utils.Sleep(250, 100)
 		}
 	}
 
@@ -165,7 +165,7 @@ func BuyAct2BoneWands(ctx *context.Status) error {
 		}
 		// Trade option for Drognan (first option is trade)
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 200)
 
 		ctx.GameReader.GetData()
 		if !ctx.Data.OpenMenus.NPCShop {
@@ -176,7 +176,7 @@ func BuyAct2BoneWands(ctx *context.Status) error {
 
 		// Switch to weapons tab (tab 2, zero-indexed)
 		SwitchVendorTab(2)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.GameReader.GetData()
 
 		bought := false
@@ -211,7 +211,7 @@ func BuyAct2BoneWands(ctx *context.Status) error {
 			// Force shop refresh by zone hop
 			ctx.Logger.Debug("Refreshing vendors", "stillNeed", need, "attempt", t+1)
 			refreshVendors()
-			utils.Sleep(250)
+			utils.Sleep(250, 100)
 		}
 	}
 
