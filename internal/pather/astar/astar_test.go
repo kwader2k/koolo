@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/koolo/internal/game"
 )
 
@@ -17,7 +18,7 @@ func BenchmarkAstar(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		CalculatePath(grid, start, goal, false, nil)
+		CalculatePath(grid, start, goal, false, nil, area.ID(0), false)
 	}
 }
 
@@ -30,7 +31,7 @@ func BenchmarkAstarWithBuffers(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		CalculatePath(grid, start, goal, false, buffers)
+		CalculatePath(grid, start, goal, false, buffers, area.ID(0), false)
 	}
 }
 
@@ -40,7 +41,7 @@ func TestAstar(t *testing.T) {
 	start := data.Position{X: 336, Y: 701}
 	goal := data.Position{X: 11, Y: 330}
 
-	p, dist, found := CalculatePath(grid, start, goal, false, nil)
+	p, dist, found := CalculatePath(grid, start, goal, false, nil, area.ID(0), true)
 
 	if !found {
 		t.Fatalf("Expected path to be found")

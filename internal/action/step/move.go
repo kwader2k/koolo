@@ -34,6 +34,7 @@ type MoveOpts struct {
 	ignoreItems           bool
 	monsterFilters        []data.MonsterFilter
 	clearPathOverride     *int
+	disableWallAvoidance  bool // Temporarily disable wall-avoidance for wall-hugging scenarios
 }
 
 type MoveOption func(*MoveOpts)
@@ -290,7 +291,34 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 
 		if currentPosition == previousPosition && !ctx.Data.PlayerUnit.States.HasState(state.Stunned) {
 			stuckTime := time.Since(stuckCheckStartTime)
-			if stuckTime > stuckThreshold {
+			// Check if player is adjacent to a wall - if so, use more aggressive stuck detection
+			isAdjacentToWall := false
+			if ctx.Data.AreaData.Grid != nil {
+				// Check 8 directions around the player
+				for dx := -1; dx <= 1; dx++ {
+					for dy := -1; dy <= 1; dy++ {
+						if dx == 0 && dy == 0 {
+							continue
+						}
+						checkPos := data.Position{X: currentPosition.X + dx, Y: currentPosition.Y + dy}
+						if !ctx.Data.AreaData.IsWalkable(checkPos) {
+							isAdjacentToWall = true
+							break
+						}
+					}
+					if isAdjacentToWall {
+						break
+					}
+				}
+			}
+
+			// Use shorter threshold when stuck against walls
+			effectiveStuckThreshold := stuckThreshold
+			if isAdjacentToWall {
+				effectiveStuckThreshold = stuckThreshold / 2 // 1 second instead of 2
+			}
+
+			if stuckTime > effectiveStuckThreshold {
 				//if stuck for too long, abort movement
 				return ErrPlayerStuck
 			} else if stuckTime > blockThreshold {
@@ -321,6 +349,11 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 					door, found := ctx.Data.Objects.FindByID(door.ID)
 					return found && !door.Selectable
 				})
+			} else {
+				// If blocked but no destructible/door found, try to escape wall-stuck by moving away
+				// This helps when player is stuck in a corner or against a wall
+				ctx.PathFinder.RandomMovement()
+				utils.Sleep(200)
 			}
 		}
 
