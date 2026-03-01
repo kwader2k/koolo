@@ -22,11 +22,11 @@ import (
 var _ context.LevelingCharacter = (*WarlockLeveling)(nil)
 
 const (
-	warlockMaxAttacksLoop = 3
-	warlockMinDistance    = 10
-	warlockMaxDistance    = 15
-	warlockDangerDistance = 4
-	warlockSafeDistance   = 6
+	warlockMaxAttacksLoop = 1
+	warlockMinDistance    = 1
+	warlockMaxDistance    = 4
+	warlockDangerDistance = 1
+	warlockSafeDistance   = 3
 )
 
 type WarlockLeveling struct {
@@ -61,6 +61,8 @@ func (s WarlockLeveling) KillMonsterSequence(
 	completedAttackLoops := 0
 	previousUnitID := 0
 	var lastReposition time.Time
+	var lastBuff time.Time
+	var lastSumon time.Time
 	for {
 		context.Get().PauseIfNotPriority()
 
@@ -94,7 +96,7 @@ func (s WarlockLeveling) KillMonsterSequence(
 		mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
 		onCooldown := s.Data.PlayerUnit.States.HasState(state.Cooldown)
 
-		canReposition := lvl.Value > 12 && time.Since(lastReposition) > time.Second*4
+		canReposition := lvl.Value > 12 && time.Since(lastReposition) > time.Second*3
 		if canReposition {
 			isAnyEnemyNearby, _ := action.IsAnyEnemyAroundPlayer(warlockDangerDistance)
 			if isAnyEnemyNearby {
@@ -105,44 +107,22 @@ func (s WarlockLeveling) KillMonsterSequence(
 			}
 		}
 
-		if lvl.Value < 49 {
-			// Pre-respec: Fire-focused build
-			if onCooldown {
-				if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-					step.SecondaryAttack(skill.MiasmaBolt, id, 4, step.Distance(warlockMinDistance, warlockMaxDistance))
-				} else {
-					step.PrimaryAttack(id, 1, true, step.Distance(1, 3))
-				}
-			} else if lvl.Value >= 30 && s.Data.PlayerUnit.Skills[skill.Apocalypse].Level > 0 && mana.Value > 15 {
-				step.SecondaryAttack(skill.Apocalypse, id, 3, step.Distance(5, 10))
-			} else if lvl.Value >= 18 && s.Data.PlayerUnit.Skills[skill.FlameWave].Level > 0 && mana.Value > 8 {
-				step.SecondaryAttack(skill.FlameWave, id, 4, step.Distance(8, 13))
-			} else if lvl.Value >= 6 && s.Data.PlayerUnit.Skills[skill.RingOfFire].Level > 0 && mana.Value > 5 {
-				step.SecondaryAttack(skill.RingOfFire, id, 5, step.Distance(3, 7))
-			} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-				step.SecondaryAttack(skill.MiasmaBolt, id, 4, step.Distance(warlockMinDistance, warlockMaxDistance))
-			} else {
-				step.PrimaryAttack(id, 1, true, step.Distance(1, 3))
-			}
+		if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && mana.Value > 2 {
+			step.SelectLeftSkill(skill.Cleave)
 		} else {
-			// Post-respec: Magic-focused build
-			opts := []step.AttackOption{step.Distance(warlockMinDistance, warlockMaxDistance)}
-			if onCooldown {
-				if s.Data.PlayerUnit.Skills[skill.MiasmaChains].Level > 0 && mana.Value > 5 {
-					step.SecondaryAttack(skill.MiasmaChains, id, 3, opts...)
-				} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-					step.SecondaryAttack(skill.MiasmaBolt, id, 3, opts...)
-				} else {
-					step.PrimaryAttack(id, 1, true, step.Distance(1, 3))
-				}
-			} else if s.Data.PlayerUnit.Skills[skill.Abyss].Level > 0 && mana.Value > 15 {
-				step.SecondaryAttack(skill.Abyss, id, 3, opts...)
-			} else if s.Data.PlayerUnit.Skills[skill.MiasmaChains].Level > 0 && mana.Value > 5 {
-				step.SecondaryAttack(skill.MiasmaChains, id, 3, opts...)
-			} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-				step.SecondaryAttack(skill.MiasmaBolt, id, 3, opts...)
-			} else {
-				step.PrimaryAttack(id, 1, true, step.Distance(1, 3))
+			step.SelectLeftSkill(skill.AttackSkill)
+		}
+
+		step.PrimaryAttack(id, 1, true, step.Distance(warlockMinDistance, warlockMaxDistance))
+
+		if !onCooldown {
+			if time.Since(lastBuff) > time.Second*4 {
+				s.BuffSkills()
+				lastBuff = time.Now()
+			}
+			if time.Since(lastSumon) > time.Second*10 {
+				s.PreCTABuffSkills()
+				lastSumon = time.Now()
 			}
 		}
 
@@ -163,20 +143,15 @@ func (s WarlockLeveling) killMonster(npc npc.ID, t data.MonsterType) error {
 }
 
 func (s WarlockLeveling) BuffSkills() []skill.ID {
-	return []skill.ID{}
+	return []skill.ID{skill.HexBane, skill.HexPurge, skill.SigilDeath, skill.Consume}
 }
 
 func (s WarlockLeveling) PreCTABuffSkills() []skill.ID {
 	// TODO: Summons temporarily disabled
-	return nil
+	return []skill.ID{skill.SummonGoatman, skill.SummonTainted, skill.SummonDefiler, skill.Engorge}
 }
 
 func (s WarlockLeveling) ShouldResetSkills() bool {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
-	if lvl.Value >= 49 && s.Data.PlayerUnit.Skills[skill.RingOfFire].Level > 10 {
-		s.Logger.Info("Resetting skills: Level 49+ and Ring of Fire level > 10")
-		return true
-	}
 	return false
 }
 
@@ -186,31 +161,50 @@ func (s WarlockLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
 
-	if miasmaBolt, found := s.Data.PlayerUnit.Skills[skill.MiasmaBolt]; found && miasmaBolt.Level > 0 {
-		skillBindings = append(skillBindings, skill.MiasmaBolt)
+	if HexBane, found := s.Data.PlayerUnit.Skills[skill.HexBane]; found && HexBane.Level > 0 {
+		skillBindings = append(skillBindings, skill.HexBane)
+	}
+
+	if SummonGoatman, found := s.Data.PlayerUnit.Skills[skill.SummonGoatman]; found && SummonGoatman.Level > 0 {
+		skillBindings = append(skillBindings, skill.SummonGoatman)
 	}
 
 	if lvl.Value >= 6 {
-		skillBindings = append(skillBindings, skill.RingOfFire)
+		skillBindings = append(skillBindings, skill.Cleave)
+		skillBindings = append(skillBindings, skill.SigilLethargy)
+		mainSkill = skill.Cleave
+	}
+
+	if lvl.Value >= 12 {
+		mainSkill = skill.Cleave
+		skillBindings = append(skillBindings, skill.HexPurge)
+		skillBindings = append(skillBindings, skill.SummonTainted)
+		skillBindings = append(skillBindings, skill.SigilRancor)
 	}
 
 	if lvl.Value >= 18 {
-		skillBindings = append(skillBindings, skill.FlameWave)
+		mainSkill = skill.Cleave
+		skillBindings = append(skillBindings, skill.SummonDefiler)
+		skillBindings = append(skillBindings, skill.SigilDeath)
+	}
+
+	if lvl.Value >= 24 {
+		mainSkill = skill.Cleave
+		skillBindings = []skill.ID{}
+		skillBindings = append(skillBindings, skill.SigilDeath)
+		skillBindings = append(skillBindings, skill.HexPurge)
+		skillBindings = append(skillBindings, skill.SummonDefiler)
 	}
 
 	if lvl.Value >= 30 {
-		skillBindings = append(skillBindings, skill.Apocalypse)
-	}
-
-	if lvl.Value >= 49 {
-		// Post-respec: Magic build with summons
-		// TODO: Summon skills temporarily removed from bindings
-		mainSkill = skill.AttackSkill
-		skillBindings = []skill.ID{
-			skill.Abyss,
-			skill.MiasmaChains,
-			skill.MiasmaBolt,
-		}
+		mainSkill = skill.Cleave
+		skillBindings = []skill.ID{}
+		skillBindings = append(skillBindings, skill.SigilDeath)
+		skillBindings = append(skillBindings, skill.HexPurge)
+		skillBindings = append(skillBindings, skill.SummonDefiler)
+		skillBindings = append(skillBindings, skill.MirroredBlades)
+		skillBindings = append(skillBindings, skill.BindDemon)
+		skillBindings = append(skillBindings, skill.Consume)
 	}
 
 	if s.Data.PlayerUnit.Skills[skill.BattleCommand].Level > 0 {
@@ -246,63 +240,32 @@ func (s WarlockLeveling) StatPoints() []context.StatAllocation {
 }
 
 func (s WarlockLeveling) SkillPoints() []skill.ID {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
 	var skillSequence []skill.ID
 
-	if lvl.Value < 49 {
-		skillSequence = []skill.ID{
-			// Levels 2-5: MiasmaBolt
-			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
-			skill.MiasmaBolt, // Den of Evil
-			// Level 6-15: RingOfFire
-			skill.RingOfFire, skill.RingOfFire, skill.RingOfFire, skill.RingOfFire, skill.RingOfFire,
-			skill.RingOfFire, skill.RingOfFire, skill.RingOfFire, skill.RingOfFire, skill.RingOfFire,
-			skill.SigilLethargy, // Radament reward
-			// Level 16-18: RingOfFire
-			skill.RingOfFire, skill.RingOfFire,
-			// Level 18-23: FlameWave
-			skill.FlameWave, skill.FlameWave, skill.FlameWave,
-			skill.FlameWave, // Lam Essens
-			skill.FlameWave, skill.FlameWave, skill.FlameWave,
-			skill.SigilRancor, // Izual
-			skill.SigilDeath,  // Izual
-			// Level 24-36: Max FlameWave
-			skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave,
-			skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave, skill.FlameWave,
-			skill.FlameWave, skill.FlameWave,
-			skill.FlameWave, // Radament NM
-			// Level 37-Respec (49): Apocalypse
-			skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse,
-			skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse, skill.Apocalypse,
-			skill.Apocalypse, skill.Apocalypse,
-		}
-	} else {
-		// Post-respec: Magic build (Miasma/Abyss) with demon summoning
-		skillSequence = []skill.ID{
-			// Summoning prereqs and utility
-			skill.SummonGoatman, skill.DemonicMastery, skill.BloodOath,
-			skill.SummonTainted, skill.SummonDefiler,
-			// Main damage: MiasmaBolt → MiasmaChains → EnhancedEntropy → Abyss
-			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
-			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
-			skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains,
-			skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains,
-			skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains,
-			skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains, skill.MiasmaChains,
-			skill.EnhancedEntropy,
-			skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss,
-			skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss,
-			skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss,
-			skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss, skill.Abyss,
-			// Remaining points: more MiasmaBolt synergy
-			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
-			skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt, skill.MiasmaBolt,
-			skill.MiasmaBolt,
-			skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy,
-			skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy,
-			skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy, skill.EnhancedEntropy,
-		}
+	skillSequence = []skill.ID{
+		// Levels 2-5: MiasmaBolt
+		skill.HexBane, skill.Levitate, skill.SummonGoatman, skill.DemonicMastery, skill.HexBane, // Den of Evil
+		skill.Cleave, skill.Cleave, skill.SigilLethargy, skill.BloodOath, skill.DeathMark,
+		skill.Cleave, skill.Cleave, // lv12
+		skill.SigilRancor, skill.EchoingStrike, skill.HexPurge, skill.SummonTainted, skill.Cleave, //17
+		// Level 18:
+		skill.BladeWarp, skill.PsychicWard, skill.BloodBoil, skill.SummonDefiler, skill.HexPurge, //22
+		skill.HexPurge, skill.HexPurge, //24
+		skill.EldritchBlast, skill.Engorge, skill.BloodOath, skill.BloodOath, skill.BloodOath,
+		//30
+		skill.MirroredBlades, skill.Consume, skill.BindDemon, //32
+		skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, //37
+		skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, //42
+		skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, //47
+		skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, //52
+		skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, //57
+		skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, //62
+		skill.DemonicMastery, skill.DemonicMastery, skill.DemonicMastery, skill.DemonicMastery, skill.DemonicMastery, //67
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //72
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //77
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //82
+		skill.SigilDeath, skill.SigilDeath, skill.SigilDeath, skill.SigilDeath, skill.SigilDeath, //87
 	}
 
 	return skillSequence
@@ -311,6 +274,8 @@ func (s WarlockLeveling) SkillPoints() []skill.ID {
 func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 	s.Logger.Info(fmt.Sprintf("Starting kill sequence for %v...", bossNPC))
 	startTime := time.Now()
+	var lastBuff time.Time
+	var lastSumon time.Time
 	for {
 		context.Get().PauseIfNotPriority()
 
@@ -339,43 +304,25 @@ func (s WarlockLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error {
 			return nil
 		}
 
-		lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
 		onCooldown := s.Data.PlayerUnit.States.HasState(state.Cooldown)
 
-		if lvl.Value < 49 {
-			if onCooldown {
-				if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-					step.SecondaryAttack(skill.MiasmaBolt, boss.UnitID, 4, step.Distance(10, 15))
-				} else {
-					step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(1, 3))
-				}
-			} else if s.Data.PlayerUnit.Skills[skill.FlameWave].Level > 0 && mana.Value > 8 {
-				step.SecondaryAttack(skill.FlameWave, boss.UnitID, 4, step.Distance(8, 13))
-			} else if s.Data.PlayerUnit.Skills[skill.RingOfFire].Level > 0 && mana.Value > 5 {
-				step.SecondaryAttack(skill.RingOfFire, boss.UnitID, 5, step.Distance(3, 7))
-			} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-				step.SecondaryAttack(skill.MiasmaBolt, boss.UnitID, 4, step.Distance(10, 15))
-			} else {
-				step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(1, 3))
-			}
+		if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && mana.Value > 2 {
+			step.SelectLeftSkill(skill.Cleave)
 		} else {
-			if onCooldown {
-				if s.Data.PlayerUnit.Skills[skill.MiasmaChains].Level > 0 && mana.Value > 5 {
-					step.SecondaryAttack(skill.MiasmaChains, boss.UnitID, 3, step.Distance(10, 15))
-				} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-					step.SecondaryAttack(skill.MiasmaBolt, boss.UnitID, 4, step.Distance(10, 15))
-				} else {
-					step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(1, 3))
-				}
-			} else if s.Data.PlayerUnit.Skills[skill.Abyss].Level > 0 && mana.Value > 15 {
-				step.SecondaryAttack(skill.Abyss, boss.UnitID, 3, step.Distance(10, 15))
-			} else if s.Data.PlayerUnit.Skills[skill.MiasmaChains].Level > 0 && mana.Value > 5 {
-				step.SecondaryAttack(skill.MiasmaChains, boss.UnitID, 3, step.Distance(10, 15))
-			} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && mana.Value > 2 {
-				step.SecondaryAttack(skill.MiasmaBolt, boss.UnitID, 4, step.Distance(10, 15))
-			} else {
-				step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(1, 3))
+			step.SelectLeftSkill(skill.AttackSkill)
+		}
+
+		step.PrimaryAttack(boss.UnitID, 1, true, step.Distance(warlockMinDistance, warlockMaxDistance))
+
+		if !onCooldown {
+			if time.Since(lastBuff) > time.Second*4 {
+				s.BuffSkills()
+				lastBuff = time.Now()
+			}
+			if time.Since(lastSumon) > time.Second*10 {
+				s.PreCTABuffSkills()
+				lastSumon = time.Now()
 			}
 		}
 
