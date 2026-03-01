@@ -31,6 +31,31 @@ const (
 	safeDistance                    = 10 // Distance to teleport away to
 )
 
+// Threat assessment constants
+const (
+	threatBaseWeight      = 1.0
+	threatEliteMultiplier = 3.0
+	threatAuraMultiplier  = 2.5
+	threatProximityFactor = 1.5
+	threatCountThreshold  = 3
+
+	threatLevelLow    = 3.0
+	threatLevelMedium = 8.0
+	threatLevelHigh   = 15.0
+
+	minRepositionCooldown = 200 * time.Millisecond
+	maxRepositionCooldown = 1200 * time.Millisecond
+)
+
+type threatInfo struct {
+	needsReposition bool
+	threatScore     float64
+	centroid        data.Position
+	monsterCount    int
+	hasElite        bool
+	hasAura         bool
+}
+
 type BlizzardSorceress struct {
 	BaseCharacter
 }
@@ -66,6 +91,115 @@ func (s BlizzardSorceress) CheckKeyBindings() []skill.ID {
 	return missingKeybindings
 }
 
+// monsterHasDangerousAura checks offensive auras that make nearby mobs lethal to a sorc.
+func monsterHasDangerousAura(m data.Monster) bool {
+	return m.States.HasState(state.Fanaticism) ||
+		m.States.HasState(state.Might) ||
+		m.States.HasState(state.Conviction) ||
+		m.States.HasState(state.Holyfire) ||
+		m.States.HasState(state.Holyshock) ||
+		m.States.HasState(state.Holywindcold)
+}
+
+// assessThreat iterates all enemies once and computes a weighted threat score,
+// centroid of danger, and flags for elite/aura presence.
+func (s BlizzardSorceress) assessThreat() threatInfo {
+	playerPos := s.Data.PlayerUnit.Position
+	var (
+		totalWeight float64
+		weightedX   float64
+		weightedY   float64
+		count       int
+		hasElite    bool
+		hasAura     bool
+	)
+
+	for _, monster := range s.Data.Monsters.Enemies() {
+		if monster.Stats[stat.Life] <= 0 {
+			continue
+		}
+
+		distance := pather.DistanceFromPoint(playerPos, monster.Position)
+		if distance > dangerDistance {
+			continue
+		}
+
+		weight := threatBaseWeight
+
+		// Closer monsters are more threatening
+		if distance > 0 {
+			weight *= threatProximityFactor * (float64(dangerDistance) / float64(distance))
+		} else {
+			weight *= threatProximityFactor * float64(dangerDistance)
+		}
+
+		if monster.IsElite() {
+			weight *= threatEliteMultiplier
+			hasElite = true
+		}
+
+		if monsterHasDangerousAura(monster) {
+			weight *= threatAuraMultiplier
+			hasAura = true
+		}
+
+		totalWeight += weight
+		weightedX += float64(monster.Position.X) * weight
+		weightedY += float64(monster.Position.Y) * weight
+		count++
+	}
+
+	if count == 0 {
+		return threatInfo{}
+	}
+
+	centroid := data.Position{
+		X: int(weightedX / totalWeight),
+		Y: int(weightedY / totalWeight),
+	}
+
+	needsRepos := (count > 0 && totalWeight >= threatLevelLow) || count >= threatCountThreshold
+
+	return threatInfo{
+		needsReposition: needsRepos,
+		threatScore:     totalWeight,
+		centroid:        centroid,
+		monsterCount:    count,
+		hasElite:        hasElite,
+		hasAura:         hasAura,
+	}
+}
+
+// getRepositionCooldown interpolates between min and max cooldown based on HP and threat.
+func (s BlizzardSorceress) getRepositionCooldown(threat threatInfo) time.Duration {
+	hpPercent := float64(s.Data.PlayerUnit.HPPercent()) / 100.0
+	if hpPercent > 1.0 {
+		hpPercent = 1.0
+	}
+	if hpPercent < 0.0 {
+		hpPercent = 0.0
+	}
+
+	// Normalize threat score: 0 at low, 1 at high+
+	threatNorm := (threat.threatScore - threatLevelLow) / (threatLevelHigh - threatLevelLow)
+	if threatNorm < 0 {
+		threatNorm = 0
+	}
+	if threatNorm > 1 {
+		threatNorm = 1
+	}
+
+	// HP factor: lower HP = lower urgencyFactor (shorter cooldown)
+	// Threat factor: higher threat = lower urgencyFactor (shorter cooldown)
+	// Weight: HP 60%, threat 40%
+	urgencyFactor := hpPercent*0.6 + (1.0-threatNorm)*0.4
+
+	cooldownRange := float64(maxRepositionCooldown - minRepositionCooldown)
+	cooldown := float64(minRepositionCooldown) + cooldownRange*urgencyFactor
+
+	return time.Duration(cooldown)
+}
+
 func (s BlizzardSorceress) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
@@ -82,37 +216,29 @@ func (s BlizzardSorceress) KillMonsterSequence(
 		if s.Context.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
 			time.Sleep(500 * time.Millisecond)
-			return health.ErrDied // Or return an error that indicates death if desired by higher-level logic
+			return health.ErrDied
 		}
 
-		// First check if we need to reposition due to nearby monsters
-		//needsRepos, dangerousMonster := s.needsRepositioning()
-		needsRepos, _ := s.needsRepositioning()
-		if needsRepos && time.Since(lastReposition) > time.Second*1 {
+		// Assess threat once per iteration — shared by pre-attack and cooldown phases
+		threat := s.assessThreat()
+
+		// Pre-attack reposition if dangerous and cooldown elapsed
+		if threat.needsReposition && time.Since(lastReposition) > s.getRepositionCooldown(threat) {
 			lastReposition = time.Now()
 
-			// Get the target monster ID
 			targetID, found := monsterSelector(*s.Data)
 			if !found {
 				return nil
 			}
 
-			// Find the monster
 			targetMonster, found := s.Data.Monsters.FindByID(targetID)
 			if !found {
-				s.Logger.Info("Target monster not found for repositioning")
 				return nil
 			}
 
-			/*s.Logger.Info(fmt.Sprintf("Dangerous monster detected at distance %d, repositioning...",
-			pather.DistanceFromPoint(s.Data.PlayerUnit.Position, dangerousMonster.Position)))*/
-
-			// Find a safe position
-			safePos, found := s.findSafePosition(targetMonster)
+			safePos, found := s.findSafePosition(targetMonster, threat)
 			if found {
 				step.MoveTo(safePos, step.WithIgnoreMonsters())
-			} else {
-				s.Logger.Info("Could not find safe position for repositioning")
 			}
 		}
 
@@ -142,9 +268,18 @@ func (s BlizzardSorceress) KillMonsterSequence(
 			return nil
 		}
 
-		// If we're on cooldown, attack with a primary attack
+		// If we're on cooldown, reposition if dangerous, otherwise primary attack
 		if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
-			step.PrimaryAttack(id, 2, true, attackOpts)
+			if threat.needsReposition {
+				safePos, found := s.findSafePosition(monster, threat)
+				if found {
+					step.MoveTo(safePos, step.WithIgnoreMonsters())
+					lastReposition = time.Now()
+				}
+			} else {
+				step.PrimaryAttack(id, 2, true, attackOpts)
+			}
+			continue
 		}
 
 		step.SecondaryAttack(skill.Blizzard, id, 1, attackOpts)
@@ -248,26 +383,6 @@ func (s BlizzardSorceress) KillCouncil() error {
 		return 0, false
 	}, nil)
 }
-
-/*
-func (s BlizzardSorceress) KillMephisto() error {
-    // Find Mephisto
-    mephisto, found := s.Data.Monsters.FindOne(npc.Mephisto, data.MonsterTypeUnique)
-    if !found || mephisto.Stats[stat.Life] <= 0 {
-        // If Mephisto is not found or already dead, just return (or handle as needed)
-        return nil
-    }
-
-    s.Logger.Info("Mephisto detected, applying Static Field")
-
-    // Apply Static Field to Mephisto
-    // The parameters (unitID, attacks, distance options) are similar to Diablo's Static Field usage
-    _ = step.SecondaryAttack(skill.StaticField, mephisto.UnitID, 5, step.Distance(3, 8))
-
-    // Now, proceed with the regular monster killing sequence (Blizzard etc.)
-    return s.killMonsterByName(npc.Mephisto, data.MonsterTypeUnique, nil)
-}
-*/
 
 func (s BlizzardSorceress) KillMephisto() error {
 
@@ -433,10 +548,63 @@ func (s BlizzardSorceress) KillMephisto() error {
 	}
 }
 
-func (s BlizzardSorceress) KillIzual() error {
-	m, _ := s.Data.Monsters.FindOne(npc.Izual, data.MonsterTypeUnique)
-	_ = step.SecondaryAttack(skill.StaticField, m.UnitID, 4, step.Distance(5, 8))
+// stutterStepStaticField alternates between casting Static Field at close range
+// and teleporting back to safe Blizzard distance. Aborts if HP drops below 50%.
+func (s BlizzardSorceress) stutterStepStaticField(bossID data.UnitID, _ data.Position, numCasts int) {
+	canCastStaticField := s.Data.PlayerUnit.Skills[skill.StaticField].Level > 0
+	_, isStaticFieldBound := s.Data.KeyBindings.KeyBindingForSkill(skill.StaticField)
+	if !canCastStaticField || !isStaticFieldBound {
+		return
+	}
 
+	for i := 0; i < numCasts; i++ {
+		// HP-gated retreat
+		if s.Data.PlayerUnit.HPPercent() < 50 {
+			s.Logger.Info("HP below 50% during stutter-step, retreating")
+			threat := s.assessThreat()
+			boss, found := s.Data.Monsters.FindByID(bossID)
+			if found {
+				safePos, posFound := s.findSafePosition(boss, threat)
+				if posFound {
+					step.MoveTo(safePos, step.WithIgnoreMonsters())
+				}
+			}
+			return
+		}
+
+		// Check boss is still alive
+		boss, found := s.Data.Monsters.FindByID(bossID)
+		if !found || boss.Stats[stat.Life] <= 0 {
+			return
+		}
+
+		// Static Field can't reduce below ~33% in Hell; stop wasting casts
+		if boss.Stats[stat.MaxLife] > 0 {
+			bossHPPercent := float64(boss.Stats[stat.Life]) / float64(boss.Stats[stat.MaxLife]) * 100
+			if bossHPPercent <= 35 {
+				return
+			}
+		}
+
+		// Cast Static Field at close range
+		step.SecondaryAttack(skill.StaticField, bossID, 1, step.Distance(3, 8))
+
+		// Teleport back to safe Blizzard distance
+		threat := s.assessThreat()
+		safePos, posFound := s.findSafePosition(boss, threat)
+		if posFound {
+			step.MoveTo(safePos, step.WithIgnoreMonsters())
+		}
+	}
+}
+
+func (s BlizzardSorceress) KillIzual() error {
+	m, found := s.Data.Monsters.FindOne(npc.Izual, data.MonsterTypeUnique)
+	if !found {
+		s.Logger.Error("Izual not found")
+		return nil
+	}
+	s.stutterStepStaticField(m.UnitID, m.Position, 4)
 	return s.killMonsterByName(npc.Izual, data.MonsterTypeUnique, nil)
 }
 
@@ -466,7 +634,7 @@ func (s BlizzardSorceress) KillDiablo() error {
 		diabloFound = true
 		s.Logger.Info("Diablo detected, attacking")
 
-		_ = step.SecondaryAttack(skill.StaticField, diablo.UnitID, 5, step.Distance(3, 8))
+		s.stutterStepStaticField(diablo.UnitID, diablo.Position, 5)
 
 		return s.killMonsterByName(npc.Diablo, data.MonsterTypeUnique, nil)
 	}
@@ -481,68 +649,40 @@ func (s BlizzardSorceress) KillNihlathak() error {
 }
 
 func (s BlizzardSorceress) KillBaal() error {
-	m, _ := s.Data.Monsters.FindOne(npc.BaalCrab, data.MonsterTypeUnique)
-	step.SecondaryAttack(skill.StaticField, m.UnitID, 4, step.Distance(5, 8))
-
+	m, found := s.Data.Monsters.FindOne(npc.BaalCrab, data.MonsterTypeUnique)
+	if !found {
+		s.Logger.Error("Baal not found")
+		return nil
+	}
+	s.stutterStepStaticField(m.UnitID, m.Position, 4)
 	return s.killMonsterByName(npc.BaalCrab, data.MonsterTypeUnique, nil)
 }
 
-func (s BlizzardSorceress) needsRepositioning() (bool, data.Monster) {
-	for _, monster := range s.Data.Monsters.Enemies() {
-		if monster.Stats[stat.Life] <= 0 {
-			continue
-		}
-
-		distance := pather.DistanceFromPoint(s.Data.PlayerUnit.Position, monster.Position)
-		if distance < dangerDistance {
-			return true, monster
-		}
-	}
-
-	return false, data.Monster{}
-}
-
-func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Position, bool) {
+// findSafePosition finds a safe position away from the threat centroid while maintaining
+// line of sight and attack range to the target monster. Uses a directional cone search
+// centered on the escape vector from the threat centroid, falling back to a full circle.
+func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster, threat threatInfo) (data.Position, bool) {
 	ctx := context.Get()
 	playerPos := s.Data.PlayerUnit.Position
 
-	// Define a stricter minimum safe distance from monsters
 	const minSafeMonsterDistance = 2
 
-	// Generate candidate positions in a circle around the player
-	candidatePositions := []data.Position{}
-
-	// First try positions in the opposite direction from the dangerous monster
-	vectorX := playerPos.X - targetMonster.Position.X
-	vectorY := playerPos.Y - targetMonster.Position.Y
-
-	// Normalize the vector
-	length := math.Sqrt(float64(vectorX*vectorX + vectorY*vectorY))
-	if length > 0 {
-		normalizedX := int(float64(vectorX) / length * float64(safeDistance))
-		normalizedY := int(float64(vectorY) / length * float64(safeDistance))
-
-		// Add positions in the opposite direction with some variation
-		for offsetX := -3; offsetX <= 3; offsetX++ {
-			for offsetY := -3; offsetY <= 3; offsetY++ {
-				candidatePos := data.Position{
-					X: playerPos.X + normalizedX + offsetX,
-					Y: playerPos.Y + normalizedY + offsetY,
-				}
-
-				if s.Data.AreaData.IsWalkable(candidatePos) {
-					candidatePositions = append(candidatePositions, candidatePos)
-				}
-			}
-		}
+	// Escape vector: flee from threat centroid (not single target)
+	escapeFrom := threat.centroid
+	if threat.monsterCount == 0 {
+		escapeFrom = targetMonster.Position
 	}
 
-	// Generate positions in a circle with smaller angle increments for more candidates
-	// Try positions in different directions around the player
-	for angle := 0; angle < 360; angle += 5 {
-		radians := float64(angle) * math.Pi / 180
+	vectorX := playerPos.X - escapeFrom.X
+	vectorY := playerPos.Y - escapeFrom.Y
+	escapeAngle := math.Atan2(float64(vectorY), float64(vectorX))
 
-		// Try multiple distances from the player
+	candidatePositions := []data.Position{}
+
+	// Phase 1: 180-degree cone centered on escape direction, 10-degree increments
+	for offsetDeg := -90; offsetDeg <= 90; offsetDeg += 10 {
+		radians := escapeAngle + float64(offsetDeg)*math.Pi/180
+
 		for distance := minSafeMonsterDistance; distance <= safeDistance+5; distance += 2 {
 			dx := int(math.Cos(radians) * float64(distance))
 			dy := int(math.Sin(radians) * float64(distance))
@@ -552,14 +692,12 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 				Y: playerPos.Y + dy,
 			}
 
-			// Check a small area around the base position
 			for offsetX := -1; offsetX <= 1; offsetX++ {
 				for offsetY := -1; offsetY <= 1; offsetY++ {
 					candidatePos := data.Position{
 						X: basePos.X + offsetX,
 						Y: basePos.Y + offsetY,
 					}
-
 					if s.Data.AreaData.IsWalkable(candidatePos) {
 						candidatePositions = append(candidatePositions, candidatePos)
 					}
@@ -568,12 +706,30 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 		}
 	}
 
-	// No walkable positions found
+	// Phase 2: Fallback to full circle at 20-degree increments if cone found nothing walkable
+	if len(candidatePositions) == 0 {
+		for angle := 0; angle < 360; angle += 20 {
+			radians := float64(angle) * math.Pi / 180
+
+			for distance := minSafeMonsterDistance; distance <= safeDistance+5; distance += 2 {
+				dx := int(math.Cos(radians) * float64(distance))
+				dy := int(math.Sin(radians) * float64(distance))
+
+				candidatePos := data.Position{
+					X: playerPos.X + dx,
+					Y: playerPos.Y + dy,
+				}
+				if s.Data.AreaData.IsWalkable(candidatePos) {
+					candidatePositions = append(candidatePositions, candidatePos)
+				}
+			}
+		}
+	}
+
 	if len(candidatePositions) == 0 {
 		return data.Position{}, false
 	}
 
-	// Evaluate all candidate positions
 	type scoredPosition struct {
 		pos   data.Position
 		score float64
@@ -582,53 +738,76 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 	scoredPositions := []scoredPosition{}
 
 	for _, pos := range candidatePositions {
-		// Check if this position has line of sight to target
+		// Check line of sight to target
 		if !ctx.PathFinder.LineOfSight(pos, targetMonster.Position) {
 			continue
 		}
 
-		// Calculate minimum distance to any monster
-		minMonsterDistance := math.MaxFloat64
+		// Minimum distance to any monster
+		minMonsterDist := math.MaxFloat64
+		nearbyCount := 0
+		nearbyThreatScore := 0.0
 		for _, monster := range s.Data.Monsters.Enemies() {
 			if monster.Stats[stat.Life] <= 0 {
 				continue
 			}
 
-			monsterDistance := pather.DistanceFromPoint(pos, monster.Position)
-			if float64(monsterDistance) < minMonsterDistance {
-				minMonsterDistance = float64(monsterDistance)
+			monsterDistance := float64(pather.DistanceFromPoint(pos, monster.Position))
+			if monsterDistance < minMonsterDist {
+				minMonsterDist = monsterDistance
+			}
+			if monsterDistance < float64(dangerDistance) {
+				nearbyCount++
+				if monster.IsElite() || monsterHasDangerousAura(monster) {
+					nearbyThreatScore += 1.0
+				}
 			}
 		}
 
-		// Strictly skip positions that are too close to monsters
-		if minMonsterDistance < minSafeMonsterDistance {
+		if minMonsterDist < float64(minSafeMonsterDistance) {
 			continue
 		}
 
-		// Calculate distance to target monster
 		targetDistance := pather.DistanceFromPoint(pos, targetMonster.Position)
-
-		// Score the position based on multiple factors:
-		// 1. Distance from monsters (higher is better, with a strong preference for safety)
-		// 2. Distance to target (should be in attack range)
-		// 3. Distance from current position (closer is better for quick repositioning)
 		distanceFromPlayer := pather.DistanceFromPoint(pos, playerPos)
+		centroidDist := float64(pather.DistanceFromPoint(pos, threat.centroid))
 
-		// Calculate attack range score (highest when in optimal attack range)
+		// Attack range score
 		attackRangeScore := 0.0
 		if targetDistance >= minBlizzSorceressAttackDistance && targetDistance <= maxBlizzSorceressAttackDistance {
 			attackRangeScore = 10.0
 		} else {
-			// Penalize positions outside attack range
 			attackRangeScore = -math.Abs(float64(targetDistance) - float64(minBlizzSorceressAttackDistance+maxBlizzSorceressAttackDistance)/2.0)
 		}
 
-		// Final score calculation - heavily weight monster distance for safety
-		score := minMonsterDistance*3.0 + attackRangeScore*2.0 - float64(distanceFromPlayer)*0.5
+		// Scoring formula
+		score := minMonsterDist*3.0 +
+			attackRangeScore*2.0 -
+			float64(distanceFromPlayer)*0.5 +
+			centroidDist*2.5 -
+			float64(nearbyCount)*3.0 -
+			nearbyThreatScore*1.5
 
-		// Extra bonus for positions that are very safe (far from monsters)
-		if minMonsterDistance > float64(dangerDistance) {
+		// Extra bonus for positions far from monsters
+		if minMonsterDist > float64(dangerDistance) {
 			score += 5.0
+		}
+
+		// Wall-blocked LoS bonus: only compute when elites/auras present
+		if threat.hasElite || threat.hasAura {
+			wallBlocked := 0
+			for _, monster := range s.Data.Monsters.Enemies() {
+				if monster.Stats[stat.Life] <= 0 {
+					continue
+				}
+				dist := pather.DistanceFromPoint(pos, monster.Position)
+				if dist < dangerDistance*2 && (monster.IsElite() || monsterHasDangerousAura(monster)) {
+					if !ctx.PathFinder.LineOfSight(pos, monster.Position) {
+						wallBlocked++
+					}
+				}
+			}
+			score += float64(wallBlocked) * 1.0
 		}
 
 		scoredPositions = append(scoredPositions, scoredPosition{
@@ -637,33 +816,13 @@ func (s BlizzardSorceress) findSafePosition(targetMonster data.Monster) (data.Po
 		})
 	}
 
-	// Sort positions by score (highest first)
 	sort.Slice(scoredPositions, func(i, j int) bool {
 		return scoredPositions[i].score > scoredPositions[j].score
 	})
 
-	// Return the best position if we found any
 	if len(scoredPositions) > 0 {
-		/*s.Logger.Info(fmt.Sprintf("Found safe position with score %.2f at distance %.2f from nearest monster",
-		scoredPositions[0].score, minMonsterDistance(scoredPositions[0].pos, s.Data.Monsters)))*/
 		return scoredPositions[0].pos, true
 	}
 
 	return data.Position{}, false
-}
-
-// Helper function to calculate minimum monster distance
-func minMonsterDistance(pos data.Position, monsters data.Monsters) float64 {
-	minDistance := math.MaxFloat64
-	for _, monster := range monsters.Enemies() {
-		if monster.Stats[stat.Life] <= 0 {
-			continue
-		}
-
-		distance := pather.DistanceFromPoint(pos, monster.Position)
-		if float64(distance) < minDistance {
-			minDistance = float64(distance)
-		}
-	}
-	return minDistance
 }
