@@ -667,7 +667,7 @@ func (s Javazon) chargedStrike(monsterID data.UnitID) {
 	csKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.ChargedStrike)
 	if found && s.Data.PlayerUnit.RightSkill != skill.ChargedStrike {
 		ctx.HID.PressKeyBinding(csKey)
-		utils.Sleep(jzDkMinSkillSwapDelayMS)
+		utils.Sleep(jzDkMinSkillSwapDelayMS, 100)
 	}
 
 	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(monster.Position.X, monster.Position.Y)
@@ -696,12 +696,12 @@ func (s Javazon) chargedStrikeBossFast(monsterID data.UnitID) {
 	csKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.ChargedStrike)
 	if found && s.Data.PlayerUnit.RightSkill != skill.ChargedStrike {
 		ctx.HID.PressKeyBinding(csKey)
-		utils.Sleep(jzDkMinSkillSwapDelayMS)
+		utils.Sleep(jzDkMinSkillSwapDelayMS, 100)
 	}
 
 	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(monster.Position.X, monster.Position.Y)
 	ctx.HID.Click(game.RightButton, screenX, screenY)
-	utils.Sleep(jzDkMinClickDelayMS)
+	utils.Sleep(jzDkMinClickDelayMS, 100)
 }
 
 // chargedStrikeAccurate is used for non-boss situations (DK cleanup / general clearing)
@@ -722,7 +722,7 @@ func (s Javazon) chargedStrikeAccurate(targetID data.UnitID, attacks int) {
 	csKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.ChargedStrike)
 	if found && s.Data.PlayerUnit.RightSkill != skill.ChargedStrike {
 		ctx.HID.PressKeyBinding(csKey)
-		utils.Sleep(jzDkMinSkillSwapDelayMS)
+		utils.Sleep(jzDkMinSkillSwapDelayMS, 100)
 	}
 
 	// Use the step routine so range/LoS and click semantics are handled consistently.
@@ -937,7 +937,7 @@ func (s Javazon) jzDkLightningFury(targetID data.UnitID, attacks int) bool {
 	lfKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.LightningFury)
 	if found && s.Data.PlayerUnit.RightSkill != skill.LightningFury {
 		ctx.HID.PressKeyBinding(lfKey)
-		utils.Sleep(jzDkMinSkillSwapDelayMS)
+		utils.Sleep(jzDkMinSkillSwapDelayMS, 100)
 	}
 
 	for i := 0; i < attacks; i++ {
@@ -953,7 +953,7 @@ func (s Javazon) jzDkLightningFury(targetID data.UnitID, attacks int) bool {
 		}
 		x, y := ctx.PathFinder.GameCoordsToScreenCords(m.Position.X, m.Position.Y)
 		ctx.HID.Click(game.RightButton, x, y)
-		utils.Sleep(jzDkMinClickDelayMS)
+		utils.Sleep(jzDkMinClickDelayMS, 100)
 	}
 
 	return true
@@ -1176,7 +1176,7 @@ func (s Javazon) KillDiablo() error {
 			}
 
 			// Keep waiting...
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

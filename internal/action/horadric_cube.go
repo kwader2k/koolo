@@ -87,7 +87,7 @@ func CubeAddItems(items ...data.Item) error {
 			slog.Int("ScreenY", screenPos.Y),
 		)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 	}
 
 	err := ensureCubeIsOpen()
@@ -154,7 +154,7 @@ func CubeAddItems(items ...data.Item) error {
 
 		screenPos := ui.GetScreenCoordsForItem(*found)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 	}
 
 	return nil
@@ -169,7 +169,7 @@ func CubeTransmute() error {
 	}
 
 	ctx.Logger.Debug("Transmuting items in the Horadric Cube")
-	utils.Sleep(150)
+	utils.Sleep(150, 100)
 
 	if ctx.Data.LegacyGraphics {
 		ctx.HID.Click(game.LeftButton, ui.CubeTransmuteBtnXClassic, ui.CubeTransmuteBtnYClassic)
@@ -177,7 +177,7 @@ func CubeTransmute() error {
 		ctx.HID.Click(game.LeftButton, ui.CubeTransmuteBtnX, ui.CubeTransmuteBtnY)
 	}
 
-	utils.Sleep(2000)
+	utils.Sleep(2000, 500)
 
 	// Take the items out of the cube
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationCube) {
@@ -186,7 +186,7 @@ func CubeTransmute() error {
 		screenPos := ui.GetScreenCoordsForItem(itm)
 
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 	}
 
 	return step.CloseAllMenus()
@@ -224,7 +224,7 @@ func ensureCubeIsEmpty() error {
 		screenPos := ui.GetScreenCoordsForItem(itm)
 
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(700)
+		utils.Sleep(700, 200)
 
 		itm, _ = ctx.Data.Inventory.FindByID(itm.UnitID)
 		if itm.Location.LocationType == item.LocationCube {
@@ -233,7 +233,7 @@ func ensureCubeIsEmpty() error {
 	}
 
 	ctx.HID.PressKey(win.VK_ESCAPE)
-	utils.Sleep(300)
+	utils.Sleep(300, 200)
 
 	stashInventory(true)
 
@@ -274,9 +274,9 @@ func ensureCubeIsOpen() error {
 
 	screenPos := ui.GetScreenCoordsForItem(cube)
 
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 
 	if ctx.Data.OpenMenus.Cube {
 		ctx.Logger.Debug("Horadric Cube window detected")

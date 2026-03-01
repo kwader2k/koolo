@@ -4,6 +4,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/lxn/win"
 )
 
@@ -50,7 +51,7 @@ func (hid *HID) Click(btn MouseButton, x, y int) {
 
 	win.SendMessage(hid.gr.HWND, buttonDown, 1, lParam)
 	sleepTime := rand.Intn(keyPressMaxTime-keyPressMinTime) + keyPressMinTime
-	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	utils.Sleep(sleepTime, 100)
 	win.SendMessage(hid.gr.HWND, buttonUp, 1, lParam)
 }
 

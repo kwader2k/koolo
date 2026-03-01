@@ -151,13 +151,13 @@ func repairAllAtNPC(repairNPC npc.ID) error {
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
 	}
 
-	utils.Sleep(100)
+	utils.Sleep(100, 200)
 	if ctx.Data.LegacyGraphics {
 		ctx.HID.Click(game.LeftButton, ui.RepairButtonXClassic, ui.RepairButtonYClassic)
 	} else {
 		ctx.HID.Click(game.LeftButton, ui.RepairButtonX, ui.RepairButtonY)
 	}
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 
 	return step.CloseAllMenus()
 }
@@ -232,13 +232,13 @@ func Repair() error {
 				ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
 			}
 
-			utils.Sleep(100)
+			utils.Sleep(100, 200)
 			if ctx.Data.LegacyGraphics {
 				ctx.HID.Click(game.LeftButton, ui.RepairButtonXClassic, ui.RepairButtonYClassic)
 			} else {
 				ctx.HID.Click(game.LeftButton, ui.RepairButtonX, ui.RepairButtonY)
 			}
-			utils.Sleep(500)
+			utils.Sleep(500, 200)
 
 			return step.CloseAllMenus()
 		}

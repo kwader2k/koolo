@@ -108,7 +108,7 @@ func InteractObject(o data.Object, isCompletedFn func() bool) error {
 	if ctx.Data.PlayerUnit.Area != startingArea {
 
 		// Initial delay to allow server to fully sync area data
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 		ctx.RefreshGameData()
 
 		// Wait up to 3 seconds for collision grid to load and be valid
@@ -124,7 +124,7 @@ func InteractObject(o data.Object, isCompletedFn func() bool) error {
 				gridLoaded = true
 				break
 			}
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 		}
 
 		if !gridLoaded {

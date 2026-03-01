@@ -48,7 +48,7 @@ func WayPoint(dest area.ID) error {
 				actTabX := ui.WpTabStartX + (wpCoords.Tab-1)*ui.WpTabSizeX + (ui.WpTabSizeX / 2)
 				ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartY)
 			}
-			utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for waypoint tab to load
+			utils.PingSleep(utils.Medium, 250, 100) // Medium operation: Wait for waypoint tab to load
 			// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
 			ClearMessages()
 			ctx.RefreshGameData()
@@ -71,7 +71,7 @@ func WayPoint(dest area.ID) error {
 
 	// apply buffs after exiting a waypoint if configured
 	if ctx.CharacterCfg.Character.BuffAfterWP && !dest.IsTown() {
-		utils.PingSleep(utils.Light, 250)
+		utils.PingSleep(utils.Light, 250, 100)
 		Buff()
 	}
 
@@ -108,7 +108,7 @@ func FieldWayPoint(dest area.ID) error {
 				actTabX := ui.WpTabStartX + (wpCoords.Tab-1)*ui.WpTabSizeX + (ui.WpTabSizeX / 2)
 				ctx.HID.Click(game.LeftButton, actTabX, ui.WpTabStartY)
 			}
-			utils.Sleep(200)
+			utils.Sleep(200, 100) // Medium operation: Wait for waypoint tab to load
 			// Just to make sure no message like TZ change or public game spam prevent bot from clicking on waypoint
 			ClearMessages()
 			ctx.RefreshGameData()
@@ -131,7 +131,7 @@ func FieldWayPoint(dest area.ID) error {
 
 	// apply buffs after exiting a waypoint if configured
 	if ctx.CharacterCfg.Character.BuffAfterWP && !dest.IsTown() {
-		utils.PingSleep(utils.Light, 250)
+		utils.PingSleep(utils.Light, 250, 100)
 		Buff()
 	}
 
@@ -175,7 +175,7 @@ func useWP(dest area.ID) error {
 		areaBtnY := ui.WpListStartY + (currentWP.Row-1)*ui.WpAreaBtnHeight + (ui.WpAreaBtnHeight / 2)
 		ctx.HID.Click(game.LeftButton, ui.WpListPositionX, areaBtnY)
 	}
-	utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for waypoint travel to complete
+	utils.PingSleep(utils.Critical, 1000, 300) // Critical operation: Wait for waypoint travel to complete
 
 	// We have the WP discovered, just use it
 	if len(traverseAreas) == 0 {
@@ -200,7 +200,7 @@ func useWP(dest area.ID) error {
 				}
 				if !found {
 					FieldWayPoint(area.SpiderForest)
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 				}
 			}
 			err := MoveToArea(dst)
@@ -208,7 +208,7 @@ func useWP(dest area.ID) error {
 				//Fix player great marsh / flayer jungle navigation, part 2
 				if ctx.Data.AreaData.Area == area.GreatMarsh && dst == area.FlayerJungle {
 					FieldWayPoint(area.SpiderForest)
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					err = MoveToArea(dst)
 					if err != nil {
 						return err

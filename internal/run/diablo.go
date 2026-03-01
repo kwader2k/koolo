@@ -182,7 +182,7 @@ func (d *Diablo) Run(parameters *RunParameters) error {
 				}); err != nil {
 					d.ctx.Logger.Error(fmt.Sprintf("Attempt %d to interact with seal %d: %v failed", attempts+1, sealID, err))
 					d.ctx.PathFinder.RandomMovement()
-					utils.PingSleep(utils.Medium, 200)
+					utils.PingSleep(utils.Medium, 200, 100)
 				}
 
 				attempts++
@@ -310,7 +310,7 @@ func (d *Diablo) killSealElite(sealEliteName string) error {
 			startTime = time.Now()
 		}
 
-		utils.PingSleep(utils.Light, 250)
+		utils.PingSleep(utils.Light, 250, 100)
 	}
 
 	// If seal elite was already dead, no need to kill it
@@ -343,7 +343,7 @@ func (d *Diablo) killSealElite(sealEliteName string) error {
 		return fmt.Errorf("no seal elite found for %s within %v", sealEliteName, timeout)
 	}
 
-	utils.PingSleep(utils.Medium, 500)
+	utils.PingSleep(utils.Medium, 500, 100)
 
 	killSealEliteAttempts := 0
 	if sealElite.UnitID != 0 {
@@ -354,7 +354,7 @@ func (d *Diablo) killSealElite(sealEliteName string) error {
 
 			// If in town, wait until back to battlefield
 			if d.ctx.Data.PlayerUnit.Area.IsTown() {
-				utils.PingSleep(utils.Light, 100)
+				utils.PingSleep(utils.Light, 100, 100)
 				continue
 			}
 
@@ -383,7 +383,7 @@ func (d *Diablo) killSealElite(sealEliteName string) error {
 					}
 
 					// Continue loop to retry
-					utils.PingSleep(utils.Light, 250)
+					utils.PingSleep(utils.Light, 250, 100)
 					continue
 				}
 			}
@@ -442,7 +442,7 @@ func (d *Diablo) killSealElite(sealEliteName string) error {
 				return nil
 			}
 
-			utils.PingSleep(utils.Light, 250)
+			utils.PingSleep(utils.Light, 250, 100)
 		}
 	} else {
 		return fmt.Errorf("no seal elite found for %s within %v", sealEliteName, timeout)
@@ -485,16 +485,16 @@ func (d *Diablo) goToAct5() error {
 
 	//Choose travel to harrogath option
 	d.ctx.HID.KeySequence(win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(1000)
+	utils.Sleep(1000, 200)
 	d.ctx.RefreshGameData()
-	utils.Sleep(1000)
+	utils.Sleep(1000, 200)
 
 	d.ctx.RefreshGameData()
 	if d.ctx.Data.PlayerUnit.Area.Act() != 5 {
 		harrogathPortal, found := d.ctx.Data.Objects.FindOne(object.LastLastPortal)
 		if found {
 			if err = action.InteractObject(harrogathPortal, func() bool {
-				utils.Sleep(100)
+				utils.Sleep(1000, 200)
 				ctx := context.Get()
 				isInCinematic := ctx.Data.OpenMenus.Cinematic
 				isInAct5 := ctx.Data.PlayerUnit.Area.Act() == 5
@@ -521,7 +521,7 @@ func (d *Diablo) goToAct5() error {
 		break
 	}
 
-	utils.Sleep(2000)
+	utils.Sleep(2000, 200)
 
 	// final check
 	d.ctx.RefreshGameData()
@@ -533,9 +533,9 @@ func (d *Diablo) goToAct5() error {
 }
 
 func (d Diablo) skipCinematic() {
-	utils.Sleep(2000)
+	utils.Sleep(2000, 200)
 	action.HoldKey(win.VK_SPACE, 2000)
-	utils.Sleep(2000)
+	utils.Sleep(2000, 200)
 	action.HoldKey(win.VK_SPACE, 2000)
-	utils.Sleep(2000)
+	utils.Sleep(2000, 200)
 }

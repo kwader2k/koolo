@@ -147,13 +147,13 @@ func tryConsumeRespecToken() (bool, error) {
 
 	if !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.RefreshGameData()
 	}
 
 	screenPos := ui.GetScreenCoordsForItem(token)
 	ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-	utils.Sleep(800)
+	utils.Sleep(800, 200)
 	ctx.RefreshGameData()
 	step.CloseAllMenus()
 
@@ -178,9 +178,9 @@ func respecAtAkara() error {
 	}
 
 	ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(800)
+	utils.Sleep(800, 200)
 	ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
-	utils.Sleep(800)
+	utils.Sleep(800, 200)
 	step.CloseAllMenus()
 
 	return nil

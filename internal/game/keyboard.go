@@ -3,9 +3,9 @@ package game
 import (
 	"math/rand"
 	"strings"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
 )
@@ -19,14 +19,14 @@ const (
 func (hid *HID) PressKey(key byte) {
 	win.PostMessage(hid.gr.HWND, win.WM_KEYDOWN, uintptr(key), hid.calculatelParam(key, true))
 	sleepTime := rand.Intn(keyPressMaxTime-keyPressMinTime) + keyPressMinTime
-	time.Sleep(time.Duration(sleepTime) * time.Millisecond)
+	utils.Sleep(sleepTime, 100)
 	win.PostMessage(hid.gr.HWND, win.WM_KEYUP, uintptr(key), hid.calculatelParam(key, false))
 }
 
 func (hid *HID) KeySequence(keysToPress ...byte) {
 	for _, key := range keysToPress {
 		hid.PressKey(key)
-		time.Sleep(200 * time.Millisecond)
+		utils.Sleep(200, 100)
 	}
 }
 

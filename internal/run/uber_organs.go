@@ -42,7 +42,7 @@ func (o Organs) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	utils.Sleep(1500)
+	utils.Sleep(1500, 500)
 	o.ctx.RefreshGameData()
 
 	if !hasKeys(o.ctx) {
@@ -99,7 +99,7 @@ func (o Organs) Run(parameters *RunParameters) error {
 			continue
 		}
 
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		o.ctx.RefreshGameData()
 
 		goToMalahIfInHarrogath(o.ctx)
@@ -152,7 +152,7 @@ func (o Organs) openPortal(keys []data.Item, position data.Position, portalNum i
 		return data.Object{}, "", fmt.Errorf("failed to close menus after transmute: %w", err)
 	}
 
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 	o.ctx.RefreshGameData()
 
 	var portal data.Object
@@ -218,7 +218,7 @@ func (o Organs) identifyPortal(portal data.Object) string {
 		return ""
 	}
 
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 	o.ctx.RefreshGameData()
 
 	currentArea := o.ctx.Data.PlayerUnit.Area
@@ -265,7 +265,7 @@ func (o Organs) enterPortal(portal data.Object, areaName string) error {
 	mX, mY := ui.GameCoordsToScreenCords(objectX, objectY)
 
 	o.ctx.HID.Click(game.LeftButton, mX, mY)
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 
 	maxWaitAttempts := 30
 	for attempt := 0; attempt < maxWaitAttempts; attempt++ {
@@ -273,7 +273,7 @@ func (o Organs) enterPortal(portal data.Object, areaName string) error {
 		if o.isInArea(areaName) {
 			return nil
 		}
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 	}
 
 	return fmt.Errorf("timeout waiting for area change to %s", areaName)
@@ -282,7 +282,7 @@ func (o Organs) enterPortal(portal data.Object, areaName string) error {
 func (o Organs) openInventory() error {
 	if !o.ctx.Data.OpenMenus.Inventory {
 		o.ctx.HID.PressKeyBinding(o.ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		o.ctx.RefreshGameData()
 		if !o.ctx.Data.OpenMenus.Inventory {
 			return errors.New("failed to open inventory window")

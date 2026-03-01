@@ -33,7 +33,7 @@ func ensureActiveWeaponSlot(ctx *context.Status, slot int) error {
 
 	for attempt := 0; attempt < 3; attempt++ {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
-		utils.PingSleep(utils.Light, 150)
+		utils.PingSleep(utils.Light, 150, 100)
 		ctx.RefreshGameData()
 		if ctx.Data.ActiveWeaponSlot == slot {
 			return nil
@@ -178,13 +178,13 @@ func ensureQuestWeaponEquipped(ctx *context.Status, itemName item.Name, preferSl
 
 	if !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.RefreshGameData()
 	}
 
 	screenPos := ui.GetScreenCoordsForItem(itm)
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.ShiftKey)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	ctx.RefreshGameData()
 
 	equipped, slot, ok := findEquippedQuestWeapon(ctx, itemName)

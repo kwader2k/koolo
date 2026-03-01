@@ -87,7 +87,7 @@ func (a Leveling) act3() error {
 		a.ctx.Logger.Debug("Moving to bridge")
 		action.MoveToCoords(data.Position{X: 17588, Y: 8068})
 		//Wait for bridge to rise
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 
 		a.ctx.Logger.Debug("Moving to red portal")
 		portal, _ := a.ctx.Data.Objects.FindOne(object.HellGate)
@@ -97,9 +97,9 @@ func (a Leveling) act3() error {
 			return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 		})
 
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		a.HoldKey(win.VK_SPACE, 3000)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		return nil
 
@@ -126,7 +126,7 @@ func (a Leveling) act3() error {
 				return nil
 			}
 			err = action.InteractObject(hellgate, func() bool {
-				utils.Sleep(500)
+				utils.Sleep(500, 100)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
@@ -134,9 +134,9 @@ func (a Leveling) act3() error {
 				return err //
 			}
 			a.ctx.Logger.Info("Successfully interacted with Hell Gate. Attempting to skip cinematic.")
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			a.HoldKey(win.VK_SPACE, 3000)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			// If we successfully interacted with the Hell Gate, we assume the attempt to go to A4 is complete.
 			a.ctx.Logger.Info("Successfully attempted to enter Act 4. Ending Act 3 script.")
 			return nil
@@ -164,21 +164,21 @@ func (a Leveling) act3() error {
 				return nil // Exit if portal not found
 			}
 			err = action.InteractObject(hellgate, func() bool {
-				utils.Sleep(500)
-				utils.Sleep(1000)
+				utils.Sleep(500, 100)
+				utils.Sleep(1000, 500)
 				a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				return err // Exit on error interacting with portal
 			}
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 			a.HoldKey(win.VK_SPACE, 3000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 			return nil // Exit if successfully interacted with portal
 		}
 
@@ -203,7 +203,7 @@ func (a Leveling) act3() error {
 		a.ctx.Logger.Info("KhalimsBrain not found, starting quest")
 		NewEndugu().Run(nil)
 		// Sometimes it doesn't pick up the brain
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 		action.ItemPickup(10)
 	}
 
@@ -231,21 +231,21 @@ func (a Leveling) act3() error {
 				return nil // Exit if portal not found
 			}
 			err := action.InteractObject(hellgate, func() bool {
-				utils.Sleep(500)
-				utils.Sleep(1000)
+				utils.Sleep(500, 100)
+				utils.Sleep(1000, 500)
 				a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				return a.ctx.Data.PlayerUnit.Area == area.ThePandemoniumFortress
 			})
 			if err != nil {
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				return err // Exit on error interacting with portal
 			}
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 			a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 			return nil // Exit if successfully interacted with portal
 		}
 		a.ctx.Logger.Info("Khalim's Flail found and Mephisto stairs opened, but Mephisto not yet dead. Ending Act 3 script for this run.")
@@ -356,7 +356,7 @@ func (a Leveling) findKhalimsHeart() error {
 		return err
 	}
 
-	time.Sleep(4000 * time.Millisecond)
+	utils.Sleep(4000, 1000)
 
 	err = action.MoveToArea(area.SewersLevel2Act3)
 	if err != nil {
@@ -429,7 +429,7 @@ func (a Leveling) openMephistoStairs() error {
 			}); err != nil {
 				return err
 			}
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			return nil
 		}); err != nil {
 			return err
@@ -449,7 +449,7 @@ func (a Leveling) openMephistoStairs() error {
 		if time.Now().After(waitDeadline) {
 			break
 		}
-		time.Sleep(250 * time.Millisecond)
+		utils.Sleep(250, 100)
 	}
 
 	if a.ctx.Data.Quests[quest.Act3KhalimsWill].Completed() {
@@ -490,7 +490,7 @@ func (a Leveling) jadefigurine() error {
 		action.InteractNPC(npc.Ormus)
 		action.InteractNPC(npc.Alkor)
 	}
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	lifepotion, lifepotfound := a.ctx.Data.Inventory.Find("PotionOfLife", item.LocationInventory)
 	if lifepotfound {
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)

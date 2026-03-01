@@ -15,6 +15,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 var _ context.LevelingCharacter = (*AssassinLeveling)(nil)
@@ -331,7 +332,7 @@ func (s AssassinLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error 
 
 		boss, found := s.Data.Monsters.FindOne(bossNPC, data.MonsterTypeUnique)
 		if !found {
-			time.Sleep(time.Second)
+			utils.Sleep(1000, 1000)
 			continue
 		}
 
@@ -373,7 +374,7 @@ func (s AssassinLeveling) killBoss(bossNPC npc.ID, timeout time.Duration) error 
 			s.Logger.Info(fmt.Sprintf("%s has been defeated.", bossNPC))
 			if bossNPC == npc.BaalCrab {
 				s.Logger.Info("Waiting...")
-				time.Sleep(time.Second * 1)
+				utils.Sleep(1000, 1000)
 			}
 			return nil
 		}
@@ -409,7 +410,7 @@ func (s AssassinLeveling) killMonsterByName(id npc.ID, monsterType data.MonsterT
 			s.Logger.Warn(fmt.Sprintf("Error during KillMonsterSequence for %s: %v", id, err))
 		}
 
-		time.Sleep(time.Millisecond * 250)
+		utils.Sleep(250, 250)
 	}
 }
 

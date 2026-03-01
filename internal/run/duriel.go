@@ -189,7 +189,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 	}
 
 	// Wait for area to fully load and get synchronized.
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	d.ctx.RefreshGameData()
 
 	// Find orifice with retry logic.
@@ -201,7 +201,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 		if found && orifice.Mode == mode.ObjectModeOpened {
 			break
 		}
-		utils.Sleep(orificeCheckDelay)
+		utils.Sleep(orificeCheckDelay, 100)
 		d.ctx.RefreshGameData()
 	}
 
@@ -234,14 +234,14 @@ func (d Duriel) Run(parameters *RunParameters) error {
 		screenPos := ui.GetScreenCoordsForItem(staff)
 
 		d.ctx.HID.Click(game.LeftButton, screenPos.X, screenPos.Y)
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		if d.ctx.Data.LegacyGraphics {
 			d.ctx.HID.Click(game.LeftButton, ui.AnvilCenterXClassic, ui.AnvilCenterYClassic)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			d.ctx.HID.Click(game.LeftButton, ui.AnvilBtnXClassic, ui.AnvilBtnYClassic)
 		} else {
 			d.ctx.HID.Click(game.LeftButton, ui.AnvilCenterX, ui.AnvilCenterY)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			d.ctx.HID.Click(game.LeftButton, ui.AnvilBtnX, ui.AnvilBtnY)
 		}
 		// Leveling characters wait actively for the portal animation while staying safe.
@@ -262,13 +262,13 @@ func (d Duriel) Run(parameters *RunParameters) error {
 					}
 					nextClear = time.Now().Add(2 * time.Second)
 				}
-				utils.Sleep(300)
+				utils.Sleep(300, 100)
 			}
 			if !portalOpened {
 				d.ctx.Logger.Warn("Duriel's lair did not open after waiting", "timeoutSeconds", 20)
 			}
 		} else {
-			utils.Sleep(20000)
+			utils.Sleep(20000, 100)
 		}
 	}
 
@@ -292,7 +292,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 	}
 
 	d.ctx.RefreshGameData()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	// Ensure we enter the lair only with an active thawing buff.
 	if err := ensureThawingBuff(0); err != nil {
@@ -312,7 +312,7 @@ func (d Duriel) Run(parameters *RunParameters) error {
 	// Final refresh before fight
 	d.ctx.RefreshGameData()
 
-	utils.Sleep(700)
+	utils.Sleep(700, 200)
 
 	if err := d.ctx.Char.KillDuriel(); err != nil {
 		return err
@@ -367,11 +367,11 @@ func (d Duriel) drinkThawingPotions(selfTarget, mercTarget int) (int, int) {
 		d.ctx.CharacterCfg.HidePortraits = false
 		reHidePortraits = true
 		d.ctx.HID.PressKey(d.ctx.Data.KeyBindings.ShowPortraits.Key1[0])
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 	}
 
 	d.ctx.HID.PressKeyBinding(d.ctx.Data.KeyBindings.Inventory)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 
 	selfCount := 0
 	mercCount := 0
@@ -381,7 +381,7 @@ func (d Duriel) drinkThawingPotions(selfTarget, mercTarget int) (int, int) {
 			continue
 		}
 		pos := ui.GetScreenCoordsForItem(itm)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		if selfCount < selfTarget {
 			d.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
@@ -391,7 +391,7 @@ func (d Duriel) drinkThawingPotions(selfTarget, mercTarget int) (int, int) {
 
 		if mercCount < mercTarget {
 			d.ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			if d.ctx.Data.LegacyGraphics {
 				d.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionXClassic, ui.MercAvatarPositionYClassic)
 			} else {
@@ -555,7 +555,7 @@ func (d Duriel) prepareStaff() error {
 				return err
 			}
 			d.ctx.RefreshGameData()
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 			horadricStaff, found = d.ctx.Data.Inventory.Find("HoradricStaff", item.LocationInventory, item.LocationStash, item.LocationEquipped)
 			if !found {
 				return errors.New("failed to move horadric staff out of cube")
@@ -578,7 +578,7 @@ func (d Duriel) prepareStaff() error {
 
 			screenPos := ui.GetScreenCoordsForItem(horadricStaff)
 			d.ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			step.CloseAllMenus()
 		}
 		return nil
@@ -640,7 +640,7 @@ func (d Duriel) tryTalkToJerhyn() bool {
 			Y: 5144,
 		})
 		action.InteractNPC(npc.Jerhyn)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		return true
 	}
 	return false
@@ -655,13 +655,13 @@ func (d Duriel) tryTalkToMeshif() bool {
 			Y: 5060,
 		})
 		action.InteractNPC(npc.Meshif)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		d.ctx.HID.KeySequence(win.VK_SPACE)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		d.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 100)
 		action.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 100)
 		return true
 	}
 	return false

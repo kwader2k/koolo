@@ -72,7 +72,7 @@ func (f *FireEye) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 
 	areaData := f.ctx.Data.Areas[area.PalaceCellarLevel3]
 	monster, found := areaData.NPCs.FindOne(750)

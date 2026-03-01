@@ -20,7 +20,7 @@ func PickupItemPacket(it data.Item, itemPickupAttempt int) error {
 			ctx.Logger.Warn("Timeout waiting for character to stop moving or casting, proceeding anyway.")
 			break
 		}
-		time.Sleep(25 * time.Millisecond)
+		utils.Sleep(25, 500)
 		ctx.RefreshGameData()
 	}
 
@@ -67,7 +67,7 @@ func PickupItemPacket(it data.Item, itemPickupAttempt int) error {
 	}
 
 	for i := 0; i < 5; i++ {
-		utils.PingSleep(utils.Light, 150)
+		utils.PingSleep(utils.Light, 150, 500)
 		ctx.RefreshInventory()
 
 		// Verify pickup

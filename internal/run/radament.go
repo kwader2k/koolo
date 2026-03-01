@@ -114,7 +114,7 @@ func (r Radament) Run(parameters *RunParameters) error {
 			return err
 		}
 
-		utils.PingSleep(utils.Medium, 1000)
+		utils.PingSleep(utils.Medium, 1000, 500)
 
 		err = action.MoveToCoords(startingPositionAtma)
 		if err != nil {
@@ -140,7 +140,7 @@ func (r Radament) finishQuest() error {
 	r.ctx.HID.PressKeyBinding(r.ctx.Data.KeyBindings.Inventory)
 	itm, _ := r.ctx.Data.Inventory.Find("BookofSkill")
 	screenPos := ui.GetScreenCoordsForItem(itm)
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	r.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 	step.CloseAllMenus()
 	return nil

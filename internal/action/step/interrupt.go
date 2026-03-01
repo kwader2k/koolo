@@ -20,7 +20,7 @@ func interruptDropIfRequested() error {
 		if ctx.Manager.InGame() {
 			ctx.Logger.Info("Drop request detected, exiting game immediately")
 			ctx.Manager.ExitGame()
-			utils.Sleep(150)
+			utils.Sleep(150, 100)
 		}
 
 		return drop.ErrInterrupt
@@ -33,5 +33,5 @@ func CleanupForDrop() {
 	ctx := context.Get()
 	ctx.SetLastStep("DropCleanup")
 	_ = CloseAllMenus()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 }

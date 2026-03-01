@@ -36,7 +36,7 @@ func swapWeapon(toCTA bool) error {
 		}
 
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
-		utils.PingSleep(utils.Light, 150)
+		utils.PingSleep(utils.Light, 150, 100)
 
 		lastRun = time.Now()
 	}

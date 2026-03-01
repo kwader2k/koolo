@@ -87,11 +87,11 @@ func (a Cows) Run(parameters *RunParameters) error {
 			return err
 		}
 
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		// Sell junk, refill potions, etc. (basically ensure space for getting the TP tome)
 		action.PreRun(false)
 
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 		err = a.preparePortal()
 		if err != nil {
 			return err
@@ -103,7 +103,7 @@ func (a Cows) Run(parameters *RunParameters) error {
 	}
 
 	// Add a small delay to ensure everything is settled
-	utils.Sleep(700)
+	utils.Sleep(700, 200)
 
 	townPortal, found := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 	if !found {

@@ -230,9 +230,9 @@ func (n Nihlathak) useAnyaTemplePortal() error {
 		if err := action.InteractNPC(npc.Drehya); err != nil {
 			return err
 		}
-		utils.Sleep(1000)
+		utils.Sleep(1000, 1000)
 		n.ctx.RefreshGameData()
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 
 		templeTp, found = n.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
 		if !found {

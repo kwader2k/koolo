@@ -229,7 +229,7 @@ func equipCTAIfFound(allItems []data.Item) (bool, error) {
 
 	// Check secondary weapon slot
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
-	utils.Sleep(EquipDelayMS)
+	utils.Sleep(EquipDelayMS, 200)
 	*ctx.Data = ctx.GameReader.GetData()
 
 	equippedWeapon := GetEquippedItem(ctx.Data.Inventory, item.LocLeftArm)
@@ -261,7 +261,7 @@ func equipCTAIfFound(allItems []data.Item) (bool, error) {
 
 	// Switch back to primary
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
-	utils.Sleep(EquipDelayMS)
+	utils.Sleep(EquipDelayMS, 300)
 	*ctx.Data = ctx.GameReader.GetData()
 
 	return changed, nil
@@ -831,10 +831,10 @@ func equipBestWeapons(itemsByLoc map[item.LocationType][]data.Item, itemScores m
 				}
 				if !ctx.Data.OpenMenus.Inventory {
 					ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-					utils.Sleep(EquipDelayMS)
+					utils.Sleep(EquipDelayMS, 200)
 				}
 				ctx.HID.ClickWithModifier(game.LeftButton, rightArmCoords.X, rightArmCoords.Y, game.ShiftKey)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 500)
 				*ctx.Data = ctx.GameReader.GetData()
 				itemAfterUnequip := GetEquippedItem(ctx.Data.Inventory, item.LocRightArm)
 				if itemAfterUnequip.UnitID != 0 {
@@ -1064,14 +1064,14 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	// Move item from stash to inventory if needed
 	if itm.Location.LocationType == item.LocationStash || itm.Location.LocationType == item.LocationSharedStash {
 		OpenStash()
-		utils.Sleep(EquipDelayMS)
+		utils.Sleep(EquipDelayMS, 200)
 		tab := 1
 		if itm.Location.LocationType == item.LocationSharedStash {
 			tab = itm.Location.Page + 1
 		}
 		SwitchStashTab(tab)
 		ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
-		utils.Sleep(EquipDelayMS)
+		utils.Sleep(EquipDelayMS, 200)
 		*ctx.Data = ctx.GameReader.GetData()
 		var found bool
 		for _, updatedItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
@@ -1101,12 +1101,12 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	for attempt := 0; attempt < 3; attempt++ {
 		for !ctx.Data.OpenMenus.Inventory {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-			utils.Sleep(EquipDelayMS)
+			utils.Sleep(EquipDelayMS, 200)
 		}
 
 		if target == item.LocationMercenary {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
-			utils.Sleep(EquipDelayMS)
+			utils.Sleep(EquipDelayMS, 200)
 			ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itm).X, ui.GetScreenCoordsForItem(itm).Y, game.CtrlKey)
 		} else {
 			currentlyEquipped := GetEquippedItem(ctx.Data.Inventory, bodyloc)
@@ -1127,7 +1127,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 				}
 
 				ctx.HID.ClickWithModifier(game.LeftButton, oldRingCoords.X, oldRingCoords.Y, game.ShiftKey)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 200)
 				*ctx.Data = ctx.GameReader.GetData()
 
 				itemAfterUnequip := GetEquippedItem(ctx.Data.Inventory, bodyloc)
@@ -1164,7 +1164,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 				}
 
 				ctx.HID.ClickWithModifier(game.LeftButton, rightArmCoords.X, rightArmCoords.Y, game.ShiftKey)
-				utils.Sleep(1000)
+				utils.Sleep(1000, 200)
 				*ctx.Data = ctx.GameReader.GetData()
 
 				itemAfterUnequip := GetEquippedItem(ctx.Data.Inventory, item.LocRightArm)
@@ -1204,7 +1204,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 		*ctx.Data = ctx.GameReader.GetData()
 		var itemEquipped bool
 		for i := 0; i < 3; i++ {
-			utils.Sleep(800)
+			utils.Sleep(800, 200)
 			*ctx.Data = ctx.GameReader.GetData()
 			for _, inPlace := range ctx.Data.Inventory.ByLocation(target) {
 				if inPlace.UnitID == itm.UnitID && inPlace.Location.BodyLocation == bodyloc {
@@ -1220,7 +1220,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			return nil
 		}
 		ctx.Logger.Debug(fmt.Sprintf("Equip attempt %d failed, retrying...", attempt+1))
-		utils.Sleep(500)
+		utils.Sleep(500, 500)
 	}
 	return fmt.Errorf("verification failed after all attempts to equip %s", itm.IdentifiedName)
 }
@@ -1327,7 +1327,7 @@ func UnEquipMercenary() error {
 	}
 	if !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(EquipDelayMS)
+		utils.Sleep(EquipDelayMS, 500)
 	}
 
 	// Loop multiple times to ensure all items are stashed.
@@ -1349,7 +1349,7 @@ func UnEquipMercenary() error {
 			// Find the item's coordinates and perform a ctrl+click to stash it.
 			coords := ui.GetScreenCoordsForItem(invItem)
 			ctx.HID.ClickWithModifier(game.LeftButton, coords.X, coords.Y, game.CtrlKey)
-			utils.Sleep(EquipDelayMS)
+			utils.Sleep(EquipDelayMS, 200)
 		}
 	}
 
@@ -1360,9 +1360,9 @@ func UnEquipMercenary() error {
 
 	// Open both the merc screen and player inventory for the transfer to work
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MercenaryScreen)
-	utils.Sleep(EquipDelayMS)
+	utils.Sleep(EquipDelayMS, 500)
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-	utils.Sleep(EquipDelayMS)
+	utils.Sleep(EquipDelayMS, 500)
 
 	// Refresh data to ensure the new menu state is recognized
 	*ctx.Data = ctx.GameReader.GetData()
@@ -1388,7 +1388,7 @@ func UnEquipMercenary() error {
 	// Perform the ctrl+click action on each item location
 	for _, coords := range mercGearCoords {
 		ctx.HID.ClickWithModifier(game.LeftButton, coords.X, coords.Y, game.CtrlKey)
-		utils.Sleep(EquipDelayMS)
+		utils.Sleep(EquipDelayMS, 200)
 	}
 
 	return nil
@@ -1413,10 +1413,10 @@ func RemoveShield() {
 	}
 
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 	rightArmCoords, _ := getBodyLocationScreenCoords(item.LocRightArm)
 	ctx.HID.ClickWithModifier(game.LeftButton, rightArmCoords.X, rightArmCoords.Y, game.ShiftKey)
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 	step.CloseAllMenus()
 	*ctx.Data = ctx.GameReader.GetData()
 }

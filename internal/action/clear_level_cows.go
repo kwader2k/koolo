@@ -53,7 +53,7 @@ func ClearCurrentLevelCows(openChests bool, filter data.MonsterFilter) error {
 						chest, _ := ctx.Data.Objects.FindByID(o.ID)
 						return !chest.Selectable
 					})
-					utils.Sleep(250)
+					utils.Sleep(250, 100)
 				}
 			}
 		}

@@ -133,7 +133,7 @@ func (rc RescueCain) Run(parameters *RunParameters) error {
 
 	action.ReturnTown()
 
-	utils.Sleep(10000)
+	utils.Sleep(10000, 2000)
 
 	err = action.InteractNPC(npc.DeckardCain5)
 	if err != nil {
@@ -243,12 +243,12 @@ PickupLoop:
 				if moveAwayErr != nil {
 					rc.ctx.Logger.Warn(fmt.Sprintf("Failed to move away from scroll: %v", moveAwayErr))
 				}
-				utils.Sleep(200)
+				utils.Sleep(200, 100)
 
 				moveErr := action.MoveToCoords(scrollObj.Position)
 				if moveErr != nil {
 					rc.ctx.Logger.Error(fmt.Sprintf("Failed to move to scroll position: %v", moveErr))
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					pickupAttempts++
 					continue
 				}
@@ -259,7 +259,7 @@ PickupLoop:
 				pickupErr := action.ItemPickup(10)
 				if pickupErr != nil {
 					rc.ctx.Logger.Warn(fmt.Sprintf("Pickup attempt %d failed: %v", pickupAttempts+1, pickupErr))
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					pickupAttempts++
 					continue
 				}
@@ -280,7 +280,7 @@ PickupLoop:
 			}
 		} else {
 			rc.ctx.Logger.Debug(fmt.Sprintf("%s not found on the ground on attempt %d. Retrying.", ScrollInifussName, i+1))
-			utils.Sleep(1000)
+			utils.Sleep(1000, 200)
 		}
 	}
 
@@ -325,14 +325,14 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 			stone, _ := rc.ctx.Data.Objects.FindOne(cainStone)
 			if stone.Selectable {
 				rc.ctx.PathFinder.RandomMovement()
-				utils.Sleep(250)
+				utils.Sleep(250, 100)
 				action.InteractObject(stone, func() bool {
 					st, _ := rc.ctx.Data.Objects.FindOne(cainStone)
 					return !st.Selectable
 				})
 
 			} else {
-				utils.Sleep(200)
+				utils.Sleep(200, 100)
 				activeStones++
 			}
 			_, tristPortal := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal)
@@ -346,7 +346,7 @@ func (rc RescueCain) openPortalIfNotOpened() error {
 	// Wait upto 15 seconds for the portal to open, checking every second if its up
 	for range 15 {
 		// Wait a second
-		utils.Sleep(1000)
+		utils.Sleep(1000, 100)
 
 		if _, portalFound := rc.ctx.Data.Objects.FindOne(object.PermanentTownPortal); portalFound {
 			return nil

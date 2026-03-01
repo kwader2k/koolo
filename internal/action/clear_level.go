@@ -103,7 +103,7 @@ func ClearCurrentLevelEx(openChests bool, filter data.MonsterFilter, shouldInter
 					}
 
 					// Add small delay to allow the game to open the chest and drop the content
-					utils.Sleep(500)
+					utils.Sleep(500, 200)
 				}
 			}
 		}

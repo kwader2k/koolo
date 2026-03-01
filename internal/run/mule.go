@@ -48,7 +48,7 @@ func (m Mule) initialSetup(ctx *context.Status) error {
 	}
 	if !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(MuleActionDelay)
+		utils.Sleep(MuleActionDelay, 100)
 	}
 	return nil
 }
@@ -103,7 +103,7 @@ func (m Mule) Run(parameters *RunParameters) error {
 			// Phase 1: Move items from all shared tabs to inventory
 			for sharedTab := 2; sharedTab <= 4; sharedTab++ {
 				action.SwitchStashTab(sharedTab)
-				utils.Sleep(MuleActionDelay)
+				utils.Sleep(MuleActionDelay, 100)
 
 				ctx.RefreshGameData()
 				itemsToMove := ctx.Data.Inventory.ByLocation(item.LocationSharedStash)
@@ -118,14 +118,14 @@ func (m Mule) Run(parameters *RunParameters) error {
 					}
 
 					ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itemToMove).X, ui.GetScreenCoordsForItem(itemToMove).Y, game.CtrlKey)
-					utils.Sleep(MuleActionDelay)
+					utils.Sleep(MuleActionDelay, 100)
 					movedItemInLoop = true
 				}
 			}
 
 			// Phase 2: Move all items from inventory to private stash
 			action.SwitchStashTab(1)
-			utils.Sleep(MuleActionDelay)
+			utils.Sleep(MuleActionDelay, 200)
 
 			ctx.RefreshGameData()
 			itemsToDeposit := ctx.Data.Inventory.ByLocation(item.LocationInventory)
@@ -140,7 +140,7 @@ func (m Mule) Run(parameters *RunParameters) error {
 				}
 
 				ctx.HID.ClickWithModifier(game.LeftButton, ui.GetScreenCoordsForItem(itemToDeposit).X, ui.GetScreenCoordsForItem(itemToDeposit).Y, game.CtrlKey)
-				utils.Sleep(MuleActionDelay)
+				utils.Sleep(MuleActionDelay, 100)
 				movedItemInLoop = true
 			}
 
@@ -180,7 +180,7 @@ func (m Mule) Run(parameters *RunParameters) error {
 	if err := ctx.Manager.ExitGame(); err != nil {
 		ctx.Logger.Error("Failed to exit game before character switch", "error", err)
 	}
-	utils.Sleep(2000)
+	utils.Sleep(2000, 500) // Wait for the game to exit properly before stopping the supervisor
 
 	ctx.StopSupervisor()
 	return nil

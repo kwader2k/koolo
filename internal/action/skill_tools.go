@@ -257,7 +257,7 @@ func spendSkillPoint(skillID skill.ID, useBulk bool) int {
 	beforePoints, _ := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
 	if !ctx.Data.OpenMenus.SkillTree {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SkillTree)
-		utils.Sleep(100)
+		utils.Sleep(100, 200)
 	}
 	sk, found := skill.Skills[skillID]
 	skillDesc := sk.Desc()
@@ -270,7 +270,7 @@ func spendSkillPoint(skillID skill.ID, useBulk bool) int {
 	} else {
 		ctx.HID.Click(game.LeftButton, uiSkillPagePosition[skillDesc.Page-1].X, uiSkillPagePosition[skillDesc.Page-1].Y)
 	}
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	if ctx.Data.LegacyGraphics {
 		if useBulk {
 			ctx.HID.ClickWithModifier(game.LeftButton, uiSkillColumnPositionLegacy[skillDesc.Column-1], uiSkillRowPositionLegacy[skillDesc.Row-1], game.ShiftKey)
@@ -284,7 +284,7 @@ func spendSkillPoint(skillID skill.ID, useBulk bool) int {
 			ctx.HID.Click(game.LeftButton, uiSkillColumnPosition[skillDesc.Column-1], uiSkillRowPosition[skillDesc.Row-1])
 		}
 	}
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	afterPoints, _ := ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
 	spent := beforePoints.Value - afterPoints.Value
 	if spent == 0 && useBulk {
@@ -297,7 +297,7 @@ func spendSkillPoint(skillID skill.ID, useBulk bool) int {
 			} else {
 				ctx.HID.Click(game.LeftButton, uiSkillColumnPosition[skillDesc.Column-1], uiSkillRowPosition[skillDesc.Row-1])
 			}
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			ctx.RefreshGameData()
 			afterPoints, _ = ctx.Data.PlayerUnit.FindStat(stat.SkillPoints, 0)
 			spent = beforePoints.Value - afterPoints.Value
@@ -359,7 +359,7 @@ func EnsureSkillBindings() error {
 				ctx.HID.Click(game.LeftButton, ui.SecondarySkillButtonX, ui.SecondarySkillButtonY)
 			}
 		}
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		menuOpen = true
 		menuIsMain = bindOnLeft
 	}
@@ -368,7 +368,7 @@ func EnsureSkillBindings() error {
 			return
 		}
 		step.CloseAllMenus()
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		menuOpen = false
 	}
 
@@ -423,12 +423,12 @@ func EnsureSkillBindings() error {
 				ctx.Logger.Info(fmt.Sprintf("EnsureSkillBindings Tome coords (secondary): X=%d Y=%d [Legacy=%v]", skillPosition.X, skillPosition.Y, legacyGraphics))
 			}
 			ctx.HID.MovePointer(skillPosition.X, skillPosition.Y)
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx.HID.PressKeyBinding(availableKB[i])
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			if sk == skill.TomeOfTownPortal {
 				ctx.GameReader.GetData()
-				utils.Sleep(150)
+				utils.Sleep(150, 100)
 				if _, ok := ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); ok {
 					ctx.Logger.Info("TomeOfTownPortal binding verified")
 				} else {
@@ -456,9 +456,9 @@ func EnsureSkillBindings() error {
 							ctx.Logger.Error("Fire Bolt UI position not found for binding.")
 						} else {
 							ctx.HID.MovePointer(skillPosition.X, skillPosition.Y)
-							utils.Sleep(100)
+							utils.Sleep(100, 100)
 							ctx.HID.PressKeyBinding(availableKB[0])
-							utils.Sleep(300)
+							utils.Sleep(300, 100)
 						}
 						closeSkillMenu()
 					}
@@ -481,7 +481,7 @@ func EnsureSkillBindings() error {
 		skillPosition, found := calculateSkillPositionInUI(true, mainSkill)
 		if found {
 			ctx.HID.Click(game.LeftButton, skillPosition.X, skillPosition.Y)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 		} else {
 			ctx.Logger.Error(fmt.Sprintf("Failed to find UI position for main skill %v (ID: %d)", skill.SkillNames[mainSkill], mainSkill))
 		}

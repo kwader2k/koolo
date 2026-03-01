@@ -18,7 +18,7 @@ func RecoverCorpse() error {
 
 		attempts := 0
 		for ctx.Data.Corpse.Found && attempts < 15 {
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			x, y := ui.GameCoordsToScreenCords(
 				ctx.Data.Corpse.Position.X,
 				ctx.Data.Corpse.Position.Y,

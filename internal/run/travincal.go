@@ -105,11 +105,11 @@ func (t *Travincal) Run(parameters *RunParameters) error {
 			if err := action.UsePortalInTown(); err != nil {
 				return err
 			}
-			utils.PingSleep(utils.Critical, 500)
+			utils.PingSleep(utils.Critical, 500, 100)
 			if err := t.smashOrb(); err != nil {
 				return err
 			}
-			utils.Sleep(12000)
+			utils.Sleep(12000, 1000)
 		}
 		if err := t.tryReachDuranceWp(); err != nil {
 			return err
@@ -168,7 +168,7 @@ func (t Travincal) smashOrb() error {
 		}); err != nil {
 			return err
 		}
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		return nil
 	})
 }

@@ -258,12 +258,12 @@ PickupLoop:
 				if moveAwayErr != nil {
 					a.ctx.Logger.Warn(fmt.Sprintf("Failed to move away from scroll: %v", moveAwayErr))
 				}
-				utils.Sleep(200)
+				utils.Sleep(200, 100)
 
 				moveErr := action.MoveToCoords(scrollObj.Position)
 				if moveErr != nil {
 					a.ctx.Logger.Error(fmt.Sprintf("Failed to move to scroll position: %v", moveErr))
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					pickupAttempts++
 					continue
 				}
@@ -274,7 +274,7 @@ PickupLoop:
 				pickupErr := action.ItemPickup(10)
 				if pickupErr != nil {
 					a.ctx.Logger.Warn(fmt.Sprintf("Pickup attempt %d failed: %v", pickupAttempts+1, pickupErr))
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					pickupAttempts++
 					continue
 				}
@@ -295,7 +295,7 @@ PickupLoop:
 			}
 		} else {
 			a.ctx.Logger.Debug(fmt.Sprintf("%s not found on the ground on attempt %d. Retrying.", scrollInifussName, i+1))
-			utils.Sleep(1000)
+			utils.Sleep(1000, 100)
 		}
 	}
 
@@ -402,7 +402,7 @@ func (a Quests) killRadamentQuest() error {
 		step.CloseAllMenus()
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
 		screenPos := ui.GetScreenCoordsForItem(itm)
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 		step.CloseAllMenus()
 
@@ -488,7 +488,7 @@ func (a Quests) killRadamentQuest() error {
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
 		itm, _ := a.ctx.Data.Inventory.Find("BookofSkill")
 		screenPos := ui.GetScreenCoordsForItem(itm)
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 		step.CloseAllMenus()
 
@@ -686,7 +686,7 @@ func (a Quests) killIzualQuest() error {
 		return err
 	}
 
-	time.Sleep(500 * time.Millisecond)
+	utils.Sleep(500, 1000)
 
 	return nil
 }
@@ -813,7 +813,7 @@ func (a Quests) rescueAnyaQuest() error {
 		return err
 	}
 
-	time.Sleep(8000 * time.Millisecond)
+	utils.Sleep(8000, 1000)
 
 	err = action.InteractNPC(npc.Malah)
 	if err != nil {
@@ -824,7 +824,7 @@ func (a Quests) rescueAnyaQuest() error {
 	a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
 	itm, _ := a.ctx.Data.Inventory.Find("ScrollOfResistance")
 	screenPos := ui.GetScreenCoordsForItem(itm)
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 	step.CloseAllMenus()
 
@@ -876,7 +876,7 @@ func (a Quests) killAncientsQuest() error {
 	err = action.InteractObject(altar, func() bool {
 		// After clicking, press Enter to confirm the dialog
 		a.ctx.HID.PressKey(win.VK_RETURN)
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 
 		// Check if Ancients spawned (elite monsters appeared)
 		ancients := a.ctx.Data.Monsters.Enemies(data.MonsterEliteFilter())
@@ -913,7 +913,7 @@ func (a Quests) killAncientsQuest() error {
 	// a.ctx.CharacterCfg.BackToTown = originalBackToTownCfg // This line is now removed
 	// a.ctx.Logger.Info("Restored original back-to-town checks after Ancients fight.") // This line is now part of the defer
 
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	step.CloseAllMenus()
 	action.InRunReturnTownRoutine()
 

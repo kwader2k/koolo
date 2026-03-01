@@ -153,9 +153,9 @@ func dropItemFromInventoryUI(i data.Item) error {
 
 	screenPos := ui.GetScreenCoordsForItem(i)
 	ctx.HID.MovePointer(screenPos.X, screenPos.Y)
-	utils.Sleep(100)
+	utils.Sleep(100, 100)
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 
 	return nil
 }
@@ -325,7 +325,7 @@ func spendStatPoint(statID stat.ID, useBulk bool) int {
 
 	if !ctx.Data.OpenMenus.Character {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.CharacterScreen)
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 	}
 
 	statBtnPosition := uiStatButtonPosition[statID]
@@ -338,7 +338,7 @@ func spendStatPoint(statID stat.ID, useBulk bool) int {
 	} else {
 		ctx.HID.Click(game.LeftButton, statBtnPosition.X, statBtnPosition.Y)
 	}
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 
 	afterPoints, _ := ctx.Data.PlayerUnit.FindStat(stat.StatPoints, 0)
 	spent := beforePoints.Value - afterPoints.Value
@@ -348,7 +348,7 @@ func spendStatPoint(statID stat.ID, useBulk bool) int {
 		spent = beforePoints.Value - afterPoints.Value
 		if spent == 0 {
 			ctx.HID.Click(game.LeftButton, statBtnPosition.X, statBtnPosition.Y)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			ctx.RefreshGameData()
 			afterPoints, _ = ctx.Data.PlayerUnit.FindStat(stat.StatPoints, 0)
 			spent = beforePoints.Value - afterPoints.Value
@@ -406,20 +406,20 @@ func ResetBindings() error {
 		} else {
 			ctx.HID.Click(game.LeftButton, ui.SecondarySkillButtonX, ui.SecondarySkillButtonY)
 		}
-		utils.Sleep(300) // Give time for UI to open
+		utils.Sleep(300, 100) // Give time for UI to open
 
 		// 3. Move mouse to skill position (hover)
 		ctx.HID.MovePointer(skillPosition.X, skillPosition.Y)
-		utils.Sleep(500) // Delay for mouse to move and for the hover effect
+		utils.Sleep(500, 100) // Delay for mouse to move and for the hover effect
 
 		// 4. Press current skill action keybinding to assign the skill
 		ctx.HID.PressKeyBinding(skillBinding.KeyBinding)
-		utils.Sleep(700) // Delay for the binding to register
+		utils.Sleep(700, 100) // Delay for the binding to register
 
 		// 5. Close the skill assignment menu
 		step.CloseAllMenus()
 
-		utils.Sleep(500) // Delay after closing for the next iteration
+		utils.Sleep(500, 100) // Delay after closing for the next iteration
 	}
 
 	ctx.Logger.Info("TomeOfTownPortal binding to skill action 1-16 sequence completed.")
@@ -469,7 +469,7 @@ func HireMerc() error {
 			}
 
 			ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-			utils.Sleep(2000)
+			utils.Sleep(2000, 1000)
 
 			mercList := ctx.GameReader.GetMercList()
 
@@ -493,11 +493,11 @@ func HireMerc() error {
 					}
 					keySequence = append(keySequence, win.VK_RETURN, win.VK_UP, win.VK_RETURN)
 					ctx.HID.KeySequence(keySequence...)
-					utils.Sleep(1000)
+					utils.Sleep(1000, 100)
 				}
 			} else {
 				ctx.Logger.Info("No merc with Prayer found.")
-				utils.Sleep(1000)
+				utils.Sleep(1000, 100)
 			}
 
 			step.CloseAllMenus()
@@ -534,7 +534,7 @@ func ResetStats() error {
 		}
 		if !ctx.Data.OpenMenus.Inventory {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 		}
 		ctx.GameReader.GetData() // Refresh data to confirm menus are open
 
@@ -565,31 +565,31 @@ func ResetStats() error {
 
 				// Ctrl-click to unequip the item to stash directly
 				ctx.HID.ClickWithModifier(game.LeftButton, slotCoords.X, slotCoords.Y, game.CtrlKey)
-				utils.Sleep(500)
+				utils.Sleep(500, 100)
 
-				utils.Sleep(250)
+				utils.Sleep(250, 100)
 				ctx.GameReader.GetData()
 			}
 			// Small delay before the next full attempt
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 		}
 
 		step.CloseAllMenus() // Close stash and inventory
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		// 3. Interact with Akara for the reset
 		InteractNPC(npc.Akara)
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 100)
 		ctx.HID.KeySequence(win.VK_HOME, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 100)
 		ctx.GameReader.GetData() // Refresh data to update skill values
 
 		// 4. Now, drop any remaining items directly in the inventory
 		ctx.Logger.Info("Dropping all remaining inventory items.")
 		if !ctx.Data.OpenMenus.Inventory {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			ctx.GameReader.GetData()
 		}
 
@@ -607,56 +607,56 @@ func ResetStats() error {
 			if err := dropItemFromInventoryUI(invItem); err != nil {
 				ctx.Logger.Error(fmt.Sprintf("Failed to drop inventory item %s: %v", invItem.Name, err))
 			}
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			ctx.GameReader.GetData()
 		}
 		ctx.Logger.Debug("All remaining inventory items processed for drop.")
 
 		step.CloseAllMenus()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		// 5. Finalize the reset process
 		err := ResetBindings()
 		if err != nil {
 			ctx.Logger.Error("Failed to bind TomeOfTownPortal after stats reset", slog.Any("error", err))
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		EnsureStatPoints()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.GameReader.GetData() // Refresh data to update stat values
 
 		EnsureSkillPoints()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.GameReader.GetData() // Refresh data to update skill values
 
 		EnsureSkillBindings()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ctx.PathFinder.RandomMovement() // Avoid being considered stuck
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		ctx.EnableItemPickup()
 
 		// 6. Pick up dropped items and auto-equip
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ItemPickup(-1)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ItemPickup(-1)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		AutoEquip()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		ItemPickup(-1)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		AutoEquip()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		if currentArea != area.RogueEncampment {
 			return WayPoint(currentArea)

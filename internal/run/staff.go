@@ -104,7 +104,7 @@ func (s Staff) Run(parameters *RunParameters) error {
 		return err
 	}
 
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	action.ItemPickup(-1)
 
 	return nil

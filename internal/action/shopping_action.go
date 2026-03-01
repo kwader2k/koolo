@@ -186,13 +186,13 @@ func ensureTwoFreeColumnsStrict() bool {
 	}
 	ctx := context.Get()
 	step.CloseAllMenus()
-	utils.Sleep(30)
+	utils.Sleep(30, 100)
 	ctx.RefreshGameData()
 	if err := Stash(false); err != nil {
 		ctx.Logger.Warn("Stash failed while ensuring two free columns", slog.Any("err", err))
 		return false
 	}
-	utils.Sleep(50)
+	utils.Sleep(50, 100)
 	ctx.RefreshGameData()
 	return hasTwoFreeColumns()
 }
@@ -354,7 +354,7 @@ func scanAndPurchaseItems(vendorID npc.ID, plan ActionShoppingPlan) (itemsPurcha
 			// Buy using town helper (consistent with gambling)
 			town.BuyItem(it, 1)
 
-			utils.Sleep(40)
+			utils.Sleep(40, 100)
 			ctx.RefreshGameData()
 
 			itemsPurchased++
@@ -385,7 +385,7 @@ func stashAndReturnToVendor(vendorID npc.ID, tab int) bool {
 		ctx.Logger.Warn("Stash failed", slog.Any("err", err))
 		return false
 	}
-	utils.Sleep(60)
+	utils.Sleep(60, 100)
 	ctx.RefreshGameData()
 
 	if err := moveToVendor(vendorID); err != nil {
@@ -431,7 +431,7 @@ func openVendorTrade(vendorID npc.ID) {
 	} else {
 		ctx.HID.KeySequence(0x24 /*HOME*/, 0x28 /*DOWN*/, 0x0D /*ENTER*/)
 	}
-	utils.Sleep(20)
+	utils.Sleep(20, 100)
 	ctx.RefreshGameData()
 }
 
@@ -458,7 +458,7 @@ func moveToVendor(vendorID npc.ID) error {
 				if distanceSquared(p, m.Position) <= arrivalThreshold {
 					return nil
 				}
-				utils.Sleep(40)
+				utils.Sleep(40, 100)
 			}
 			return nil
 		}
@@ -473,7 +473,7 @@ func moveToVendor(vendorID npc.ID) error {
 			if distanceSquared(p, anchor) <= arrivalThreshold {
 				return nil
 			}
-			utils.Sleep(40)
+			utils.Sleep(40, 100)
 		}
 		return nil
 	}
@@ -505,14 +505,14 @@ func refreshTownPreferAnyaPortal(town area.ID, onlyAnya bool) error {
 	if town == area.Harrogath && onlyAnya {
 		ctx.Logger.Debug("Refreshing town via Anya red portal (preferred)")
 		_ = MoveToCoords(data.Position{X: 5116, Y: 5121})
-		utils.Sleep(600)
+		utils.Sleep(600, 100)
 		ctx.RefreshGameData()
 
 		if redPortal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
 			if err := InteractObject(redPortal, func() bool {
 				return ctx.Data.AreaData.Area == area.NihlathaksTemple && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position)
 			}); err == nil {
-				utils.Sleep(120)
+				utils.Sleep(120, 100)
 				ctx.RefreshGameData()
 				if err2 := returnToTownViaAnyaRedPortalFromTemple(); err2 == nil {
 					return nil
@@ -564,10 +564,10 @@ func hopOutAndBack(town area.ID, candidates []area.ID) error {
 			continue
 		}
 		if err := WayPoint(a); err == nil {
-			utils.Sleep(70)
+			utils.Sleep(70, 100)
 			ctx.RefreshGameData()
 			if err := WayPoint(town); err == nil {
-				utils.Sleep(70)
+				utils.Sleep(70, 100)
 				ctx.RefreshGameData()
 				return nil
 			}
@@ -585,7 +585,7 @@ func returnToTownViaAnyaRedPortalFromTemple() error {
 	}
 	anchor := data.Position{X: 10073, Y: 13311}
 	_ = MoveToCoords(anchor)
-	utils.Sleep(70)
+	utils.Sleep(70, 100)
 	ctx.RefreshGameData()
 
 	redPortal, found := ctx.Data.Objects.FindOne(object.PermanentTownPortal)
@@ -598,7 +598,7 @@ func returnToTownViaAnyaRedPortalFromTemple() error {
 		}
 		for _, off := range probes {
 			_ = MoveToCoords(data.Position{X: anchor.X + off.X, Y: anchor.Y + off.Y})
-			utils.Sleep(50)
+			utils.Sleep(50, 100)
 			ctx.RefreshGameData()
 			if rp, ok := ctx.Data.Objects.FindOne(object.PermanentTownPortal); ok {
 				redPortal, found = rp, true
@@ -609,13 +609,13 @@ func returnToTownViaAnyaRedPortalFromTemple() error {
 	if !found {
 		return fmt.Errorf("temple red portal not found")
 	}
-	utils.Sleep(2000) // cooldown before reusing the red portal
+	utils.Sleep(2000, 100) // cooldown before reusing the red portal
 	if err := InteractObject(redPortal, func() bool {
 		return ctx.Data.AreaData.Area == area.Harrogath && ctx.Data.AreaData.IsInside(ctx.Data.PlayerUnit.Position)
 	}); err != nil {
 		return err
 	}
-	utils.Sleep(80)
+	utils.Sleep(80, 100)
 	ctx.RefreshGameData()
 	return nil
 }
@@ -628,7 +628,7 @@ func ensureInTown(target area.ID) error {
 		return nil
 	}
 	if err := WayPoint(target); err == nil {
-		utils.Sleep(50)
+		utils.Sleep(50, 100)
 		ctx.RefreshGameData()
 		return nil
 	}
@@ -672,7 +672,7 @@ func shopVendorSinglePass(vendorID npc.ID, plan ActionShoppingPlan) (int, int, e
 		}
 		ctx.Logger.Warn("MoveTo vendor reported error", slog.Int("vendor", int(vendorID)), slog.Any("err", err))
 	}
-	utils.Sleep(60)
+	utils.Sleep(60, 100)
 	ctx.RefreshGameData()
 
 	if err := InteractNPC(vendorID); err != nil {
@@ -688,7 +688,7 @@ func shopVendorSinglePass(vendorID npc.ID, plan ActionShoppingPlan) (int, int, e
 		if len(ctx.Data.Inventory.ByLocation(item.LocationVendor)) > 0 {
 			break
 		}
-		utils.Sleep(60)
+		utils.Sleep(60, 100)
 		ctx.RefreshGameData()
 	}
 
@@ -704,7 +704,7 @@ func shopVendorSinglePass(vendorID npc.ID, plan ActionShoppingPlan) (int, int, e
 
 	// Close inventory/shop to clean state
 	step.CloseAllMenus()
-	utils.Sleep(40)
+	utils.Sleep(40, 100)
 	ctx.RefreshGameData()
 
 	return goldSpent, itemsPurchased, nil

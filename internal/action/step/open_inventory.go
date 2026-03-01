@@ -20,7 +20,7 @@ func OpenInventory() error {
 			return errors.New("failed opening inventory")
 		}
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(200)
+		utils.Sleep(200, 200)
 		attempts++
 	}
 

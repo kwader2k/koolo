@@ -111,7 +111,7 @@ func (a Ancients) killAncients() error {
 	err := action.InteractObject(altar, func() bool {
 		// After clicking, press Enter to confirm the dialog
 		a.ctx.HID.PressKey(win.VK_RETURN)
-		utils.Sleep(2000)
+		utils.Sleep(2000, 1000)
 
 		// Check if Ancients spawned (elite monsters appeared)
 		ancients := a.ctx.Data.Monsters.Enemies(data.MonsterEliteFilter())

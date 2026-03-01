@@ -54,7 +54,7 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 			ctx.Logger.Warn("Timeout waiting for character to stop moving or casting, proceeding anyway.")
 			break
 		}
-		time.Sleep(25 * time.Millisecond)
+		utils.Sleep(25, 500)
 		ctx.RefreshGameData()
 	}
 
@@ -139,12 +139,12 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 
 		// Move cursor directly to target position
 		ctx.HID.MovePointer(cursorX, cursorY)
-		time.Sleep(spiralDelay)
+		utils.SleepDuration(spiralDelay, 1000)
 
 		// Click on item if mouse is hovering over
 		if currentItem.UnitID == ctx.GameReader.GameReader.GetData().HoverData.UnitID {
 			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
-			utils.PingSleep(utils.Light, 150)
+			utils.PingSleep(utils.Light, 150, 500)
 
 			if waitingForInteraction.IsZero() {
 				waitingForInteraction = time.Now()
@@ -156,7 +156,7 @@ func PickupItemMouse(it data.Item, itemPickupAttempt int) error {
 		// on Andariel, so we open it
 		if isChestorShrineHovered() {
 			ctx.HID.Click(game.LeftButton, cursorX, cursorY)
-			time.Sleep(50 * time.Millisecond)
+			utils.Sleep(50, 300)
 		}
 
 		spiralAttempt++

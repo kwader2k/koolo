@@ -229,7 +229,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 		monster, found := s.Data.Monsters.FindByID(id)
 		if !found {
 			//s.Logger.Info("Target monster not found or died", slog.String("monsterID", fmt.Sprintf("%v", id)))
-			time.Sleep(500 * time.Millisecond)
+			utils.Sleep(500, 100)
 			return nil
 		}
 
@@ -246,7 +246,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 				//s.Logger.Debug(fmt.Sprintf("Andariel is too close, moving away to fixed coordinate. Move %d of %d.", s.andarielMoves, len(s.andarielSafePositions)))
 
 				step.MoveTo(targetPos, step.WithIgnoreMonsters())
-				time.Sleep(time.Millisecond * 200)
+				utils.Sleep(200, 100)
 				continue // Re-evaluate in the next loop
 			}
 		}
@@ -330,7 +330,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 								return nil
 							}
 							step.MoveTo(safePos, step.WithIgnoreMonsters())
-							time.Sleep(time.Millisecond * 200)
+							utils.Sleep(200, 100)
 							continue
 						} /*else {
 							s.Logger.Debug("Teleport skill not found or on cooldown, cannot reposition.")
@@ -359,11 +359,11 @@ func (s SorceressLeveling) KillMonsterSequence(
 						//s.Logger.Debug("Boss: Casting initial Blizzard.")
 						step.SecondaryAttack(skill.Blizzard, id, 1, attackOption)
 						s.blizzardInitialCastCompleted[id] = true
-						time.Sleep(time.Millisecond * 100)
+						utils.Sleep(100, 100)
 						continue
 					} else {
 						//s.Logger.Debug("Boss: Player busy, waiting for initial Blizzard cast.")
-						time.Sleep(time.Millisecond * 50)
+						utils.Sleep(50, 100)
 						continue
 					}
 				}
@@ -391,7 +391,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 								slog.Int("requiredRange", StaticFieldEffectiveRange),
 							)*/
 							step.MoveTo(monster.Position, step.WithIgnoreMonsters())
-							time.Sleep(time.Millisecond * 100)
+							utils.Sleep(100, 100)
 							continue
 						}
 
@@ -399,11 +399,11 @@ func (s SorceressLeveling) KillMonsterSequence(
 						if s.Data.PlayerUnit.Mode != mode.CastingSkill {
 							//s.Logger.Debug("Boss: Using Static Field on target.")
 							step.SecondaryAttack(skill.StaticField, id, 1, step.Distance(0, StaticFieldEffectiveRange))
-							time.Sleep(time.Millisecond * 100)
+							utils.Sleep(100, 100)
 							continue // Re-evaluate monster life from the top of the loop
 						} else {
 							//s.Logger.Debug("Boss: Player busy, skipping Static Field for this tick.")
-							time.Sleep(time.Millisecond * 50)
+							utils.Sleep(50, 100)
 							continue
 						}
 					} else {
@@ -445,7 +445,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 					//s.Logger.Debug(fmt.Sprintf("CI: Casting initial Blizzard (cast %d/%d).", castCount+1, blizzardCastsRequired))
 					step.SecondaryAttack(skill.Blizzard, id, 1, attackOption)
 					s.blizzardCasts[id]++
-					time.Sleep(time.Millisecond * 100)
+					utils.Sleep(100, 100)
 					continue // Re-evaluate, now Static Phase will begin
 				}
 			} else {
@@ -461,18 +461,18 @@ func (s SorceressLeveling) KillMonsterSequence(
 						slog.Int("distance", distanceToMonster),
 					)*/
 					step.MoveTo(monster.Position, step.WithIgnoreMonsters())
-					time.Sleep(time.Millisecond * 100)
+					utils.Sleep(100, 100)
 					continue
 				}
 
 				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
 					//s.Logger.Debug("CI: Using Static Field until dead.")
 					step.SecondaryAttack(skill.StaticField, id, 1, step.Distance(0, StaticFieldEffectiveRange))
-					time.Sleep(time.Millisecond * 100)
+					utils.Sleep(100, 100)
 					continue
 				} else {
 					//s.Logger.Debug("CI: Player busy, skipping Static Field.")
-					time.Sleep(time.Millisecond * 50)
+					utils.Sleep(50, 100)
 				}
 			} /*else {
 				s.Logger.Info("CI: Static Field skill not available. Transitioning to main attack.")
@@ -488,7 +488,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 			//s.Logger.Debug("Under level 12 and facing a Fire Immune monster, using primary attack.")
 			step.PrimaryAttack(id, 1, false, step.Distance(1, SorceressLevelingMeleeDistance))
 			previousUnitID = int(id)
-			time.Sleep(time.Millisecond * 50)
+			utils.Sleep(50, 100)
 			continue // Continue the loop to re-evaluate the monster
 		}
 
@@ -516,7 +516,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 							step.PrimaryAttack(id, 2, true, glacialSpikeAttackOption)
 						} else {
 							//s.Logger.Debug("Player is busy, waiting to cast Glacial Spike (Main).")
-							time.Sleep(time.Millisecond * 50)
+							utils.Sleep(50, 100)
 						}
 
 					}
@@ -529,7 +529,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 						step.SecondaryAttack(skill.Blizzard, id, 1, attackOption)
 					} else {
 						//s.Logger.Debug("Player is busy, waiting to cast Blizzard (Main).")
-						time.Sleep(time.Millisecond * 50)
+						utils.Sleep(50, 100)
 					}
 				}
 			}
@@ -558,7 +558,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 					step.SecondaryAttack(currentAttackSkillUsed, id, 1, attackOption)
 				} else {
 					//s.Logger.Debug(fmt.Sprintf("Player is busy, skipping %v (fallback) for this tick.", currentAttackSkillUsed))
-					time.Sleep(time.Millisecond * 50)
+					utils.Sleep(50, 100)
 				}
 			} else {
 				if s.Context.Data.PlayerUnit.IsDead() {
@@ -570,7 +570,7 @@ func (s SorceressLeveling) KillMonsterSequence(
 		}
 
 		previousUnitID = int(id)
-		time.Sleep(time.Millisecond * 50)
+		utils.Sleep(50, 100)
 	}
 }
 
@@ -599,7 +599,7 @@ func (s *SorceressLeveling) killMonsterByName(id npc.ID, monsterType data.Monste
 			}
 
 			// Add a small delay to prevent busy-looping if the monster is very tanky
-			time.Sleep(20 * time.Millisecond)
+			utils.Sleep(20, 100)
 
 		} else {
 			// Monster not found, it might have died or moved out of detection range
@@ -814,7 +814,7 @@ func (s SorceressLeveling) KillMephisto() error {
 		if s.Data.PlayerUnit.Skills[skill.Blizzard].Level > 0 {
 			s.Logger.Info("Applying initial Blizzard cast.")
 			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, attackOption)
-			time.Sleep(time.Millisecond * 300) // Wait for cast to register and apply chill
+			utils.Sleep(300, 100) // Wait for cast to register and apply chill
 		}
 
 		canCastStaticField := s.Data.PlayerUnit.Skills[skill.StaticField].Level > 0
@@ -854,16 +854,16 @@ func (s SorceressLeveling) KillMephisto() error {
 					s.Logger.Debug("Mephisto too far for Static Field, repositioning closer.")
 
 					step.MoveTo(monster.Position, step.WithIgnoreMonsters())
-					utils.Sleep(150)
+					utils.Sleep(150, 100)
 					continue
 				}
 
 				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
 					s.Logger.Debug("Using Static Field on Mephisto.")
 					step.SecondaryAttack(skill.StaticField, monster.UnitID, 1, staticFieldRange)
-					time.Sleep(time.Millisecond * 150)
+					utils.Sleep(150, 100)
 				} else {
-					time.Sleep(time.Millisecond * 50)
+					utils.Sleep(50, 100)
 				}
 				staticAttackCount++
 			}
@@ -899,13 +899,13 @@ func (s SorceressLeveling) KillMephisto() error {
 		}
 
 		// Move to initial position
-		utils.Sleep(350)
+		utils.Sleep(350, 100)
 		err := step.MoveTo(data.Position{X: 17563, Y: 8072}, step.WithIgnoreMonsters())
 		if err != nil {
 			return err
 		}
 
-		utils.Sleep(350)
+		utils.Sleep(350, 100)
 
 		// Initial movement sequence
 		initialPositions := []positionAndWaitTime{
@@ -918,7 +918,7 @@ func (s SorceressLeveling) KillMephisto() error {
 			if err != nil {
 				return err
 			}
-			utils.Sleep(pos.duration)
+			utils.Sleep(pos.duration, 100)
 		}
 
 		// Clear area around position
@@ -946,11 +946,11 @@ func (s SorceressLeveling) KillMephisto() error {
 
 			if s.Data.PlayerUnit.States.HasState(state.Cooldown) {
 				step.PrimaryAttack(monster.UnitID, 2, true, opts)
-				utils.Sleep(50)
+				utils.Sleep(50, 100)
 			}
 
 			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, opts)
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			attackCount++
 		}
 		return nil
@@ -979,7 +979,7 @@ func (s SorceressLeveling) KillDiablo() error {
 			if diabloFound {
 				return nil
 			}
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

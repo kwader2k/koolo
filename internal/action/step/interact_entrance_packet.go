@@ -152,7 +152,7 @@ func InteractEntrancePacket(targetArea area.ID) error {
 	for attempt := 1; attempt <= maxPacketEntranceAttempts; attempt++ {
 		// Adaptive sleep before packet send to allow server/client sync
 		// Use Medium sensitivity since entrance interaction is moderately critical
-		utils.PingSleep(utils.Medium, 50)
+		utils.PingSleep(utils.Medium, 50, 150)
 
 		// Refresh game data immediately before packet send
 		ctx.RefreshGameData()
@@ -170,7 +170,7 @@ func InteractEntrancePacket(targetArea area.ID) error {
 		if !found {
 			lastErr = fmt.Errorf("entrance disappeared before packet send")
 			ctx.Logger.Warn("Entrance not found before packet send", "attempt", attempt)
-			time.Sleep(100 * time.Millisecond)
+			utils.Sleep(100, 1000)
 			continue
 		}
 
@@ -180,7 +180,7 @@ func InteractEntrancePacket(targetArea area.ID) error {
 				"attempt", attempt,
 				"error", err)
 			lastErr = err
-			time.Sleep(100 * time.Millisecond)
+			utils.Sleep(100, 1000)
 			continue
 		}
 
@@ -198,7 +198,7 @@ func InteractEntrancePacket(targetArea area.ID) error {
 		lastErr = fmt.Errorf("area transition timeout")
 
 		// Refresh game data and retry
-		time.Sleep(300 * time.Millisecond)
+		utils.Sleep(300, 1000)
 		ctx.RefreshGameData()
 
 		// Re-check if we're somehow already in the target area
@@ -215,7 +215,7 @@ func InteractEntrancePacket(targetArea area.ID) error {
 // Returns true if transition succeeded within timeout, false otherwise
 func waitForAreaTransition(ctx *context.Status, targetArea area.ID, timeout time.Duration) bool {
 	// Wait 300ms before checking to allow server to process the transition
-	time.Sleep(300 * time.Millisecond)
+	utils.Sleep(300, 1000)
 
 	deadline := time.Now().Add(timeout)
 	ticker := time.NewTicker(100 * time.Millisecond)
@@ -248,7 +248,7 @@ func waitForPlayerStable(ctx *context.Status) error {
 		if time.Since(waitingStartTime) > 2*time.Second {
 			return fmt.Errorf("timeout waiting for player to stop moving or casting")
 		}
-		time.Sleep(25 * time.Millisecond)
+		utils.Sleep(25, 1000)
 		ctx.RefreshGameData()
 	}
 	return nil

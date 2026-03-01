@@ -116,7 +116,7 @@ func ReturnTown() error {
 	}
 
 	// Wait for area transition and data sync
-	utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for portal transition
+	utils.PingSleep(utils.Critical, 1000, 200) // Critical operation: Wait for portal transition
 	ctx.RefreshGameData()
 
 	// Wait for town area data to be fully loaded
@@ -135,7 +135,7 @@ func ReturnTown() error {
 				}
 			}
 		}
-		utils.PingSleep(utils.Light, 100) // Light operation: Polling for town area data
+		utils.PingSleep(utils.Light, 100, 100) // Light operation: Polling for town area data
 		ctx.RefreshGameData()
 	}
 
@@ -164,7 +164,7 @@ func UsePortalInTown() error {
 	}
 
 	// Wait for area sync before attempting any movement
-	utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for portal exit transition
+	utils.PingSleep(utils.Medium, 500, 100) // Medium operation: Wait for portal exit transition
 	ctx.RefreshGameData()
 	// Check for death after refreshing game data
 	if err := checkPlayerDeathForTP(ctx); err != nil {
@@ -228,7 +228,7 @@ func UsePortalFromWithRetries(owner string, maxAttempts int) error {
 
 					if !ctx.Data.PlayerUnit.Area.IsTown() {
 						// Ensure area data is synced after portal transition
-						utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for portal transition
+						utils.PingSleep(utils.Medium, 500, 100) // Medium operation: Wait for portal transition
 						ctx.RefreshGameData()
 						// Check for death after refreshing game data
 						if errCheck := checkPlayerDeathForTP(ctx); errCheck != nil {
@@ -248,7 +248,7 @@ func UsePortalFromWithRetries(owner string, maxAttempts int) error {
 		// Portal not found - if more attempts left, wait and retry
 		if attempt < maxAttempts-1 {
 			ctx.Logger.Debug("Portal not found, retrying...", "attempt", attempt+1, "owner", owner)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 
 			// On later attempts, try moving to TP waiting area to get portal in range
 			if attempt >= 1 {

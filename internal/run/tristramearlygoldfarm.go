@@ -77,10 +77,10 @@ func (t *TristramEarlyGoldfarm) Run(parameters *RunParameters) error {
 
 	t.ctx.RefreshGameData()
 
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 
 	action.ItemPickup(-1)
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 
 	fmt.Println("TristramEarlyGoldfarm: Run complete.")
 

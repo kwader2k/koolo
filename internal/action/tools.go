@@ -1,8 +1,6 @@
 package action
 
 import (
-	"time"
-
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/koolo/internal/action/step"
@@ -32,7 +30,7 @@ func PostRun(isLastRun bool) error {
 	ctx.SetLastAction("PostRun")
 
 	// Allow some time for items drop to the ground, otherwise we might miss some
-	utils.Sleep(200)
+	utils.Sleep(200, 500)
 	ClearAreaAroundPlayer(5, data.MonsterAnyFilter())
 	ItemPickup(-1)
 
@@ -80,10 +78,10 @@ func ClearMessages() error {
 }
 func HoldKey(keyCode byte, durationMs int) {
 	ctx := context.Get()
-	kb := ToKeyBinding(keyCode)                              // Convert byte to data.KeyBinding
-	ctx.HID.KeyDown(kb)                                      // Simulate pressing the key down
-	time.Sleep(time.Duration(durationMs) * time.Millisecond) // Wait for the specified duration
-	ctx.HID.KeyUp(kb)                                        // Simulate releasing the key
+	kb := ToKeyBinding(keyCode)  // Convert byte to data.KeyBinding
+	ctx.HID.KeyDown(kb)          // Simulate pressing the key down
+	utils.Sleep(durationMs, 200) // Wait for the specified duration with random jitter
+	ctx.HID.KeyUp(kb)            // Simulate releasing the key
 }
 func ToKeyBinding(keyCode byte) data.KeyBinding {
 	return data.KeyBinding{
