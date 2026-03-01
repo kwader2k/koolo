@@ -2,7 +2,6 @@ package run
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/hectorgimenez/koolo/internal/action/step"
 
@@ -125,13 +124,13 @@ func (a Leveling) act5() error {
 				NewQuests().rescueAnyaQuest()
 				action.MoveToCoords(data.Position{X: 5107, Y: 5119})
 				action.InteractNPC(npc.Drehya)
-				utils.Sleep(500)
+				utils.Sleep(500, 100)
 				step.OpenPortal()
 				for i := 0; i < 5; i++ {
 					if _, pFound := a.ctx.Data.Objects.FindOne(object.TownPortal); pFound {
 						break
 					}
-					time.Sleep(time.Second)
+					utils.Sleep(1000, 1000)
 				}
 				if portal, pFound := a.ctx.Data.Objects.FindOne(object.TownPortal); pFound {
 					action.InteractObject(portal, nil)
@@ -143,7 +142,7 @@ func (a Leveling) act5() error {
 				if !hasPotion {
 					a.ctx.Logger.Info("Step 2: Talking to Malah for the potion.")
 					action.InteractNPC(npc.Malah)
-					utils.Sleep(500)
+					utils.Sleep(500, 100)
 					return nil
 				}
 
@@ -165,7 +164,7 @@ func (a Leveling) act5() error {
 				a.ctx.Logger.Info("Step 3: Thawing Anya.")
 				action.MoveToCoords(data.Position{X: 5107, Y: 5119})
 				action.InteractNPC(npc.Drehya)
-				utils.Sleep(1500)
+				utils.Sleep(1500, 500)
 				if portal, found := a.ctx.Data.Objects.FindOne(object.PermanentTownPortal); found {
 					action.InteractObject(portal, nil)
 					action.ReturnTown()
@@ -176,7 +175,7 @@ func (a Leveling) act5() error {
 					if _, pFound := a.ctx.Data.Objects.FindOne(object.TownPortal); pFound {
 						break
 					}
-					time.Sleep(time.Second)
+					utils.Sleep(1000, 500)
 				}
 				if portal, pFound := a.ctx.Data.Objects.FindOne(object.TownPortal); pFound {
 					action.InteractObject(portal, nil)
@@ -191,10 +190,10 @@ func (a Leveling) act5() error {
 			}
 
 			action.InteractNPC(npc.Malah)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 			a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_DOWN, win.VK_RETURN)
 			// Adding a longer delay to ensure the game state has time to update
-			utils.Sleep(2500)
+			utils.Sleep(2500, 1000)
 
 			a.ctx.Logger.Info("Step 5: Talking to Anya to complete the quest.")
 			// Using static coordinates for Anya as dynamic detection is failing.
@@ -202,7 +201,7 @@ func (a Leveling) act5() error {
 			action.MoveToCoords(anyaPosition)
 
 			action.InteractNPC(npc.Drehya)
-			utils.Sleep(1000)
+			utils.Sleep(1000, 500)
 
 			// End the run here. This ensures the quest completion is registered before the next run starts.
 			return nil
@@ -213,14 +212,14 @@ func (a Leveling) act5() error {
 		a.ctx.Logger.Info("ScrollOfResistance found in inventory, attempting to use it.")
 		step.CloseAllMenus()
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(500) // Give time for inventory to open and data to refresh
+		utils.Sleep(500, 1000) // Give time for inventory to open and data to refresh
 
 		// Re-find the item after opening inventory to ensure correct screen position
 		if itm, foundAgain := a.ctx.Data.Inventory.Find("ScrollOfResistance"); foundAgain {
 			screenPos := ui.GetScreenCoordsForItem(itm)
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 			a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-			utils.Sleep(500) // Give time for the scroll to be used
+			utils.Sleep(500, 100) // Give time for the scroll to be used
 			a.ctx.Logger.Info("ScrollOfResistance used.")
 		} else {
 			a.ctx.Logger.Warn("ScrollOfResistance disappeared from inventory before it could be used.")

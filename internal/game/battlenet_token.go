@@ -11,6 +11,7 @@ import (
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/launcher"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 // GetBattleNetToken logs in to Battle.net and returns the authentication token.
@@ -93,7 +94,7 @@ func getBattleNetToken(ctx context.Context, username, password, realm string, de
 	}
 	logLine("[DEBUG] Continue button clicked\n")
 
-	time.Sleep(2 * time.Second)
+	utils.Sleep(2000, 1000)
 
 	passwordInput, err := page.Timeout(10 * time.Second).Element("input[type='password']")
 	if err != nil {
@@ -113,7 +114,7 @@ func getBattleNetToken(ctx context.Context, username, password, realm string, de
 	}
 	logLine("[DEBUG] Login button clicked\n")
 
-	time.Sleep(3 * time.Second)
+	utils.Sleep(3000, 1000)
 	logLine("[DEBUG] Starting to monitor URL for token...\n")
 
 	maxAttempts := 15
@@ -146,7 +147,7 @@ func getBattleNetToken(ctx context.Context, username, password, realm string, de
 			}
 		}
 
-		time.Sleep(1 * time.Second)
+		utils.Sleep(1000, 1000)
 	}
 
 	return "", errors.New("authentication token not found")
@@ -208,7 +209,7 @@ func getBattleNetTokenWithUI(ctx context.Context, username, password, realm stri
 		}
 	}
 
-	time.Sleep(2 * time.Second)
+	utils.Sleep(2000, 1000)
 
 	passwordInput, err := page.Timeout(10 * time.Second).Element("input[type='password']")
 	if err == nil {
@@ -249,7 +250,7 @@ func getBattleNetTokenWithUI(ctx context.Context, username, password, realm stri
 			}
 		}
 
-		time.Sleep(1 * time.Second)
+		utils.Sleep(1000, 1000)
 	}
 
 	return "", errors.New("authentication timeout (5 minutes)")

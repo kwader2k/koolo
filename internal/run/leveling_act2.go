@@ -56,9 +56,9 @@ func (a Leveling) act2() error {
 		})
 		action.InteractNPC(npc.Meshif)
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 
 		return nil
 	}
@@ -85,9 +85,9 @@ func (a Leveling) act2() error {
 		})
 		action.InteractNPC(npc.Meshif)
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 		return nil
 	}
 
@@ -107,7 +107,7 @@ func (a Leveling) act2() error {
 			return err
 		}
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(2000)
+		utils.Sleep(2000, 500)
 
 		a.ctx.Logger.Info("Getting merc list")
 		mercList := a.ctx.GameReader.GetMercList()
@@ -159,9 +159,9 @@ func (a Leveling) act2() error {
 		})
 		action.InteractNPC(npc.Meshif)
 		a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 		a.HoldKey(win.VK_SPACE, 2000) // Hold the Escape key (VK_ESCAPE or 0x1B) for 2000 milliseconds (2 seconds)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 500)
 		return nil
 
 	}
@@ -222,7 +222,7 @@ func (a Leveling) act2() error {
 		step.CloseAllMenus()
 		a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
 		screenPos := ui.GetScreenCoordsForItem(itm)
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		a.ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
 		step.CloseAllMenus()
 
@@ -429,7 +429,7 @@ func (a Leveling) findStaff() error {
 		return err
 	}
 
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	action.ItemPickup(-1)
 
 	return nil
@@ -519,7 +519,7 @@ func (a Leveling) prepareStaff() error {
 
 			screenPos := ui.GetScreenCoordsForItem(horadricStaff)
 			a.ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			step.CloseAllMenus()
 
 			return nil
@@ -619,12 +619,12 @@ func buyAct2Belt(ctx *context.Status) error {
 	defer step.CloseAllMenus()
 
 	ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN) // Interact with Fara
-	utils.Sleep(1000)
+	utils.Sleep(1000, 500)
 
 	// Switch to armor tab and refresh game data to see the new items
 	action.SwitchVendorTab(1)
 	ctx.RefreshGameData()
-	utils.Sleep(500)
+	utils.Sleep(500, 200)
 
 	// Find a suitable belt to buy from vendor
 	for _, itm := range ctx.Data.Inventory.ByLocation(item.LocationVendor) {

@@ -91,7 +91,7 @@ func (b Bloodraven) Run(parameters *RunParameters) error {
 				return err
 			}
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 		action.InteractNPC(npc.Kashya)
 	}
 

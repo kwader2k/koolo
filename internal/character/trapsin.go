@@ -81,7 +81,7 @@ func (s Trapsin) KillMonsterSequence(
 
 		opts := step.Distance(minDistance, maxDistance)
 
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 		step.SecondaryAttack(skill.LightningSentry, id, 3, opts)
 		step.SecondaryAttack(skill.DeathSentry, id, 2, opts)
 		step.PrimaryAttack(id, 2, true, opts)
@@ -205,7 +205,7 @@ func (s Trapsin) KillDiablo() error {
 			}
 
 			// Keep waiting...
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

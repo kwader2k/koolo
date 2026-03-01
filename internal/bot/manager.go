@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"strconv"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"github.com/hectorgimenez/koolo/cmd/koolo/log"
@@ -111,7 +110,7 @@ func (mng *SupervisorManager) Start(supervisorName string, attachToExisting bool
 		go func() {
 			// When the game starts, its doing some weird stuff like repositioning and resizing window automatically
 			// we need to wait until this is done in order to reposition, or it will be overridden
-			time.Sleep(time.Second * 5)
+			utils.Sleep(5000, 5000)
 			mng.rearrangeWindows()
 		}()
 	}
@@ -339,7 +338,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 					slog.String("to", ctx.RestartWithCharacter))
 				nextCharacter := ctx.RestartWithCharacter
 				mng.Stop(supervisorName)
-				time.Sleep(5 * time.Second) // Wait before starting new character
+				utils.Sleep(5000, 5000) // Wait before starting new character
 				if err := mng.Start(nextCharacter, false, false); err != nil {
 					mng.logger.Error("Failed to start next character",
 						slog.String("character", nextCharacter),
@@ -354,7 +353,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 
 		mng.logger.Info("Restarting supervisor after crash", slog.String("supervisor", supervisorName))
 		mng.Stop(supervisorName)
-		time.Sleep(5 * time.Second) // Wait a bit before restarting
+		utils.Sleep(5000, 5000) // Wait a bit before restarting
 
 		// Get a list of all available Supervisors
 		supervisorList := mng.AvailableSupervisors()
@@ -398,7 +397,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 			}
 
 			// Wait 5 seconds before checking again
-			utils.Sleep(5000)
+			utils.Sleep(5000, 5000)
 		}
 
 		gameTitle := "D2R - [" + strconv.FormatInt(int64(pid), 10) + "] - " + supervisorName + " - " + cfg.Realm

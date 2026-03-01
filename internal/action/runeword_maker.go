@@ -189,13 +189,13 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 			SwitchStashTab(1)
 		}
 		ctx.Logger.Debug("Switched to correct tab")
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 		screenPos := ui.GetScreenCoordsForItem(base)
 		ctx.Logger.Debug(fmt.Sprintf("Clicking after 5s at %d:%d", screenPos.X, screenPos.Y))
 		moveSucceeded := false
 		for attempt := 0; attempt < 2; attempt++ {
 			ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-			utils.Sleep(500)
+			utils.Sleep(500, 200)
 			ctx.RefreshGameData()
 			moved, found := ctx.Data.Inventory.FindByID(base.UnitID)
 			if found && moved.Location.LocationType == item.LocationInventory {
@@ -268,7 +268,7 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 				"screenY", screenPos.Y,
 			)
 			ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-			utils.Sleep(500)
+			utils.Sleep(500, 200)
 			ctx.RefreshGameData()
 
 			// DLC tab items get new UnitIDs when moved to inventory,
@@ -303,7 +303,7 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 				"screenY", invScreenPos.Y,
 			)
 			ctx.HID.Click(game.LeftButton, invScreenPos.X, invScreenPos.Y)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 		} else {
 			// Regular stash or inventory items: left-click to pick up to cursor
 			if itm.Location.LocationType == item.LocationSharedStash || itm.Location.LocationType == item.LocationStash {
@@ -316,7 +316,7 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 
 			screenPos := ui.GetScreenCoordsForItem(itm)
 			ctx.HID.Click(game.LeftButton, screenPos.X, screenPos.Y)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 		}
 
 		// Click on base item to socket the insert
@@ -328,7 +328,7 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 
 				basescreenPos := ui.GetScreenCoordsForItem(movedBase)
 				ctx.HID.Click(game.LeftButton, basescreenPos.X, basescreenPos.Y)
-				utils.Sleep(300)
+				utils.Sleep(300, 100)
 				if itm.Location.LocationType == item.LocationCursor {
 					step.CloseAllMenus()
 					DropAndRecoverCursorItem()
@@ -336,7 +336,7 @@ func SocketItems(ctx *context.Status, recipe Runeword, base data.Item, items ...
 				}
 			}
 		}
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 	}
 	return step.CloseAllMenus()
 }

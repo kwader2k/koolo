@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/lxn/win"
 )
 
@@ -207,7 +208,7 @@ func WaitForKeyBindings(saveDir, characterName, authMethod string, timeout time.
 		} else if exists {
 			return nil
 		}
-		time.Sleep(500 * time.Millisecond)
+		utils.Sleep(500, 100)
 	}
 
 	return fmt.Errorf("timed out waiting for key binding file in %s", saveDir)

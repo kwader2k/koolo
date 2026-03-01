@@ -3,11 +3,11 @@ package action
 import (
 	"fmt"
 	"log/slog"
-	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 // LearnSkillPacket uses packet 0x3B to instantly learn a skill
@@ -32,7 +32,7 @@ func LearnSkillPacket(skillID skill.ID) error {
 	}
 
 	// Delay for server processing and safety (prevent packet spam)
-	time.Sleep(100 * time.Millisecond)
+	utils.Sleep(100, 1000)
 
 	// Refresh game data to see updated skills
 	ctx.RefreshGameData()
@@ -62,7 +62,7 @@ func AllocateStatPointPacket(statID stat.ID) error {
 	}
 
 	// Delay for server processing and safety (prevent packet spam)
-	time.Sleep(100 * time.Millisecond)
+	utils.Sleep(100, 1000)
 
 	// Refresh game data to see updated stats
 	ctx.RefreshGameData()

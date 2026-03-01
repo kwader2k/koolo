@@ -55,7 +55,7 @@ func (f Smiter) PerformSmiteAttack(monsterID data.UnitID) {
 	smiteKey, found := f.Data.KeyBindings.KeyBindingForSkill(skill.Smite)
 	if found && f.Data.PlayerUnit.LeftSkill != skill.Smite {
 		ctx.HID.PressKeyBinding(smiteKey)
-		utils.Sleep(50)
+		utils.Sleep(50, 100)
 	}
 
 	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(monster.Position.X, monster.Position.Y)
@@ -107,7 +107,7 @@ func (f Smiter) KillMonsterSequence(monsterSelector func(d game.Data) (data.Unit
 			if kb, found := f.Data.KeyBindings.KeyBindingForSkill(aura); found {
 				if f.Data.PlayerUnit.RightSkill != aura {
 					ctx.HID.PressKeyBinding(kb)
-					utils.Sleep(50)
+					utils.Sleep(50, 100)
 				}
 			}
 		}
@@ -196,7 +196,7 @@ func (f Smiter) KillCouncil() error {
 	}
 
 	// Wait a moment for items to settle
-	time.Sleep(300 * time.Millisecond)
+	utils.Sleep(300, 100)
 
 	// Re-enable item pickup and do a final pickup pass
 	err = action.ItemPickup(40)
@@ -262,7 +262,7 @@ func (f Smiter) KillDiablo() error {
 			if diabloFound {
 				return nil
 			}
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

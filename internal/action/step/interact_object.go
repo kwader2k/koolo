@@ -108,7 +108,7 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 
 		// Give some time before retrying the interaction
 		if waitingForInteraction && time.Since(lastRun) < time.Duration(interactionCooldown)*time.Millisecond {
-			time.Sleep(10 * time.Millisecond)
+			utils.Sleep(10, 100)
 			continue
 		}
 
@@ -151,7 +151,7 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 
 			// For portals with expected area, we need to wait for proper area sync
 			if expectedArea != 0 {
-				utils.PingSleep(utils.Medium, 500)
+				utils.PingSleep(utils.Medium, 500, 100)
 
 				maxQuickChecks := 5
 				for attempts := 0; attempts < maxQuickChecks; attempts++ {
@@ -170,7 +170,7 @@ func InteractObjectMouse(obj data.Object, isCompletedFn func() bool) error {
 						}
 					}
 
-					utils.PingSleep(utils.Light, 100)
+					utils.PingSleep(utils.Light, 100, 100)
 				}
 
 				// Area transition didn't happen yet - reset hover state to retry portal click

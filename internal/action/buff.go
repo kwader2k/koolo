@@ -65,7 +65,7 @@ func Buff() {
 	if ctx.Data.OpenMenus.LoadingScreen {
 		ctx.Logger.Debug("Loading screen detected. Waiting for game to load before buffing...")
 		ctx.WaitForGameToLoad()
-		utils.PingSleep(utils.Light, 400)
+		utils.PingSleep(utils.Light, 400, 100)
 	}
 
 	// --- Pre-CTA buffs (unchanged) ---
@@ -82,11 +82,11 @@ func Buff() {
 	if len(preKeys) > 0 {
 		ctx.Logger.Debug("PRE CTA Buffing...")
 		for _, kb := range preKeys {
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx.HID.PressKeyBinding(kb)
-			utils.Sleep(180)
+			utils.Sleep(180, 100)
 			ctx.HID.Click(game.RightButton, 640, 340)
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 		}
 	}
 
@@ -114,26 +114,26 @@ func Buff() {
 		if useSwapForBuffs {
 			ctx.Logger.Debug("Using weapon swap for class buff skills")
 			step.SwapToCTA()
-			utils.PingSleep(utils.Light, 400)
+			utils.PingSleep(utils.Light, 400, 100)
 		}
 
 		ctx.Logger.Debug("Post CTA Buffing...")
 		for _, kb := range postKeys {
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx.HID.PressKeyBinding(kb)
-			utils.Sleep(180)
+			utils.Sleep(180, 100)
 			ctx.HID.Click(game.RightButton, 640, 340)
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 		}
 
 		// If we swapped, make sure we go back to main weapon.
 		if useSwapForBuffs {
-			utils.PingSleep(utils.Light, 400)
+			utils.PingSleep(utils.Light, 400, 100)
 			step.SwapToMainWeapon()
 		}
 	}
 
-	utils.PingSleep(utils.Light, 200)
+	utils.PingSleep(utils.Light, 200, 100)
 	buffsSuccessful := true
 	if ctaFound(*ctx.Data) {
 		if !ctx.Data.PlayerUnit.States.HasState(state.Battleorders) ||
@@ -204,20 +204,20 @@ func buffCTA() {
 		// (for example chicken previous game during buff stage).
 		if _, found := ctx.Data.PlayerUnit.Skills[skill.BattleCommand]; !found {
 			step.SwapToCTA()
-			utils.PingSleep(utils.Light, 150)
+			utils.PingSleep(utils.Light, 150, 100)
 		}
 
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.BattleCommand))
-		utils.Sleep(180)
+		utils.Sleep(180, 100)
 		ctx.HID.Click(game.RightButton, 300, 300)
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.BattleOrders))
-		utils.Sleep(180)
+		utils.Sleep(180, 100)
 		ctx.HID.Click(game.RightButton, 300, 300)
-		utils.Sleep(100)
+		utils.Sleep(100, 100)
 
-		utils.PingSleep(utils.Light, 400)
+		utils.PingSleep(utils.Light, 400, 100)
 		step.SwapToMainWeapon()
 	}
 }

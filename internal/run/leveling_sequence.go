@@ -680,7 +680,7 @@ func (ls LevelingSequence) GoToCurrentProgressionTown() error {
 			return err
 		}
 	}
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	return nil
 }
 

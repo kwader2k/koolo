@@ -29,7 +29,7 @@ func RefillBeltFromInventory() error {
 	}
 
 	// Add slight delay before opening inventory
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	if err := step.OpenInventory(); err != nil {
 		return err
@@ -57,7 +57,7 @@ func RefillBeltFromInventory() error {
 	}
 
 	// Add slight delay after closing inventory
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 	return nil
 
 }
@@ -65,5 +65,5 @@ func RefillBeltFromInventory() error {
 func putPotionInBelt(ctx *context.Status, potion data.Item) {
 	screenPos := ui.GetScreenCoordsForItem(potion)
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.ShiftKey)
-	utils.Sleep(150)
+	utils.Sleep(150, 100)
 }

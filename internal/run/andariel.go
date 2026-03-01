@@ -291,11 +291,11 @@ func (a Andariel) drinkAntidotePotions(selfTarget, mercTarget int) (int, int) {
 		a.ctx.CharacterCfg.HidePortraits = false
 		reHidePortraits = true
 		a.ctx.HID.PressKey(a.ctx.Data.KeyBindings.ShowPortraits.Key1[0])
-		utils.Sleep(200)
+		utils.Sleep(200, 300)
 	}
 
 	a.ctx.HID.PressKeyBinding(a.ctx.Data.KeyBindings.Inventory)
-	utils.Sleep(300)
+	utils.Sleep(300, 200)
 
 	selfCount := 0
 	mercCount := 0
@@ -304,7 +304,7 @@ func (a Andariel) drinkAntidotePotions(selfTarget, mercTarget int) (int, int) {
 			continue
 		}
 		pos := ui.GetScreenCoordsForItem(itm)
-		utils.Sleep(500)
+		utils.Sleep(500, 200)
 
 		if selfCount < selfTarget {
 			a.ctx.HID.Click(game.RightButton, pos.X, pos.Y)
@@ -314,7 +314,7 @@ func (a Andariel) drinkAntidotePotions(selfTarget, mercTarget int) (int, int) {
 
 		if mercCount < mercTarget {
 			a.ctx.HID.Click(game.LeftButton, pos.X, pos.Y)
-			utils.Sleep(300)
+			utils.Sleep(300, 200)
 			if a.ctx.Data.LegacyGraphics {
 				a.ctx.HID.Click(game.LeftButton, ui.MercAvatarPositionXClassic, ui.MercAvatarPositionYClassic)
 			} else {
@@ -451,7 +451,7 @@ func (a Andariel) goToAct2() {
 	action.ReturnTown()
 	action.InteractNPC(npc.Warriv)
 	a.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(1000)
+	utils.Sleep(1000, 200)
 	action.HoldKey(win.VK_SPACE, 2000)
-	utils.Sleep(1000)
+	utils.Sleep(1000, 200)
 }

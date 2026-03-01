@@ -132,7 +132,7 @@ func stashGold() {
 	if ctx.Data.Inventory.Gold > 0 && ctx.Data.Inventory.StashedGold[0] < maxGoldPerStashTab {
 		SwitchStashTab(1)
 		clickStashGoldBtn()
-		utils.PingSleep(utils.Critical, 1000)
+		utils.PingSleep(utils.Critical, 1000, 500)
 		ctx.RefreshGameData()
 		if ctx.Data.Inventory.Gold == 0 {
 			ctx.Logger.Info("All inventory gold stashed.")
@@ -145,7 +145,7 @@ func stashGold() {
 	if ctx.Data.Inventory.Gold > 0 && ctx.Data.Inventory.StashedGold[1] < maxGoldPerSharedStash {
 		SwitchStashTab(2)
 		clickStashGoldBtn()
-		utils.PingSleep(utils.Critical, 1000)
+		utils.PingSleep(utils.Critical, 1000, 500)
 		ctx.RefreshGameData()
 		if ctx.Data.Inventory.Gold == 0 {
 			ctx.Logger.Info("All inventory gold stashed.")
@@ -185,9 +185,9 @@ func stashInventory(firstRun bool) {
 		if dropIt {
 			ctx.Logger.Info(fmt.Sprintf("Dropping item %s [%s] due to MaxQuantity rule.", i.Desc().Name, i.Quality.ToString()))
 			blacklistItem(i)
-			utils.PingSleep(utils.Medium, 500) // Medium operation: Prepare for item drop
+			utils.PingSleep(utils.Medium, 500, 100) // Medium operation: Prepare for item drop
 			DropItem(i)
-			utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for drop to complete
+			utils.PingSleep(utils.Medium, 500, 200) // Medium operation: Wait for drop to complete
 			step.CloseAllMenus()
 			continue
 		}
@@ -428,11 +428,11 @@ func stashItemAction(i data.Item, rule string, ruleFile string, skipLogging bool
 
 	screenPos := ui.GetScreenCoordsForItem(i)
 	ctx.HID.MovePointer(screenPos.X, screenPos.Y)
-	utils.PingSleep(utils.Medium, 170)        // Medium operation: Move pointer to item
+	utils.PingSleep(utils.Medium, 170, 100)   // Medium operation: Move pointer to item
 	screenshot := ctx.GameReader.Screenshot() // Take screenshot *before* attempting stash
-	utils.PingSleep(utils.Medium, 150)        // Medium operation: Wait for screenshot
+	utils.PingSleep(utils.Medium, 150, 100)   // Medium operation: Wait for screenshot
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	utils.PingSleep(utils.Medium, 500) // Medium operation: Give game time to process the stash
+	utils.PingSleep(utils.Medium, 500, 100) // Medium operation: Give game time to process the stash
 
 	// Verify if the item is no longer in inventory
 	ctx.RefreshGameData() // Crucial: Refresh data to see if item moved
@@ -527,18 +527,18 @@ func blacklistItem(i data.Item) {
 func DropItem(i data.Item) {
 	ctx := context.Get()
 	ctx.SetLastAction("DropItem")
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Prepare for drop
+	utils.PingSleep(utils.Medium, 170, 100) // Medium operation: Prepare for drop
 	step.CloseAllMenus()
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Wait for menus to close
+	utils.PingSleep(utils.Medium, 170, 100) // Medium operation: Wait for menus to close
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Wait for inventory to open
+	utils.PingSleep(utils.Medium, 170, 100) // Medium operation: Wait for inventory to open
 	screenPos := ui.GetScreenCoordsForItem(i)
 	ctx.HID.MovePointer(screenPos.X, screenPos.Y)
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Position pointer on item
+	utils.PingSleep(utils.Medium, 170, 100) // Medium operation: Position pointer on item
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for item to drop
+	utils.PingSleep(utils.Medium, 500, 300) // Medium operation: Wait for item to drop
 	step.CloseAllMenus()
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Clean up UI
+	utils.PingSleep(utils.Medium, 170, 100) // Medium operation: Clean up UI
 	ctx.RefreshGameData()
 	for _, it := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
 		if it.UnitID == i.UnitID {
@@ -584,14 +584,14 @@ func clickStashGoldBtn() {
 	ctx := context.Get()
 	ctx.SetLastStep("clickStashGoldBtn")
 
-	utils.PingSleep(utils.Medium, 170) // Medium operation: Prepare for gold button click
+	utils.PingSleep(utils.Medium, 170, 100) // Medium operation: Prepare for gold button click
 	if ctx.GameReader.LegacyGraphics() {
 		ctx.HID.Click(game.LeftButton, ui.StashGoldBtnXClassic, ui.StashGoldBtnYClassic)
-		utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for confirm dialog
+		utils.PingSleep(utils.Critical, 1000, 300) // Critical operation: Wait for confirm dialog
 		ctx.HID.Click(game.LeftButton, ui.StashGoldBtnConfirmXClassic, ui.StashGoldBtnConfirmYClassic)
 	} else {
 		ctx.HID.Click(game.LeftButton, ui.StashGoldBtnX, ui.StashGoldBtnY)
-		utils.PingSleep(utils.Critical, 1000) // Critical operation: Wait for confirm dialog
+		utils.PingSleep(utils.Critical, 1000, 300) // Critical operation: Wait for confirm dialog
 		ctx.HID.Click(game.LeftButton, ui.StashGoldBtnConfirmX, ui.StashGoldBtnConfirmY)
 	}
 }
@@ -612,7 +612,7 @@ func SwitchStashTab(tab int) {
 
 	// Ensure any chat messages that could prevent clicking on the tab are cleared
 	ClearMessages()
-	utils.Sleep(200)
+	utils.Sleep(200, 100)
 
 	ctx.SetLastStep("switchTab")
 
@@ -629,15 +629,15 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 	switch tab {
 	case StashTabGems:
 		ctx.HID.Click(game.LeftButton, ui.DLCGemsTabX, ui.DLCGemsTabY)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 		return
 	case StashTabMaterials:
 		ctx.HID.Click(game.LeftButton, ui.DLCMaterialsTabX, ui.DLCMaterialsTabY)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 		return
 	case StashTabRunes:
 		ctx.HID.Click(game.LeftButton, ui.DLCRunesTabX, ui.DLCRunesTabY)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 		return
 	}
 
@@ -654,7 +654,7 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 		}
 		x := ui.SwitchStashTabBtnX + ui.SwitchStashTabBtnTabSize*uiTab - ui.SwitchStashTabBtnTabSize/2
 		ctx.HID.Click(game.LeftButton, x, ui.SwitchStashTabBtnY)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 	}
 
 	// Navigate shared stash pages
@@ -665,12 +665,12 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 			if delta > 0 {
 				for i := 0; i < delta; i++ {
 					ctx.HID.Click(game.LeftButton, ui.SharedStashNextPageX, ui.SharedStashNextPageY)
-					utils.PingSleep(utils.Medium, 250)
+					utils.PingSleep(utils.Medium, 250, 100)
 				}
 			} else if delta < 0 {
 				for i := 0; i < -delta; i++ {
 					ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
-					utils.PingSleep(utils.Medium, 250)
+					utils.PingSleep(utils.Medium, 250, 100)
 				}
 			}
 		} else {
@@ -684,12 +684,12 @@ func switchStashTabHD(ctx *context.Status, tab int) {
 			}
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageX, ui.SharedStashPrevPageY)
-				utils.PingSleep(utils.Medium, 250)
+				utils.PingSleep(utils.Medium, 250, 100)
 			}
 			nextClicks := tab - 2
 			for i := 0; i < nextClicks; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashNextPageX, ui.SharedStashNextPageY)
-				utils.PingSleep(utils.Medium, 250)
+				utils.PingSleep(utils.Medium, 250, 100)
 			}
 		}
 	}
@@ -700,15 +700,15 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 	switch tab {
 	case StashTabGems:
 		ctx.HID.Click(game.LeftButton, ui.DLCGemsTabXClassic, ui.DLCGemsTabYClassic)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 		return
 	case StashTabMaterials:
 		ctx.HID.Click(game.LeftButton, ui.DLCMaterialsTabXClassic, ui.DLCMaterialsTabYClassic)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 		return
 	case StashTabRunes:
 		ctx.HID.Click(game.LeftButton, ui.DLCRunesTabXClassic, ui.DLCRunesTabYClassic)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 		return
 	}
 
@@ -722,7 +722,7 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 		}
 		x := ui.SwitchStashTabBtnXClassic + ui.SwitchStashTabBtnTabSizeClassic*uiTab - ui.SwitchStashTabBtnTabSizeClassic/2
 		ctx.HID.Click(game.LeftButton, x, ui.SwitchStashTabBtnYClassic)
-		utils.PingSleep(utils.Medium, 500)
+		utils.PingSleep(utils.Medium, 500, 100)
 	}
 
 	if tab >= 2 {
@@ -731,12 +731,12 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 			if delta > 0 {
 				for i := 0; i < delta; i++ {
 					ctx.HID.Click(game.LeftButton, ui.SharedStashNextPageXClassic, ui.SharedStashNextPageYClassic)
-					utils.PingSleep(utils.Medium, 250)
+					utils.PingSleep(utils.Medium, 250, 100)
 				}
 			} else if delta < 0 {
 				for i := 0; i < -delta; i++ {
 					ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageXClassic, ui.SharedStashPrevPageYClassic)
-					utils.PingSleep(utils.Medium, 250)
+					utils.PingSleep(utils.Medium, 250, 100)
 				}
 			}
 		} else {
@@ -750,12 +750,12 @@ func switchStashTabLegacy(ctx *context.Status, tab int) {
 			}
 			for i := 0; i < sharedPages-1; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashPrevPageXClassic, ui.SharedStashPrevPageYClassic)
-				utils.PingSleep(utils.Medium, 250)
+				utils.PingSleep(utils.Medium, 250, 100)
 			}
 			nextClicks := tab - 2
 			for i := 0; i < nextClicks; i++ {
 				ctx.HID.Click(game.LeftButton, ui.SharedStashNextPageXClassic, ui.SharedStashNextPageYClassic)
-				utils.PingSleep(utils.Medium, 250)
+				utils.PingSleep(utils.Medium, 250, 100)
 			}
 		}
 	}
@@ -812,7 +812,7 @@ func TakeItemsFromStash(stashedItems []data.Item) error {
 		}
 	}
 
-	utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for stash to open
+	utils.PingSleep(utils.Medium, 250, 100) // Medium operation: Wait for stash to open
 
 	for _, i := range stashedItems {
 
@@ -839,7 +839,7 @@ func TakeItemsFromStash(stashedItems []data.Item) error {
 		screenPos := ui.GetScreenCoordsForItem(i)
 		ctx.HID.MovePointer(screenPos.X, screenPos.Y)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.PingSleep(utils.Medium, 500) // Medium operation: Wait for item to move to inventory
+		utils.PingSleep(utils.Medium, 500, 100) // Medium operation: Wait for item to move to inventory
 	}
 
 	return nil

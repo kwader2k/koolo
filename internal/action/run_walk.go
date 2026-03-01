@@ -11,7 +11,7 @@ import (
 
 const (
 	runWalkSampleTimeout = 350 * time.Millisecond
-	runWalkSampleStep    = 40 * time.Millisecond
+	runWalkSampleStep    = 40
 )
 
 // EnsureRunMode tries to reset the run/walk toggle to running at game start.
@@ -49,7 +49,7 @@ func EnsureRunMode() {
 
 	ctx.HID.MovePointer(screenX, screenY)
 	ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.ForceMove)
-	utils.PingSleep(utils.Light, 80)
+	utils.PingSleep(utils.Light, 80, 1000)
 
 	deadline := time.Now().Add(runWalkSampleTimeout)
 	for time.Now().Before(deadline) {
@@ -59,11 +59,11 @@ func EnsureRunMode() {
 			return
 		case mode.Walking, mode.WalkingInTown:
 			ctx.HID.PressKeyBinding(toggleKB)
-			utils.PingSleep(utils.Light, 120)
+			utils.PingSleep(utils.Light, 120, 1000)
 			ctx.Logger.Debug("Run/walk toggle reset to running")
 			return
 		}
-		time.Sleep(runWalkSampleStep)
+		utils.Sleep(runWalkSampleStep, 1000)
 	}
 }
 

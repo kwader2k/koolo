@@ -30,7 +30,7 @@ import (
 
 const (
 	maxAreaSyncAttempts   = 10
-	areaSyncDelay         = 200 * time.Millisecond
+	areaSyncDelay         = 200
 	monsterHandleCooldown = 500 * time.Millisecond // Reduced cooldown for more immediate re-engagement
 	lootAfterCombatRadius = 25                     // Define a radius for looting after combat
 )
@@ -107,7 +107,7 @@ func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
 				// Additional check: ensure we have adjacent level data if this is a cross-area operation
 				// Give it one more refresh cycle to ensure all data is populated
 				if attempts > 0 {
-					time.Sleep(areaSyncDelay + 50*time.Millisecond)
+					utils.Sleep(areaSyncDelay, 1000)
 					ctx.RefreshGameData()
 				}
 
@@ -115,7 +115,7 @@ func ensureAreaSync(ctx *context.Status, expectedArea area.ID) error {
 			}
 		}
 
-		time.Sleep(areaSyncDelay)
+		utils.Sleep(areaSyncDelay, 1000)
 	}
 
 	return fmt.Errorf("area sync timeout - expected: %v, current: %v", expectedArea, ctx.Data.PlayerUnit.Area)
@@ -284,7 +284,7 @@ func MoveToArea(dst area.ID) error {
 					lvl.Position.Y-2,
 				)
 				ctx.HID.Click(game.LeftButton, screenX, screenY)
-				utils.Sleep(800)
+				utils.Sleep(800, 1200)
 			}
 
 			// Proactive death check before interacting with entrance
@@ -302,7 +302,7 @@ func MoveToArea(dst area.ID) error {
 				ctx.Logger.Debug("Entrance interaction failed, retrying",
 					slog.Int("attempt", attempt+1),
 					slog.String("error", err.Error()))
-				utils.Sleep(1000)
+				utils.Sleep(1000, 1500)
 			}
 		}
 
@@ -413,7 +413,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 			return err
 		}
 
-		utils.Sleep(500)
+		utils.Sleep(500, 1000)
 	}
 
 	clearPathDist := ctx.CharacterCfg.Character.ClearPathDist // Get this once
@@ -463,7 +463,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 
 		//We're not trying to get to town, yet we are. Let bot do his stuff in town and wait to be back on the field
 		if !initialMovementArea.IsTown() && ctx.Data.AreaData.Area.IsTown() && !town.IsPositionInTown(targetPosition) {
-			utils.Sleep(100)
+			utils.Sleep(100, 200)
 			continue
 		}
 
@@ -576,7 +576,7 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 				if pathErrors < 5 {
 					ctx.Logger.Warn("No path found, trying random movement to fix")
 					ctx.PathFinder.RandomMovement()
-					utils.Sleep(200)
+					utils.Sleep(200, 500)
 					continue
 				} else {
 					return errors.New("path could not be calculated. Current area: [" + ctx.Data.PlayerUnit.Area.Area().Name + "]. Trying to path to Destination: [" + fmt.Sprintf("%d,%d", to.X, to.Y) + "]")
@@ -702,13 +702,13 @@ func MoveTo(toFunc func() (data.Position, bool), options ...step.MoveOption) err
 			} else if errors.Is(moveErr, step.ErrPlayerStuck) || errors.Is(moveErr, step.ErrPlayerRoundTrip) {
 				if (!ctx.Data.CanTeleport() || stuck) || ctx.Data.PlayerUnit.Area.IsTown() {
 					ctx.PathFinder.RandomMovement()
-					time.Sleep(time.Millisecond * 200)
+					utils.Sleep(200, 500)
 				}
 				stuck = true
 				continue
 			} else if errors.Is(moveErr, step.ErrNoPath) && pathStep > 0 {
 				ctx.PathFinder.RandomMovement()
-				time.Sleep(time.Millisecond * 200)
+				utils.Sleep(200, 500)
 				continue
 			}
 

@@ -274,7 +274,7 @@ func OptimizeInventory(location item.LocationType) error {
 		iterations++
 		ctx.PauseIfNotPriority()
 		ctx.RefreshGameData()
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		items = ctx.Data.Inventory.ByLocation(location)
 
 		//Find best item to reorganise
@@ -305,10 +305,10 @@ func OptimizeInventory(location item.LocationType) error {
 			//..Then inventory location
 			screenPos := ui.GetScreenCoordsForItem(itm)
 			ctx.HID.Click(game.LeftButton, screenPos.X, screenPos.Y)
-			utils.PingSleep(utils.Medium, 500)
+			utils.PingSleep(utils.Medium, 500, 100)
 			newScreenPos := ui.GetScreenCoordsForInventoryPosition(position, location)
 			ctx.HID.Click(game.LeftButton, newScreenPos.X, newScreenPos.Y)
-			utils.PingSleep(utils.Medium, 500)
+			utils.PingSleep(utils.Medium, 500, 200)
 		} else {
 			//No more items to reorganise, we're done
 			needContinue = false

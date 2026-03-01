@@ -12,6 +12,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 const (
@@ -82,7 +83,7 @@ func (s Hammerdin) KillMonsterSequence(
 			consecutiveAttacks++
 			if consecutiveAttacks >= 5 { //adjust if needed -> higher value = more attacks without randommovement
 				s.PathFinder.RandomMovement()
-				time.Sleep(200 * time.Millisecond)
+				utils.Sleep(200, 100)
 				consecutiveAttacks = 0
 				continue
 			}
@@ -197,7 +198,7 @@ func (s Hammerdin) KillDiablo() error {
 			}
 
 			// Keep waiting...
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

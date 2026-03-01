@@ -89,7 +89,7 @@ func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 
 		// Give some time before retrying the interaction
 		if waitingForInteraction && time.Since(lastRun) < time.Millisecond*200 {
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 			continue
 		}
 
@@ -112,13 +112,13 @@ func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 		if o.IsPortal() || o.IsRedPortal() {
 			// If portal is still being created, wait
 			if o.Mode == mode.ObjectModeOperating {
-				utils.Sleep(100)
+				utils.Sleep(100, 200)
 				continue
 			}
 
 			// Only interact when portal is fully opened
 			if o.Mode != mode.ObjectModeOpened {
-				utils.Sleep(100)
+				utils.Sleep(100, 200)
 				continue
 			}
 
@@ -134,7 +134,7 @@ func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 
 			// For portals with expected area, we need to wait for proper area sync
 			if expectedArea != 0 {
-				utils.Sleep(500) // Initial delay for area transition
+				utils.Sleep(500, 200) // Initial delay for area transition
 				for attempts := 0; attempts < maxPacketPortalSyncAttempts; attempts++ {
 					ctx.RefreshGameData()
 					if ctx.Data.PlayerUnit.Area == expectedArea {
@@ -150,7 +150,7 @@ func InteractObjectPacket(obj data.Object, isCompletedFn func() bool) error {
 							}
 						}
 					}
-					utils.Sleep(packetPortalSyncDelay)
+					utils.Sleep(packetPortalSyncDelay, 200)
 				}
 				return fmt.Errorf("portal sync timeout - expected area: %v, current: %v", expectedArea, ctx.Data.PlayerUnit.Area)
 			}

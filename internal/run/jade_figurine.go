@@ -61,7 +61,7 @@ func (jf JadeFigurine) Run(parameters *RunParameters) error {
 		action.InteractNPC(npc.Alkor)
 		action.InteractNPC(npc.Ormus)
 		action.InteractNPC(npc.Alkor)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 
 	lifepotion, lifepotfound := jf.ctx.Data.Inventory.Find("PotionOfLife", item.LocationInventory)

@@ -65,7 +65,7 @@ func (fam FrozenAuraMerc) Run(parameters *RunParameters) error {
 		return err
 	}
 	fam.ctx.HID.KeySequence(win.VK_HOME, win.VK_DOWN, win.VK_RETURN)
-	utils.Sleep(2000)
+	utils.Sleep(2000, 300)
 
 	fam.ctx.Logger.Info("Getting merc list")
 	mercList := fam.ctx.GameReader.GetMercList()

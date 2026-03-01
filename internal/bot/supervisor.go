@@ -7,13 +7,13 @@ import (
 	"log/slog"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/hectorgimenez/koolo/internal/config"
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/run"
+	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
 )
@@ -129,7 +129,7 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 	for !s.bot.ctx.GameReader.IsInCharacterSelectionScreen() {
 		// Spam left click to skip to the char select screen
 		s.bot.ctx.HID.Click(game.LeftButton, 100, 100)
-		time.Sleep(250 * time.Millisecond)
+		utils.Sleep(250, 5000)
 	}
 
 	s.bot.ctx.Logger.Info("Character selection screen found")
@@ -150,7 +150,7 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 		// If we've lost connection it bugs out and we need to select another character and the first one again.
 		if disconnected {
 			s.bot.ctx.HID.PressKey(win.VK_DOWN)
-			time.Sleep(250 * time.Millisecond)
+			utils.Sleep(250, 3000)
 			s.bot.ctx.HID.PressKey(win.VK_UP)
 		}
 
@@ -178,7 +178,7 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			// Scan down the list until we either find the character or loop back
 			for i := 0; i < 25; i++ {
 				s.bot.ctx.HID.PressKey(win.VK_DOWN)
-				time.Sleep(250 * time.Millisecond)
+				utils.Sleep(250, 1000)
 
 				currentName = s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
 				s.bot.ctx.Logger.Debug(fmt.Sprintf("Auto-create scan, checking character: %s", currentName))
@@ -238,7 +238,7 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			}
 
 			s.bot.ctx.HID.PressKey(win.VK_DOWN)
-			time.Sleep(250 * time.Millisecond)
+			utils.Sleep(250, 2000)
 		}
 
 		s.bot.ctx.Logger.Error(
@@ -270,13 +270,13 @@ func (s *baseSupervisor) ensureOnline() error {
 		s.bot.ctx.HID.Click(game.LeftButton, 1090, 32)
 		s.bot.ctx.Logger.Debug("[Ensure Online]: We're at the character selection screen but not online")
 
-		time.Sleep(2000 * time.Millisecond)
+		utils.Sleep(2000, 1000)
 
 		maxRetries := 5
 		for i := 0; i < maxRetries; i++ {
 			s.bot.ctx.Logger.Debug(fmt.Sprintf("[Ensure Online]: Trying to connect to bnet attempt %d of %d", i+1, maxRetries))
 			s.bot.ctx.HID.Click(game.LeftButton, 1090, 32)
-			time.Sleep(2000 * time.Millisecond)
+			utils.Sleep(2000, 1000)
 
 			for {
 				blockingPanel := s.bot.ctx.GameReader.GetPanel("BlockingPanel")
@@ -284,14 +284,14 @@ func (s *baseSupervisor) ensureOnline() error {
 
 				if blockingPanel.PanelName != "" && blockingPanel.PanelEnabled && blockingPanel.PanelVisible {
 					s.bot.ctx.Logger.Debug("[Ensure Online]: Loading panel detected, waiting for it to disappear")
-					time.Sleep(2000 * time.Millisecond)
+					utils.Sleep(2000, 1000)
 					continue
 				}
 
 				if popuPanel.PanelName != "" && popuPanel.PanelEnabled && popuPanel.PanelVisible {
 					s.bot.ctx.Logger.Debug("[Ensure Online]: Dismissable modal detected, dismissing it and trying to connect again ...")
 					s.bot.ctx.HID.PressKey(0x1B)
-					time.Sleep(1000 * time.Millisecond)
+					utils.Sleep(1000, 1000)
 					break
 				}
 

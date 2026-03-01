@@ -10,11 +10,12 @@ import (
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
-	"github.com/hectorgimenez/d2go/pkg/utils"
+	d2go_utils "github.com/hectorgimenez/d2go/pkg/utils"
 	"github.com/hectorgimenez/koolo/internal/chicken"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/packet"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 const attackCycleDuration = 120 * time.Millisecond
@@ -333,7 +334,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 		// Ensure we have Blizzard selected on right-click
 		if ctx.Data.PlayerUnit.RightSkill != skill.Blizzard {
 			SelectRightSkill(skill.Blizzard)
-			time.Sleep(time.Millisecond * 10)
+			utils.Sleep(10, 100)
 		}
 
 		// Send packet to cast Blizzard at location
@@ -351,7 +352,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 		if settings.primaryAttack {
 			if settings.skill != 0 && ctx.Data.PlayerUnit.LeftSkill != settings.skill {
 				SelectLeftSkill(settings.skill)
-				time.Sleep(time.Millisecond * 10)
+				utils.Sleep(10, 100)
 			}
 			// Send left-click entity skill packet
 			castPacket := packet.NewCastSkillEntityLeft(targetID)
@@ -360,12 +361,12 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 				performMouseAttack(ctx, settings, x, y)
 			} else {
 				// Respect cast duration to avoid spamming server
-				time.Sleep(ctx.Data.PlayerCastDuration())
+				utils.SleepDuration(ctx.Data.PlayerCastDuration(), 100)
 			}
 		} else {
 			selectedButton, selected := selectSecondarySkillButton(ctx, settings.skill)
 			if selected {
-				time.Sleep(time.Millisecond * 10)
+				utils.Sleep(10, 100)
 			}
 			if selectedButton == game.LeftButton {
 				castPacket := packet.NewCastSkillEntityLeft(targetID)
@@ -374,7 +375,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 					performMouseAttack(ctx, settings, x, y)
 				} else {
 					// Respect cast duration to avoid spamming server
-					time.Sleep(ctx.Data.PlayerCastDuration())
+					utils.SleepDuration(ctx.Data.PlayerCastDuration(), 100)
 				}
 			} else {
 				castPacket := packet.NewCastSkillEntityRight(targetID)
@@ -383,7 +384,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 					performMouseAttack(ctx, settings, x, y)
 				} else {
 					// Respect cast duration to avoid spamming server
-					time.Sleep(ctx.Data.PlayerCastDuration())
+					utils.SleepDuration(ctx.Data.PlayerCastDuration(), 100)
 				}
 			}
 		}
@@ -402,7 +403,7 @@ func performMouseAttack(ctx *context.Status, settings attackSettings, x, y int) 
 		var selected bool
 		selectedButton, selected = selectSecondarySkillButton(ctx, settings.skill)
 		if selected {
-			time.Sleep(time.Millisecond * 10)
+			utils.Sleep(10, 100)
 		}
 	}
 
@@ -483,7 +484,7 @@ func ensureEnemyIsInRange(monster data.Monster, state *attackState, maxDistance,
 
 	// Look for suitable position along path
 	for _, pos := range path {
-		monsterDistance := utils.DistanceFromPoint(ctx.Data.AreaData.RelativePosition(monster.Position), pos)
+		monsterDistance := d2go_utils.DistanceFromPoint(ctx.Data.AreaData.RelativePosition(monster.Position), pos)
 		if monsterDistance > maxDistance || monsterDistance < minDistance {
 			continue
 		}

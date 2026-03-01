@@ -30,7 +30,7 @@ func OpenPortal() error {
 			remainingCooldown := minPortalCooldown - timeSinceLastPortal
 			ctx.Logger.Debug("Portal cooldown active, waiting",
 				"cooldownRemaining", remainingCooldown)
-			time.Sleep(remainingCooldown)
+			utils.SleepDuration(remainingCooldown, 1000)
 		}
 	}
 
@@ -65,7 +65,7 @@ func OpenPortal() error {
 				tpItemFound = false
 			} else if _, bindingFound := ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); bindingFound {
 				ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.MustKBForSkill(skill.TomeOfTownPortal))
-				utils.PingSleep(utils.Medium, 250) // Medium operation: Wait for tome activation
+				utils.PingSleep(utils.Medium, 250, 100) // Medium operation: Wait for tome activation
 				ctx.HID.Click(game.RightButton, 300, 300)
 				usedKB = true
 			}

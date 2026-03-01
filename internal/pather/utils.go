@@ -21,7 +21,7 @@ func (pf *PathFinder) RandomMovement() {
 	y := midGameY + rand.Intn(midGameY) - (midGameY / 2)
 	pf.hid.MovePointer(x, y)
 	pf.hid.PressKeyBinding(pf.data.KeyBindings.ForceMove)
-	utils.Sleep(50)
+	utils.Sleep(100, 200)
 }
 
 func (pf *PathFinder) DistanceFromMe(p data.Position) int {
@@ -222,7 +222,7 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 			if pf.cfg.PacketCasting.UseForSkillSelection && pf.packetSender != nil {
 				if pf.data.PlayerUnit.RightSkill != skill.Teleport {
 					if err := pf.packetSender.SelectRightSkill(skill.Teleport); err == nil {
-						utils.Sleep(50)
+						utils.Sleep(50, 200)
 					}
 				}
 			}
@@ -231,7 +231,7 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 			if err != nil {
 				pf.hid.Click(game.RightButton, x, y)
 			} else {
-				utils.Sleep(int(pf.data.PlayerCastDuration().Milliseconds()))
+				utils.SleepDuration(pf.data.PlayerCastDuration(), 100)
 			}
 		} else {
 			pf.hid.Click(game.RightButton, x, y)
@@ -239,7 +239,7 @@ func (pf *PathFinder) MoveCharacter(x, y int, gamePos ...data.Position) {
 	} else {
 		pf.hid.MovePointer(x, y)
 		pf.hid.PressKeyBinding(pf.data.KeyBindings.ForceMove)
-		utils.Sleep(50)
+		utils.Sleep(50, 200)
 	}
 }
 

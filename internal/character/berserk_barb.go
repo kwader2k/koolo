@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hectorgimenez/koolo/internal/action"
+	"github.com/hectorgimenez/koolo/internal/utils"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
@@ -137,7 +138,7 @@ func (s *Berserker) KillMonsterSequence(
 		}
 
 		s.PerformBerserkAttack(monster.UnitID)
-		time.Sleep(50 * time.Millisecond)
+		utils.Sleep(50, 100)
 	}
 
 	if monsterDetected && !s.isKillingCouncil.Load() {
@@ -164,7 +165,7 @@ func (s *Berserker) PerformBerserkAttack(monsterID data.UnitID) {
 	berserkKey, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Berserk)
 	if found && s.Data.PlayerUnit.RightSkill != skill.Berserk {
 		ctx.HID.PressKeyBinding(berserkKey)
-		time.Sleep(50 * time.Millisecond)
+		utils.Sleep(50, 100)
 	}
 
 	screenX, screenY := ctx.PathFinder.GameCoordsToScreenCords(monster.Position.X, monster.Position.Y)
@@ -225,14 +226,14 @@ func (s *Berserker) PerformHowl(targetID data.UnitID, lastHowlCast *time.Time) b
 
 	*lastHowlCast = time.Now()
 
-	time.Sleep(100 * time.Millisecond)
+	utils.Sleep(100, 100)
 
 	err := step.SecondaryAttack(skill.Howl, targetID, 1, step.Distance(1, 10))
 	if err != nil {
 		return false
 	}
 
-	time.Sleep(300 * time.Millisecond)
+	utils.Sleep(300, 100)
 
 	return true
 }
@@ -282,14 +283,14 @@ func (s *Berserker) PerformBattleCry(monsterID data.UnitID, lastBattleCryCast *t
 	if _, found := ctx.Data.KeyBindings.KeyBindingForSkill(skill.BattleCry); found {
 		*lastBattleCryCast = time.Now()
 
-		time.Sleep(100 * time.Millisecond)
+		utils.Sleep(100, 100)
 
 		err := step.SecondaryAttack(skill.BattleCry, monsterID, 1, step.Distance(1, 5))
 		if err != nil {
 			return false
 		}
 
-		time.Sleep(300 * time.Millisecond)
+		utils.Sleep(300, 100)
 
 		return true
 	}
@@ -350,7 +351,7 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 				// Force multiple swap attempts as last resort
 				for i := 0; i < 10; i++ {
 					ctx.HID.PressKey('W')
-					time.Sleep(200 * time.Millisecond)
+					utils.Sleep(200, 100)
 					ctx.RefreshGameData()
 					if ctx.Data.ActiveWeaponSlot == originalSlot {
 						s.Logger.Info("Successfully recovered weapon swap after multiple attempts")
@@ -375,7 +376,7 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 			if err != nil {
 				continue
 			}
-			time.Sleep(time.Millisecond * 100)
+			utils.Sleep(100, 100)
 			distance = s.PathFinder.DistanceFromMe(corpse.Position)
 			if distance > findItemRange {
 				continue
@@ -387,7 +388,7 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 		// Make sure Find Item is on right-click
 		if s.Data.PlayerUnit.RightSkill != skill.FindItem {
 			ctx.HID.PressKeyBinding(findItemKey)
-			time.Sleep(50 * time.Millisecond)
+			utils.Sleep(50, 100)
 		}
 
 		clickPos := s.getOptimalClickPosition(corpse)
@@ -395,7 +396,7 @@ func (s *Berserker) FindItemOnNearbyCorpses(maxRange int) {
 		ctx.HID.Click(game.RightButton, screenX, screenY)
 
 		s.horkedCorpses[corpse.UnitID] = true
-		time.Sleep(200 * time.Millisecond)
+		utils.Sleep(200, 100)
 	}
 }
 
@@ -507,8 +508,8 @@ func (s *Berserker) SwapToSlot(slot int) bool {
 		return true
 	}
 
-	const maxAttempts = 6                     // Increased from 4
-	const retryDelay = 200 * time.Millisecond // Increased from 150ms
+	const maxAttempts = 6  // Increased from 4
+	const retryDelay = 200 // Increased from 150ms
 
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		// Refresh data before checking to ensure we have current state
@@ -520,7 +521,7 @@ func (s *Berserker) SwapToSlot(slot int) bool {
 		}
 
 		ctx.HID.PressKey('W')
-		time.Sleep(retryDelay)
+		utils.Sleep(retryDelay, 100)
 		ctx.RefreshGameData()
 
 		if ctx.Data.ActiveWeaponSlot == slot {
@@ -532,7 +533,7 @@ func (s *Berserker) SwapToSlot(slot int) bool {
 
 		// If we're not on the right slot after multiple attempts, add extra delay
 		if attempt >= 2 {
-			time.Sleep(100 * time.Millisecond)
+			utils.Sleep(100, 100)
 		}
 	}
 
@@ -626,7 +627,7 @@ func (s *Berserker) KillDiablo() error {
 			if diabloFound {
 				return nil
 			}
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 
@@ -649,21 +650,21 @@ func (s *Berserker) KillCouncil() error {
 	context.Get().EnableItemPickup()
 
 	// Wait for corpses to settle
-	time.Sleep(500 * time.Millisecond)
+	utils.Sleep(500, 100)
 
 	// Perform horking in two passes
 	for i := 0; i < 2; i++ {
 		s.FindItemOnNearbyCorpses(maxHorkRange)
 
 		// Wait between passes
-		time.Sleep(300 * time.Millisecond)
+		utils.Sleep(300, 100)
 
 		// Refresh game data to catch any new corpses
 		context.Get().RefreshGameData()
 	}
 
 	// Final wait for items to drop
-	time.Sleep(500 * time.Millisecond)
+	utils.Sleep(500, 100)
 
 	// Final item pickup
 	err = action.ItemPickup(maxHorkRange)
@@ -673,7 +674,7 @@ func (s *Berserker) KillCouncil() error {
 	}
 
 	// Wait a moment to ensure all items are picked up
-	time.Sleep(300 * time.Millisecond)
+	utils.Sleep(300, 100)
 
 	return nil
 }

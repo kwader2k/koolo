@@ -59,7 +59,7 @@ func (d Drop) Run(_ *RunParameters) error {
 		}
 
 		ctx.Logger.Info("Drop: additional pending request detected; starting next Drop")
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 	}
 }
 
@@ -98,7 +98,7 @@ func (d Drop) runSingle(ctx *context.Status, req *drop.Request) error {
 		if ctx.Manager.InGame() {
 			ctx.Logger.Warn("Drop failed while in game, exiting game")
 			ctx.Manager.ExitGame()
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 		}
 
 		if err := d.ensureCharacterSelection(ctx); err != nil {
@@ -122,11 +122,11 @@ func (d Drop) runSingle(ctx *context.Status, req *drop.Request) error {
 		}
 		ctx.Drop.ReportResult(req.RoomName, "Failed", itemsDroppered, duration, errorMsg, req.Filters)
 	}()
-	utils.PingSleep(utils.Medium, 100)
+	utils.PingSleep(utils.Medium, 100, 100)
 
 	if ctx.Manager.InGame() {
 		ctx.Manager.ExitGame()
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 
 	if err := d.prepareForLobbyJoin(ctx); err != nil {
@@ -200,7 +200,7 @@ func (d Drop) runSingle(ctx *context.Status, req *drop.Request) error {
 	runCompleted = true
 
 	ctx.Manager.ExitGame()
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	ctx.RefreshGameData()
 	return nil
 }
@@ -234,21 +234,21 @@ func (d Drop) ensureCharacterSelection(ctx *context.Status) error {
 
 		if ctx.GameReader.IsIngame() {
 			ctx.Logger.Debug("Drop: Detected In-Game state, exiting to menu...")
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			ctx.Manager.ExitGame()
 			continue
 		}
 
 		if ctx.GameReader.IsInLobby() {
 			ctx.Logger.Debug("Drop: Detected Lobby state, pressing ESC to return...")
-			utils.Sleep(1000)
+			utils.Sleep(1000, 100)
 			ctx.HID.PressKey(win.VK_ESCAPE)
 			continue
 		}
 
 		if ctx.GameReader.IsInCharacterCreationScreen() {
 			ctx.Logger.Debug("Drop: Detected Character Creation screen, cancelling...")
-			utils.Sleep(500)
+			utils.Sleep(500, 100)
 			ctx.HID.PressKey(win.VK_ESCAPE)
 			continue
 		}
@@ -261,7 +261,7 @@ func (d Drop) ensureCharacterSelection(ctx *context.Status) error {
 		if attempt <= 3 || attempt%10 == 0 || attempt == maxRetries {
 			ctx.Logger.Debug("Drop: waiting for known state while reaching character selection", "attempt", attempt, "maxAttempts", maxRetries)
 		}
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 	}
 	return fmt.Errorf("Drop: failed to reach character selection screen after %d attempts", maxRetries)
 }
@@ -276,7 +276,7 @@ func (d Drop) ensureInventoryOpen(ctx *context.Status) error {
 		}
 
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 	}
 
 	ctx.RefreshGameData()
@@ -432,7 +432,7 @@ func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.
 	ctx.Logger.Debug("Drop: attempting to move item via ctrl+click", "item", updated.Name, "tab", updated.Location.Page+1, "locationType", updated.Location.LocationType, "gridX", updated.Position.X, "gridY", updated.Position.Y, "screenX", screenPos.X, "screenY", screenPos.Y)
 	prevInventoryCount := len(ctx.Data.Inventory.ByLocation(item.LocationInventory))
 	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-	utils.PingSleep(utils.Medium, 100)
+	utils.PingSleep(utils.Medium, 100, 100)
 	ctx.RefreshInventory()
 
 	for _, invItem := range ctx.Data.Inventory.ByLocation(item.LocationInventory) {
@@ -470,7 +470,7 @@ func (d Drop) dropInventoryDropperables(ctx *context.Status, reopenTab int, quot
 			ctx.Logger.Error("Drop: failed to close stash before dropping items", "error", err)
 			return 0, err
 		}
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 	}
 
 	if err := d.ensureInventoryOpen(ctx); err != nil {
@@ -492,7 +492,7 @@ func (d Drop) dropInventoryDropperables(ctx *context.Status, reopenTab int, quot
 
 		screenPos := ui.GetScreenCoordsForItem(it)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 		dropped++
 		// Count this item towards Drop quotas
 		if ctx.Drop != nil {
@@ -511,7 +511,7 @@ func (d Drop) dropInventoryDropperables(ctx *context.Status, reopenTab int, quot
 
 	if ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 	}
 
 	if reopenTab > 0 || stashWasOpen {
@@ -671,11 +671,11 @@ func (d Drop) refreshCharacterList(ctx *context.Status) error {
 
 	ctx.HID.Click(game.LeftButton, CharCreateBtnX, CharCreateBtnY)
 
-	utils.PingSleep(utils.Critical, 500)
+	utils.PingSleep(utils.Critical, 500, 100)
 
 	ctx.HID.PressKey(win.VK_ESCAPE)
 
-	utils.PingSleep(utils.Critical, 500)
+	utils.PingSleep(utils.Critical, 500, 100)
 
 	return nil
 }
@@ -734,7 +734,7 @@ func (d Drop) ensureDropCharacterSelected(ctx *context.Status) error {
 			continue
 		}
 
-		utils.PingSleep(utils.Light, 250)
+		utils.PingSleep(utils.Light, 250, 100)
 	}
 
 	return fmt.Errorf("Drop: character %s not highlighted", target)
@@ -749,7 +749,7 @@ func (d Drop) ensureOnlineForDrop(ctx *context.Status) error {
 		ctx.Logger.Debug("Drop: attempting to connect to battle.net", "attempt", attempt+1)
 
 		ctx.HID.Click(game.LeftButton, 1090, 32)
-		utils.PingSleep(utils.Critical, 500)
+		utils.PingSleep(utils.Critical, 500, 100)
 
 		ctx.RefreshGameData()
 
@@ -757,13 +757,13 @@ func (d Drop) ensureOnlineForDrop(ctx *context.Status) error {
 		modal := ctx.GameReader.GetPanel("DismissableModal")
 
 		if blocking.PanelName != "" && blocking.PanelEnabled && blocking.PanelVisible {
-			utils.PingSleep(utils.Critical, 1000)
+			utils.PingSleep(utils.Critical, 1000, 100)
 			ctx.RefreshGameData()
 		}
 		modal = ctx.GameReader.GetPanel("DismissableModal")
 		if modal.PanelName != "" && modal.PanelEnabled && modal.PanelVisible {
 			ctx.HID.PressKey(0x1B) // ESC
-			utils.PingSleep(utils.Medium, 300)
+			utils.PingSleep(utils.Medium, 300, 100)
 			continue
 		}
 		if ctx.GameReader.IsOnline() {
@@ -839,7 +839,7 @@ func (d Drop) ensureStashOpen(ctx *context.Status) error {
 
 		if attempt > 1 {
 
-			utils.Sleep(5000) // Wait 5 seconds if unable to interact with the stash due to congestion
+			utils.Sleep(5000, 100) // Wait 5 seconds if unable to interact with the stash due to congestion
 			ctx.Logger.Debug("Drop: stash not open, waiting...", "attempt", attempt)
 
 			if attempt >= 4 {
@@ -857,7 +857,7 @@ func (d Drop) ensureStashOpen(ctx *context.Status) error {
 			ctx.Logger.Error("Drop: failed to open stash", "attempt", attempt, "error", err)
 		}
 
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 		ctx.RefreshGameData()
 		if ctx.Data.OpenMenus.Stash {
 			return nil
@@ -886,7 +886,7 @@ func (d Drop) repositionNearStash(ctx *context.Status) error {
 	if err := action.MoveToCoords(bank.Position, step.WithDistanceToFinish(6)); err != nil {
 		return fmt.Errorf("Drop: failed to reposition near stash: %w", err)
 	}
-	utils.PingSleep(utils.Medium, 100)
+	utils.PingSleep(utils.Medium, 100, 100)
 	return nil
 }
 
@@ -896,11 +896,11 @@ func (d Drop) ensureStashTabReady(ctx *context.Status, tab int) error {
 		if err := d.ensureStashOpen(ctx); err != nil {
 			return err
 		}
-		utils.PingSleep(utils.Medium, 100)
+		utils.PingSleep(utils.Medium, 100, 100)
 	}
 
 	action.SwitchStashTab(tab)
-	utils.PingSleep(utils.Light, 50)
+	utils.PingSleep(utils.Light, 50, 100)
 	ctx.RefreshGameData()
 
 	ctx.Logger.Debug("Drop: switched stash tab", "tab", tab, "inventoryItems", len(ctx.Data.Inventory.ByLocation(item.LocationInventory)))

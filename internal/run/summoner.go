@@ -133,7 +133,7 @@ func (s Summoner) runStandard(parameters *RunParameters) error {
 			return err
 		}
 
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 	} else {
 		if err := action.WayPoint(area.ArcaneSanctuary); err != nil {
 			return err

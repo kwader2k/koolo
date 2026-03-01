@@ -66,7 +66,7 @@ func (s WindDruid) waitForCastComplete() bool {
 			return true
 		}
 
-		time.Sleep(16 * time.Millisecond) // Small delay to avoid busy-waiting
+		utils.Sleep(16, 100) // Small delay to avoid busy-waiting
 	}
 
 	return false // Returns false if timeout is reached
@@ -162,9 +162,9 @@ func (s WindDruid) RecastBuffs() {
 		if kb, found := ctx.Data.KeyBindings.KeyBindingForSkill(druSkill); found {
 			if !ctx.Data.PlayerUnit.States.HasState(states[i]) { // Check if buff is missing
 				ctx.HID.PressKeyBinding(kb)             // Activate skill
-				utils.Sleep(180)                        // Small delay
+				utils.Sleep(180, 100)                   // Small delay
 				s.HID.Click(game.RightButton, 640, 340) // Cast skill at center screen
-				utils.Sleep(100)                        // Delay to ensure cast completes
+				utils.Sleep(100, 100)                   // Delay to ensure cast completes
 			}
 		}
 	}
@@ -310,7 +310,7 @@ func (s WindDruid) KillDiablo() error {
 				return nil
 			}
 			// Keep waiting..
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 

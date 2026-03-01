@@ -15,33 +15,33 @@ import (
 )
 
 func doesExceedQuantity(rule nip.Rule) bool {
-    ctx := context.Get()
-    ctx.SetLastAction("doesExceedQuantity")
+	ctx := context.Get()
+	ctx.SetLastAction("doesExceedQuantity")
 
-    stashItems := ctx.Data.Inventory.ByLocation(
-        item.LocationStash,
-        item.LocationSharedStash,
-        item.LocationRunesTab,
-        item.LocationGemsTab,
-        item.LocationMaterialsTab,
-    )
-    stashItems = FilterDLCGhostItems(stashItems)
+	stashItems := ctx.Data.Inventory.ByLocation(
+		item.LocationStash,
+		item.LocationSharedStash,
+		item.LocationRunesTab,
+		item.LocationGemsTab,
+		item.LocationMaterialsTab,
+	)
+	stashItems = FilterDLCGhostItems(stashItems)
 
-    maxQuantity := rule.MaxQuantity()
-    if maxQuantity == 0 {
-        return false
-    }
+	maxQuantity := rule.MaxQuantity()
+	if maxQuantity == 0 {
+		return false
+	}
 
-    matchedItemsInStash := 0
+	matchedItemsInStash := 0
 
-    for _, stashItem := range stashItems {
-        res, _ := rule.Evaluate(stashItem)
-        if res == nip.RuleResultFullMatch {
-            matchedItemsInStash += GetItemQuantity(stashItem)
-        }
-    }
+	for _, stashItem := range stashItems {
+		res, _ := rule.Evaluate(stashItem)
+		if res == nip.RuleResultFullMatch {
+			matchedItemsInStash += GetItemQuantity(stashItem)
+		}
+	}
 
-    return matchedItemsInStash >= maxQuantity
+	return matchedItemsInStash >= maxQuantity
 }
 
 func DropMouseItem() {
@@ -49,9 +49,9 @@ func DropMouseItem() {
 	ctx.SetLastAction("DropMouseItem")
 
 	if len(ctx.Data.Inventory.ByLocation(item.LocationCursor)) > 0 {
-		utils.Sleep(1000)
+		utils.Sleep(1000, 200)
 		ctx.HID.Click(game.LeftButton, 500, 500)
-		utils.Sleep(1000)
+		utils.Sleep(1000, 200)
 	}
 }
 
@@ -72,13 +72,13 @@ func DropAndRecoverCursorItem() {
 	ctx.Logger.Debug("Dropping cursor item for recovery", "item", droppedItem.Name, "unitID", droppedUnitID)
 
 	// Drop the item
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 	ctx.HID.Click(game.LeftButton, 500, 500)
-	utils.Sleep(500)
+	utils.Sleep(500, 100)
 
 	// Wait for game to register the dropped item on ground
 	ctx.RefreshGameData()
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 
 	// Retry loop to find and pick up the dropped item
 	const maxAttempts = 5
@@ -112,19 +112,19 @@ func DropAndRecoverCursorItem() {
 
 		if !found {
 			ctx.Logger.Debug("Item not found on ground yet, retrying", "attempt", attempt)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			continue
 		}
 
 		ctx.Logger.Debug("Recovering dropped cursor item", "item", groundItem.Name, "attempt", attempt)
 		if err := step.PickupItem(groundItem, attempt); err != nil {
 			ctx.Logger.Warn("Pickup attempt failed", "error", err, "attempt", attempt)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			continue
 		}
 
 		// Verify pickup succeeded
-		utils.Sleep(300)
+		utils.Sleep(300, 100)
 		ctx.RefreshGameData()
 		stillOnGround := false
 		for _, gi := range ctx.Data.Inventory.ByLocation(item.LocationGround) {
@@ -153,7 +153,7 @@ func DropInventoryItem(i data.Item) error {
 
 		// Press escape to close it
 		ctx.HID.PressKey(0x1B) // ESC
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 		closeAttempts++
 
 		if closeAttempts >= 5 {
@@ -169,13 +169,13 @@ func DropInventoryItem(i data.Item) error {
 		}
 
 		// Wait a second
-		utils.Sleep(1000)
+		utils.Sleep(1000, 200)
 
 		screenPos := ui.GetScreenCoordsForItem(i)
 		ctx.HID.MovePointer(screenPos.X, screenPos.Y)
-		utils.Sleep(250)
+		utils.Sleep(250, 100)
 		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-		utils.Sleep(500)
+		utils.Sleep(500, 100)
 
 		// Close the inventory if its still open, which should be at this point
 		if ctx.Data.OpenMenus.Inventory {
@@ -222,7 +222,7 @@ func EnsureItemNotEquipped(itm data.Item) (data.Item, error) {
 		}
 		if needsPersonalStash {
 			SwitchStashTab(1)
-			utils.Sleep(300)
+			utils.Sleep(300, 100)
 			ctx.RefreshGameData()
 		}
 
@@ -241,7 +241,7 @@ func EnsureItemNotEquipped(itm data.Item) (data.Item, error) {
 				ctx.Logger.Debug("Moving inventory item to stash to free space", "item", invItem.Name)
 				screenPos := ui.GetScreenCoordsForItem(invItem)
 				ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
-				utils.Sleep(300)
+				utils.Sleep(300, 100)
 				ctx.RefreshGameData()
 
 				updated, found := ctx.Data.Inventory.FindByID(invItem.UnitID)
@@ -296,7 +296,7 @@ func tryUnequip(ctx *context.Status, itm data.Item) (data.Item, bool, error) {
 	if targetSlot != originalSlot {
 		ctx.Logger.Debug("Swapping weapon slot to unequip item", "item", itm.Name, "fromSlot", originalSlot, "toSlot", targetSlot)
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
-		utils.Sleep(200)
+		utils.Sleep(200, 100)
 		ctx.RefreshGameData()
 
 		if ctx.Data.ActiveWeaponSlot != targetSlot {
@@ -307,7 +307,7 @@ func tryUnequip(ctx *context.Status, itm data.Item) (data.Item, bool, error) {
 	if swapped {
 		defer func() {
 			ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.SwapWeapons)
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 			ctx.RefreshGameData()
 		}()
 	}
@@ -319,7 +319,7 @@ func tryUnequip(ctx *context.Status, itm data.Item) (data.Item, bool, error) {
 
 	ctx.Logger.Debug("Unequipping item", "item", itm.Name, "slot", itm.Location.BodyLocation)
 	ctx.HID.ClickWithModifier(game.LeftButton, slotPos.X, slotPos.Y, game.ShiftKey)
-	utils.Sleep(300)
+	utils.Sleep(300, 100)
 	ctx.RefreshGameData()
 
 	updated, found := ctx.Data.Inventory.FindByID(itm.UnitID)
@@ -453,9 +453,9 @@ func DrinkAllPotionsInInventory() {
 			}
 
 			screenPos := ui.GetScreenCoordsForItem(i)
-			utils.Sleep(100)
+			utils.Sleep(100, 100)
 			ctx.HID.Click(game.RightButton, screenPos.X, screenPos.Y)
-			utils.Sleep(200)
+			utils.Sleep(200, 100)
 		}
 	}
 
