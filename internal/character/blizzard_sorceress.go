@@ -215,7 +215,7 @@ func (s BlizzardSorceress) KillMonsterSequence(
 
 		if s.Context.Data.PlayerUnit.IsDead() {
 			s.Logger.Info("Player detected as dead during KillMonsterSequence, stopping actions.")
-			time.Sleep(500 * time.Millisecond)
+			utils.Sleep(500, 100)
 			return health.ErrDied
 		}
 
@@ -404,7 +404,7 @@ func (s BlizzardSorceress) KillMephisto() error {
 		if s.Data.PlayerUnit.Skills[skill.Blizzard].Level > 0 {
 			s.Logger.Info("Applying initial Blizzard cast.")
 			step.SecondaryAttack(skill.Blizzard, monster.UnitID, 1, attackOption)
-			time.Sleep(time.Millisecond * 300) // Wait for cast to register and apply chill
+			utils.Sleep(300, 100) // Wait for cast to register and apply chill
 		}
 
 		canCastStaticField := s.Data.PlayerUnit.Skills[skill.StaticField].Level > 0
@@ -451,9 +451,9 @@ func (s BlizzardSorceress) KillMephisto() error {
 				if s.Data.PlayerUnit.Mode != mode.CastingSkill {
 					s.Logger.Debug("Using Static Field on Mephisto.")
 					step.SecondaryAttack(skill.StaticField, monster.UnitID, 1, staticFieldRange)
-					time.Sleep(time.Millisecond * 150)
+					utils.Sleep(150, 100)
 				} else {
-					time.Sleep(time.Millisecond * 50)
+					utils.Sleep(50, 100)
 				}
 				staticAttackCount++
 			}
@@ -627,7 +627,7 @@ func (s BlizzardSorceress) KillDiablo() error {
 			}
 
 			// Keep waiting...
-			time.Sleep(200 * time.Millisecond)
+			utils.Sleep(200, 100)
 			continue
 		}
 
