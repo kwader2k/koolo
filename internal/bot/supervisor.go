@@ -158,9 +158,13 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 		if s.bot.ctx.CharacterCfg.AutoCreateCharacter {
 			targetName := s.bot.ctx.CharacterCfg.CharacterName
 			currentName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
-			originalName := currentName
+			seenNames := make(map[string]int)
 
 			s.bot.ctx.Logger.Debug(fmt.Sprintf("Auto-create enabled, starting scan. Current selected character: %s", currentName))
+			normalizedCurrentName := strings.ToLower(strings.TrimSpace(currentName))
+			if normalizedCurrentName != "" {
+				seenNames[normalizedCurrentName] = 1
+			}
 
 			// Check currently selected character first
 			if strings.EqualFold(currentName, targetName) {
@@ -176,7 +180,7 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			}
 
 			// Scan down the list until we either find the character or loop back
-			for i := 0; i < 25; i++ {
+			for i := 0; i < 27; i++ {
 				s.bot.ctx.HID.PressKey(win.VK_DOWN)
 				time.Sleep(250 * time.Millisecond)
 
@@ -194,8 +198,18 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 
 					return nil
 				}
-				// If we came back to the original entry, we've scanned the full list.
-				if strings.EqualFold(currentName, originalName) {
+
+				normalizedCurrentName = strings.ToLower(strings.TrimSpace(currentName))
+				if normalizedCurrentName == "" {
+					continue
+				}
+
+				seenNames[normalizedCurrentName]++
+				// Character names are unique per account. Seeing the same name twice means we've looped.
+				if seenNames[normalizedCurrentName] >= 2 {
+					s.bot.ctx.Logger.Debug("Auto-create scan completed after detecting repeated character name",
+						slog.String("name", currentName),
+						slog.Int("attempt", i+1))
 					break
 				}
 			}
@@ -226,9 +240,12 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 			return nil
 		}
 
-		// Auto-create disabled: try to select the character up to 25 times.
-		for i := 0; i < 25; i++ {
+		// Auto-create disabled: try to select the character up to 27 times.
+		seenNames := make(map[string]int)
+		scanAttempts := 0
+		for i := 0; i < 27; i++ {
 			characterName := s.bot.ctx.GameReader.GameReader.GetSelectedCharacterName()
+			scanAttempts = i + 1
 
 			s.bot.ctx.Logger.Debug(fmt.Sprintf("Checking character: %s", characterName))
 
@@ -237,12 +254,24 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 				return nil
 			}
 
+			normalizedCharacterName := strings.ToLower(strings.TrimSpace(characterName))
+			if normalizedCharacterName != "" {
+				seenNames[normalizedCharacterName]++
+				// Character names are unique per account. Seeing the same name twice means we've looped.
+				if seenNames[normalizedCharacterName] >= 2 {
+					s.bot.ctx.Logger.Debug("Character scan completed after detecting repeated character name",
+						slog.String("name", characterName),
+						slog.Int("attempt", i+1))
+					break
+				}
+			}
+
 			s.bot.ctx.HID.PressKey(win.VK_DOWN)
 			time.Sleep(250 * time.Millisecond)
 		}
 
 		s.bot.ctx.Logger.Error(
-			fmt.Sprintf("Character %s not found after 25 attempts and auto-create is disabled.", s.bot.ctx.CharacterCfg.CharacterName),
+			fmt.Sprintf("Character %s not found after %d scan attempts and auto-create is disabled.", s.bot.ctx.CharacterCfg.CharacterName, scanAttempts),
 			slog.String("class", s.bot.ctx.CharacterCfg.Character.Class),
 		)
 

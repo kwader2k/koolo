@@ -3,12 +3,13 @@ package bot
 import (
 	"errors"
 	"fmt"
-	"image"
 	"log/slog"
+	"sort"
 	"strings"
 	"syscall"
 	"unsafe"
 
+	d2data "github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
@@ -21,7 +22,7 @@ var classCoords = map[string][2]int{
 	"amazon": {ui.CharAmazonX, ui.CharAmazonY}, "assassin": {ui.CharAssassinX, ui.CharAssassinY},
 	"necro": {ui.CharNecroX, ui.CharNecroY}, "barb": {ui.CharBarbX, ui.CharBarbY},
 	"pala": {ui.CharPallyX, ui.CharPallyY}, "sorc": {ui.CharSorcX, ui.CharSorcY},
-	"druid": {ui.CharDruidX, ui.CharDruidY},
+	"druid": {ui.CharDruidX, ui.CharDruidY}, "warlock": {ui.CharWarlockX, ui.CharWarlockY},
 }
 
 const (
@@ -30,8 +31,7 @@ const (
 	KEYEVENTF_KEYUP   = 0x0002
 
 	gameVersionMenuOpenDelay = 400
-	gameVersionSampleDelay   = 220
-	gameVersionPostCheckWait = 300
+	expansionUpPresses       = 3
 )
 
 type KEYBDINPUT struct {
@@ -144,42 +144,60 @@ func selectGameVersion(ctx *context.Status) {
 	}
 	ctx.Logger.Info("[AutoCreate] Selecting game version", slog.String("gameVersion", version))
 
-	ctx.HID.Click(game.LeftButton, ui.GameVersionBtnX, ui.GameVersionBtnY)
-	utils.Sleep(gameVersionMenuOpenDelay)
-
-	hasDLC, confident := detectWarlockDLC(ctx)
-	utils.Sleep(gameVersionPostCheckWait)
-	if !confident {
-		if ctx.CharacterCfg.Game.DLCEnabled {
-			hasDLC = true
-			confident = true
-		}
+	if !isPanelVisible(ctx, "DropdownListContents") {
+		ctx.Logger.Info("[AutoCreate] Opening game version dropdown for option read")
+		ctx.HID.Click(game.LeftButton, ui.GameVersionBtnX, ui.GameVersionBtnY)
+		utils.Sleep(gameVersionMenuOpenDelay)
 	}
 
-	if confident {
-		cacheDLCEnabled(ctx, hasDLC)
-		if hasDLC {
-			if version == "expansion" {
-				// DLC present: default is ROTW. Expansion is an explicit non-default pick.
-				ctx.HID.Click(game.LeftButton, ui.GameversionExpansionX, ui.GameversionExpansionY)
-			} else {
-				// DLC present + ROTW selected: keep default via one extra toggle click.
-				ctx.HID.Click(game.LeftButton, ui.GameVersionBtnX, ui.GameVersionBtnY)
-			}
-		} else {
-			// DLC absent: expansion is always default.
-			// Keep default via one extra toggle click regardless of requested version.
+	options := getGameVersionOptionsWithRetry(ctx)
+	hasWarlock := containsGameVersionOption(options, "warlock")
+	hasExpansion := containsGameVersionOption(options, "expansion")
+
+	ctx.Logger.Info("[AutoCreate] Game version options from panel",
+		slog.Any("options", options),
+		slog.Bool("hasWarlock", hasWarlock),
+		slog.Bool("hasExpansion", hasExpansion))
+
+	// Panel detection is fallback-only metadata; primary behavior uses requested version.
+	if len(options) > 0 {
+		cacheDLCEnabled(ctx, hasWarlock)
+	}
+
+	// Requested ROTW/warlock: do not change game version selection.
+	if version == "warlock" {
+		// Keep current selection; close dropdown to avoid intercepting later class clicks.
+		if isPanelVisible(ctx, "DropdownListContents") {
 			ctx.HID.Click(game.LeftButton, ui.GameVersionBtnX, ui.GameVersionBtnY)
+			utils.Sleep(180)
 		}
-	} else {
-		switch version {
-		case "expansion":
-			ctx.HID.Click(game.LeftButton, ui.GameversionExpansionX, ui.GameversionExpansionY)
-		default:
-			ctx.HID.Click(game.LeftButton, ui.GameversionWarlockX, ui.GameversionWarlockY)
-		}
+		ctx.Logger.Info("[AutoCreate] Warlock requested, skipping game version selection input")
+		return
 	}
-	utils.Sleep(250)
+
+	// Expansion selection strategy (works for both DLC and non-DLC accounts):
+	// move to top with UP presses, then one DOWN to land on Expansion.
+	if version == "expansion" {
+		if !isPanelVisible(ctx, "DropdownListContents") {
+			ctx.HID.Click(game.LeftButton, ui.GameVersionBtnX, ui.GameVersionBtnY)
+			utils.Sleep(gameVersionMenuOpenDelay)
+		} else {
+			ctx.Logger.Info("[AutoCreate] Game version dropdown already open, selecting expansion via keyboard sequence")
+		}
+
+		for i := 0; i < expansionUpPresses; i++ {
+			ctx.HID.PressKey(win.VK_UP)
+			utils.Sleep(90)
+		}
+		ctx.HID.PressKey(win.VK_DOWN)
+		utils.Sleep(120)
+		ctx.HID.PressKey(win.VK_RETURN)
+		utils.Sleep(250)
+		return
+	}
+
+	ctx.Logger.Info("[AutoCreate] Unsupported normalized game version, leaving game version unchanged",
+		slog.String("gameVersion", version))
 }
 
 func cacheDLCEnabled(ctx *context.Status, hasDLC bool) {
@@ -212,72 +230,6 @@ func cacheDLCEnabled(ctx *context.Status, hasDLC bool) {
 	}
 }
 
-func detectWarlockDLC(ctx *context.Status) (bool, bool) {
-	if ctx == nil || ctx.GameReader == nil {
-		return false, false
-	}
-
-	hoverX := ui.GameVersionDLCHoverX
-	hoverY := ui.GameVersionDLCHoverY
-	refX := ui.GameVersionDLCCheckX
-	refY := ui.GameVersionDLCCheckY
-	sampleRadius := 2 // 5x5 area average
-
-	ctx.HID.MovePointer(hoverX, hoverY)
-	utils.Sleep(gameVersionSampleDelay)
-	imgHover := ctx.GameReader.Screenshot()
-	if imgHover == nil {
-		return false, false
-	}
-	hoverR, hoverG, hoverB, ok := averageRGBAt(imgHover, hoverX, hoverY, sampleRadius)
-	if !ok {
-		ctx.Logger.Warn("[AutoCreate] DLC hover sample out of bounds",
-			slog.Int("x", hoverX),
-			slog.Int("y", hoverY))
-		return false, false
-	}
-
-	ctx.HID.MovePointer(refX, refY)
-	utils.Sleep(gameVersionSampleDelay)
-	imgRef := ctx.GameReader.Screenshot()
-	if imgRef == nil {
-		return false, false
-	}
-	refR, refG, refB, ok := averageRGBAt(imgRef, refX, refY, sampleRadius)
-	if !ok {
-		ctx.Logger.Warn("[AutoCreate] DLC reference sample out of bounds",
-			slog.Int("x", refX),
-			slog.Int("y", refY))
-		return false, false
-	}
-
-	dr := absInt(hoverR - refR)
-	dg := absInt(hoverG - refG)
-	db := absInt(hoverB - refB)
-	sumDelta := dr + dg + db
-	maxDelta := maxInt(dr, maxInt(dg, db))
-
-	// DLC present signal: two hover areas should look very similar.
-	hasDLC := sumDelta <= 42 && maxDelta <= 16
-
-	ctx.Logger.Info("[AutoCreate] DLC hover compare",
-		slog.Int("hoverX", hoverX),
-		slog.Int("hoverY", hoverY),
-		slog.Int("hoverR", hoverR),
-		slog.Int("hoverG", hoverG),
-		slog.Int("hoverB", hoverB),
-		slog.Int("refX", refX),
-		slog.Int("refY", refY),
-		slog.Int("refR", refR),
-		slog.Int("refG", refG),
-		slog.Int("refB", refB),
-		slog.Int("sumDelta", sumDelta),
-		slog.Int("maxDelta", maxDelta),
-		slog.Bool("hasDLC", hasDLC))
-
-	return hasDLC, true
-}
-
 func normalizeGameVersion(version string) (string, bool) {
 	switch strings.ToLower(strings.TrimSpace(version)) {
 	case "", config.GameVersionReignOfTheWarlock, "reignofthewarlock", "reign of the warlock", "warlock":
@@ -289,46 +241,115 @@ func normalizeGameVersion(version string) (string, bool) {
 	}
 }
 
-func averageRGBAt(img image.Image, x, y, radius int) (int, int, int, bool) {
-	if img == nil {
-		return 0, 0, 0, false
-	}
-	bounds := img.Bounds()
-	if x-radius < bounds.Min.X || x+radius >= bounds.Max.X || y-radius < bounds.Min.Y || y+radius >= bounds.Max.Y {
-		return 0, 0, 0, false
+func sanitizePanelText(text string) string {
+	if text == "" {
+		return ""
 	}
 
-	sumR := 0
-	sumG := 0
-	sumB := 0
-	count := 0
-	for py := y - radius; py <= y+radius; py++ {
-		for px := x - radius; px <= x+radius; px++ {
-			r16, g16, b16, _ := img.At(px, py).RGBA()
-			sumR += int(r16 >> 8)
-			sumG += int(g16 >> 8)
-			sumB += int(b16 >> 8)
-			count++
+	text = strings.ReplaceAll(text, "\r", " ")
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.TrimSpace(text)
+	if len(text) > 160 {
+		return text[:160]
+	}
+
+	return text
+}
+
+func isPanelVisible(ctx *context.Status, panelName string) bool {
+	if ctx == nil || ctx.GameReader == nil || panelName == "" {
+		return false
+	}
+
+	panel := ctx.GameReader.GetPanel(panelName)
+	return panel.PanelName != "" && panel.PanelVisible
+}
+
+func getGameVersionDropdownOptions(ctx *context.Status) []string {
+	if ctx == nil || ctx.GameReader == nil {
+		return nil
+	}
+
+	container := ctx.GameReader.GetPanel("DropdownListContents", "Items", "View", "Container")
+	if container.PanelName == "" || len(container.PanelChildren) == 0 {
+		return nil
+	}
+
+	childNames := make([]string, 0, len(container.PanelChildren))
+	for name := range container.PanelChildren {
+		childNames = append(childNames, name)
+	}
+	sort.Strings(childNames)
+
+	options := make([]string, 0, len(childNames))
+	for _, childName := range childNames {
+		row := container.PanelChildren[childName]
+		text := panelTextValue(row.PanelChildren["TextBox"])
+		text = sanitizePanelText(text)
+		if text == "" {
+			continue
+		}
+		options = append(options, text)
+	}
+
+	return options
+}
+
+func getGameVersionOptionsWithRetry(ctx *context.Status) []string {
+	options := getGameVersionDropdownOptions(ctx)
+	if len(options) > 0 {
+		return options
+	}
+
+	if ctx != nil {
+		ctx.Logger.Warn("[AutoCreate] options read failed/empty, retrying after delay")
+	}
+
+	utils.Sleep(1000)
+	options = getGameVersionDropdownOptions(ctx)
+	if len(options) == 0 && ctx != nil {
+		ctx.Logger.Warn("[AutoCreate] options read failed/empty after retry")
+	}
+
+	return options
+}
+
+func panelTextValue(panel d2data.Panel) string {
+	// DropdownListContents rows can intermittently expose garbled data in ExtraText2.
+	// Keep ExtraText ahead of ExtraText2 so we prefer stable, readable text when ExtraText3 is empty.
+	for _, candidate := range []string{panel.ExtraText3, panel.ExtraText, panel.ExtraText2} {
+		if strings.TrimSpace(candidate) != "" {
+			return candidate
 		}
 	}
-	if count == 0 {
-		return 0, 0, 0, false
-	}
-	return sumR / count, sumG / count, sumB / count, true
+	return ""
 }
 
-func absInt(v int) int {
-	if v < 0 {
-		return -v
+func containsGameVersionOption(options []string, version string) bool {
+	version = strings.ToLower(strings.TrimSpace(version))
+	if version == "" {
+		return false
 	}
-	return v
-}
 
-func maxInt(a, b int) int {
-	if a > b {
-		return a
+	for _, option := range options {
+		normalized := strings.ToLower(strings.TrimSpace(option))
+		switch version {
+		case "warlock":
+			if strings.Contains(normalized, "warlock") {
+				return true
+			}
+		case "expansion":
+			if normalized == "expansion" {
+				return true
+			}
+		default:
+			if normalized == version {
+				return true
+			}
+		}
 	}
-	return b
+
+	return false
 }
 
 func ensureForegroundWindow(ctx *context.Status) {
@@ -359,8 +380,6 @@ func ensureForegroundWindow(ctx *context.Status) {
 func enterCreationScreen(ctx *context.Status) error {
 	for i := 0; i < 5; i++ {
 		ctx.HID.Click(game.LeftButton, ui.CharCreateNewBtnX, ui.CharCreateNewBtnY)
-		utils.Sleep(300)
-		ctx.HID.Click(game.LeftButton, ui.CharCreateNewBtnX, ui.CharCreateNewBtnY)
 		utils.Sleep(1000)
 		if ctx.GameReader.IsInCharacterCreationScreen() {
 			return nil
@@ -390,36 +409,10 @@ func inputCharacterName(ctx *context.Status, name string) error {
 	}
 	utils.Sleep(200)
 
-	// Check for non-ASCII
-	hasNonASCII := false
-	for _, r := range name {
-		if r > 127 {
-			hasNonASCII = true
-			break
-		}
-	}
-
-	if hasNonASCII {
-		return inputNonASCIIName(ctx, name)
-	}
-	return inputASCIIName(ctx, name)
+	return inputName(ctx, name)
 }
 
-func inputASCIIName(ctx *context.Status, name string) error {
-	for _, r := range name {
-		if err := sendUnicodeChar(r); err != nil {
-			ctx.Logger.Error("Failed to send char", slog.String("char", string(r)), slog.Any("error", err))
-			return err
-		}
-		utils.Sleep(60)
-	}
-	utils.Sleep(500)
-	return nil
-}
-
-func inputNonASCIIName(ctx *context.Status, name string) error {
-	ctx.Logger.Info("[AutoCreate] Using SendInput for non-ASCII name", slog.String("name", name))
-
+func inputName(ctx *context.Status, name string) error {
 	for _, r := range name {
 		if err := sendUnicodeChar(r); err != nil {
 			ctx.Logger.Error("Failed to send unicode char", slog.String("char", string(r)), slog.Any("error", err))
