@@ -136,6 +136,52 @@ func ShouldSwitchTarget(targetID data.UnitID, targetMonster data.Monster, lastLi
 	return false
 }
 
+// GetThreatCentroid calculates a weighted centroid of all enemies within radius,
+// weighted inversely by distance from playerPos. Returns centroid and count.
+func GetThreatCentroid(playerPos data.Position, radius int) (data.Position, int) {
+	ctx := context.Get()
+	var (
+		totalWeight float64
+		weightedX   float64
+		weightedY   float64
+		count       int
+	)
+
+	for _, monster := range ctx.Data.Monsters.Enemies() {
+		if monster.Stats[stat.Life] <= 0 {
+			continue
+		}
+
+		distance := pather.DistanceFromPoint(playerPos, monster.Position)
+		if distance > radius {
+			continue
+		}
+
+		weight := 1.0
+		if distance > 0 {
+			weight = float64(radius) / float64(distance)
+		} else {
+			weight = float64(radius)
+		}
+
+		totalWeight += weight
+		weightedX += float64(monster.Position.X) * weight
+		weightedY += float64(monster.Position.Y) * weight
+		count++
+	}
+
+	if count == 0 {
+		return playerPos, 0
+	}
+
+	centroid := data.Position{
+		X: int(weightedX / totalWeight),
+		Y: int(weightedY / totalWeight),
+	}
+
+	return centroid, count
+}
+
 func FindSafePosition(targetMonster data.Monster, dangerDistance int, safeDistance int, minAttackDistance int, maxAttackDistance int) (data.Position, bool) {
 	ctx := context.Get()
 	playerPos := ctx.Data.PlayerUnit.Position
