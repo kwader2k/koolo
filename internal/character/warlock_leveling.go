@@ -99,7 +99,7 @@ func (s WarlockLeveling) KillMonsterSequence(
 			isAnyEnemyNearby, _ := action.IsAnyEnemyAroundPlayer(warlockDangerDistance)
 			if isAnyEnemyNearby {
 				if safePos, found := action.FindSafePosition(monster, warlockDangerDistance, warlockSafeDistance, warlockMinDistance, warlockMaxDistance); found {
-					step.MoveTo(safePos, step.WithIgnoreMonsters())
+					step.MoveTo(safePos, step.WithStationaryDistance(warlockMinDistance, warlockMaxDistance))
 					lastReposition = time.Now()
 				}
 			}
