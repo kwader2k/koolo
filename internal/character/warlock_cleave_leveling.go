@@ -433,6 +433,8 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	}
 
 	if lvl.Value < 12 {
+		skillBindings = append(skillBindings, skill.MiasmaBolt)
+
 		if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
 			skillBindings = append(skillBindings, skill.Cleave)
 			//mainSkill = skill.Cleave
@@ -472,17 +474,17 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		skillBindings = append(skillBindings, skill.EldritchBlast)
 	}
 
+	_, found := s.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
+	if found {
+		skillBindings = append(skillBindings, skill.TomeOfTownPortal)
+	}
+
 	if s.Data.PlayerUnit.Skills[skill.BattleCommand].Level > 0 {
 		skillBindings = append(skillBindings, skill.BattleCommand)
 	}
 
 	if s.Data.PlayerUnit.Skills[skill.BattleOrders].Level > 0 {
 		skillBindings = append(skillBindings, skill.BattleOrders)
-	}
-
-	_, found := s.Data.Inventory.Find(item.TomeOfTownPortal, item.LocationInventory)
-	if found {
-		skillBindings = append(skillBindings, skill.TomeOfTownPortal)
 	}
 
 	s.Logger.Info("Skills bound", "mainSkill", mainSkill, "skillBindings", skillBindings)
