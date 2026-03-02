@@ -257,12 +257,12 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 			}
 		}
 		if maxSigilLevel > 0 {
-			s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(maxSigilLevel*1000+3000, maxSigilLevel*1000+5000))
+			s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(maxSigilLevel*1000+3000, maxSigilLevel*1000+6000))
 		}
 	}
 
 	deathMark := true
-	if !s.CheckMana(skill.DeathMark) || s.combatState.petCount == 0 || s.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 || !isMandatoryKill {
+	if !s.CheckMana(skill.DeathMark) || s.combatState.petCount == 0 || s.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 || !isMandatoryKill || !time.Now().After(s.combatState.nextPetSkill) {
 		deathMark = false
 	}
 	if deathMark {
@@ -336,10 +336,10 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	if s.combatState.petCount < maxpet {
 		s.combatState.nextPetSkill = time.Now().Add(utils.RandomDurationMs(4000, 6000))
 		for _, sumonSkill := range s.SumonSkills() {
-			if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 && s.CheckMana(sumonSkill) {
+			if s.combatState.petCount < maxpet && s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 && s.CheckMana(sumonSkill) {
+				s.combatState.petCount++
 				step.CastAtPosition(sumonSkill, true, target.Position)
 				utils.Sleep(100, 100)
-				break
 			}
 		}
 	}
