@@ -72,9 +72,10 @@ func (s WarlockCleaveLeveling) IsMandatoryKill(m data.Monster) bool {
 }
 
 type CleaveCombatState struct {
-	lastSigil     time.Time
-	lastDemonBind time.Time
-	lastPetSkill  time.Time
+	lastSigil      time.Time
+	lastDemonBind  time.Time
+	lastPetSkill   time.Time
+	lastMirroBlade time.Time
 }
 
 func (s WarlockCleaveLeveling) KillMonsterSequence(
@@ -126,7 +127,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		//lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
 		healthPercent := s.Data.PlayerUnit.HPPercent()
-		canReposition := lastHealthPercent-healthPercent > 10 && time.Since(lastReposition) > time.Second*1
+		canReposition := lastHealthPercent-healthPercent > 10 && time.Since(lastReposition) > utils.RandomDurationMs(1000, 2000)
 		if canReposition {
 			if safePos, found := action.FindSafePosition(monster, cleaveDangerDistance, cleaveSafeDistance, cleaveMinDistance, cleaveMaxDistance); found {
 				step.MoveTo(safePos, step.WithStationaryDistance(cleaveMinDistance, cleaveMaxDistance))
@@ -186,7 +187,7 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 
 	isMandatoryKill := s.IsMandatoryKill(monster)
 
-	if time.Since(s.combatState.lastSigil) > time.Second*5 {
+	if time.Since(s.combatState.lastSigil) > utils.RandomDurationMs(4000, 6000) {
 		for _, sigil := range s.SigilSkills() {
 			if s.Data.PlayerUnit.Skills[sigil].Level > 0 {
 				skills = append(skills, sigil)
@@ -209,9 +210,14 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 	if ctx.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 || isMandatoryKill || monsterHPPercent > 60 {
 		demonbind = false
 	}
-	if demonbind && time.Since(s.combatState.lastDemonBind) > time.Second*10 {
+	if demonbind && time.Since(s.combatState.lastDemonBind) > utils.RandomDurationMs(5000, 11000) {
 		skills = append(skills, skill.BindDemon)
 		s.combatState.lastDemonBind = time.Now()
+	}
+
+	if time.Since(s.combatState.lastMirroBlade) > utils.RandomDurationMs(1000, 2000) {
+		skills = append(skills, skill.MirroredBlades)
+		s.combatState.lastMirroBlade = time.Now()
 	}
 
 	for _, sk := range skills {
@@ -287,7 +293,7 @@ func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
 		skills = append(skills, sumonSkillId)
 	}
 
-	if time.Since(s.combatState.lastPetSkill) < time.Second*5 {
+	if time.Since(s.combatState.lastPetSkill) < utils.RandomDurationMs(4000, 6000) {
 		if engorge {
 			if s.Data.PlayerUnit.Skills[skill.Engorge].Level > 0 {
 				skills = append(skills, skill.Engorge)
@@ -310,60 +316,59 @@ func (s WarlockCleaveLeveling) ShouldResetSkills() bool {
 }
 
 func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
-	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
 
-	if HexBane, found := s.Data.PlayerUnit.Skills[skill.HexBane]; found && HexBane.Level > 0 {
-		skillBindings = append(skillBindings, skill.HexBane)
+	for _, hex := range s.HexSkills() {
+		if s.Data.PlayerUnit.Skills[hex].Level > 0 {
+			skillBindings = append(skillBindings, hex)
+		}
 	}
 
-	if SummonGoatman, found := s.Data.PlayerUnit.Skills[skill.SummonGoatman]; found && SummonGoatman.Level > 0 {
-		skillBindings = append(skillBindings, skill.SummonGoatman)
+	for _, sumonSkill := range s.SumonSkills() {
+		if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 {
+			skillBindings = append(skillBindings, sumonSkill)
+			break
+		}
 	}
 
-	if lvl.Value >= 6 {
+	for _, sigil := range s.SigilSkills() {
+		if s.Data.PlayerUnit.Skills[sigil].Level > 0 {
+			skillBindings = append(skillBindings, sigil)
+			break
+		}
+	}
+
+	if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
 		skillBindings = append(skillBindings, skill.Cleave)
-		skillBindings = append(skillBindings, skill.SigilLethargy)
 		mainSkill = skill.Cleave
 	}
 
-	if lvl.Value >= 12 {
-		mainSkill = skill.Cleave
-		skillBindings = append(skillBindings, skill.HexPurge)
-		skillBindings = append(skillBindings, skill.SummonTainted)
-		skillBindings = append(skillBindings, skill.SigilRancor)
-	}
-
-	if lvl.Value >= 18 {
-		mainSkill = skill.Cleave
-		skillBindings = append(skillBindings, skill.SummonDefiler)
-		skillBindings = append(skillBindings, skill.SigilDeath)
-	}
-
-	if lvl.Value >= 24 {
-		mainSkill = skill.Cleave
-		skillBindings = []skill.ID{}
-		skillBindings = append(skillBindings, skill.SigilDeath)
-		skillBindings = append(skillBindings, skill.HexPurge)
-		skillBindings = append(skillBindings, skill.SummonDefiler)
-	}
-
-	if lvl.Value >= 30 {
-		mainSkill = skill.Cleave
-		skillBindings = []skill.ID{}
-		skillBindings = append(skillBindings, skill.SigilDeath)
-		skillBindings = append(skillBindings, skill.HexPurge)
-		skillBindings = append(skillBindings, skill.SummonDefiler)
+	if MirroredBlades, found := s.Data.PlayerUnit.Skills[skill.MirroredBlades]; found && MirroredBlades.Level > 0 {
 		skillBindings = append(skillBindings, skill.MirroredBlades)
+	}
+
+	if BindDemon, found := s.Data.PlayerUnit.Skills[skill.BindDemon]; found && BindDemon.Level > 0 {
 		skillBindings = append(skillBindings, skill.BindDemon)
+	}
+
+	if Consume, found := s.Data.PlayerUnit.Skills[skill.Consume]; found && Consume.Level > 0 {
 		skillBindings = append(skillBindings, skill.Consume)
+	}
+
+	if DeathMark, found := s.Data.PlayerUnit.Skills[skill.DeathMark]; found && DeathMark.Level > 0 {
+		skillBindings = append(skillBindings, skill.DeathMark)
+	}
+
+	if Engorge, found := s.Data.PlayerUnit.Skills[skill.Engorge]; found && Engorge.Level > 0 {
+		skillBindings = append(skillBindings, skill.Engorge)
 	}
 
 	if s.Data.PlayerUnit.Skills[skill.BattleCommand].Level > 0 {
 		skillBindings = append(skillBindings, skill.BattleCommand)
 	}
+
 	if s.Data.PlayerUnit.Skills[skill.BattleOrders].Level > 0 {
 		skillBindings = append(skillBindings, skill.BattleOrders)
 	}
