@@ -83,18 +83,16 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 ) error {
 	ctx := context.Get()
 	completedAttackLoops := 0
-	previousUnitID := 0
 	var currentTargetID data.UnitID
 	var lastReposition time.Time
 	lastHealthPercent := 100
 	for {
-		context.Get().PauseIfNotPriority()
+
+		ctx.PauseIfNotPriority() // Pause if not the priority task
 
 		if s.Context.Data.PlayerUnit.IsDead() {
 			return nil
 		}
-
-		ctx.PauseIfNotPriority() // Pause if not the priority task
 
 		if currentTargetID == 0 { // Select a new target if none exists
 			id, found := monsterSelector(*s.Data)
@@ -111,15 +109,13 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		if !found || monster.Stats[stat.Life] <= 0 || monster.IsPet() {
 			//s.Logger.Info("Monster not found", slog.String("monster", fmt.Sprintf("%v", monster)))
 			currentTargetID = 0
+			completedAttackLoops = 0
 			utils.Sleep(100, 100)
 			return nil
 		}
 
-		if previousUnitID != int(currentTargetID) {
-			completedAttackLoops = 0
-		}
-
 		if completedAttackLoops >= cleaveMaxAttacksLoop {
+			completedAttackLoops = 0
 			return nil
 		}
 
@@ -150,7 +146,6 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		step.PrimaryAttack(currentTargetID, 1, true, step.Distance(cleaveMinDistance, cleaveMaxDistance))
 
 		completedAttackLoops++
-		previousUnitID = int(currentTargetID)
 		utils.Sleep(100, 100)
 	}
 }
