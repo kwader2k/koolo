@@ -220,6 +220,9 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	if mana.Value < 40 || ctx.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 || isMandatoryKill || monsterHPPercent > 60 {
 		demonbind = false
 	}
+	if s.combatState.petCount > 0 && target.Type == data.MonsterTypeNone {
+		demonbind = false
+	}
 	if demonbind && time.Since(s.combatState.lastDemonBind) > utils.RandomDurationMs(5000, 11000) {
 		skills = append(skills, skill.BindDemon)
 		s.combatState.lastDemonBind = time.Now()
@@ -318,6 +321,12 @@ func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
 			if !ctx.Data.PlayerUnit.States.HasState(HexStates[i]) {
 				buffs = append(buffs, hex)
 			}
+		}
+	}
+
+	if mana.Value > 60 && s.Data.PlayerUnit.Skills[skill.PsychicWard].Level > 0 {
+		if !ctx.Data.PlayerUnit.States.HasState(state.Psychicward) {
+			buffs = append(buffs, skill.PsychicWard)
 		}
 	}
 	return buffs
