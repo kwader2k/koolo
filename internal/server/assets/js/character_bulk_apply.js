@@ -85,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'assassin',
         'barb_leveling',
         'warlock_leveling',
+        'warlock_cleave_leveling',
     ]);
     const levelingSupervisors = new Set();
     const SECTION_CHECKBOX_IDS = [

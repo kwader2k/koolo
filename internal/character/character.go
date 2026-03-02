@@ -45,6 +45,8 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 			return SorceressLeveling{BaseCharacter: bc}, nil
 		case "warlock_leveling":
 			return WarlockLeveling{BaseCharacter: bc}, nil
+		case "warlock_cleave_leveling":
+			return WarlockCleaveLeveling{BaseCharacter: bc}, nil
 		}
 
 		return nil, fmt.Errorf("leveling build %s not implemented", ctx.CharacterCfg.Character.Class)
