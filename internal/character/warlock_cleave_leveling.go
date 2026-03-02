@@ -22,11 +22,11 @@ import (
 var _ context.LevelingCharacter = (*WarlockCleaveLeveling)(nil)
 
 const (
-	cleaveMaxAttacksLoop = 3
-	cleaveMinDistance    = 1
-	cleaveMaxDistance    = 4
-	cleaveDangerDistance = 2
-	cleaveSafeDistance   = 3
+	eStrikeMaxAttacksLoop = 5
+	eStrikeMinDistance    = 8
+	eStrikeMaxDistance    = 12
+	eStrikeDangerDistance = 6
+	eStrikeSafeDistance   = 10
 )
 
 type WarlockCleaveLeveling struct {
@@ -76,6 +76,7 @@ type CleaveCombatState struct {
 	lastDemonBind  time.Time
 	lastPetSkill   time.Time
 	lastMirroBlade time.Time
+	petCount       int
 }
 
 func (s WarlockCleaveLeveling) KillMonsterSequence(
@@ -115,7 +116,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		if completedAttackLoops >= cleaveMaxAttacksLoop {
+		if completedAttackLoops >= eStrikeMaxAttacksLoop {
 			completedAttackLoops = 0
 			return nil
 		}
@@ -124,30 +125,38 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		//lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+		lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
 		healthPercent := s.Data.PlayerUnit.HPPercent()
 		canReposition := lastHealthPercent-healthPercent > 10 && time.Since(lastReposition) > utils.RandomDurationMs(1000, 2000)
 		if canReposition {
-			if safePos, found := action.FindSafePosition(monster, cleaveDangerDistance, cleaveSafeDistance, cleaveMinDistance, cleaveMaxDistance); found {
-				step.MoveTo(safePos, step.WithStationaryDistance(cleaveMinDistance, cleaveMaxDistance))
+			if safePos, found := action.FindSafePosition(monster, eStrikeDangerDistance, eStrikeSafeDistance, eStrikeMinDistance, eStrikeMaxDistance); found {
 				lastReposition = time.Now()
+
+				if mana.Value > 15 && s.Data.PlayerUnit.Skills[skill.BladeWarp].Level > 0 {
+					step.CastAtPosition(skill.BladeWarp, true, safePos)
+				} else {
+					step.MoveTo(safePos, step.WithStationaryDistance(eStrikeMinDistance, eStrikeMaxDistance))
+				}
 			}
 		}
 		lastHealthPercent = healthPercent
 
-		s.CombatSupportSkills(monster) // Refresh buffs before attacking
-
-		if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && mana.Value > 10 {
-			step.SelectLeftSkill(skill.Cleave)
+		if mana.Value < 20 {
+			step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
 		} else {
-			step.SelectLeftSkill(skill.AttackSkill)
+			if lvl.Value < 12 { //cleave
+				//step.SelectLeftSkill(skill.Cleave)
+				step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
+			} else {
+				//step.SelectLeftSkill(skill.EchoingStrike)
+				step.SecondaryAttack(skill.EchoingStrike, currentTargetID, 1, step.RangedDistance(minDistance, maxDistance))
+			}
 		}
-
-		step.PrimaryAttack(currentTargetID, 1, true, step.Distance(cleaveMinDistance, cleaveMaxDistance))
 
 		completedAttackLoops++
 		utils.Sleep(100, 100)
+		s.CombatSupportSkills(monster) // summon
 	}
 }
 
@@ -168,26 +177,27 @@ func (s WarlockCleaveLeveling) SigilSkills() []skill.ID {
 // }
 
 func (s WarlockCleaveLeveling) SumonSkills() []skill.ID {
-	return []skill.ID{skill.SummonDefiler, skill.SummonTainted, skill.SummonGoatman}
+	return []skill.ID{skill.SummonGoatman, skill.SummonTainted, skill.SummonDefiler}
 }
 
 // func (s WarlockCleaveLeveling) SumonStates() []state.State {
 // 	return []state.State{state.Consume, state.DeathMark, state.Engorge}
 // }
 
-func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
+func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 
-	if monster.UnitID == 0 {
+	if target.UnitID == 0 {
 		return
 	}
 
 	ctx := context.Get()
+	mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
 
 	skills := []skill.ID{}
 
-	isMandatoryKill := s.IsMandatoryKill(monster)
+	isMandatoryKill := s.IsMandatoryKill(target)
 
-	if time.Since(s.combatState.lastSigil) > utils.RandomDurationMs(4000, 6000) {
+	if mana.Value > 10 && time.Since(s.combatState.lastSigil) > utils.RandomDurationMs(4000, 6000) {
 		for _, sigil := range s.SigilSkills() {
 			if s.Data.PlayerUnit.Skills[sigil].Level > 0 {
 				skills = append(skills, sigil)
@@ -198,16 +208,16 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 	}
 
 	deathMark := true
-	if ctx.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 || !isMandatoryKill {
+	if mana.Value < 10 || s.combatState.petCount == 0 || ctx.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 || !isMandatoryKill {
 		deathMark = false
 	}
 	if deathMark {
 		skills = append(skills, skill.DeathMark)
 	}
 
-	monsterHPPercent := float32(monster.Stats[stat.Life]) / float32(monster.Stats[stat.MaxLife]) * 100
+	monsterHPPercent := float32(target.Stats[stat.Life]) / float32(target.Stats[stat.MaxLife]) * 100
 	demonbind := true
-	if ctx.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 || isMandatoryKill || monsterHPPercent > 60 {
+	if mana.Value < 40 || ctx.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 || isMandatoryKill || monsterHPPercent > 60 {
 		demonbind = false
 	}
 	if demonbind && time.Since(s.combatState.lastDemonBind) > utils.RandomDurationMs(5000, 11000) {
@@ -215,14 +225,82 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 		s.combatState.lastDemonBind = time.Now()
 	}
 
-	if time.Since(s.combatState.lastMirroBlade) > utils.RandomDurationMs(1000, 2000) {
+	if mana.Value > 25 && time.Since(s.combatState.lastMirroBlade) > utils.RandomDurationMs(1000, 2000) {
 		skills = append(skills, skill.MirroredBlades)
 		s.combatState.lastMirroBlade = time.Now()
 	}
 
+	//perform
 	for _, sk := range skills {
-		step.SecondaryAttack(sk, monster.UnitID, 1, step.Distance(cleaveMinDistance, cleaveMaxDistance)) // Activate skill
-		utils.Sleep(100, 100)                                                                            // Small delay
+		step.SecondaryAttack(sk, target.UnitID, 1, step.Distance(0, eStrikeMaxDistance)) // Activate skill
+		utils.Sleep(100, 100)                                                            // Small delay
+	}
+
+	//sumon skill
+	if time.Since(s.combatState.lastPetSkill) < utils.RandomDurationMs(4000, 6000) {
+		return
+	}
+
+	summon := false
+	engorge := false
+	consume := false
+
+	for _, sumonSkill := range s.SumonSkills() {
+		if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 {
+			summon = true
+			break
+		}
+	}
+
+	if !summon {
+		return
+	}
+
+	maxpet := int(s.Data.PlayerUnit.Skills[skill.DemonicMastery].Level/10) + 1
+	var petId data.UnitID
+	s.combatState.petCount = 0
+
+	for _, monster := range s.Data.Monsters { // Check existing pets
+		if !monster.IsPet() {
+			continue
+		}
+		s.combatState.petCount++
+		petHPPercent := float32(monster.Stats[stat.Life]) / float32(monster.Stats[stat.MaxLife]) * 100
+		if petHPPercent < 60 {
+			engorge = true
+			petId = monster.UnitID
+		}
+		if petHPPercent < 30 {
+			consume = true
+			petId = monster.UnitID
+		}
+	}
+
+	if mana.Value > 45 && s.combatState.petCount < maxpet {
+		s.combatState.lastPetSkill = time.Now()
+		for _, sumonSkill := range s.SumonSkills() {
+			if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 {
+				step.CastAtPosition(sumonSkill, true, target.Position)
+				utils.Sleep(100, 100)
+				break
+			}
+		}
+	}
+
+	if mana.Value > 10 && engorge {
+		if s.Data.PlayerUnit.Skills[skill.Engorge].Level > 0 {
+			step.SecondaryAttack(skill.Engorge, petId, 1, step.RangedDistance(0, eStrikeMaxDistance))
+			s.combatState.lastPetSkill = time.Now()
+			utils.Sleep(100, 100)
+		}
+	}
+
+	if mana.Value > 40 && consume {
+		if s.Data.PlayerUnit.Skills[skill.Consume].Level > 0 {
+			step.SecondaryAttack(skill.Consume, petId, 1, step.RangedDistance(0, eStrikeMaxDistance))
+			s.combatState.lastPetSkill = time.Now()
+			utils.Sleep(100, 100)
+		}
 	}
 
 	//utils.Sleep(100, 100)
@@ -230,84 +308,24 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 
 func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
 	buffs := make([]skill.ID, 0)
+
+	mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
+	ctx := context.Get()
+	//buffs
+	var HexStates = s.HexStates()
+	for i, hex := range s.HexSkills() {
+		if mana.Value > 10 && s.Data.PlayerUnit.Skills[hex].Level > 0 {
+			if !ctx.Data.PlayerUnit.States.HasState(HexStates[i]) {
+				buffs = append(buffs, hex)
+			}
+		}
+	}
 	return buffs
 }
 
 // Dynamically determines pre-combat buffs and summons
 func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
-	ctx := context.Get()
 	skills := make([]skill.ID, 0)
-
-	var HexStates = s.HexStates()
-	for i, hex := range s.HexSkills() {
-		if s.Data.PlayerUnit.Skills[hex].Level > 0 {
-			if !ctx.Data.PlayerUnit.States.HasState(HexStates[i]) {
-				skills = append(skills, hex)
-			}
-		}
-	}
-
-	var sumonSkillId = skill.AttackSkill
-	for _, sumonSkill := range s.SumonSkills() {
-		if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 {
-			sumonSkillId = sumonSkill
-			break
-		}
-	}
-
-	needpet := false
-	engorge := false
-	consume := false
-	if sumonSkillId != skill.AttackSkill {
-		for _, monster := range s.Data.Monsters { // Check existing pets
-			if !monster.IsPet() {
-				continue
-			}
-
-			petHPPercent := float32(monster.Stats[stat.Life]) / float32(monster.Stats[stat.MaxLife]) * 100
-			if petHPPercent < 60 {
-				engorge = true
-			}
-			if petHPPercent < 30 {
-				consume = true
-			}
-
-			switch sumonSkillId {
-			case skill.SummonGoatman:
-				if monster.Name != npc.WarGoatman {
-					needpet = true
-				}
-			case skill.SummonTainted:
-				if monster.Name != npc.Tainted {
-					needpet = true
-				}
-			case skill.SummonDefiler:
-				if monster.Name != npc.WarDefiler {
-					needpet = true
-				}
-			}
-		}
-	}
-
-	if needpet {
-		skills = append(skills, sumonSkillId)
-	}
-
-	if time.Since(s.combatState.lastPetSkill) < utils.RandomDurationMs(4000, 6000) {
-		if engorge {
-			if s.Data.PlayerUnit.Skills[skill.Engorge].Level > 0 {
-				skills = append(skills, skill.Engorge)
-				s.combatState.lastPetSkill = time.Now()
-			}
-		}
-
-		if consume {
-			if s.Data.PlayerUnit.Skills[skill.Consume].Level > 0 {
-				skills = append(skills, skill.Consume)
-				s.combatState.lastPetSkill = time.Now()
-			}
-		}
-	}
 	return skills
 }
 
@@ -319,6 +337,8 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 	mainSkill := skill.AttackSkill
 	skillBindings := []skill.ID{}
+
+	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
 	for _, hex := range s.HexSkills() {
 		if s.Data.PlayerUnit.Skills[hex].Level > 0 {
@@ -340,9 +360,16 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		}
 	}
 
-	if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
-		skillBindings = append(skillBindings, skill.Cleave)
-		mainSkill = skill.Cleave
+	if lvl.Value < 12 {
+		if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
+			skillBindings = append(skillBindings, skill.Cleave)
+			//mainSkill = skill.Cleave
+		}
+	}
+
+	if EchoingStrike, found := s.Data.PlayerUnit.Skills[skill.EchoingStrike]; found && EchoingStrike.Level > 0 {
+		skillBindings = append(skillBindings, skill.EchoingStrike)
+		//mainSkill = skill.EchoingStrike
 	}
 
 	if MirroredBlades, found := s.Data.PlayerUnit.Skills[skill.MirroredBlades]; found && MirroredBlades.Level > 0 {
@@ -384,8 +411,6 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 func (s WarlockCleaveLeveling) StatPoints() []context.StatAllocation {
 	stats := []context.StatAllocation{
-		{Stat: stat.Vitality, Points: 30},
-		{Stat: stat.Energy, Points: 35},
 		{Stat: stat.Vitality, Points: 45},
 		{Stat: stat.Strength, Points: 30},
 		{Stat: stat.Vitality, Points: 85},
@@ -403,28 +428,37 @@ func (s WarlockCleaveLeveling) SkillPoints() []skill.ID {
 	var skillSequence []skill.ID
 
 	skillSequence = []skill.ID{
-		// Levels 2-5: MiasmaBolt
-		skill.HexBane, skill.Levitate, skill.SummonGoatman, skill.DemonicMastery, skill.HexBane, // Den of Evil
-		skill.Cleave, skill.Cleave, skill.SigilLethargy, skill.BloodOath, skill.DeathMark,
-		skill.Cleave, skill.Cleave, // lv12
-		skill.SigilRancor, skill.EchoingStrike, skill.HexPurge, skill.SummonTainted, skill.Cleave, //17
-		// Level 18:
-		skill.BladeWarp, skill.PsychicWard, skill.BloodBoil, skill.SummonDefiler, skill.HexPurge, //22
-		skill.HexPurge, skill.HexPurge, //24
-		skill.EldritchBlast, skill.Engorge, skill.BloodOath, skill.BloodOath, skill.BloodOath,
+		// Levels 2-5:HexBane
+		skill.HexBane, skill.SummonGoatman, skill.Levitate, skill.DemonicMastery, skill.HexBane, //5
+		//6
+		skill.Cleave, skill.BloodOath, skill.DeathMark, skill.SigilLethargy, //9
+		skill.HexBane, skill.HexBane, //11
+		//12
+		skill.EchoingStrike, skill.SummonTainted, //13
+		skill.HexBane, skill.EchoingStrike, skill.HexBane, skill.EchoingStrike, //17
+		//18
+		skill.BladeWarp, skill.PsychicWard, skill.BloodBoil, skill.SummonDefiler, //21
+		skill.EchoingStrike, skill.HexBane, //23
+		//24
+		skill.EldritchBlast, skill.Engorge, //25
+		skill.EchoingStrike, skill.HexBane, skill.EchoingStrike, skill.HexBane, //29
 		//30
-		skill.MirroredBlades, skill.Consume, skill.BindDemon, //32
-		skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, //37
-		skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, //42
-		skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, skill.Cleave, //47
-		skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, //52
-		skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, //57
-		skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, skill.HexPurge, //62
-		skill.DemonicMastery, skill.DemonicMastery, skill.DemonicMastery, skill.DemonicMastery, skill.DemonicMastery, //67
-		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //72
-		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //77
-		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //82
-		skill.SigilDeath, skill.SigilDeath, skill.SigilDeath, skill.SigilDeath, skill.SigilDeath, //87
+		skill.MirroredBlades, skill.Consume, //31
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, //35
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //40
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //45
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //50
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //55
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //60
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //65
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.HexBane, //70
+		skill.MirroredBlades, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.HexBane, //75
+		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //80
+		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //85
+		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //90
+		skill.Consume, skill.Consume, skill.Consume, skill.Consume, //94
+		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //99
+		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //104
 	}
 
 	return skillSequence
