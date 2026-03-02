@@ -142,9 +142,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		}
 		lastHealthPercent = healthPercent
 
-		if lvl.Value < 6 && s.CheckMana(skill.MiasmaBolt) {
-			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
-		} else if lvl.Value < 12 && s.CheckMana(skill.Cleave) { //cleave
+		if lvl.Value < 12 && s.CheckMana(skill.Cleave) { //cleave
 			//step.SelectLeftSkill(skill.Cleave)
 			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
 		} else if s.CheckMana(skill.EchoingStrike) {
@@ -433,8 +431,6 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	}
 
 	if lvl.Value < 12 {
-		skillBindings = append(skillBindings, skill.MiasmaBolt)
-
 		if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
 			skillBindings = append(skillBindings, skill.Cleave)
 			//mainSkill = skill.Cleave
