@@ -142,10 +142,12 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		}
 		lastHealthPercent = healthPercent
 
-		if lvl.Value < 12 && s.CheckMana(skill.Cleave) { //cleave
+		if lvl.Value < 6 && s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && s.CheckMana(skill.MiasmaBolt) {
+			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
+		} else if lvl.Value < 12 && s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) { //cleave
 			//step.SelectLeftSkill(skill.Cleave)
 			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
-		} else if s.CheckMana(skill.EchoingStrike) {
+		} else if s.Data.PlayerUnit.Skills[skill.EchoingStrike].Level > 0 && s.CheckMana(skill.EchoingStrike) {
 			//step.SelectLeftSkill(skill.EchoingStrike)
 			step.SecondaryAttack(skill.EchoingStrike, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
 		} else {
@@ -431,6 +433,10 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	}
 
 	if lvl.Value < 12 {
+		if MiasmaBolt, found := s.Data.PlayerUnit.Skills[skill.MiasmaBolt]; found && MiasmaBolt.Level > 0 {
+			skillBindings = append(skillBindings, skill.MiasmaBolt)
+		}
+
 		if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
 			skillBindings = append(skillBindings, skill.Cleave)
 			//mainSkill = skill.Cleave
@@ -475,11 +481,11 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		skillBindings = append(skillBindings, skill.TomeOfTownPortal)
 	}
 
-	if s.Data.PlayerUnit.Skills[skill.BattleCommand].Level > 0 {
+	if BattleCommand, found := s.Data.PlayerUnit.Skills[skill.BattleCommand]; found && BattleCommand.Level > 0 {
 		skillBindings = append(skillBindings, skill.BattleCommand)
 	}
 
-	if s.Data.PlayerUnit.Skills[skill.BattleOrders].Level > 0 {
+	if BattleOrders, found := s.Data.PlayerUnit.Skills[skill.BattleOrders]; found && BattleOrders.Level > 0 {
 		skillBindings = append(skillBindings, skill.BattleOrders)
 	}
 
