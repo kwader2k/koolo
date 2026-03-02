@@ -35,7 +35,7 @@ type WarlockCleaveLeveling struct {
 }
 
 func (s WarlockCleaveLeveling) ShouldIgnoreMonster(m data.Monster) bool {
-	return !m.IsPet()
+	return m.IsPet()
 }
 
 func (s WarlockCleaveLeveling) CheckKeyBindings() []skill.ID {
