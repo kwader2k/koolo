@@ -110,7 +110,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 			//s.Logger.Info("Monster not found", slog.String("monster", fmt.Sprintf("%v", monster)))
 			currentTargetID = 0
 			completedAttackLoops = 0
-			utils.Sleep(100, 100)
+			//utils.Sleep(100, 100)
 			return nil
 		}
 
@@ -216,7 +216,7 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 
 	for _, sk := range skills {
 		step.SecondaryAttack(sk, monster.UnitID, 1, step.Distance(cleaveMinDistance, cleaveMaxDistance)) // Activate skill
-		utils.Sleep(180, 100)                                                                            // Small delay
+		utils.Sleep(100, 100)                                                                            // Small delay
 	}
 
 	//utils.Sleep(100, 100)
