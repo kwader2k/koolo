@@ -89,6 +89,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 	var currentTargetID data.UnitID
 	var lastReposition time.Time
 	lastHealthPercent := 100
+
 	for {
 
 		ctx.PauseIfNotPriority() // Pause if not the priority task
@@ -100,7 +101,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		if currentTargetID == 0 { // Select a new target if none exists
 			id, found := monsterSelector(*s.Data)
 			if !found {
-				utils.Sleep(100, 100)
+				utils.Sleep(50, 50)
 				return nil // Exit if no target found
 			}
 
@@ -155,7 +156,7 @@ func (s WarlockCleaveLeveling) KillMonsterSequence(
 		}
 
 		completedAttackLoops++
-		utils.Sleep(100, 50)
+		utils.Sleep(20, 50)
 		s.CombatSupportSkills(monster) // summon
 	}
 }
@@ -186,7 +187,7 @@ func (s WarlockCleaveLeveling) SumonSkills() []skill.ID {
 
 func (s WarlockCleaveLeveling) CheckMana(skillId skill.ID) bool {
 	mana, _ := s.Data.PlayerUnit.FindStat(stat.Mana, 0)
-	level := int(s.Data.PlayerUnit.Skills[skillId].Level)
+	level := int(action.GetSkillTotalLevel(skillId))
 	manaRequire := 0
 	switch skillId {
 	case skill.MiasmaBolt:
@@ -242,10 +243,12 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	}
 
 	skills := []skill.ID{}
-
 	isMandatoryKill := s.IsMandatoryKill(target)
+	isUnique := target.Type != data.MonsterTypeNone && target.Type != data.MonsterTypeMinion
+	monsterCount := len(s.Data.Monsters)
 
-	if time.Now().After(s.combatState.nextSigil) {
+	if time.Now().After(s.combatState.nextSigil) &&
+		(isUnique || monsterCount > 3) {
 		maxSigilLevel := 0
 		for _, sigil := range s.SigilSkills() {
 			sigilLevel := int(s.Data.PlayerUnit.Skills[sigil].Level)
@@ -262,7 +265,9 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	}
 
 	deathMark := true
-	if !s.CheckMana(skill.DeathMark) || s.combatState.petCount == 0 || s.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 || !isMandatoryKill || !time.Now().After(s.combatState.nextPetSkill) {
+	if !s.CheckMana(skill.DeathMark) || s.combatState.petCount == 0 ||
+		s.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 ||
+		!isUnique || !time.Now().After(s.combatState.nextPetSkill) {
 		deathMark = false
 	}
 	if deathMark {
@@ -271,7 +276,8 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 
 	monsterHPPercent := float32(target.Stats[stat.Life]) / float32(target.Stats[stat.MaxLife]) * 100
 	demonbind := true
-	if !s.CheckMana(skill.BindDemon) || s.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 || isMandatoryKill || monsterHPPercent > 60 {
+	if !s.CheckMana(skill.BindDemon) || s.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 ||
+		isMandatoryKill || monsterHPPercent > 60 {
 		demonbind = false
 	}
 	if s.combatState.petCount > 0 && target.Type == data.MonsterTypeNone {
@@ -313,7 +319,7 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 		return
 	}
 
-	maxpet := int(s.Data.PlayerUnit.Skills[skill.DemonicMastery].Level/10) + 1
+	maxpet := int(action.GetSkillTotalLevel(skill.DemonicMastery)/10 + 1)
 	var petId data.UnitID
 	s.combatState.petCount = 0
 
@@ -365,9 +371,19 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 
 func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
 	buffs := make([]skill.ID, 0)
+	return buffs
+}
+
+// Dynamically determines pre-combat buffs and summons
+func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
+	skills := make([]skill.ID, 0)
+
+	if s.Data.PlayerUnit.RightSkill == skill.TownportalOSkill {
+		return skills
+	}
 
 	if !time.Now().After(s.combatState.nextBuff) {
-		return buffs
+		return skills
 	}
 
 	s.combatState.nextBuff = time.Now().Add(utils.RandomDurationMs(40000, 50000))
@@ -376,29 +392,24 @@ func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
 	for i, hex := range s.HexSkills() {
 		if s.CheckMana(hex) && s.Data.PlayerUnit.Skills[hex].Level > 0 {
 			if !s.Data.PlayerUnit.States.HasState(HexStates[i]) {
-				buffs = append(buffs, hex)
+				skills = append(skills, hex)
 				break
 			}
 		}
 	}
 
-	if s.CheckMana(skill.PsychicWard) && s.Data.PlayerUnit.Skills[skill.PsychicWard].Level > 0 {
-		buffs = append(buffs, skill.PsychicWard)
+	if s.CheckMana(skill.PsychicWard) &&
+		s.Data.PlayerUnit.Skills[skill.PsychicWard].Level > 0 &&
+		!s.Data.PlayerUnit.States.HasState(state.Psychicward) {
+		skills = append(skills, skill.PsychicWard)
 	}
 
-	if s.CheckMana(skill.EldritchBlast) && s.Data.PlayerUnit.Skills[skill.EldritchBlast].Level > 0 {
-		buffs = append(buffs, skill.PsychicWard)
+	if s.CheckMana(skill.EldritchBlast) &&
+		s.Data.PlayerUnit.Skills[skill.EldritchBlast].Level > 0 &&
+		!s.Data.PlayerUnit.States.HasState(state.Eldritchblastperiodic) {
+		skills = append(skills, skill.EldritchBlast)
 	}
 
-	if len(buffs) > 0 {
-		step.SelectRightSkill(buffs[0])
-	}
-	return buffs
-}
-
-// Dynamically determines pre-combat buffs and summons
-func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
-	skills := make([]skill.ID, 0)
 	return skills
 }
 
