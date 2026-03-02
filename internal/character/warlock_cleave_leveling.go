@@ -31,6 +31,7 @@ const (
 
 type WarlockCleaveLeveling struct {
 	BaseCharacter
+	combatState CleaveCombatState
 }
 
 func (s WarlockCleaveLeveling) ShouldIgnoreMonster(m data.Monster) bool {
@@ -68,6 +69,12 @@ func (s WarlockCleaveLeveling) IsMandatoryKill(m data.Monster) bool {
 		return true
 	}
 	return false
+}
+
+type CleaveCombatState struct {
+	lastSigil     time.Time
+	lastDemonBind time.Time
+	lastPetSkill  time.Time
 }
 
 func (s WarlockCleaveLeveling) KillMonsterSequence(
@@ -179,18 +186,16 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 	}
 
 	ctx := context.Get()
-	var lastDemonBind time.Time
-	var lastSigil time.Time
 
 	skills := []skill.ID{}
 
 	isMandatoryKill := s.IsMandatoryKill(monster)
 
-	if time.Since(lastSigil) > time.Second*5 {
+	if time.Since(s.combatState.lastSigil) > time.Second*5 {
 		for _, sigil := range s.SigilSkills() {
 			if s.Data.PlayerUnit.Skills[sigil].Level > 0 {
 				skills = append(skills, sigil)
-				lastSigil = time.Now()
+				s.combatState.lastSigil = time.Now()
 				break
 			}
 		}
@@ -209,9 +214,9 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(monster data.Monster) {
 	if ctx.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 || isMandatoryKill || monsterHPPercent > 60 {
 		demonbind = false
 	}
-	if demonbind && time.Since(lastDemonBind) > time.Second*10 {
+	if demonbind && time.Since(s.combatState.lastDemonBind) > time.Second*10 {
 		skills = append(skills, skill.BindDemon)
-		lastDemonBind = time.Now()
+		s.combatState.lastDemonBind = time.Now()
 	}
 
 	for _, sk := range skills {
@@ -231,7 +236,6 @@ func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
 func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
 	ctx := context.Get()
 	skills := make([]skill.ID, 0)
-	var lastCast time.Time
 
 	var HexStates = s.HexStates()
 	for i, hex := range s.HexSkills() {
@@ -288,18 +292,18 @@ func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
 		skills = append(skills, sumonSkillId)
 	}
 
-	if time.Since(lastCast) < time.Second*5 {
+	if time.Since(s.combatState.lastPetSkill) < time.Second*5 {
 		if engorge {
 			if s.Data.PlayerUnit.Skills[skill.Engorge].Level > 0 {
 				skills = append(skills, skill.Engorge)
-				lastCast = time.Now()
+				s.combatState.lastPetSkill = time.Now()
 			}
 		}
 
 		if consume {
 			if s.Data.PlayerUnit.Skills[skill.Consume].Level > 0 {
 				skills = append(skills, skill.Consume)
-				lastCast = time.Now()
+				s.combatState.lastPetSkill = time.Now()
 			}
 		}
 	}
