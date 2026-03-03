@@ -272,7 +272,6 @@ func equipCTAIfFound(allItems []data.Item) (bool, error) {
 // It requires the specific body location to perform an accurate stat check.
 func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.LocationType) bool {
 	ctx := context.Get()
-	ctx.Logger.Debug(fmt.Sprintf("isEquippable Desc().Type: %s", newItem.Desc().Type))
 	// General item property checks
 	if len(newItem.Desc().GetType().BodyLocs) == 0 {
 		return false
