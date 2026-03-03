@@ -27,10 +27,14 @@ func (a AncientTunnels) CheckConditions(parameters *RunParameters) SequencerResu
 	if IsQuestRun(parameters) {
 		return SequencerError
 	}
-	if !a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].Completed() {
-		return SequencerSkip
+
+	farmingRun := IsFarmingRun(parameters)
+	questCompleted := a.ctx.Data.Quests[quest.Act1SistersToTheSlaughter].Completed()
+
+	if farmingRun && questCompleted {
+		return SequencerOk
 	}
-	return SequencerStop
+	return SequencerSkip
 }
 
 func (a AncientTunnels) Run(parameters *RunParameters) error {
