@@ -606,6 +606,7 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map[data.UnitID]map[item.LocationType]float64, target item.LocationType) (bool, error) {
 	ctx := context.Get()
 	equippedSomething := false
+	//class := ctx.Data.PlayerUnit.Class
 
 	// special logik for barb leveling
 	isBarbLeveling := isBarbLevelingCharacter()
@@ -620,6 +621,11 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			delete(itemsByLoc, item.LocLeftArm)
 			delete(itemsByLoc, item.LocRightArm)
 		}
+	}
+
+	ringsEquipped, _ := equipBestRings(itemsByLoc)
+	if ringsEquipped {
+		return true, nil
 	}
 
 	locationOrder := make([]item.LocationType, 0, len(itemsByLoc))
