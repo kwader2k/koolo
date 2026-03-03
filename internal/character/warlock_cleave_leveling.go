@@ -77,10 +77,9 @@ type CleaveCombatState struct {
 	nextPetSkill   time.Time
 	nextMirroBlade time.Time
 	nextBuff       time.Time
-	petCount       int
 }
 
-func (s WarlockCleaveLeveling) KillMonsterSequence(
+func (s *WarlockCleaveLeveling) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
 	skipOnImmunities []stat.Resist,
 ) error {
@@ -236,7 +235,7 @@ func (s WarlockCleaveLeveling) CheckMana(skillId skill.ID) bool {
 	return mana.Value > manaRequire
 }
 
-func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
+func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 
 	if target.UnitID == 0 {
 		return
@@ -245,27 +244,41 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	skills := []skill.ID{}
 	isMandatoryKill := s.IsMandatoryKill(target)
 	isUnique := target.Type != data.MonsterTypeNone && target.Type != data.MonsterTypeMinion
-	monsterCount := len(s.Data.Monsters)
+	targetHPPercent := float32(target.Stats[stat.Life]) / float32(target.Stats[stat.MaxLife]) * 100
+	monsterCount := 0
 
-	if time.Now().After(s.combatState.nextSigil) &&
-		(isUnique || monsterCount > 3) {
-		maxSigilLevel := 0
-		for _, sigil := range s.SigilSkills() {
-			sigilLevel := int(s.Data.PlayerUnit.Skills[sigil].Level)
-			if sigilLevel > 0 && s.CheckMana(sigil) {
-				skills = append(skills, sigil)
-				if maxSigilLevel < sigilLevel {
-					maxSigilLevel = sigilLevel
-				}
+	var engorgePetId data.UnitID
+	var consumePetId data.UnitID
+	maxpet := int(action.GetSkillTotalLevel(skill.DemonicMastery)/10 + 1)
+	petCount := 0
+
+	for _, monster := range s.Data.Monsters {
+
+		HPPercent := float32(monster.Stats[stat.Life]) / float32(monster.Stats[stat.MaxLife]) * 100
+		if monster.IsPet() {
+			petCount++
+			if HPPercent < 30 {
+				consumePetId = monster.UnitID
+			} else if HPPercent < 60 {
+				engorgePetId = monster.UnitID
 			}
-		}
-		if maxSigilLevel > 0 {
-			s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(maxSigilLevel*1000+3000, maxSigilLevel*1000+6000))
+		} else if HPPercent > 1 {
+			monsterCount++
 		}
 	}
 
+	//support skills
+	if time.Now().After(s.combatState.nextSigil) && (isUnique || monsterCount > 3) {
+		for _, sigil := range s.SigilSkills() {
+			if s.Data.PlayerUnit.Skills[sigil].Level > 0 && s.CheckMana(sigil) {
+				skills = append(skills, sigil)
+			}
+		}
+		s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(3000, 6000))
+	}
+
 	deathMark := true
-	if !s.CheckMana(skill.DeathMark) || s.combatState.petCount == 0 ||
+	if !s.CheckMana(skill.DeathMark) || petCount == 0 ||
 		s.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 ||
 		!isUnique || !time.Now().After(s.combatState.nextPetSkill) {
 		deathMark = false
@@ -274,13 +287,12 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 		skills = append(skills, skill.DeathMark)
 	}
 
-	monsterHPPercent := float32(target.Stats[stat.Life]) / float32(target.Stats[stat.MaxLife]) * 100
 	demonbind := true
 	if !s.CheckMana(skill.BindDemon) || s.Data.PlayerUnit.Skills[skill.BindDemon].Level == 0 ||
-		isMandatoryKill || monsterHPPercent > 60 {
+		isMandatoryKill || targetHPPercent > 60 || petCount >= maxpet {
 		demonbind = false
 	}
-	if s.combatState.petCount > 0 && target.Type == data.MonsterTypeNone {
+	if petCount > 0 && target.Type == data.MonsterTypeNone {
 		demonbind = false
 	}
 	if demonbind && time.Now().After(s.combatState.nextDemonBind) {
@@ -299,69 +311,36 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 		utils.Sleep(100, 100)                                                            // Small delay
 	}
 
-	//sumon skill
+	//sumon skills
 	if !time.Now().After(s.combatState.nextPetSkill) {
 		return
 	}
+	s.combatState.nextPetSkill = time.Now().Add(utils.RandomDurationMs(4000, 6000))
 
-	summon := false
-	engorge := false
-	consume := false
-
-	for _, sumonSkill := range s.SumonSkills() {
-		if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 {
-			summon = true
-			break
-		}
-	}
-
-	if !summon {
+	if s.Data.PlayerUnit.Skills[skill.SummonGoatman].Level <= 0 {
 		return
 	}
 
-	maxpet := int(action.GetSkillTotalLevel(skill.DemonicMastery)/10 + 1)
-	var petId data.UnitID
-	s.combatState.petCount = 0
-
-	for _, monster := range s.Data.Monsters { // Check existing pets
-		if !monster.IsPet() {
-			continue
-		}
-		s.combatState.petCount++
-		petHPPercent := float32(monster.Stats[stat.Life]) / float32(monster.Stats[stat.MaxLife]) * 100
-		if petHPPercent < 60 {
-			engorge = true
-			petId = monster.UnitID
-		}
-		if petHPPercent < 30 {
-			consume = true
-			petId = monster.UnitID
-		}
-	}
-
-	if s.combatState.petCount < maxpet {
-		s.combatState.nextPetSkill = time.Now().Add(utils.RandomDurationMs(4000, 6000))
+	if petCount < maxpet {
 		for _, sumonSkill := range s.SumonSkills() {
-			if s.combatState.petCount < maxpet && s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 && s.CheckMana(sumonSkill) {
-				s.combatState.petCount++
+			if petCount < maxpet && s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 && s.CheckMana(sumonSkill) {
+				petCount++
 				step.CastAtPosition(sumonSkill, true, target.Position)
 				utils.Sleep(100, 100)
 			}
 		}
 	}
 
-	if s.CheckMana(skill.Engorge) && engorge {
+	if s.CheckMana(skill.Engorge) && engorgePetId != 0 {
 		if s.Data.PlayerUnit.Skills[skill.Engorge].Level > 0 {
-			step.SecondaryAttack(skill.Engorge, petId, 1, step.RangedDistance(0, eStrikeMaxDistance))
-			s.combatState.nextPetSkill = time.Now().Add(utils.RandomDurationMs(4000, 6000))
+			step.SecondaryAttack(skill.Engorge, engorgePetId, 1, step.RangedDistance(0, eStrikeMaxDistance))
 			utils.Sleep(100, 100)
 		}
 	}
 
-	if s.CheckMana(skill.Consume) && consume {
+	if s.CheckMana(skill.Consume) && consumePetId != 0 {
 		if s.Data.PlayerUnit.Skills[skill.Consume].Level > 0 {
-			step.SecondaryAttack(skill.Consume, petId, 1, step.RangedDistance(0, eStrikeMaxDistance))
-			s.combatState.nextPetSkill = time.Now().Add(utils.RandomDurationMs(4000, 6000))
+			step.SecondaryAttack(skill.Consume, consumePetId, 1, step.RangedDistance(0, eStrikeMaxDistance))
 			utils.Sleep(100, 100)
 		}
 	}
@@ -369,21 +348,16 @@ func (s WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	//utils.Sleep(100, 100)
 }
 
-func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
+func (s *WarlockCleaveLeveling) BuffSkills() []skill.ID {
 	buffs := make([]skill.ID, 0)
-	return buffs
-}
 
-// Dynamically determines pre-combat buffs and summons
-func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
-	skills := make([]skill.ID, 0)
-
-	if s.Data.PlayerUnit.RightSkill == skill.TownportalOSkill {
-		return skills
+	if s.Data.PlayerUnit.RightSkill == skill.TownPortal ||
+		s.Data.PlayerUnit.RightSkill == skill.TownportalOSkill {
+		return buffs
 	}
 
 	if !time.Now().After(s.combatState.nextBuff) {
-		return skills
+		return buffs
 	}
 
 	s.combatState.nextBuff = time.Now().Add(utils.RandomDurationMs(40000, 50000))
@@ -392,24 +366,28 @@ func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
 	for i, hex := range s.HexSkills() {
 		if s.CheckMana(hex) && s.Data.PlayerUnit.Skills[hex].Level > 0 {
 			if !s.Data.PlayerUnit.States.HasState(HexStates[i]) {
-				skills = append(skills, hex)
+				buffs = append(buffs, hex)
 				break
 			}
 		}
 	}
 
 	if s.CheckMana(skill.PsychicWard) &&
-		s.Data.PlayerUnit.Skills[skill.PsychicWard].Level > 0 &&
-		!s.Data.PlayerUnit.States.HasState(state.Psychicward) {
-		skills = append(skills, skill.PsychicWard)
+		s.Data.PlayerUnit.Skills[skill.PsychicWard].Level > 0 {
+		buffs = append(buffs, skill.PsychicWard)
 	}
 
 	if s.CheckMana(skill.EldritchBlast) &&
-		s.Data.PlayerUnit.Skills[skill.EldritchBlast].Level > 0 &&
-		!s.Data.PlayerUnit.States.HasState(state.Eldritchblastperiodic) {
-		skills = append(skills, skill.EldritchBlast)
+		s.Data.PlayerUnit.Skills[skill.EldritchBlast].Level > 0 {
+		buffs = append(buffs, skill.EldritchBlast)
 	}
 
+	return buffs
+}
+
+// Dynamically determines pre-combat buffs and summons
+func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
+	skills := make([]skill.ID, 0)
 	return skills
 }
 
