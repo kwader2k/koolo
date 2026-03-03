@@ -105,3 +105,4 @@ Logging must be intentional and operationally useful.
 - Never trade correctness for cleverness.
 - Document behavior changes clearly.
 - Leave the codebase better than you found it — but only where you touched it.
+

@@ -1,7 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Preserve UI and critical packages
+:: Preserve only packages that break under obfuscation
+:: server: html/template reflection + JSON field names
+:: event: type switches in non-garbled consumers (server, discord)
 set GOGARBLE=!github.com/hectorgimenez/koolo/internal/server*,!github.com/hectorgimenez/koolo/internal/event*,!github.com/inkeliz/gowebview*
 
 :: Required versions
@@ -171,8 +173,10 @@ set "OUTPUT_EXE=build\%BUILD_ID%.exe"
 
 :: Build an obfuscated Koolo binary
 call :print_step "Compiling Obfuscated Koolo executable"
+call :print_step "Generating per-build noise..."
+powershell -ExecutionPolicy Bypass -File "%~dp0generate_noise.ps1"
 (
-    garble -literals=false -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main.buildID=%BUILD_ID%' -X 'main.buildTime=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
+    garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log
 set "GARBLE_EXIT_CODE=!errorlevel!"
 
