@@ -46,6 +46,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
+	cp "github.com/otiai10/copy"
 	"golang.org/x/sys/windows"
 	"gopkg.in/yaml.v3"
 )
@@ -656,12 +657,21 @@ func (s *HttpServer) initialData(w http.ResponseWriter, r *http.Request) {
 	// least one character is marked for auto-start.
 	showPrompt := false
 	if !skipPrompt && data.GlobalAutoStartEnabled {
+		hiddenSet := make(map[string]struct{}, len(data.HiddenSupervisors))
+		for _, name := range data.HiddenSupervisors {
+			hiddenSet[name] = struct{}{}
+		}
+
 		s.autoStartPromptOnce.Do(func() {
-			for _, enabled := range data.AutoStart {
-				if enabled {
-					showPrompt = true
-					break
+			for name, enabled := range data.AutoStart {
+				if !enabled {
+					continue
 				}
+				if _, hidden := hiddenSet[name]; hidden {
+					continue
+				}
+				showPrompt = true
+				break
 			}
 		})
 	}
@@ -675,8 +685,10 @@ func (s *HttpServer) getStatusData() IndexData {
 	status := make(map[string]bot.Stats)
 	drops := make(map[string]int)
 	autoStart := make(map[string]bool)
+	supervisors := config.OrderedSupervisors()
+	hiddenSupervisors := config.HiddenSupervisors()
 
-	for _, supervisorName := range s.manager.AvailableSupervisors() {
+	for _, supervisorName := range supervisors {
 		stats := s.manager.Status(supervisorName)
 
 		// Enrich with lightweight live character overview for UI
@@ -844,7 +856,7 @@ func (s *HttpServer) getStatusData() IndexData {
 	// Collect scheduler status for each supervisor
 	schedulerStatus := make(map[string]*SchedulerStatusInfo)
 	if s.scheduler != nil {
-		for _, supervisorName := range s.manager.AvailableSupervisors() {
+		for _, supervisorName := range supervisors {
 			cfg := config.GetCharacters()[supervisorName]
 			if cfg == nil {
 				continue
@@ -889,6 +901,8 @@ func (s *HttpServer) getStatusData() IndexData {
 
 	return IndexData{
 		Version:                     config.Version,
+		Supervisors:                 supervisors,
+		HiddenSupervisors:           hiddenSupervisors,
 		Status:                      status,
 		DropCount:                   drops,
 		AutoStart:                   autoStart,
@@ -928,6 +942,12 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)                         // Web socket
 	http.HandleFunc("/initial-data", s.initialData)                            // Web socket data
 	http.HandleFunc("/api/reload-config", s.reloadConfig)                      // New handler
+	http.HandleFunc("/api/supervisors/reorder", s.reorderSupervisors)
+	http.HandleFunc("/api/supervisors/hide", s.hideSupervisor)
+	http.HandleFunc("/api/supervisors/unhide", s.unhideSupervisor)
+	http.HandleFunc("/api/supervisors/rename", s.renameSupervisorConfig)
+	http.HandleFunc("/api/supervisors/copy", s.copySupervisorConfig)
+	http.HandleFunc("/api/supervisors/delete", s.deleteSupervisorConfig)
 	http.HandleFunc("/api/companion-join", s.companionJoin)                    // Companion join handler
 	http.HandleFunc("/api/generate-battlenet-token", s.generateBattleNetToken) // Battle.net token generation
 	http.HandleFunc("/reset-muling", s.resetMuling)
@@ -1176,6 +1196,457 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 	s.initialData(w, r)
 }
 
+
+func (s *HttpServer) reorderSupervisors(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Supervisors []string `json:"supervisors"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := config.SetSupervisorOrder(req.Supervisors); err != nil {
+		s.logger.Error("failed to save dashboard supervisor order", slog.Any("error", err))
+		http.Error(w, "Failed to save supervisor order", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *HttpServer) hideSupervisor(w http.ResponseWriter, r *http.Request) {
+	s.setSupervisorHidden(w, r, true)
+}
+
+func (s *HttpServer) unhideSupervisor(w http.ResponseWriter, r *http.Request) {
+	s.setSupervisorHidden(w, r, false)
+}
+
+func (s *HttpServer) setSupervisorHidden(w http.ResponseWriter, r *http.Request, hidden bool) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Supervisor string `json:"supervisor"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	supervisor := strings.TrimSpace(req.Supervisor)
+	if supervisor == "" {
+		http.Error(w, "Missing supervisor", http.StatusBadRequest)
+		return
+	}
+	if supervisor == "template" {
+		http.Error(w, "Template cannot be hidden", http.StatusBadRequest)
+		return
+	}
+	if _, found := config.GetCharacter(supervisor); !found {
+		http.Error(w, "Supervisor not found", http.StatusNotFound)
+		return
+	}
+	if hidden && s.isSupervisorRunning(supervisor) {
+		http.Error(w, "Stop the supervisor before hiding it", http.StatusConflict)
+		return
+	}
+
+	currentHidden := config.HiddenSupervisors()
+	updatedHidden := make([]string, 0, len(currentHidden)+1)
+	seen := false
+	for _, name := range currentHidden {
+		if name == supervisor {
+			seen = true
+			if !hidden {
+				continue
+			}
+		}
+		updatedHidden = append(updatedHidden, name)
+	}
+	if hidden && !seen {
+		updatedHidden = append(updatedHidden, supervisor)
+	}
+
+	if err := config.SetHiddenSupervisors(updatedHidden); err != nil {
+		s.logger.Error("failed to update hidden supervisors", slog.String("supervisor", supervisor), slog.Bool("hidden", hidden), slog.Any("error", err))
+		http.Error(w, "Failed to update supervisor visibility", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *HttpServer) deleteSupervisorConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Supervisor string `json:"supervisor"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	supervisor := strings.TrimSpace(req.Supervisor)
+	if supervisor == "" {
+		http.Error(w, "Missing supervisor", http.StatusBadRequest)
+		return
+	}
+	if supervisor == "template" {
+		http.Error(w, "Template cannot be deleted", http.StatusBadRequest)
+		return
+	}
+
+	if _, found := config.GetCharacter(supervisor); !found {
+		http.Error(w, "Supervisor not found", http.StatusNotFound)
+		return
+	}
+
+	if s.isSupervisorRunning(supervisor) {
+		http.Error(w, "Stop the supervisor before deleting it", http.StatusConflict)
+		return
+	}
+
+	if refs := supervisorDeleteReferences(supervisor); len(refs) > 0 {
+		http.Error(w, "Supervisor is referenced by: "+strings.Join(refs, ", "), http.StatusConflict)
+		return
+	}
+
+	configDir := filepath.Join("config", supervisor)
+	if err := os.RemoveAll(configDir); err != nil {
+		s.logger.Error("failed to delete supervisor config directory", slog.String("supervisor", supervisor), slog.Any("error", err))
+		http.Error(w, "Failed to delete supervisor config", http.StatusInternalServerError)
+		return
+	}
+
+	if err := config.Load(); err != nil {
+		s.logger.Error("failed to reload config after supervisor deletion", slog.String("supervisor", supervisor), slog.Any("error", err))
+		http.Error(w, "Failed to reload config after deletion", http.StatusInternalServerError)
+		return
+	}
+
+	if err := config.RemoveSupervisorFromDashboard(supervisor); err != nil {
+		s.logger.Error("failed to update dashboard state after supervisor deletion", slog.String("supervisor", supervisor), slog.Any("error", err))
+		http.Error(w, "Failed to update dashboard after deletion", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *HttpServer) isSupervisorRunning(supervisor string) bool {
+	stats := s.manager.Status(supervisor)
+	return stats.SupervisorStatus == bot.Starting ||
+		stats.SupervisorStatus == bot.InGame ||
+		stats.SupervisorStatus == bot.Paused
+}
+
+func (s *HttpServer) copySupervisorConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Supervisor string `json:"supervisor"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	supervisor := strings.TrimSpace(req.Supervisor)
+	if supervisor == "" {
+		http.Error(w, "Missing supervisor", http.StatusBadRequest)
+		return
+	}
+	if supervisor == "template" {
+		http.Error(w, "Template cannot be copied from the dashboard", http.StatusBadRequest)
+		return
+	}
+
+	if _, found := config.GetCharacter(supervisor); !found {
+		http.Error(w, "Supervisor not found", http.StatusNotFound)
+		return
+	}
+
+	currentOrder := config.OrderedSupervisors()
+	targetSupervisor := ""
+	for i := 1; ; i++ {
+		candidate := fmt.Sprintf("%s_copy%d", supervisor, i)
+		if _, found := config.GetCharacter(candidate); found {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join("config", candidate)); err == nil {
+			continue
+		} else if !os.IsNotExist(err) {
+			s.logger.Error("failed to inspect supervisor copy destination", slog.String("supervisor", candidate), slog.Any("error", err))
+			http.Error(w, "Failed to prepare supervisor copy", http.StatusInternalServerError)
+			return
+		}
+		targetSupervisor = candidate
+		break
+	}
+
+	sourceDir := filepath.Join("config", supervisor)
+	targetDir := filepath.Join("config", targetSupervisor)
+	if err := cp.Copy(sourceDir, targetDir); err != nil {
+		s.logger.Error("failed to copy supervisor config directory", slog.String("source", supervisor), slog.String("target", targetSupervisor), slog.Any("error", err))
+		http.Error(w, "Failed to copy supervisor config", http.StatusInternalServerError)
+		return
+	}
+
+	if err := config.Load(); err != nil {
+		s.logger.Error("failed to reload config after supervisor copy", slog.String("source", supervisor), slog.String("target", targetSupervisor), slog.Any("error", err))
+		http.Error(w, "Failed to reload config after copy", http.StatusInternalServerError)
+		return
+	}
+
+	copiedCfg, found := config.GetCharacter(targetSupervisor)
+	if !found || copiedCfg == nil {
+		s.logger.Error("copied supervisor config not found after reload", slog.String("source", supervisor), slog.String("target", targetSupervisor))
+		http.Error(w, "Failed to load copied supervisor config", http.StatusInternalServerError)
+		return
+	}
+	if copiedCfg.AutoStart {
+		copiedCfg.AutoStart = false
+		if err := config.SaveSupervisorConfig(targetSupervisor, copiedCfg); err != nil {
+			s.logger.Error("failed to disable autostart on copied supervisor", slog.String("source", supervisor), slog.String("target", targetSupervisor), slog.Any("error", err))
+			http.Error(w, "Failed to finalize supervisor copy", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	newOrder := make([]string, 0, len(currentOrder)+1)
+	inserted := false
+	for _, name := range currentOrder {
+		newOrder = append(newOrder, name)
+		if name == supervisor {
+			newOrder = append(newOrder, targetSupervisor)
+			inserted = true
+		}
+	}
+	if !inserted {
+		newOrder = append(newOrder, targetSupervisor)
+	}
+
+	if err := config.SetSupervisorOrder(newOrder); err != nil {
+		s.logger.Error("failed to save supervisor order after copy", slog.String("source", supervisor), slog.String("target", targetSupervisor), slog.Any("error", err))
+		http.Error(w, "Failed to save supervisor order", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(map[string]string{"supervisor": targetSupervisor})
+}
+
+func (s *HttpServer) renameSupervisorConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Supervisor string `json:"supervisor"`
+		NewName    string `json:"newName"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	supervisor := strings.TrimSpace(req.Supervisor)
+	newName := strings.TrimSpace(req.NewName)
+	if supervisor == "" || newName == "" {
+		http.Error(w, "Missing supervisor name", http.StatusBadRequest)
+		return
+	}
+	if supervisor == "template" || newName == "template" {
+		http.Error(w, "Template cannot be renamed", http.StatusBadRequest)
+		return
+	}
+	if supervisor == newName {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]string{"supervisor": supervisor})
+		return
+	}
+	if strings.ContainsAny(newName, `<>:"/\|?*`) || strings.HasSuffix(newName, ".") {
+		http.Error(w, "Invalid supervisor name", http.StatusBadRequest)
+		return
+	}
+
+	if _, found := config.GetCharacter(supervisor); !found {
+		http.Error(w, "Supervisor not found", http.StatusNotFound)
+		return
+	}
+	if _, found := config.GetCharacter(newName); found {
+		http.Error(w, "A supervisor with that name already exists", http.StatusConflict)
+		return
+	}
+	if s.manager.GetSupervisor(supervisor) != nil {
+		http.Error(w, "Stop the supervisor before renaming it", http.StatusConflict)
+		return
+	}
+	references := supervisorReferences(supervisor)
+	activeReferences := make([]string, 0, len(references))
+	for _, ref := range references {
+		if s.isSupervisorRunning(ref.Name) {
+			activeReferences = append(activeReferences, ref.String())
+		}
+	}
+	if len(activeReferences) > 0 {
+		slices.Sort(activeReferences)
+		http.Error(w, "Stop referencing supervisors before renaming: "+strings.Join(activeReferences, ", "), http.StatusConflict)
+		return
+	}
+	if _, err := os.Stat(filepath.Join("config", newName)); err == nil {
+		http.Error(w, "A supervisor with that name already exists", http.StatusConflict)
+		return
+	} else if !os.IsNotExist(err) {
+		s.logger.Error("failed to inspect supervisor rename destination", slog.String("supervisor", newName), slog.Any("error", err))
+		http.Error(w, "Failed to prepare supervisor rename", http.StatusInternalServerError)
+		return
+	}
+
+	sourceDir := filepath.Join("config", supervisor)
+	targetDir := filepath.Join("config", newName)
+	if err := os.Rename(sourceDir, targetDir); err != nil {
+		s.logger.Error("failed to rename supervisor config directory", slog.String("source", supervisor), slog.String("target", newName), slog.Any("error", err))
+		http.Error(w, "Failed to rename supervisor", http.StatusInternalServerError)
+		return
+	}
+
+	if err := config.Load(); err != nil {
+		rollbackErr := os.Rename(targetDir, sourceDir)
+		if rollbackErr != nil {
+			s.logger.Error("failed to rollback supervisor rename after reload failure", slog.String("source", supervisor), slog.String("target", newName), slog.Any("error", rollbackErr))
+		}
+		s.logger.Error("failed to reload config after supervisor rename", slog.String("source", supervisor), slog.String("target", newName), slog.Any("error", err))
+		http.Error(w, "Failed to reload config after rename", http.StatusInternalServerError)
+		return
+	}
+
+	allNames := make([]string, 0, len(config.GetCharacters()))
+	for name := range config.GetCharacters() {
+		allNames = append(allNames, name)
+	}
+	slices.Sort(allNames)
+
+	for _, name := range allNames {
+		cfg, found := config.GetCharacter(name)
+		if !found || cfg == nil {
+			continue
+		}
+
+		changed := false
+		if cfg.Companion.LeaderName == supervisor {
+			cfg.Companion.LeaderName = newName
+			changed = true
+		}
+		if cfg.Muling.SwitchToMule == supervisor {
+			cfg.Muling.SwitchToMule = newName
+			changed = true
+		}
+		if cfg.Muling.ReturnTo == supervisor {
+			cfg.Muling.ReturnTo = newName
+			changed = true
+		}
+		for i, muleName := range cfg.Muling.MuleProfiles {
+			if muleName != supervisor {
+				continue
+			}
+			cfg.Muling.MuleProfiles[i] = newName
+			changed = true
+		}
+
+		if !changed {
+			continue
+		}
+		if err := config.SaveSupervisorConfig(name, cfg); err != nil {
+			s.logger.Error("failed to update supervisor references after rename", slog.String("source", supervisor), slog.String("target", newName), slog.String("config", name), slog.Any("error", err))
+			http.Error(w, "Failed to update supervisor references after rename", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if err := config.RenameSupervisorInDashboard(supervisor, newName); err != nil {
+		s.logger.Error("failed to save dashboard state after rename", slog.String("source", supervisor), slog.String("target", newName), slog.Any("error", err))
+		http.Error(w, "Failed to save dashboard state after rename", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]string{"supervisor": newName})
+}
+
+type supervisorReference struct {
+	Name   string
+	Reason string
+}
+
+func (r supervisorReference) String() string {
+	return r.Name + " " + r.Reason
+}
+
+func supervisorReferences(target string) []supervisorReference {
+	allCharacters := config.GetCharacters()
+	references := make([]supervisorReference, 0)
+
+	for name, cfg := range allCharacters {
+		if name == target || name == "template" || cfg == nil {
+			continue
+		}
+
+		if cfg.Companion.LeaderName == target {
+			references = append(references, supervisorReference{Name: name, Reason: "companion leader"})
+		}
+		if cfg.Muling.SwitchToMule == target {
+			references = append(references, supervisorReference{Name: name, Reason: "muling switchToMule"})
+		}
+		if cfg.Muling.ReturnTo == target {
+			references = append(references, supervisorReference{Name: name, Reason: "muling returnTo"})
+		}
+		if slices.Contains(cfg.Muling.MuleProfiles, target) {
+			references = append(references, supervisorReference{Name: name, Reason: "muling muleProfiles"})
+		}
+	}
+
+	slices.SortFunc(references, func(a, b supervisorReference) int {
+		if a.Name == b.Name {
+			return strings.Compare(a.Reason, b.Reason)
+		}
+		return strings.Compare(a.Name, b.Name)
+	})
+	return references
+}
+
+func supervisorDeleteReferences(target string) []string {
+	references := supervisorReferences(target)
+	formatted := make([]string, 0, len(references))
+	for _, ref := range references {
+		formatted = append(formatted, ref.String())
+	}
+	return formatted
+}
+
 // canStartSupervisor enforces TokenAuth concurrency rules before starting a supervisor.
 func (s *HttpServer) canStartSupervisor(target string, supervisorList []string, targetCfg *config.CharacterCfg) error {
 	// Prevent launching of other clients while there's a client with TokenAuth still starting
@@ -1244,9 +1715,17 @@ func (s *HttpServer) autoStartOnceInternal() error {
 		return fmt.Errorf("no supervisors available")
 	}
 
+	hiddenSet := make(map[string]struct{}, len(config.HiddenSupervisors()))
+	for _, name := range config.HiddenSupervisors() {
+		hiddenSet[name] = struct{}{}
+	}
+
 	// Collect supervisors marked for AutoStart
 	var targets []string
 	for _, name := range supervisorList {
+		if _, hidden := hiddenSet[name]; hidden {
+			continue
+		}
 		cfg, found := config.GetCharacter(name)
 		if !found || cfg == nil {
 			continue
@@ -1257,7 +1736,7 @@ func (s *HttpServer) autoStartOnceInternal() error {
 	}
 
 	if len(targets) == 0 {
-		return fmt.Errorf("no supervisors marked for auto start")
+		return fmt.Errorf("no visible supervisors marked for auto start")
 	}
 
 	// Fallback to a sensible default if not configured
@@ -1348,8 +1827,9 @@ func (s *HttpServer) togglePause(w http.ResponseWriter, r *http.Request) {
 func (s *HttpServer) index(w http.ResponseWriter) {
 	status := make(map[string]bot.Stats)
 	drops := make(map[string]int)
+	supervisors := config.OrderedSupervisors()
 
-	for _, supervisorName := range s.manager.AvailableSupervisors() {
+	for _, supervisorName := range supervisors {
 		status[supervisorName] = bot.Stats{
 			SupervisorStatus: bot.NotStarted,
 		}
@@ -1366,6 +1846,7 @@ func (s *HttpServer) index(w http.ResponseWriter) {
 
 	s.templates.ExecuteTemplate(w, "index.gohtml", IndexData{
 		Version:   config.Version,
+		Supervisors: supervisors,
 		Status:    status,
 		DropCount: drops,
 	})

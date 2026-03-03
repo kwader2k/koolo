@@ -97,6 +97,10 @@ type KooloCfg struct {
 		Enabled      bool `yaml:"enabled"`
 		DelaySeconds int  `yaml:"delaySeconds"`
 	} `yaml:"autoStart"`
+	Dashboard struct {
+		SupervisorOrder   []string `yaml:"supervisorOrder"`
+		HiddenSupervisors []string `yaml:"hiddenSupervisors"`
+	} `yaml:"dashboard"`
 	RunewordFavoriteRecipes []string `yaml:"runewordFavoriteRecipes"`
 	RunFavoriteRuns         []string `yaml:"runFavoriteRuns"`
 }
@@ -590,6 +594,214 @@ func GetCharacters() map[string]*CharacterCfg {
 		copy[k] = v
 	}
 	return copy
+}
+
+func OrderedSupervisors() []string {
+	cfgMux.RLock()
+	defer cfgMux.RUnlock()
+
+	supervisors := availableSupervisorsLocked()
+	slices.Sort(supervisors)
+
+	if Koolo == nil {
+		return supervisors
+	}
+
+	return normalizeSupervisorOrderLocked(Koolo.Dashboard.SupervisorOrder, supervisors)
+}
+
+func HiddenSupervisors() []string {
+	cfgMux.RLock()
+	defer cfgMux.RUnlock()
+
+	if Koolo == nil {
+		return nil
+	}
+
+	supervisors := availableSupervisorsLocked()
+	slices.Sort(supervisors)
+
+	return append([]string(nil), normalizeSupervisorListLocked(Koolo.Dashboard.HiddenSupervisors, supervisors)...)
+}
+
+func SetSupervisorOrder(order []string) error {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
+
+	if Koolo == nil {
+		return errors.New("koolo config is nil")
+	}
+
+	supervisors := availableSupervisorsLocked()
+	slices.Sort(supervisors)
+	Koolo.Dashboard.SupervisorOrder = normalizeSupervisorOrderLocked(order, supervisors)
+
+	return saveKooloLocked()
+}
+
+func SetHiddenSupervisors(hidden []string) error {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
+
+	if Koolo == nil {
+		return errors.New("koolo config is nil")
+	}
+
+	supervisors := availableSupervisorsLocked()
+	slices.Sort(supervisors)
+	Koolo.Dashboard.HiddenSupervisors = normalizeSupervisorListLocked(hidden, supervisors)
+
+	return saveKooloLocked()
+}
+
+func RenameSupervisorInDashboard(oldName, newName string) error {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
+
+	if Koolo == nil {
+		return errors.New("koolo config is nil")
+	}
+
+	supervisors := availableSupervisorsLocked()
+	slices.Sort(supervisors)
+
+	updatedOrder := make([]string, 0, len(Koolo.Dashboard.SupervisorOrder))
+	for _, name := range Koolo.Dashboard.SupervisorOrder {
+		if name == oldName {
+			updatedOrder = append(updatedOrder, newName)
+			continue
+		}
+		updatedOrder = append(updatedOrder, name)
+	}
+
+	updatedHidden := make([]string, 0, len(Koolo.Dashboard.HiddenSupervisors))
+	for _, name := range Koolo.Dashboard.HiddenSupervisors {
+		if name == oldName {
+			updatedHidden = append(updatedHidden, newName)
+			continue
+		}
+		updatedHidden = append(updatedHidden, name)
+	}
+
+	Koolo.Dashboard.SupervisorOrder = normalizeSupervisorOrderLocked(updatedOrder, supervisors)
+	Koolo.Dashboard.HiddenSupervisors = normalizeSupervisorListLocked(updatedHidden, supervisors)
+
+	return saveKooloLocked()
+}
+
+func RemoveSupervisorFromDashboard(name string) error {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
+
+	if Koolo == nil {
+		return errors.New("koolo config is nil")
+	}
+
+	supervisors := availableSupervisorsLocked()
+	slices.Sort(supervisors)
+
+	filteredOrder := make([]string, 0, len(Koolo.Dashboard.SupervisorOrder))
+	for _, current := range Koolo.Dashboard.SupervisorOrder {
+		if current == name {
+			continue
+		}
+		filteredOrder = append(filteredOrder, current)
+	}
+
+	filteredHidden := make([]string, 0, len(Koolo.Dashboard.HiddenSupervisors))
+	for _, current := range Koolo.Dashboard.HiddenSupervisors {
+		if current == name {
+			continue
+		}
+		filteredHidden = append(filteredHidden, current)
+	}
+
+	Koolo.Dashboard.SupervisorOrder = normalizeSupervisorOrderLocked(filteredOrder, supervisors)
+	Koolo.Dashboard.HiddenSupervisors = normalizeSupervisorListLocked(filteredHidden, supervisors)
+
+	return saveKooloLocked()
+}
+
+func saveKooloLocked() error {
+	text, err := yaml.Marshal(Koolo)
+	if err != nil {
+		return fmt.Errorf("error parsing koolo config: %w", err)
+	}
+	if err := os.WriteFile("config/koolo.yaml", text, 0644); err != nil {
+		return fmt.Errorf("error writing koolo config: %w", err)
+	}
+
+	return nil
+}
+
+func availableSupervisorsLocked() []string {
+	supervisors := make([]string, 0, len(Characters))
+	for name := range Characters {
+		if name == "template" {
+			continue
+		}
+		supervisors = append(supervisors, name)
+	}
+	return supervisors
+}
+
+func normalizeSupervisorOrderLocked(order []string, available []string) []string {
+	availableSet := make(map[string]struct{}, len(available))
+	for _, name := range available {
+		availableSet[name] = struct{}{}
+	}
+
+	normalized := make([]string, 0, len(available))
+	seen := make(map[string]struct{}, len(available))
+
+	for _, name := range order {
+		if name == "template" {
+			continue
+		}
+		if _, ok := availableSet[name]; !ok {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		normalized = append(normalized, name)
+		seen[name] = struct{}{}
+	}
+
+	for _, name := range available {
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		normalized = append(normalized, name)
+	}
+
+	return normalized
+}
+
+func normalizeSupervisorListLocked(list []string, available []string) []string {
+	availableSet := make(map[string]struct{}, len(available))
+	for _, name := range available {
+		availableSet[name] = struct{}{}
+	}
+
+	normalized := make([]string, 0, len(list))
+	seen := make(map[string]struct{}, len(list))
+
+	for _, name := range list {
+		if name == "template" {
+			continue
+		}
+		if _, ok := availableSet[name]; !ok {
+			continue
+		}
+		if _, ok := seen[name]; ok {
+			continue
+		}
+		normalized = append(normalized, name)
+		seen[name] = struct{}{}
+	}
+
+	return normalized
 }
 
 func (bm BeltColumns) Total(potionType data.PotionType) int {
