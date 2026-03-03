@@ -172,11 +172,11 @@ func (s WarlockCleaveLeveling) SigilSkills() []skill.ID {
 }
 
 // func (s WarlockCleaveLeveling) SigilStates() []state.State {
-// 	return []state.State{state.Sigildeath, state.Sigillethargy, state.Sigilrancor}
+// 	return []state.State{state.Sigildeath, state.Sigilrancor, state.Sigillethargy}
 // }
 
 func (s WarlockCleaveLeveling) SumonSkills() []skill.ID {
-	return []skill.ID{skill.SummonGoatman, skill.SummonTainted, skill.SummonDefiler}
+	return []skill.ID{skill.SummonDefiler, skill.SummonTainted, skill.SummonGoatman}
 }
 
 // func (s WarlockCleaveLeveling) SumonStates() []state.State {
@@ -347,25 +347,31 @@ func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	//utils.Sleep(100, 100)
 }
 
-func (s *WarlockCleaveLeveling) BuffSkills() []skill.ID {
+func (s WarlockCleaveLeveling) BuffSkills() []skill.ID {
 	buffs := make([]skill.ID, 0)
+	return buffs
+}
+
+// Dynamically determines pre-combat buffs and summons
+func (s *WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
+	skills := make([]skill.ID, 0)
 
 	if s.Data.PlayerUnit.RightSkill == skill.TownPortal ||
 		s.Data.PlayerUnit.RightSkill == skill.TownportalOSkill {
-		return buffs
+		return skills
 	}
 
 	if !time.Now().After(s.combatState.nextBuff) {
-		return buffs
+		return skills
 	}
 
-	s.combatState.nextBuff = time.Now().Add(utils.RandomDurationMs(40000, 50000))
+	s.combatState.nextBuff = time.Now().Add(utils.RandomDurationMs(5000, 10000))
 	//buffs
 	var HexStates = s.HexStates()
 	for i, hex := range s.HexSkills() {
 		if s.CheckMana(hex) && s.Data.PlayerUnit.Skills[hex].Level > 0 {
 			if !s.Data.PlayerUnit.States.HasState(HexStates[i]) {
-				buffs = append(buffs, hex)
+				skills = append(skills, hex)
 				break
 			}
 		}
@@ -373,20 +379,14 @@ func (s *WarlockCleaveLeveling) BuffSkills() []skill.ID {
 
 	if s.CheckMana(skill.PsychicWard) &&
 		s.Data.PlayerUnit.Skills[skill.PsychicWard].Level > 0 {
-		buffs = append(buffs, skill.PsychicWard)
+		skills = append(skills, skill.PsychicWard)
 	}
 
 	if s.CheckMana(skill.EldritchBlast) &&
 		s.Data.PlayerUnit.Skills[skill.EldritchBlast].Level > 0 {
-		buffs = append(buffs, skill.EldritchBlast)
+		skills = append(skills, skill.EldritchBlast)
 	}
 
-	return buffs
-}
-
-// Dynamically determines pre-combat buffs and summons
-func (s WarlockCleaveLeveling) PreCTABuffSkills() []skill.ID {
-	skills := make([]skill.ID, 0)
 	return skills
 }
 
@@ -483,11 +483,10 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 
 func (s WarlockCleaveLeveling) StatPoints() []context.StatAllocation {
 	stats := []context.StatAllocation{
-		{Stat: stat.Vitality, Points: 45},
 		{Stat: stat.Strength, Points: 30},
-		{Stat: stat.Vitality, Points: 85},
+		{Stat: stat.Vitality, Points: 45},
 		{Stat: stat.Strength, Points: 35},
-		{Stat: stat.Vitality, Points: 90},
+		{Stat: stat.Vitality, Points: 60},
 		{Stat: stat.Strength, Points: 40},
 		{Stat: stat.Vitality, Points: 999},
 	}
@@ -666,13 +665,25 @@ func (s WarlockCleaveLeveling) KillBaal() error {
 }
 
 func (s WarlockCleaveLeveling) GetAdditionalRunewords() []string {
-	additionalRunewords := []string{"Ancients' Pledge", "Lore", "Insight", "Smoke", "Treachery", "Call to Arms", "Bulwark", "Hustle", "Stealth", "Spirit", "Heart of the Oak", "Leaf", "Steel", "Strength", "Nadir", "Cure", "Rhyme"}
+	additionalRunewords := []string{"Ancients' Pledge", "Lore", "Insight", "Smoke", "Treachery",
+		"Call to Arms", "Bulwark", "Hustle", "Stealth", "Spirit", "Heart of the Oak", "Leaf", "Steel",
+		"Strength", "Nadir", "Cure", "Rhyme"}
 
 	return additionalRunewords
 }
 
 func (s WarlockCleaveLeveling) InitialCharacterConfigSetup() {
+	s.AdjustCharacterConfig()
 }
 
 func (s WarlockCleaveLeveling) AdjustCharacterConfig() {
+	ctx := context.Get()
+	ctx.CharacterCfg.Game.UseCainIdentify = true
+	ctx.CharacterCfg.Game.InteractWithSuperChests = true
+	ctx.CharacterCfg.Game.InteractWithShrines = true
+	ctx.CharacterCfg.BackToTown.EquipmentBroken = true
+	// ctx.CharacterCfg.BackToTown.NoMpPotions = true
+	ctx.CharacterCfg.Character.UseTeleport = true
+	ctx.CharacterCfg.Character.StashToShared = true
+	// ctx.CharacterCfg.Character.UseMerc = true
 }
