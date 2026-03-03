@@ -70,6 +70,14 @@ var (
 		stat.ReplenishLife:        2.0,
 		stat.LifePerLevel:         3.0,
 		stat.ManaPerLevel:         2.0,
+		stat.EnhancedDamage:       0.0,
+		stat.MinDamage:            0.0,
+		stat.MaxDamage:            0.0,
+		stat.TwoHandedMinDamage:   0.0,
+		stat.TwoHandedMaxDamage:   0.0,
+		stat.DeadlyStrike:         0.0,
+		stat.LifeSteal:            0.0,
+		stat.ManaSteal:            0.0,
 	}
 
 	uniqueItemScores = map[item.Name]float64{
@@ -157,26 +165,20 @@ var (
 			stat.ManaRecovery:         -1.5,
 		},
 		data.Warlock: {
-			stat.EnhancedDamage:     6.0,
-			stat.MinDamage:          4.0,
-			stat.MaxDamage:          4.0,
-			stat.TwoHandedMinDamage: 4.0,
-			stat.TwoHandedMaxDamage: 4.0,
-
-			stat.AllSkills:      6.0,
-			stat.FasterCastRate: 6.0,
-			stat.DeadlyStrike:   5.0,
+			stat.EnhancedDamage:       6.0,
+			stat.MinDamage:            2.0,
+			stat.MaxDamage:            2.0,
+			stat.TwoHandedMinDamage:   2.0,
+			stat.TwoHandedMaxDamage:   2.0,
+			stat.FasterCastRate:       6.0,
+			stat.IncreasedAttackSpeed: 2.0,
+			stat.DeadlyStrike:         5.0,
 
 			stat.LifeSteal: 3.0,
 			stat.ManaSteal: 3.0,
-
-			stat.AddClassSkills: 3.0,
-			stat.AddSkillTab:    2.0,
-			stat.SingleSkill:    2.0,
-
 			stat.MaxMana:   1.5,
-			stat.MagicFind: 1.0,
 
+			stat.MagicFind:       1.0,
 			stat.FireResist:      1.0,
 			stat.ColdResist:      1.0,
 			stat.LightningResist: 1.0,

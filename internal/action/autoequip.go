@@ -328,21 +328,22 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 	}
 
 	// Main Requirement Check (Level, Strength, Dexterity)
+	requireMulti := 1.0
+	if isWeapon && ctx.Data.PlayerUnit.Class == data.Warlock {
+		requireMulti = 1.0 - 0.2*float64(GetSkillTotalLevel(skill.Levitate))
+	}
 	if target == item.LocationEquipped {
-		var playerLevel int
-		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
-			playerLevel = lvl.Value
-		}
+		// playerLevel := 1
+		// if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
+		// 	playerLevel = lvl.Value
+		// }
 
-		itemLevelReq := 0
-		if lvlReqStat, found := newItem.FindStat(stat.LevelRequire, 0); found {
-			itemLevelReq = lvlReqStat.Value
-		}
+		// itemLevelReq := newItem.LevelReq
 
 		// Explicitly log the level comparison
-		if playerLevel < itemLevelReq {
-			return false
-		}
+		// if playerLevel < itemLevelReq {
+		// 	return false
+		// }
 
 		// Now check stats, considering the item that will be unequipped
 		baseStr := ctx.Data.PlayerUnit.Stats[stat.Strength].Value
@@ -357,8 +358,9 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 				baseDex -= dexBonus.Value
 			}
 		}
-
-		if baseStr < newItem.Desc().RequiredStrength || baseDex < newItem.Desc().RequiredDexterity {
+		RequiredStrength := int(float64(newItem.Desc().RequiredStrength) * requireMulti)
+		RequiredDexterity := int(float64(newItem.Desc().RequiredDexterity) * requireMulti)
+		if baseStr < RequiredStrength || baseDex < RequiredDexterity {
 			return false
 		}
 	}
@@ -463,20 +465,11 @@ func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.Locatio
 			}
 			return isClaws
 		case data.Warlock:
-			_, isOneHanded := i.FindStat(stat.MaxDamage, 0)
-			_, isTwoHanded := i.FindStat(stat.TwoHandedMaxDamage, 0)
-			isWeapon := isOneHanded || isTwoHanded
-			// Left arm: weapon only
-			if bodyLoc == item.LocLeftArm {
-				return isWeapon
-			}
+			itemType := i.Desc().Type
+			warlockItem := slices.Contains(classItems[data.Warlock], itemType)
 
-			// Right arm: Grimoires hoặc Shield
-			if bodyLoc == item.LocRightArm {
-				itemType := i.Desc().Type
-				if slices.Contains(classItems[data.Warlock], itemType) {
-					return true
-				}
+			if warlockItem || bodyLoc == item.LocRightArm {
+				return true
 			}
 
 			return false
