@@ -361,7 +361,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 				performMouseAttack(ctx, settings, x, y)
 			} else {
 				// Respect cast duration to avoid spamming server
-				utils.SleepDuration(ctx.Data.PlayerCastDuration(), 100)
+				utils.SleepDuration(ctx.Data.PlayerCastDuration(), 50)
 			}
 		} else {
 			selectedButton, selected := selectSecondarySkillButton(ctx, settings.skill)
@@ -375,7 +375,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 					performMouseAttack(ctx, settings, x, y)
 				} else {
 					// Respect cast duration to avoid spamming server
-					utils.SleepDuration(ctx.Data.PlayerCastDuration(), 100)
+					utils.SleepDuration(ctx.Data.PlayerCastDuration(), 50)
 				}
 			} else {
 				castPacket := packet.NewCastSkillEntityRight(targetID)
@@ -384,7 +384,7 @@ func performAttack(ctx *context.Status, settings attackSettings, targetID data.U
 					performMouseAttack(ctx, settings, x, y)
 				} else {
 					// Respect cast duration to avoid spamming server
-					utils.SleepDuration(ctx.Data.PlayerCastDuration(), 100)
+					utils.SleepDuration(ctx.Data.PlayerCastDuration(), 50)
 				}
 			}
 		}

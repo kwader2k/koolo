@@ -238,7 +238,7 @@ func MoveTo(dest data.Position, options ...MoveOption) error {
 		//If teleporting, sleep for the cast duration
 		if ctx.Data.CanTeleport() {
 			if time.Since(lastRun) < ctx.Data.PlayerCastDuration() {
-				utils.SleepDuration(ctx.Data.PlayerCastDuration()-time.Since(lastRun), 500)
+				utils.SleepDuration(ctx.Data.PlayerCastDuration()-time.Since(lastRun), 100)
 				continue
 			}
 		}

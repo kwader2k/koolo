@@ -25,12 +25,12 @@ func OpenPortal() error {
 	// Check last portal time to avoid spam during network delays
 	if !ctx.LastPortalTick.IsZero() {
 		timeSinceLastPortal := time.Since(ctx.LastPortalTick)
-		minPortalCooldown := time.Duration(utils.PingMultiplier(utils.Critical, 1000)) * time.Millisecond
+		minPortalCooldown := time.Duration(utils.PingMultiplier(utils.Critical, 100)) * time.Millisecond
 		if timeSinceLastPortal < minPortalCooldown {
 			remainingCooldown := minPortalCooldown - timeSinceLastPortal
 			ctx.Logger.Debug("Portal cooldown active, waiting",
 				"cooldownRemaining", remainingCooldown)
-			utils.SleepDuration(remainingCooldown, 1000)
+			utils.SleepDuration(remainingCooldown, 100)
 		}
 	}
 
