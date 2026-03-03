@@ -463,24 +463,23 @@ func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.Locatio
 			}
 			return isClaws
 		case data.Warlock:
-			itemType := i.Desc().Type
+			_, isOneHanded := i.FindStat(stat.MaxDamage, 0)
+			_, isTwoHanded := i.FindStat(stat.TwoHandedMaxDamage, 0)
+			isWeapon := isOneHanded || isTwoHanded
+			// Left arm: weapon only
+			if bodyLoc == item.LocLeftArm {
+				return isWeapon
+			}
 
-			// Right arm = Grimoires or Shield
+			// Right arm: Grimoires hoặc Shield
 			if bodyLoc == item.LocRightArm {
+				itemType := i.Desc().Type
 				if slices.Contains(classItems[data.Warlock], itemType) {
 					return true
 				}
-				if slices.Contains(shieldTypes, string(itemType)) {
-					return true
-				}
-				return false
 			}
 
-			if bodyLoc == item.LocLeftArm {
-				return true
-			}
-
-			return true
+			return false
 		default:
 			return false
 		}
