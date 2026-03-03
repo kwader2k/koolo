@@ -689,7 +689,9 @@ func (s WarlockCleaveLeveling) KillBaal() error {
 }
 
 func (s WarlockCleaveLeveling) GetAdditionalRunewords() []string {
-	return action.GetCastersCommonRunewords()
+	additionalRunewords := []string{"Ancients' Pledge", "Lore", "Insight", "Smoke", "Treachery", "Call to Arms", "Bulwark", "Hustle", "Stealth", "Spirit", "Heart of the Oak", "Leaf", "Steel", "Strength", "Nadir", "Cure", "Rhyme"}
+
+	return additionalRunewords
 }
 
 func (s WarlockCleaveLeveling) InitialCharacterConfigSetup() {
