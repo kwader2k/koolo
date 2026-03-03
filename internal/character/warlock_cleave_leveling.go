@@ -16,6 +16,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/action/step"
 	"github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/pather"
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
@@ -74,6 +75,7 @@ func (s WarlockCleaveLeveling) IsMandatoryKill(m data.Monster) bool {
 type CleaveCombatState struct {
 	nextSigil     time.Time
 	nextDemonBind time.Time
+	nextDeathMark time.Time
 	nextPetSkill  time.Time
 	nextBuff      time.Time
 }
@@ -125,7 +127,7 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
+		//lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		healthPercent := s.Data.PlayerUnit.HPPercent()
 		canReposition := lastHealthPercent-healthPercent > 10 && time.Since(lastReposition) > utils.RandomDurationMs(1000, 2000)
 		if canReposition {
@@ -141,14 +143,14 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 		}
 		lastHealthPercent = healthPercent
 
-		if lvl.Value < 6 && s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && s.CheckMana(skill.MiasmaBolt) {
-			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
-		} else if lvl.Value < 12 && s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) { //cleave
-			//step.SelectLeftSkill(skill.Cleave)
-			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
-		} else if s.Data.PlayerUnit.Skills[skill.EchoingStrike].Level > 0 && s.CheckMana(skill.EchoingStrike) {
+		if s.Data.PlayerUnit.Skills[skill.EchoingStrike].Level > 0 && s.CheckMana(skill.EchoingStrike) {
 			//step.SelectLeftSkill(skill.EchoingStrike)
 			step.SecondaryAttack(skill.EchoingStrike, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
+		} else if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) { //cleave
+			//step.SelectLeftSkill(skill.Cleave)
+			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
+		} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && s.CheckMana(skill.MiasmaBolt) {
+			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
 		} else {
 			step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
 		}
@@ -245,6 +247,7 @@ func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	isUnique := target.Type != data.MonsterTypeNone && target.Type != data.MonsterTypeMinion
 	targetHPPercent := float32(target.Stats[stat.Life]) / float32(target.Stats[stat.MaxLife]) * 100
 	monsterCount := 0
+	playerPos := s.Data.PlayerUnit.Position
 
 	var engorgePetId data.UnitID
 	var consumePetId data.UnitID
@@ -252,7 +255,6 @@ func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 	petCount := 0
 
 	for _, monster := range s.Data.Monsters {
-
 		HPPercent := float32(monster.Stats[stat.Life]) / float32(monster.Stats[stat.MaxLife]) * 100
 		if monster.IsPet() {
 			petCount++
@@ -262,28 +264,36 @@ func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 				engorgePetId = monster.UnitID
 			}
 		} else if HPPercent > 1 {
-			monsterCount++
+			distance := pather.DistanceFromPoint(playerPos, monster.Position)
+			if distance < eStrikeMaxDistance {
+				monsterCount++
+			}
 		}
 	}
 
 	//support skills
-	if time.Now().After(s.combatState.nextSigil) && (isUnique || monsterCount > 3) {
+	if time.Now().After(s.combatState.nextSigil) && (isUnique || monsterCount > 2) {
+		castSigil := false
 		for _, sigil := range s.SigilSkills() {
 			if s.Data.PlayerUnit.Skills[sigil].Level > 0 && s.CheckMana(sigil) {
 				skills = append(skills, sigil)
+				castSigil = true
 			}
 		}
-		s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(3000, 6000))
+		if castSigil {
+			s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(3000, 6000))
+		}
 	}
 
 	deathMark := true
 	if !s.CheckMana(skill.DeathMark) || petCount == 0 ||
 		s.Data.PlayerUnit.Skills[skill.DeathMark].Level == 0 ||
-		!isUnique || !time.Now().After(s.combatState.nextPetSkill) {
+		!isUnique || !time.Now().After(s.combatState.nextDeathMark) {
 		deathMark = false
 	}
 	if deathMark {
 		skills = append(skills, skill.DeathMark)
+		s.combatState.nextDeathMark = time.Now().Add(utils.RandomDurationMs(5000, 6000))
 	}
 
 	demonbind := true
