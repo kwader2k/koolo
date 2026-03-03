@@ -72,11 +72,10 @@ func (s WarlockCleaveLeveling) IsMandatoryKill(m data.Monster) bool {
 }
 
 type CleaveCombatState struct {
-	nextSigil      time.Time
-	nextDemonBind  time.Time
-	nextPetSkill   time.Time
-	nextMirroBlade time.Time
-	nextBuff       time.Time
+	nextSigil     time.Time
+	nextDemonBind time.Time
+	nextPetSkill  time.Time
+	nextBuff      time.Time
 }
 
 func (s *WarlockCleaveLeveling) KillMonsterSequence(
@@ -300,10 +299,10 @@ func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 		s.combatState.nextDemonBind = time.Now().Add(utils.RandomDurationMs(5000, 11000))
 	}
 
-	if s.CheckMana(skill.MirroredBlades) && time.Now().After(s.combatState.nextMirroBlade) {
-		skills = append(skills, skill.MirroredBlades)
-		s.combatState.nextMirroBlade = time.Now().Add(utils.RandomDurationMs(1000, 2000))
-	}
+	// if s.CheckMana(skill.MirroredBlades) && time.Now().After(s.combatState.nextMirroBlade) {
+	// 	skills = append(skills, skill.MirroredBlades)
+	// 	s.combatState.nextMirroBlade = time.Now().Add(utils.RandomDurationMs(1000, 2000))
+	// }
 
 	//perform
 	for _, sk := range skills {
@@ -437,9 +436,9 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		//mainSkill = skill.EchoingStrike
 	}
 
-	if MirroredBlades, found := s.Data.PlayerUnit.Skills[skill.MirroredBlades]; found && MirroredBlades.Level > 0 {
-		skillBindings = append(skillBindings, skill.MirroredBlades)
-	}
+	// if MirroredBlades, found := s.Data.PlayerUnit.Skills[skill.MirroredBlades]; found && MirroredBlades.Level > 0 {
+	// 	skillBindings = append(skillBindings, skill.MirroredBlades)
+	// }
 
 	if BindDemon, found := s.Data.PlayerUnit.Skills[skill.BindDemon]; found && BindDemon.Level > 0 {
 		skillBindings = append(skillBindings, skill.BindDemon)
