@@ -376,6 +376,9 @@ type CharacterCfg struct {
 			HorkMonsterCheckRange       int  `yaml:"hork_monster_check_range"`
 			UsePacketLearning           bool `yaml:"use_packet_learning"`
 		} `yaml:"warcry_barb"`
+		WarlockLeveling struct {
+			UsePacketLearning bool `yaml:"use_packet_learning"`
+		} `yaml:"warlock_leveling"`
 	} `yaml:"character"`
 
 	Game struct {
