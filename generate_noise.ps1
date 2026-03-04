@@ -12,6 +12,8 @@ $e2 = '0x' + [BitConverter]::ToString($buf, 16, 8).Replace('-','')
 $e3 = '0x' + [BitConverter]::ToString($buf, 24, 8).Replace('-','')
 
 $content = @"
+//go:build noisegen
+
 package buildnoise
 
 var (

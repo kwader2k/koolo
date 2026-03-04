@@ -175,8 +175,12 @@ set "OUTPUT_EXE=build\%BUILD_ID%.exe"
 call :print_step "Compiling Obfuscated Koolo executable"
 call :print_step "Generating per-build noise..."
 powershell -ExecutionPolicy Bypass -File "%~dp0generate_noise.ps1"
+if !errorlevel! neq 0 (
+    call :print_error "Noise generation failed"
+    call :pause_and_exit 1
+)
 (
-    garble -seed=random build -a -trimpath -tags static --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
+    garble -seed=random build -a -trimpath -tags static,noisegen --ldflags "-s -w -H windowsgui -X 'main._bMeta0=%BUILD_ID%' -X 'main._bMeta1=%BUILD_TIME%' -X 'github.com/hectorgimenez/koolo/internal/config.Version=%VERSION%'" -o "%OUTPUT_EXE%" ./cmd/koolo 2>&1
 ) > garble.log
 set "GARBLE_EXIT_CODE=!errorlevel!"
 
@@ -192,6 +196,9 @@ if !GARBLE_EXIT_CODE! neq 0 (
     )
 )
 del garble.log
+:: Remove generated noise file so plain "go build" without the noisegen tag
+:: does not collide with noise_defaults.go.
+if exist "internal\buildnoise\noise_gen.go" del "internal\buildnoise\noise_gen.go"
 if exist "%STATIC_BUILD_DIR%" (
     call :print_step "Cleaning up temporary build folder"
     rmdir /s /q "%STATIC_BUILD_DIR%"
