@@ -4,12 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"slices"
 	"sync"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/koolo/internal/stealth"
 	"github.com/hectorgimenez/koolo/internal/utils"
 
 	"os"
@@ -97,6 +99,9 @@ type KooloCfg struct {
 		Enabled      bool `yaml:"enabled"`
 		DelaySeconds int  `yaml:"delaySeconds"`
 	} `yaml:"autoStart"`
+	Stealth struct {
+		CustomModName string `yaml:"customModName"` // Persisted randomized mod folder name (auto-generated on first run)
+	} `yaml:"stealth"`
 	RunewordFavoriteRecipes []string `yaml:"runewordFavoriteRecipes"`
 	RunFavoriteRuns         []string `yaml:"runFavoriteRuns"`
 }
@@ -898,6 +903,29 @@ func SaveKooloConfig(config *KooloCfg) error {
 		return fmt.Errorf("error writing koolo config: %w", err)
 	}
 	return nil
+}
+
+// EffectiveModName returns the persisted randomized mod folder name.
+// On first call, if no name has been persisted yet, it generates one via the
+// stealth package and saves it to disk so it survives process restarts.
+func EffectiveModName() string {
+	cfgMux.Lock()
+	defer cfgMux.Unlock()
+
+	if Koolo != nil && Koolo.Stealth.CustomModName != "" {
+		return Koolo.Stealth.CustomModName
+	}
+
+	name := stealth.ModName()
+	if Koolo != nil {
+		Koolo.Stealth.CustomModName = name
+		// Best-effort persist so the name is reused across restarts.
+		if err := SaveKooloConfig(Koolo); err != nil {
+			slog.Warn("Failed to persist stealth mod name", slog.String("error", err.Error()))
+		}
+	}
+
+	return name
 }
 
 func SaveSupervisorConfig(supervisorName string, config *CharacterCfg) error {

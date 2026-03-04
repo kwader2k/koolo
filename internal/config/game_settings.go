@@ -37,22 +37,25 @@ func ReplaceGameSettings(modName string) error {
 	return cp.Copy("config/Settings.json", modSettingsPath)
 }
 
-func InstallMod() error {
+func InstallMod(modName string) error {
 	if _, err := os.Stat(Koolo.D2RPath + "\\d2r.exe"); os.IsNotExist(err) {
 		return fmt.Errorf("game not found at %s", Koolo.D2RPath)
 	}
 
-	if _, err := os.Stat(Koolo.D2RPath + "\\mods\\koolo\\koolo.mpq\\modinfo.json"); err == nil {
+	mpqDir := Koolo.D2RPath + "\\mods\\" + modName + "\\" + modName + ".mpq"
+	modinfoPath := mpqDir + "\\modinfo.json"
+
+	if _, err := os.Stat(modinfoPath); err == nil {
 		return nil
 	}
 
-	if err := os.MkdirAll(Koolo.D2RPath+"\\mods\\koolo\\koolo.mpq", os.ModePerm); err != nil {
+	if err := os.MkdirAll(mpqDir, os.ModePerm); err != nil {
 		return fmt.Errorf("error creating mod folder: %w", err)
 	}
 
-	modFileContent := []byte(`{"name":"koolo","savepath":"koolo/"}`)
+	modFileContent := []byte(`{"name":"` + modName + `","savepath":"` + modName + `/"}`)
 
-	return os.WriteFile(Koolo.D2RPath+"\\mods\\koolo\\koolo.mpq\\modinfo.json", modFileContent, 0644)
+	return os.WriteFile(modinfoPath, modFileContent, 0644)
 }
 
 func GetCurrentDisplayScale() float64 {

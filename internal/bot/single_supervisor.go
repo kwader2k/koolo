@@ -519,6 +519,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 			}
 		}()
 
+		utils.ResetSessionClock()
 		err = s.bot.Run(runCtx, firstRun, runs)
 		firstRun = false
 

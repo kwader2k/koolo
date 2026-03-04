@@ -16,6 +16,7 @@ import (
 
 	sloggger "github.com/hectorgimenez/koolo/cmd/koolo/log"
 	"github.com/hectorgimenez/koolo/internal/bot"
+	_ "github.com/hectorgimenez/koolo/internal/buildnoise"
 	"github.com/hectorgimenez/koolo/internal/config"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/remote/discord"
@@ -23,6 +24,7 @@ import (
 	ngrokremote "github.com/hectorgimenez/koolo/internal/remote/ngrok"
 	"github.com/hectorgimenez/koolo/internal/remote/telegram"
 	"github.com/hectorgimenez/koolo/internal/server"
+	"github.com/hectorgimenez/koolo/internal/stealth"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/inkeliz/gowebview"
@@ -171,8 +173,10 @@ func main() {
 			height = 720
 		}
 
+		windowTitle := stealth.AppWindowTitle()
+
 		w, err := gowebview.New(&gowebview.Config{URL: "http://localhost:8087", WindowConfig: &gowebview.WindowConfig{
-			Title: "Koolo Resurrected",
+			Title: windowTitle,
 			Size: &gowebview.Point{
 				X: int64(float64(width) * displayScale),
 				Y: int64(float64(height) * displayScale),

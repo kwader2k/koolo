@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/memory"
 	"golang.org/x/sys/windows"
@@ -31,11 +33,16 @@ type MemoryInjector struct {
 	cursorOverrideActive  bool
 	lastCursorX           int
 	lastCursorY           int
+	cursorPosKnown        bool // true once CursorPos has been called at least once
+	// Add timing randomization to make behavior less predictable
+	lastHookTime time.Time
+	stateMu      sync.RWMutex
+	keyStateMu   sync.Mutex // serializes OverrideGetKeyState / RestoreGetKeyState pairs
 }
 
 func InjectorInit(logger *slog.Logger, pid uint32) (*MemoryInjector, error) {
-	i := &MemoryInjector{pid: pid, logger: logger}
-	pHandle, err := windows.OpenProcess(fullAccess, false, pid)
+	i := &MemoryInjector{pid: pid, logger: logger, lastHookTime: time.Now()}
+	pHandle, err := ntOpenProcess(pid, fullAccess)
 	if err != nil {
 		return nil, fmt.Errorf("error opening process: %w", err)
 	}
@@ -45,7 +52,10 @@ func InjectorInit(logger *slog.Logger, pid uint32) (*MemoryInjector, error) {
 }
 
 func (i *MemoryInjector) Load() error {
-	if i.isLoaded {
+	i.stateMu.RLock()
+	loaded := i.isLoaded
+	i.stateMu.RUnlock()
+	if loaded {
 		return nil
 	}
 
@@ -54,17 +64,30 @@ func (i *MemoryInjector) Load() error {
 		return fmt.Errorf("error getting process modules: %w", err)
 	}
 
-	syscall.MustLoadDLL("USER32.dll")
+	if _, err = syscall.LoadDLL("USER32.dll"); err != nil {
+		return fmt.Errorf("error loading USER32.dll: %w", err)
+	}
 
-	for _, module := range modules {
-		// GetCursorPos
+	for _, module := range modules { // GetCursorPos
 		if strings.Contains(strings.ToLower(module.ModuleName), "user32.dll") {
 			i.getCursorPosAddr, err = syscall.GetProcAddress(module.ModuleHandle, "GetCursorPos")
-			i.getKeyStateAddr, _ = syscall.GetProcAddress(module.ModuleHandle, "GetKeyState")
-			i.trackMouseEventAddr, _ = syscall.GetProcAddress(module.ModuleHandle, "TrackMouseEvent")
-			i.setCursorPosAddr, _ = syscall.GetProcAddress(module.ModuleHandle, "SetCursorPos")
+			if err != nil {
+				return fmt.Errorf("error getting GetCursorPos address: %w", err)
+			}
+			i.getKeyStateAddr, err = syscall.GetProcAddress(module.ModuleHandle, "GetKeyState")
+			if err != nil {
+				return fmt.Errorf("error getting GetKeyState address: %w", err)
+			}
+			i.trackMouseEventAddr, err = syscall.GetProcAddress(module.ModuleHandle, "TrackMouseEvent")
+			if err != nil {
+				return fmt.Errorf("error getting TrackMouseEvent address: %w", err)
+			}
+			i.setCursorPosAddr, err = syscall.GetProcAddress(module.ModuleHandle, "SetCursorPos")
+			if err != nil {
+				return fmt.Errorf("error getting SetCursorPos address: %w", err)
+			}
 
-			err = windows.ReadProcessMemory(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)), nil)
+			err = ntReadMemory(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)))
 			if err != nil {
 				return fmt.Errorf("error reading memory: %w", err)
 			}
@@ -74,7 +97,7 @@ func (i *MemoryInjector) Load() error {
 				return err
 			}
 
-			err = windows.ReadProcessMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)), nil)
+			err = ntReadMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)))
 			if err != nil {
 				return fmt.Errorf("error reading setcursor memory: %w", err)
 			}
@@ -84,7 +107,7 @@ func (i *MemoryInjector) Load() error {
 				return err
 			}
 
-			err = windows.ReadProcessMemory(i.handle, i.getKeyStateAddr, &i.getKeyStateOrigBytes[0], uintptr(len(i.getKeyStateOrigBytes)), nil)
+			err = ntReadMemory(i.handle, i.getKeyStateAddr, &i.getKeyStateOrigBytes[0], uintptr(len(i.getKeyStateOrigBytes)))
 			if err != nil {
 				return fmt.Errorf("error reading memory: %w", err)
 			}
@@ -94,7 +117,9 @@ func (i *MemoryInjector) Load() error {
 		return errors.New("could not find GetCursorPos address")
 	}
 
+	i.stateMu.Lock()
 	i.isLoaded = true
+	i.stateMu.Unlock()
 	return nil
 }
 
@@ -103,28 +128,44 @@ func (i *MemoryInjector) Unload() error {
 		i.logger.Error(fmt.Sprintf("error restoring memory: %v", err))
 	}
 
-	return windows.CloseHandle(i.handle)
+	return ntClose(i.handle)
+}
+
+// Close releases the process handle without restoring memory hooks.
+// Use this when Load() failed and Unload() cannot be called safely.
+func (i *MemoryInjector) Close() error {
+	return ntClose(i.handle)
 }
 
 func (i *MemoryInjector) RestoreMemory() error {
+	i.stateMu.Lock()
 	if !i.isLoaded {
+		i.stateMu.Unlock()
 		return nil
 	}
-
+	// Clear flags first under a single lock to prevent concurrent goroutines
+	// from writing new hooks while we restore the original bytes. In practice
+	// teardown is called from a single supervisor goroutine after bot actions
+	// have stopped, so the TOCTOU window is benign.
 	i.isLoaded = false
+	i.cursorOverrideActive = false
+	i.stateMu.Unlock()
+
 	if err := i.RestoreGetCursorPosAddr(); err != nil {
 		return fmt.Errorf("error restoring memory: %v", err)
 	}
 	if err := i.RestoreSetCursorPosAddr(); err != nil {
 		return fmt.Errorf("error restoring cursor memory: %v", err)
 	}
-	i.cursorOverrideActive = false
-
 	return i.RestoreGetKeyState()
 }
 
 func (i *MemoryInjector) DisableCursorOverride() error {
-	if !i.isLoaded || !i.cursorOverrideActive {
+	i.stateMu.RLock()
+	loaded := i.isLoaded
+	overrideActive := i.cursorOverrideActive
+	i.stateMu.RUnlock()
+	if !loaded || !overrideActive {
 		return nil
 	}
 	if err := i.RestoreGetCursorPosAddr(); err != nil {
@@ -133,104 +174,130 @@ func (i *MemoryInjector) DisableCursorOverride() error {
 	if err := i.RestoreSetCursorPosAddr(); err != nil {
 		return err
 	}
+	i.stateMu.Lock()
 	i.cursorOverrideActive = false
+	i.stateMu.Unlock()
 	return nil
 }
 
 func (i *MemoryInjector) EnableCursorOverride() error {
-	if !i.isLoaded || i.cursorOverrideActive {
+	i.stateMu.RLock()
+	loaded := i.isLoaded
+	overrideActive := i.cursorOverrideActive
+	lastX := i.lastCursorX
+	lastY := i.lastCursorY
+	i.stateMu.RUnlock()
+	if !loaded || overrideActive {
 		return nil
 	}
 	if err := i.OverrideSetCursorPos(); err != nil {
 		return err
 	}
 	// Reapply GetCursorPos hook using the last known coordinates
-	return i.CursorPos(i.lastCursorX, i.lastCursorY)
+	return i.CursorPos(lastX, lastY)
 }
 
 func (i *MemoryInjector) CursorPos(x, y int) error {
-	if !i.isLoaded {
+	i.stateMu.RLock()
+	loaded := i.isLoaded
+	i.stateMu.RUnlock()
+	if !loaded {
 		return nil
 	}
 
+	i.stateMu.Lock()
+	i.lastHookTime = time.Now()
 	i.lastCursorX = x
 	i.lastCursorY = y
-	i.cursorOverrideActive = true
+	i.cursorPosKnown = true
+	// Note: cursorOverrideActive is NOT set here. Only OverrideSetCursorPos
+	// controls that flag. All valid call-sites (MovePointer, EnableCursorOverride)
+	// ensure OverrideSetCursorPos has been called before invoking CursorPos.
+	i.stateMu.Unlock()
 
-	/*
-		push rax
-		mov rax, rcx
-		mov dword ptr [rax], 1 // X
-		mov dword ptr [rax+4], 2 // Y
-		pop rax
-		mov al, 1
-		ret
-	*/
-	bytes := []byte{0x50, 0x48, 0x89, 0xC8, 0xC7, 0x00, 0x01, 0x00, 0x00, 0x00, 0xC7, 0x40, 0x04, 0x02, 0x00, 0x00, 0x00, 0x58, 0xB0, 0x01, 0xC3}
-
-	buff := make([]byte, 4)
-	binary.LittleEndian.PutUint32(buff, uint32(x))
-	copy(bytes[6:], buff)
-
-	binary.LittleEndian.PutUint32(buff, uint32(y))
-	copy(bytes[13:], buff)
-
-	return windows.WriteProcessMemory(i.handle, i.getCursorPosAddr, &bytes[0], uintptr(len(bytes)), nil)
+	// Polymorphic GetCursorPos hook — each call produces a different-but-equivalent
+	// byte sequence, defeating signature-based pattern matching.
+	code := polyGetCursorPos(x, y)
+	return writeAndClean(i.handle, i.getCursorPosAddr, code)
 }
 
+// OverrideGetKeyState hooks GetKeyState so it reports the given key as pressed.
+// Callers must hold keyStateMu for the entire override/action/restore sequence
+// to prevent concurrent modifier operations from interleaving.
 func (i *MemoryInjector) OverrideGetKeyState(key byte) error {
-	if !i.isLoaded {
+	i.stateMu.RLock()
+	loaded := i.isLoaded
+	i.stateMu.RUnlock()
+	if !loaded {
 		return nil
 	}
-	/*
-		Assembly: Compare key byte, set al if match, shift left to create 0x8000 if matched (4 cycles)
-		cmp cl, key    -> Compare key byte
-		sete al        -> Set al to 1 if equal
-		shl ax, 15     -> Shift left by 15 to create 0x8000 if was 1, else 0
-		ret            -> Return with result in ax
-	*/
 
-	bytes := []byte{0x80, 0xF9, key, 0x0F, 0x94, 0xC0, 0x66, 0xC1, 0xE0, 0x0F, 0xC3}
+	i.stateMu.Lock()
+	i.lastHookTime = time.Now()
+	i.stateMu.Unlock()
 
-	return windows.WriteProcessMemory(i.handle, i.getKeyStateAddr, &bytes[0], uintptr(len(bytes)), nil)
+	// Polymorphic GetKeyState hook — semantically equivalent variants per session.
+	code := polyGetKeyStateHook(key)
+	return writeAndClean(i.handle, i.getKeyStateAddr, code)
 }
-func (i *MemoryInjector) OverrideSetCursorPos() error {
-	/*
-		Just do nothing, this prevents the game from moving our cursor, for example when opening inventory or wp list
-		mov eax, 1
-		ret
-	*/
 
-	blob := []byte{0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3}
-	err := windows.WriteProcessMemory(i.handle, i.setCursorPosAddr, &blob[0], uintptr(len(blob)), nil)
+// KeyStateLock acquires the modifier-key mutex. Hold it across the full
+// OverrideGetKeyState → action → RestoreGetKeyState sequence to prevent
+// concurrent modifier operations from overwriting each other's hook.
+func (i *MemoryInjector) KeyStateLock()   { i.keyStateMu.Lock() }
+func (i *MemoryInjector) KeyStateUnlock() { i.keyStateMu.Unlock() }
+
+func (i *MemoryInjector) OverrideSetCursorPos() error {
+	// Polymorphic SetCursorPos no-op — returns TRUE without moving the cursor.
+	// Prevents the game from repositioning our injected cursor (inventory, wp, etc.).
+
+	i.stateMu.Lock()
+	i.lastHookTime = time.Now()
+	i.stateMu.Unlock()
+
+	blob := polyReturn1()
+	err := writeAndClean(i.handle, i.setCursorPosAddr, blob)
 	if err == nil {
+		i.stateMu.Lock()
 		i.cursorOverrideActive = true
+		i.stateMu.Unlock()
 	}
 	return err
 }
 
 func (i *MemoryInjector) RestoreGetKeyState() error {
-	return windows.WriteProcessMemory(i.handle, i.getKeyStateAddr, &i.getKeyStateOrigBytes[0], uintptr(len(i.getKeyStateOrigBytes)), nil)
+	return ntWriteMemory(i.handle, i.getKeyStateAddr, &i.getKeyStateOrigBytes[0], uintptr(len(i.getKeyStateOrigBytes)))
 }
 
 func (i *MemoryInjector) RestoreGetCursorPosAddr() error {
-	return windows.WriteProcessMemory(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)), nil)
+	return ntWriteMemory(i.handle, i.getCursorPosAddr, &i.getCursorPosOrigBytes[0], uintptr(len(i.getCursorPosOrigBytes)))
 }
 
 func (i *MemoryInjector) RestoreSetCursorPosAddr() error {
-	return windows.WriteProcessMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)), nil)
+	return ntWriteMemory(i.handle, i.setCursorPosAddr, &i.setCursorPosOrigBytes[0], uintptr(len(i.setCursorPosOrigBytes)))
 }
 
 func (i *MemoryInjector) CursorOverrideActive() bool {
 	if i == nil {
 		return false
 	}
+	i.stateMu.RLock()
+	defer i.stateMu.RUnlock()
 	return i.isLoaded && i.cursorOverrideActive
+}
+
+// LastCursorPos returns the last position written via CursorPos and whether it
+// has been set at least once. ok is false on the very first MovePointer call,
+// which avoids animating from (0,0) before any position is known.
+func (i *MemoryInjector) LastCursorPos() (x, y int, ok bool) {
+	i.stateMu.RLock()
+	defer i.stateMu.RUnlock()
+	return i.lastCursorX, i.lastCursorY, i.cursorPosKnown
 }
 
 // This is needed in order to let the game keep processing mouse events even if the mouse is not over the window
 func (i *MemoryInjector) stopTrackingMouseLeaveEvents() error {
-	err := windows.ReadProcessMemory(i.handle, i.trackMouseEventAddr, &i.trackMouseEventBytes[0], uintptr(len(i.trackMouseEventBytes)), nil)
+	err := ntReadMemory(i.handle, i.trackMouseEventAddr, &i.trackMouseEventBytes[0], uintptr(len(i.trackMouseEventBytes)))
 	if err != nil {
 		return err
 	}
@@ -249,9 +316,16 @@ func (i *MemoryInjector) stopTrackingMouseLeaveEvents() error {
 	num -= 7
 	numberBytes := make([]byte, 4)
 	binary.LittleEndian.PutUint32(numberBytes, uint32(num))
-	injectBytes := append(i.trackMouseEventBytes[0:2], numberBytes...)
+	// Copy the prefix to avoid aliasing the trackMouseEventBytes backing array.
+	prefix := make([]byte, 2)
+	copy(prefix, i.trackMouseEventBytes[0:2])
+	injectBytes := append(prefix, numberBytes...)
 
 	hook := append(disableMouseLeaveRequest, injectBytes...)
 
-	return windows.WriteProcessMemory(i.handle, i.trackMouseEventAddr, &hook[0], uintptr(len(hook)), nil)
+	i.stateMu.Lock()
+	i.lastHookTime = time.Now()
+	i.stateMu.Unlock()
+
+	return writeAndClean(i.handle, i.trackMouseEventAddr, hook)
 }

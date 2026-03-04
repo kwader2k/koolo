@@ -294,10 +294,10 @@ func StartGame(username string, password string, authmethod string, authToken st
 
 	// Let's use the mod directory for storing the settings, so we stop overwriting the default config
 	if useCustomSettings {
-		modName := "koolo"
+		modName := config.EffectiveModName()
 		found := false
 		for i, arg := range additionalArguments {
-			if arg == "-mod" {
+			if arg == "-mod" && i+1 < len(additionalArguments) {
 				modName = additionalArguments[i+1]
 				found = true
 				break
@@ -305,12 +305,8 @@ func StartGame(username string, password string, authmethod string, authToken st
 		}
 		if !found {
 			additionalArguments = append(additionalArguments, "-mod", modName)
-		}
-
-		// If there is no real mod, let's create a fake mod called "koolo" so we can store our own config
-		if modName == "koolo" {
-			err = config.InstallMod()
-			if err != nil {
+			// Install our mod when no user-specified mod is present
+			if err = config.InstallMod(modName); err != nil {
 				return 0, 0, err
 			}
 		}

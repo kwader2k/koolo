@@ -18,6 +18,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/mule"
 	"github.com/hectorgimenez/koolo/internal/pather"
+	"github.com/hectorgimenez/koolo/internal/stealth"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
@@ -401,7 +402,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 			utils.Sleep(5000)
 		}
 
-		gameTitle := "D2R - [" + strconv.FormatInt(int64(pid), 10) + "] - " + supervisorName + " - " + cfg.Realm
+		gameTitle := stealth.GameWindowTitle(int64(pid), supervisorName, cfg.Realm)
 		winproc.SetWindowText.Call(uintptr(hwnd), uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(gameTitle))))
 
 		err := mng.Start(supervisorName, false, false)
@@ -410,7 +411,7 @@ func (mng *SupervisorManager) buildSupervisor(supervisorName string, logger *slo
 		}
 	}
 
-	gameTitle := "D2R - [" + strconv.FormatInt(int64(pid), 10) + "] - " + supervisorName + " - " + cfg.Realm
+	gameTitle := stealth.GameWindowTitle(int64(pid), supervisorName, cfg.Realm)
 	winproc.SetWindowText.Call(uintptr(hwnd), uintptr(unsafe.Pointer(syscall.StringToUTF16Ptr(gameTitle))))
 	crashDetector := game.NewCrashDetector(supervisorName, int32(pid), uintptr(hwnd), mng.logger, restartFunc)
 
