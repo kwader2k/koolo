@@ -313,6 +313,9 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 
 		if config.Koolo.Debug.OpenOverlayMapOnGameStart {
+			// Wait for the loading screen to finish before pressing the automap key,
+			// otherwise the keypress fires while the game world is not yet visible.
+			s.bot.ctx.WaitForGameToLoad()
 			automapKB := s.bot.ctx.Data.KeyBindings.Automap
 			if automapKB.Key1[0] != 0 || automapKB.Key2[0] != 0 {
 				s.bot.ctx.HID.PressKeyBinding(automapKB)
