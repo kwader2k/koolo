@@ -905,9 +905,7 @@ func SaveKooloConfig(config *KooloCfg) error {
 	return nil
 }
 
-// EffectiveModName returns the persisted randomized mod folder name.
-// On first call, if no name has been persisted yet, it generates one via the
-// stealth package and saves it to disk so it survives process restarts.
+// EffectiveModName returns the persisted mod folder name, generating one on first call.
 func EffectiveModName() string {
 	cfgMux.Lock()
 	defer cfgMux.Unlock()

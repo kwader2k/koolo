@@ -48,8 +48,7 @@ func secureZero(buf []byte) {
 	for i := range buf {
 		buf[i] = 0
 	}
-	// Force the compiler to consider the slice live after zeroing.
-	_ = buf[len(buf)-1]
+	_ = buf[len(buf)-1] // keep slice live
 }
 
 // clientID mirrors the Windows CLIENT_ID structure (16 bytes on amd64).
@@ -91,8 +90,7 @@ func ntOpenProcess(pid uint32, access uint32) (windows.Handle, error) {
 
 func ntClose(handle windows.Handle) error {
 	if err := procNtClose.Find(); err != nil {
-		// NtClose unavailable — fall back to kernel32 to prevent handle leak.
-		return windows.CloseHandle(handle)
+		return windows.CloseHandle(handle) // fallback to prevent handle leak
 	}
 	r, _, _ := procNtClose.Call(uintptr(handle))
 	if r != 0 {
@@ -184,19 +182,14 @@ func polyReturn1() []byte {
 
 	switch variant {
 	case 0:
-		// mov eax, 1; ret
 		return []byte{0xB8, 0x01, 0x00, 0x00, 0x00, 0xC3}
 	case 1:
-		// xor eax, eax; inc eax; ret
 		return []byte{0x31, 0xC0, 0xFF, 0xC0, 0xC3}
 	case 2:
-		// xor eax, eax; mov al, 1; ret
 		return []byte{0x31, 0xC0, 0xB0, 0x01, 0xC3}
 	case 3:
-		// push 1; pop rax; ret
 		return []byte{0x6A, 0x01, 0x58, 0xC3}
 	default:
-		// xor ecx, ecx; lea eax, [rcx+1]; ret
 		return []byte{0x31, 0xC9, 0x8D, 0x41, 0x01, 0xC3}
 	}
 }
@@ -221,7 +214,6 @@ func polyGetCursorPos(x, y int) []byte {
 
 	switch variant {
 	case 0:
-		// Original: push rax; mov rax,rcx; mov [rax],X; mov [rax+4],Y; pop rax; mov al,1; ret
 		code := []byte{0x50, 0x48, 0x89, 0xC8,
 			0xC7, 0x00, 0x00, 0x00, 0x00, 0x00,
 			0xC7, 0x40, 0x04, 0x00, 0x00, 0x00, 0x00,
@@ -231,25 +223,23 @@ func polyGetCursorPos(x, y int) []byte {
 		return code
 
 	case 1:
-		// Variant: mov dword ptr [rcx], X; mov dword ptr [rcx+4], Y; mov eax, 1; ret
 		code := []byte{
-			0xC7, 0x01, 0x00, 0x00, 0x00, 0x00, // mov dword ptr [rcx], X
-			0xC7, 0x41, 0x04, 0x00, 0x00, 0x00, 0x00, // mov dword ptr [rcx+4], Y
-			0xB8, 0x01, 0x00, 0x00, 0x00, // mov eax, 1
-			0xC3, // ret
+			0xC7, 0x01, 0x00, 0x00, 0x00, 0x00,
+			0xC7, 0x41, 0x04, 0x00, 0x00, 0x00, 0x00,
+			0xB8, 0x01, 0x00, 0x00, 0x00,
+			0xC3,
 		}
 		copy(code[2:6], xBytes)
 		copy(code[9:13], yBytes)
 		return code
 
 	default:
-		// Variant: mov dword ptr [rcx], X; mov dword ptr [rcx+4], Y; xor eax,eax; inc eax; ret
 		code := []byte{
-			0xC7, 0x01, 0x00, 0x00, 0x00, 0x00, // mov dword ptr [rcx], X
-			0xC7, 0x41, 0x04, 0x00, 0x00, 0x00, 0x00, // mov dword ptr [rcx+4], Y
-			0x31, 0xC0, // xor eax, eax
-			0xFF, 0xC0, // inc eax
-			0xC3, // ret
+			0xC7, 0x01, 0x00, 0x00, 0x00, 0x00,
+			0xC7, 0x41, 0x04, 0x00, 0x00, 0x00, 0x00,
+			0x31, 0xC0,
+			0xFF, 0xC0,
+			0xC3,
 		}
 		copy(code[2:6], xBytes)
 		copy(code[9:13], yBytes)
@@ -266,44 +256,37 @@ func polyGetKeyStateHook(key byte) []byte {
 
 	switch variant {
 	case 0:
-		// Original: cmp cl, key; sete al; shl ax, 15; ret
 		return []byte{0x80, 0xF9, key, 0x0F, 0x94, 0xC0, 0x66, 0xC1, 0xE0, 0x0F, 0xC3}
-
 	case 1:
-		// Variant: xor eax, eax; cmp cl, key; jne +3; mov ax, 0x8000; ret
 		return []byte{
-			0x31, 0xC0, // xor eax, eax
-			0x80, 0xF9, key, // cmp cl, key
-			0x75, 0x04, // jne skip (4 bytes forward)
-			0x66, 0xB8, 0x00, 0x80, // mov ax, 0x8000
-			0xC3, // ret
+			0x31, 0xC0,
+			0x80, 0xF9, key,
+			0x75, 0x04,
+			0x66, 0xB8, 0x00, 0x80,
+			0xC3,
 		}
-
 	default:
-		// Variant: xor eax, eax; cmp cl, key; sete al; neg ax; and ax, 0x8000; ret
 		return []byte{
-			0x31, 0xC0, // xor eax, eax
-			0x80, 0xF9, key, // cmp cl, key
-			0x0F, 0x94, 0xC0, // sete al
-			0x66, 0xF7, 0xD8, // neg ax (0→0, 1→0xFFFF)
-			0x66, 0x25, 0x00, 0x80, // and ax, 0x8000
-			0xC3, // ret
+			0x31, 0xC0,
+			0x80, 0xF9, key,
+			0x0F, 0x94, 0xC0,
+			0x66, 0xF7, 0xD8,
+			0x66, 0x25, 0x00, 0x80,
+			0xC3,
 		}
 	}
 }
 
 func writeAndClean(handle windows.Handle, addr uintptr, code []byte) error {
-	// XOR-encode the cleartext shellcode in the original slice.
 	xorEncode(code)
 
-	// Decode into a scratch buffer for the actual write.
 	scratch := make([]byte, len(code))
 	copy(scratch, code)
-	xorEncode(scratch) // XOR again → back to cleartext
+	xorEncode(scratch)
 
 	err := ntWriteMemory(handle, addr, &scratch[0], uintptr(len(scratch)))
 
-	// Wipe both buffers regardless of success.
+	// wipe both buffers regardless of write result
 	secureZero(scratch)
 	secureZero(code)
 

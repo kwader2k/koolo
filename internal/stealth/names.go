@@ -1,6 +1,3 @@
-// Package stealth provides randomized naming for windows, processes, and other
-// identifiable surfaces to reduce fingerprinting. Names are generated once per
-// process lifetime and reused via package-level accessors.
 package stealth
 
 import (
@@ -19,9 +16,6 @@ var (
 	modName         string
 )
 
-// Plausible window title templates that look like legitimate applications.
-// The larger the pool the less likely two running instances share a title,
-// and the harder it is to build a static blocklist.
 var windowTitlePool = []string{
 	// Productivity / Office
 	"Microsoft Teams",
@@ -387,11 +381,8 @@ func initialize() {
 	})
 }
 
-// GameWindowTitle returns a randomized but plausible title for the D2R game window.
-// The value is stable for the lifetime of the process.
+// GameWindowTitle returns a stable randomized window title for the process lifetime.
 func GameWindowTitle(pid int64, supervisorName, realm string) string {
-	// Use a generic title that doesn't reveal the game identity.
-	// Include PID only in a subtle way — as a suffix that looks like a normal window counter.
 	return fmt.Sprintf("%s (%d)", gameWindowTitle, pid%1000)
 }
 
@@ -400,8 +391,7 @@ func AppWindowTitle() string {
 	return appWindowTitle
 }
 
-// ModName returns a randomized mod folder name to avoid using a well-known
-// identifiable name on disk. The value is stable for the lifetime of the process.
+// ModName returns a stable randomized mod folder name for the process lifetime.
 func ModName() string {
 	return modName
 }

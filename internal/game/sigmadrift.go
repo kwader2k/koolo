@@ -7,15 +7,13 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
-// sdPoint is a single point in a SigmaDrift trajectory.
-// t is the elapsed time in milliseconds from the start of the movement.
+// sdPoint is a trajectory waypoint; t is elapsed milliseconds from movement start.
 type sdPoint struct {
 	x, y float64
 	t    float64
 }
 
 // sdConfig holds all tunable parameters for the SigmaDrift trajectory generator.
-// The defaults mirror the original C++ motor_synergy::config exactly.
 type sdConfig struct {
 	// Fitts' Law parameters — control predicted movement time
 	fittsA      float64 // intercept (ms)
@@ -56,18 +54,9 @@ type sdConfig struct {
 	sampleDtMean float64 // mean inter-sample interval (ms)
 	gammaShape   float64 // gamma distribution shape parameter
 
-	// Hard cap on total playback duration (ms). When > 0 and the Fitts-predicted
-	// duration exceeds this value, all timestamps are scaled down proportionally
-	// so the trajectory shape is preserved but runtime is bounded. Set to 0 to
-	// disable and let Fitts' Law govern move duration naturally (prevents the
-	// uniform-spike at the cap value that is detectable in timing analysis).
 	maxTotalMs float64
 }
 
-// defaultSDConfig mirrors the defaults from motor_synergy::config in the C++ source.
-// fittsA/fittsB are tuned down from the original C++ values (50/150) so that
-// short bot interactions (spirals, item pickup) remain fast without capping everything
-// uniformly. maxTotalMs provides an absolute ceiling on any single move's duration.
 var defaultSDConfig = sdConfig{
 	fittsA:      20.0,
 	fittsB:      35.0,
@@ -101,9 +90,6 @@ var defaultSDConfig = sdConfig{
 	sampleDtMean: 7.8,
 	gammaShape:   3.5,
 
-	// maxTotalMs: 0 = disabled. Fitts' Law with fittsB=35 already produces
-	// natural 50-250ms timings without needing a cap; a hard ceiling would
-	// collapse the distribution to a spike at that value.
 	maxTotalMs: 0.0,
 }
 
@@ -130,8 +116,6 @@ func sdLognormalPDF(t, t0, mu, sigma float64) float64 {
 	return 1.0 / (sigma * math.Sqrt(2.0*math.Pi) * dt) * math.Exp(-0.5*z*z)
 }
 
-// sdCurvatureProfile returns s²(1−s)³ normalised so its peak at s=0.4 equals 1.
-// Curvature is maximal during the acceleration phase.
 func sdCurvatureProfile(s float64) float64 {
 	if s <= 0.0 || s >= 1.0 {
 		return 0.0
@@ -141,16 +125,12 @@ func sdCurvatureProfile(s float64) float64 {
 	return v / norm
 }
 
-// sdDirectionFactor scales curvature amplitude by movement angle to model wrist/forearm geometry.
-// Vertical movements produce more curvature than horizontal ones.
 func sdDirectionFactor(angle float64) float64 {
 	sa := math.Abs(math.Sin(angle))
 	ca := math.Abs(math.Cos(angle))
 	return 0.5 + 0.8*sa - 0.15*ca
 }
 
-// sdGamma samples a Gamma(shape, scale) random variable using
-// Marsaglia-Tsang's "squeeze" method (shape ≥ 1) with the boost trick for shape < 1.
 func sdGamma(shape, scale float64) float64 {
 	if shape < 1.0 {
 		// Gamma(shape) = Gamma(shape+1) * U^(1/shape)
@@ -189,15 +169,11 @@ func sdClamp(v, lo, hi float64) float64 {
 	return v
 }
 
-// sdCorrection holds parameters for one corrective sub-movement.
 type sdCorrection struct {
 	D, t0, mu, sigma float64
 	dirX, dirY       float64
 }
 
-// bioMotionPath generates a SigmaDrift trajectory from (x0,y0) to (x1,y1).
-// All coordinates must be in the same space (e.g. absolute screen pixels).
-// Returned sdPoint.t values are elapsed milliseconds from movement start.
 func bioMotionPath(x0, y0, x1, y1 float64, cfg sdConfig) []sdPoint {
 	dx := x1 - x0
 	dy := y1 - y0
@@ -214,9 +190,6 @@ func bioMotionPath(x0, y0, x1, y1 float64, cfg sdConfig) []sdPoint {
 	nx := -ty
 	ny := tx
 
-	// Fitts' Law predicted movement time with log-normal variability.
-	// Scale the intercept by session fatigue so mouse movements slow
-	// slightly over extended play sessions (models motor fatigue).
 	fatigue := utils.DriftFatigue()
 	id := math.Log2(distance/cfg.targetWidth + 1.0)
 	mt := (cfg.fittsA*fatigue + cfg.fittsB*id) * math.Exp(rand.NormFloat64()*0.08)
@@ -271,9 +244,6 @@ func bioMotionPath(x0, y0, x1, y1 float64, cfg sdConfig) []sdPoint {
 		}
 	}
 
-	// Lateral arc — perpendicular displacement that follows the curvature profile.
-	// Normal sample clamped to ±2.5σ to prevent extreme outlier trajectories on
-	// long sessions where rare tail values could push the path off-screen.
 	curvNorm := sdClamp(rand.NormFloat64(), -2.5, 2.5)
 	curvAmp := distance * cfg.curvatureScale * sdDirectionFactor(direction) * curvNorm
 
@@ -298,9 +268,6 @@ func bioMotionPath(x0, y0, x1, y1 float64, cfg sdConfig) []sdPoint {
 		}
 	}
 
-	// Apply hard cap: if Fitts' prediction exceeds maxTotalMs, scale all
-	// timestamps down proportionally. This preserves trajectory shape while
-	// bounding how long any single MovePointer call can block the caller.
 	if cfg.maxTotalMs > 0 && len(times) > 1 {
 		if last := times[len(times)-1]; last > cfg.maxTotalMs {
 			scale := cfg.maxTotalMs / last

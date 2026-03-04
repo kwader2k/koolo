@@ -23,10 +23,7 @@ type ModifierKey byte
 
 const pointerReleaseDelay = 150 * time.Millisecond
 
-// MovePointer moves the mouse to the requested position using a SigmaDrift
-// trajectory — a biomechanically grounded path generated from the last known
-// cursor position to (x, y). x and y are relative to the game window: the
-// top-left corner of the client area is (0, 0).
+// MovePointer moves the mouse to (x, y) relative to the game window using a bio-realistic trajectory.
 func (hid *HID) MovePointer(x, y int) {
 	hid.gr.updateWindowPositionData()
 	absX := hid.gr.WindowLeftX + x
@@ -54,9 +51,7 @@ func (hid *HID) MovePointer(x, y int) {
 
 	startX, startY, ok := hid.gi.LastCursorPos()
 	if !ok {
-		// No prior cursor position known (first move of the session).
-		// Skip animation entirely: a trajectory from an unknown origin would
-		// be meaningless and would add a spurious ~50 ms sleep.
+		// No prior cursor position known; skip animation on the first move.
 		if err := hid.gi.CursorPos(absX, absY); err != nil {
 			return
 		}
@@ -73,9 +68,7 @@ func (hid *HID) MovePointer(x, y int) {
 	// Play back intermediate points: update injected cursor + send WM_MOUSEMOVE,
 	// sleeping between samples as specified by the gamma-distributed timestamps.
 	for i := 0; i+1 < len(path); i++ {
-		// Abort trajectory if memory injection was disabled (e.g. pause toggled).
-		// Continuing would send WM_MOUSEMOVE while GetCursorPos returns the real
-		// cursor position, causing the character to chase the user's mouse.
+		// Abort if injection was disabled mid-trajectory to avoid chasing the real cursor.
 		if !hid.gi.CursorOverrideActive() {
 			return
 		}
@@ -101,15 +94,12 @@ func (hid *HID) MovePointer(x, y int) {
 		}
 	}
 
-	// If the injector was disabled during the trajectory (e.g. pause), do not
-	// send any further cursor or mouse messages to avoid chasing the real cursor.
+	// Stop if injection was disabled during playback.
 	if !hid.gi.CursorOverrideActive() {
 		return
 	}
 
-	// Micro-correction: simulate the brief re-aim humans make after landing
-	// near the target. Probability scales with movement distance — short
-	// spiral moves are precise while long ballistic movements need correction.
+	// Micro-correction: briefly re-aim near the target, scaled by movement distance.
 	dist := math.Hypot(float64(absX-startX), float64(absY-startY))
 	var microCorrProb float64
 	switch {

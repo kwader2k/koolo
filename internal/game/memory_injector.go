@@ -34,10 +34,9 @@ type MemoryInjector struct {
 	lastCursorX           int
 	lastCursorY           int
 	cursorPosKnown        bool // true once CursorPos has been called at least once
-	// Add timing randomization to make behavior less predictable
-	lastHookTime time.Time
-	stateMu      sync.RWMutex
-	keyStateMu   sync.Mutex // serializes OverrideGetKeyState / RestoreGetKeyState pairs
+	lastHookTime          time.Time
+	stateMu               sync.RWMutex
+	keyStateMu            sync.Mutex // serializes OverrideGetKeyState / RestoreGetKeyState pairs
 }
 
 func InjectorInit(logger *slog.Logger, pid uint32) (*MemoryInjector, error) {
@@ -68,7 +67,7 @@ func (i *MemoryInjector) Load() error {
 		return fmt.Errorf("error loading USER32.dll: %w", err)
 	}
 
-	for _, module := range modules { // GetCursorPos
+	for _, module := range modules {
 		if strings.Contains(strings.ToLower(module.ModuleName), "user32.dll") {
 			i.getCursorPosAddr, err = syscall.GetProcAddress(module.ModuleHandle, "GetCursorPos")
 			if err != nil {
@@ -132,7 +131,6 @@ func (i *MemoryInjector) Unload() error {
 }
 
 // Close releases the process handle without restoring memory hooks.
-// Use this when Load() failed and Unload() cannot be called safely.
 func (i *MemoryInjector) Close() error {
 	return ntClose(i.handle)
 }
@@ -143,10 +141,7 @@ func (i *MemoryInjector) RestoreMemory() error {
 		i.stateMu.Unlock()
 		return nil
 	}
-	// Clear flags first under a single lock to prevent concurrent goroutines
-	// from writing new hooks while we restore the original bytes. In practice
-	// teardown is called from a single supervisor goroutine after bot actions
-	// have stopped, so the TOCTOU window is benign.
+	// Clear flags before restoring bytes.
 	i.isLoaded = false
 	i.cursorOverrideActive = false
 	i.stateMu.Unlock()
@@ -210,20 +205,13 @@ func (i *MemoryInjector) CursorPos(x, y int) error {
 	i.lastCursorX = x
 	i.lastCursorY = y
 	i.cursorPosKnown = true
-	// Note: cursorOverrideActive is NOT set here. Only OverrideSetCursorPos
-	// controls that flag. All valid call-sites (MovePointer, EnableCursorOverride)
-	// ensure OverrideSetCursorPos has been called before invoking CursorPos.
 	i.stateMu.Unlock()
 
-	// Polymorphic GetCursorPos hook — each call produces a different-but-equivalent
-	// byte sequence, defeating signature-based pattern matching.
 	code := polyGetCursorPos(x, y)
 	return writeAndClean(i.handle, i.getCursorPosAddr, code)
 }
 
-// OverrideGetKeyState hooks GetKeyState so it reports the given key as pressed.
-// Callers must hold keyStateMu for the entire override/action/restore sequence
-// to prevent concurrent modifier operations from interleaving.
+// OverrideGetKeyState hooks GetKeyState to report the given key as pressed.
 func (i *MemoryInjector) OverrideGetKeyState(key byte) error {
 	i.stateMu.RLock()
 	loaded := i.isLoaded
@@ -236,21 +224,16 @@ func (i *MemoryInjector) OverrideGetKeyState(key byte) error {
 	i.lastHookTime = time.Now()
 	i.stateMu.Unlock()
 
-	// Polymorphic GetKeyState hook — semantically equivalent variants per session.
 	code := polyGetKeyStateHook(key)
 	return writeAndClean(i.handle, i.getKeyStateAddr, code)
 }
 
-// KeyStateLock acquires the modifier-key mutex. Hold it across the full
-// OverrideGetKeyState → action → RestoreGetKeyState sequence to prevent
-// concurrent modifier operations from overwriting each other's hook.
+// KeyStateLock serializes modifier key override sequences.
 func (i *MemoryInjector) KeyStateLock()   { i.keyStateMu.Lock() }
 func (i *MemoryInjector) KeyStateUnlock() { i.keyStateMu.Unlock() }
 
 func (i *MemoryInjector) OverrideSetCursorPos() error {
-	// Polymorphic SetCursorPos no-op — returns TRUE without moving the cursor.
-	// Prevents the game from repositioning our injected cursor (inventory, wp, etc.).
-
+	// Prevents the game from repositioning our cursor (inventory, waypoints, etc.).
 	i.stateMu.Lock()
 	i.lastHookTime = time.Now()
 	i.stateMu.Unlock()
@@ -286,9 +269,7 @@ func (i *MemoryInjector) CursorOverrideActive() bool {
 	return i.isLoaded && i.cursorOverrideActive
 }
 
-// LastCursorPos returns the last position written via CursorPos and whether it
-// has been set at least once. ok is false on the very first MovePointer call,
-// which avoids animating from (0,0) before any position is known.
+// LastCursorPos returns the last injected cursor position; ok is false before the first move.
 func (i *MemoryInjector) LastCursorPos() (x, y int, ok bool) {
 	i.stateMu.RLock()
 	defer i.stateMu.RUnlock()
