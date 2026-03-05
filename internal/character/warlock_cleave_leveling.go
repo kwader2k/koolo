@@ -40,7 +40,7 @@ func (s WarlockCleaveLeveling) ShouldIgnoreMonster(m data.Monster) bool {
 }
 
 func (s WarlockCleaveLeveling) CheckKeyBindings() []skill.ID {
-	requireKeybindings := []skill.ID{}
+	_, requireKeybindings := s.SkillsToBind()
 	missingKeybindings := []skill.ID{}
 
 	for _, cskill := range requireKeybindings {
@@ -144,13 +144,17 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 		lastHealthPercent = healthPercent
 
 		if s.Data.PlayerUnit.Skills[skill.EchoingStrike].Level > 0 && s.CheckMana(skill.EchoingStrike) {
-			//step.SelectLeftSkill(skill.EchoingStrike)
+			step.SelectRightSkill(skill.EchoingStrike)
 			step.SecondaryAttack(skill.EchoingStrike, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
-		} else if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) { //cleave
-			//step.SelectLeftSkill(skill.Cleave)
+
+		} else if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) {
+			step.SelectRightSkill(skill.Cleave)
 			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
-		} else if s.Data.PlayerUnit.Skills[skill.MiasmaBolt].Level > 0 && s.CheckMana(skill.MiasmaBolt) {
+
+		} else if action.GetSkillTotalLevel(skill.MiasmaBolt) > 0 && s.CheckMana(skill.MiasmaBolt) {
+			step.SelectRightSkill(skill.MiasmaBolt)
 			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
+
 		} else {
 			step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
 		}
@@ -412,36 +416,36 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 
 	for _, hex := range s.HexSkills() {
-		if s.Data.PlayerUnit.Skills[hex].Level > 0 {
+		if action.GetSkillTotalLevel(hex) > 0 {
 			skillBindings = append(skillBindings, hex)
 			break
 		}
 	}
 
 	for _, sumonSkill := range s.SumonSkills() {
-		if s.Data.PlayerUnit.Skills[sumonSkill].Level > 0 {
+		if action.GetSkillTotalLevel(sumonSkill) > 0 {
 			skillBindings = append(skillBindings, sumonSkill)
 		}
 	}
 
 	for _, sigil := range s.SigilSkills() {
-		if s.Data.PlayerUnit.Skills[sigil].Level > 0 {
+		if action.GetSkillTotalLevel(sigil) > 0 {
 			skillBindings = append(skillBindings, sigil)
 		}
 	}
 
 	if lvl.Value < 12 {
-		if MiasmaBolt, found := s.Data.PlayerUnit.Skills[skill.MiasmaBolt]; found && MiasmaBolt.Level > 0 {
+		if action.GetSkillTotalLevel(skill.MiasmaBolt) > 0 {
 			skillBindings = append(skillBindings, skill.MiasmaBolt)
 		}
 
-		if Cleave, found := s.Data.PlayerUnit.Skills[skill.Cleave]; found && Cleave.Level > 0 {
+		if action.GetSkillTotalLevel(skill.Cleave) > 0 {
 			skillBindings = append(skillBindings, skill.Cleave)
 			//mainSkill = skill.Cleave
 		}
 	}
 
-	if EchoingStrike, found := s.Data.PlayerUnit.Skills[skill.EchoingStrike]; found && EchoingStrike.Level > 0 {
+	if action.GetSkillTotalLevel(skill.EchoingStrike) > 0 {
 		skillBindings = append(skillBindings, skill.EchoingStrike)
 		//mainSkill = skill.EchoingStrike
 	}
@@ -450,27 +454,27 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 	// 	skillBindings = append(skillBindings, skill.MirroredBlades)
 	// }
 
-	if BindDemon, found := s.Data.PlayerUnit.Skills[skill.BindDemon]; found && BindDemon.Level > 0 {
+	if action.GetSkillTotalLevel(skill.BindDemon) > 0 {
 		skillBindings = append(skillBindings, skill.BindDemon)
 	}
 
-	if Consume, found := s.Data.PlayerUnit.Skills[skill.Consume]; found && Consume.Level > 0 {
+	if action.GetSkillTotalLevel(skill.Consume) > 0 {
 		skillBindings = append(skillBindings, skill.Consume)
 	}
 
-	if DeathMark, found := s.Data.PlayerUnit.Skills[skill.DeathMark]; found && DeathMark.Level > 0 {
+	if action.GetSkillTotalLevel(skill.DeathMark) > 0 {
 		skillBindings = append(skillBindings, skill.DeathMark)
 	}
 
-	if Engorge, found := s.Data.PlayerUnit.Skills[skill.Engorge]; found && Engorge.Level > 0 {
+	if action.GetSkillTotalLevel(skill.Engorge) > 0 {
 		skillBindings = append(skillBindings, skill.Engorge)
 	}
 
-	if PsychicWard, found := s.Data.PlayerUnit.Skills[skill.PsychicWard]; found && PsychicWard.Level > 0 {
+	if action.GetSkillTotalLevel(skill.PsychicWard) > 0 {
 		skillBindings = append(skillBindings, skill.PsychicWard)
 	}
 
-	if EldritchBlast, found := s.Data.PlayerUnit.Skills[skill.EldritchBlast]; found && EldritchBlast.Level > 0 {
+	if action.GetSkillTotalLevel(skill.EldritchBlast) > 0 {
 		skillBindings = append(skillBindings, skill.EldritchBlast)
 	}
 
@@ -479,11 +483,11 @@ func (s WarlockCleaveLeveling) SkillsToBind() (skill.ID, []skill.ID) {
 		skillBindings = append(skillBindings, skill.TomeOfTownPortal)
 	}
 
-	if BattleCommand, found := s.Data.PlayerUnit.Skills[skill.BattleCommand]; found && BattleCommand.Level > 0 {
+	if action.GetSkillTotalLevel(skill.BattleCommand) > 0 {
 		skillBindings = append(skillBindings, skill.BattleCommand)
 	}
 
-	if BattleOrders, found := s.Data.PlayerUnit.Skills[skill.BattleOrders]; found && BattleOrders.Level > 0 {
+	if action.GetSkillTotalLevel(skill.BattleOrders) > 0 {
 		skillBindings = append(skillBindings, skill.BattleOrders)
 	}
 

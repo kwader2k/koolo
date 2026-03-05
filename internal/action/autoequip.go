@@ -76,7 +76,7 @@ func AutoEquip() error {
 	}
 
 	// Safety mechanism to prevent infinite loops
-	maxIterations := 30
+	maxIterations := 20
 	currentIteration := 0
 
 	for { // Use an infinite loop that we can break from
@@ -102,10 +102,16 @@ func AutoEquip() error {
 
 		// Player
 		// Create a new list of items for the player, EXCLUDING mercenary's equipped items.
+		playerLevel := 1
+		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
+			playerLevel = lvl.Value
+		}
 		playerEvalItems := make([]data.Item, 0)
 		for _, itm := range allItems {
 			if itm.Location.LocationType != item.LocationMercenary {
-				playerEvalItems = append(playerEvalItems, itm)
+				if itm.LevelReq <= playerLevel {
+					playerEvalItems = append(playerEvalItems, itm)
+				}
 			}
 		}
 		playerItems, playerScores := evaluateItems(playerEvalItems, item.LocationEquipped, PlayerScore)
@@ -1239,7 +1245,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			return nil
 		}
 		ctx.Logger.Debug(fmt.Sprintf("Equip attempt %d failed, retrying...", attempt+1))
-		utils.Sleep(500, 500)
+		utils.Sleep(100, 100)
 	}
 	return fmt.Errorf("verification failed after all attempts to equip %s", itm.IdentifiedName)
 }
@@ -1346,7 +1352,7 @@ func UnEquipMercenary() error {
 	}
 	if !ctx.Data.OpenMenus.Inventory {
 		ctx.HID.PressKeyBinding(ctx.Data.KeyBindings.Inventory)
-		utils.Sleep(EquipDelayMS, 500)
+		utils.Sleep(EquipDelayMS, 100)
 	}
 
 	// Loop multiple times to ensure all items are stashed.
@@ -1368,7 +1374,7 @@ func UnEquipMercenary() error {
 			// Find the item's coordinates and perform a ctrl+click to stash it.
 			coords := ui.GetScreenCoordsForItem(invItem)
 			ctx.HID.ClickWithModifier(game.LeftButton, coords.X, coords.Y, game.CtrlKey)
-			utils.Sleep(EquipDelayMS, 200)
+			utils.Sleep(EquipDelayMS, 100)
 		}
 	}
 
