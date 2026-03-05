@@ -510,36 +510,36 @@ func (s WarlockCleaveLeveling) SkillPoints() []skill.ID {
 
 	skillSequence = []skill.ID{
 		// Levels 2-5:HexBane
-		skill.HexBane, skill.SummonGoatman, skill.Levitate, skill.DemonicMastery, skill.HexBane, //5
+		skill.HexBane, skill.SummonGoatman, skill.Levitate, skill.Levitate, skill.DemonicMastery, //5
 		//6
 		skill.Cleave, skill.BloodOath, skill.DeathMark, skill.SigilLethargy, //9
-		skill.HexBane, skill.HexBane, //11
+		skill.HexBane, skill.Levitate, //11
 		//12
 		skill.EchoingStrike, skill.SummonTainted, //13
-		skill.HexBane, skill.EchoingStrike, skill.HexBane, skill.EchoingStrike, //17
+		skill.EchoingStrike, skill.Levitate, skill.Levitate, skill.Levitate, //17
 		//18
 		skill.BladeWarp, skill.PsychicWard, skill.BloodBoil, skill.SummonDefiler, //21
-		skill.EchoingStrike, skill.HexBane, //23
+		skill.Levitate, skill.Levitate, //23
 		//24
 		skill.EldritchBlast, skill.Engorge, //25
-		skill.EchoingStrike, skill.HexBane, skill.EchoingStrike, skill.HexBane, //29
+		skill.EchoingStrike, skill.Levitate, skill.EchoingStrike, skill.Levitate, //29
 		//30
 		skill.MirroredBlades, skill.Consume, //31
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, //35
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //40
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //45
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //50
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //55
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //60
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.EchoingStrike, //65
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.HexBane, //70
-		skill.MirroredBlades, skill.HexBane, skill.MirroredBlades, skill.Consume, skill.HexBane, //75
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.EchoingStrike, //35
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //40
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //45
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //50
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //55
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //60
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //65
+		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //70
+		skill.MirroredBlades, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.HexBane, //75
 		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //80
 		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //85
 		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //90
-		skill.Consume, skill.Consume, skill.Consume, skill.Consume, //94
+		skill.Consume, skill.Consume, skill.Consume, skill.SigilLethargy, //94
 		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //99
-		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //104
+		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //102
 	}
 
 	return skillSequence

@@ -468,7 +468,7 @@ func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.Locatio
 			itemType := i.Desc().Type
 			warlockItem := slices.Contains(classItems[data.Warlock], itemType)
 
-			if warlockItem || bodyLoc == item.LocRightArm {
+			if warlockItem {
 				return true
 			}
 
