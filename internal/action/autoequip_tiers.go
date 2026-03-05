@@ -165,23 +165,23 @@ var (
 			stat.ManaRecovery:         -1.5,
 		},
 		data.Warlock: {
-			stat.EnhancedDamage:       2.0,
-			stat.FasterCastRate:       2.0,
-			stat.IncreasedAttackSpeed: 2.0,
-			stat.DeadlyStrike:         2.0,
+			stat.EnhancedDamage: 2.0,
+			stat.DeadlyStrike:   2.0,
 
 			stat.LifeSteal: 10.0,
 			stat.ManaSteal: 10.0,
 			stat.MaxMana:   1.0,
 			stat.MagicFind: 1.0,
 
-			stat.MaxDamage:          1.0,
-			stat.TwoHandedMaxDamage: 1.0,
-			stat.FireMaxDamage:      1.0,
-			stat.PoisonMaxDamage:    1.0,
-			stat.ColdMaxDamage:      1.0,
-			stat.MagicMaxDamage:     1.0,
-			stat.LightningMaxDamage: 1.0,
+			stat.FasterCastRate:       1.0,
+			stat.IncreasedAttackSpeed: 1.5,
+			stat.MaxDamage:            1.5,
+			stat.TwoHandedMaxDamage:   1.5,
+			stat.FireMaxDamage:        1.0,
+			stat.PoisonMaxDamage:      1.0,
+			stat.ColdMaxDamage:        1.0,
+			stat.MagicMaxDamage:       1.0,
+			stat.LightningMaxDamage:   1.0,
 
 			stat.FireResist:      -2.0, // 1
 			stat.ColdResist:      -1.0, // 1

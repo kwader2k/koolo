@@ -123,11 +123,11 @@ func AutoEquip() error {
 			}
 		}
 
-		ringsEquipped, _ := equipBestRings(playerItems)
+		//ringsEquipped, _ := equipBestRings(playerItems)
 
 		// Mercenary
 		// We need to refresh data after player equip, as it might have changed inventory
-		if playerChanged || ringsEquipped {
+		if playerChanged {
 			*ctx.Data = ctx.GameReader.GetData()
 			allItems = ctx.Data.Inventory.ByLocation(locations...)
 		}

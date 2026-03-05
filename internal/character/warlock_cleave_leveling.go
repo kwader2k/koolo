@@ -143,26 +143,54 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 		}
 		lastHealthPercent = healthPercent
 
-		if s.Data.PlayerUnit.Skills[skill.EchoingStrike].Level > 0 && s.CheckMana(skill.EchoingStrike) {
-			step.SelectRightSkill(skill.EchoingStrike)
-			step.SecondaryAttack(skill.EchoingStrike, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
-
-		} else if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) {
-			step.SelectRightSkill(skill.Cleave)
-			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
-
-		} else if action.GetSkillTotalLevel(skill.MiasmaBolt) > 0 && s.CheckMana(skill.MiasmaBolt) {
-			step.SelectRightSkill(skill.MiasmaBolt)
-			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
-
-		} else {
-			step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
-		}
+		s.MainAttack(currentTargetID)
 
 		completedAttackLoops++
 		utils.Sleep(20, 50)
 		s.CombatSupportSkills(monster) // summon
 	}
+}
+
+func (s WarlockCleaveLeveling) MainAttack(currentTargetID data.UnitID) {
+	ctx := context.Get()
+
+	if s.Data.PlayerUnit.Skills[skill.EchoingStrike].Level > 0 && s.CheckMana(skill.EchoingStrike) {
+		if s.Data.PlayerUnit.RightSkill == skill.EchoingStrike {
+			step.SecondaryAttack(skill.EchoingStrike, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
+			return
+		}
+		EchoingStrike, found := s.Data.KeyBindings.KeyBindingForSkill(skill.EchoingStrike)
+		if found {
+			ctx.HID.PressKeyBinding(EchoingStrike)
+			return
+		}
+	}
+
+	if s.Data.PlayerUnit.Skills[skill.Cleave].Level > 0 && s.CheckMana(skill.Cleave) {
+		if s.Data.PlayerUnit.RightSkill == skill.Cleave {
+			step.SecondaryAttack(skill.Cleave, currentTargetID, 1, step.Distance(1, 4))
+			return
+		}
+		Cleave, found := s.Data.KeyBindings.KeyBindingForSkill(skill.Cleave)
+		if found {
+			ctx.HID.PressKeyBinding(Cleave)
+			return
+		}
+	}
+
+	if action.GetSkillTotalLevel(skill.MiasmaBolt) > 0 && s.CheckMana(skill.MiasmaBolt) {
+		if s.Data.PlayerUnit.RightSkill == skill.MiasmaBolt {
+			step.SecondaryAttack(skill.MiasmaBolt, currentTargetID, 1, step.RangedDistance(eStrikeMinDistance, eStrikeMaxDistance))
+			return
+		}
+		MiasmaBolt, found := s.Data.KeyBindings.KeyBindingForSkill(skill.MiasmaBolt)
+		if found {
+			ctx.HID.PressKeyBinding(MiasmaBolt)
+			return
+		}
+	}
+
+	step.PrimaryAttack(currentTargetID, 1, true, step.Distance(1, 3))
 }
 
 func (s WarlockCleaveLeveling) HexSkills() []skill.ID {
