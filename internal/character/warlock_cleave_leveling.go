@@ -87,7 +87,7 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 	ctx := context.Get()
 	completedAttackLoops := 0
 	var currentTargetID data.UnitID
-	var lastReposition time.Time
+	nextReposition := time.Now()
 	lastHealthPercent := 100
 
 	for {
@@ -118,7 +118,7 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 			return nil
 		}
 
-		if completedAttackLoops >= eStrikeMaxAttacksLoop {
+		if completedAttackLoops > eStrikeMaxAttacksLoop {
 			completedAttackLoops = 0
 			return nil
 		}
@@ -129,19 +129,21 @@ func (s *WarlockCleaveLeveling) KillMonsterSequence(
 
 		//lvl, _ := s.Data.PlayerUnit.FindStat(stat.Level, 0)
 		healthPercent := s.Data.PlayerUnit.HPPercent()
-		canReposition := lastHealthPercent-healthPercent > 10 && time.Since(lastReposition) > utils.RandomDurationMs(1000, 2000)
+
+		canReposition := lastHealthPercent-healthPercent > 10
+		if time.Now().After(nextReposition) {
+			lastHealthPercent = healthPercent
+			nextReposition = time.Now().Add(time.Second)
+		}
 		if canReposition {
 			if safePos, found := action.FindSafePosition(monster, eStrikeDangerDistance, eStrikeSafeDistance, eStrikeMinDistance, eStrikeMaxDistance); found {
-				lastReposition = time.Now()
-
-				if s.CheckMana(skill.BladeWarp) && s.Data.PlayerUnit.Skills[skill.BladeWarp].Level > 0 {
+				if s.Data.PlayerUnit.Skills[skill.BladeWarp].Level > 0 && s.CheckMana(skill.BladeWarp) {
 					step.CastAtPosition(skill.BladeWarp, true, safePos)
 				} else {
 					step.MoveTo(safePos, step.WithStationaryDistance(eStrikeMinDistance, eStrikeMaxDistance))
 				}
 			}
 		}
-		lastHealthPercent = healthPercent
 
 		s.MainAttack(currentTargetID)
 
@@ -313,7 +315,7 @@ func (s *WarlockCleaveLeveling) CombatSupportSkills(target data.Monster) {
 			}
 		}
 		if castSigil {
-			s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(3000, 6000))
+			s.combatState.nextSigil = time.Now().Add(utils.RandomDurationMs(2000, 3000))
 		}
 	}
 
@@ -530,6 +532,8 @@ func (s WarlockCleaveLeveling) StatPoints() []context.StatAllocation {
 		{Stat: stat.Strength, Points: 35},
 		{Stat: stat.Vitality, Points: 60},
 		{Stat: stat.Strength, Points: 40},
+		{Stat: stat.Vitality, Points: 80},
+		{Stat: stat.Strength, Points: 60},
 		{Stat: stat.Vitality, Points: 999},
 	}
 	s.Logger.Debug("Stat point allocation plan", "stats", stats)
@@ -542,35 +546,36 @@ func (s WarlockCleaveLeveling) SkillPoints() []skill.ID {
 
 	skillSequence = []skill.ID{
 		// Levels 2-5:HexBane
-		skill.HexBane, skill.SummonGoatman, skill.Levitate, skill.Levitate, skill.DemonicMastery, //5
+		skill.Levitate, skill.SummonGoatman, skill.DemonicMastery, skill.HexBane, skill.Levitate, //5
 		//6
-		skill.Cleave, skill.BloodOath, skill.DeathMark, skill.SigilLethargy, //9
-		skill.HexBane, skill.Levitate, //11
+		skill.Cleave, skill.SigilLethargy, skill.DeathMark, skill.BloodOath, //9
+		skill.Levitate, skill.BloodOath, //11
 		//12
 		skill.EchoingStrike, skill.SummonTainted, //13
-		skill.EchoingStrike, skill.Levitate, skill.Levitate, skill.Levitate, //17
+		skill.EchoingStrike, skill.Levitate, skill.BloodOath, skill.EchoingStrike, //17
 		//18
 		skill.BladeWarp, skill.PsychicWard, skill.BloodBoil, skill.SummonDefiler, //21
-		skill.Levitate, skill.Levitate, //23
+		skill.Levitate, skill.EchoingStrike, //23
 		//24
 		skill.EldritchBlast, skill.Engorge, //25
-		skill.EchoingStrike, skill.Levitate, skill.EchoingStrike, skill.Levitate, //29
+		skill.Levitate, skill.EchoingStrike, skill.BladeWarp, skill.BloodOath, //29
+		skill.BloodOath, //+1 point quest bonus
 		//30
 		skill.MirroredBlades, skill.Consume, //31
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.EchoingStrike, //35
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //40
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //45
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //50
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //55
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //60
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //65
-		skill.EchoingStrike, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.EchoingStrike, //70
-		skill.MirroredBlades, skill.HexBane, skill.MirroredBlades, skill.HexBane, skill.HexBane, //75
-		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //80
-		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //85
-		skill.MirroredBlades, skill.Consume, skill.MirroredBlades, skill.Consume, skill.MirroredBlades, //90
-		skill.Consume, skill.Consume, skill.Consume, skill.SigilLethargy, //94
-		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //99
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //35
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //40
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //45
+		skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, skill.MirroredBlades, //50
+		skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, //55
+		skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, //60
+		skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, skill.EchoingStrike, //65
+		skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, //70
+		skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, //75
+		skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, //80
+		skill.BladeWarp, skill.BladeWarp, skill.BladeWarp, skill.BloodOath, skill.BloodOath, //85
+		skill.Levitate, skill.Levitate, skill.Levitate, skill.Levitate, skill.Levitate, //90
+		skill.Levitate, skill.Levitate, skill.Levitate, skill.Levitate, skill.Levitate, //94
+		skill.Levitate, skill.Levitate, skill.Levitate, skill.Levitate, skill.SigilLethargy, //99
 		skill.SigilLethargy, skill.SigilLethargy, skill.SigilLethargy, //102
 	}
 
