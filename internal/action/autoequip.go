@@ -78,6 +78,7 @@ func AutoEquip() error {
 	// Safety mechanism to prevent infinite loops
 	maxIterations := 20
 	currentIteration := 0
+	ignoreItems := make(map[data.UnitID]bool) //failed by level require bug
 
 	for { // Use an infinite loop that we can break from
 		currentIteration++
@@ -102,16 +103,15 @@ func AutoEquip() error {
 
 		// Player
 		// Create a new list of items for the player, EXCLUDING mercenary's equipped items.
-		playerLevel := 1
-		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
-			playerLevel = lvl.Value
-		}
 		playerEvalItems := make([]data.Item, 0)
 		for _, itm := range allItems {
 			if itm.Location.LocationType != item.LocationMercenary {
-				if itm.LevelReq <= playerLevel {
-					playerEvalItems = append(playerEvalItems, itm)
+				if ignoreItems[itm.UnitID] {
+					itm.Location.LocationType = item.LocationInventory
+					continue
 				}
+				playerEvalItems = append(playerEvalItems, itm)
+				ignoreItems[itm.UnitID] = true
 			}
 		}
 		playerItems, playerScores := evaluateItems(playerEvalItems, item.LocationEquipped, PlayerScore)
@@ -123,9 +123,11 @@ func AutoEquip() error {
 			}
 		}
 
+		ringsEquipped, _ := equipBestRings(playerItems)
+
 		// Mercenary
 		// We need to refresh data after player equip, as it might have changed inventory
-		if playerChanged {
+		if playerChanged || ringsEquipped {
 			*ctx.Data = ctx.GameReader.GetData()
 			allItems = ctx.Data.Inventory.ByLocation(locations...)
 		}
@@ -618,11 +620,6 @@ func equipBestItems(itemsByLoc map[item.LocationType][]data.Item, itemScores map
 			delete(itemsByLoc, item.LocLeftArm)
 			delete(itemsByLoc, item.LocRightArm)
 		}
-	}
-
-	ringsEquipped, _ := equipBestRings(itemsByLoc)
-	if ringsEquipped {
-		return true, nil
 	}
 
 	locationOrder := make([]item.LocationType, 0, len(itemsByLoc))
