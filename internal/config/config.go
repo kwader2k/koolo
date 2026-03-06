@@ -379,6 +379,9 @@ type CharacterCfg struct {
 		WarlockLeveling struct {
 			UsePacketLearning bool `yaml:"use_packet_learning"`
 		} `yaml:"warlock_leveling"`
+		WarlockCleaveLeveling struct {
+			UsePacketLearning bool `yaml:"use_packet_learning"`
+		} `yaml:"warlock_cleave_leveling"`
 	} `yaml:"character"`
 
 	Game struct {

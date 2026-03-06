@@ -34,6 +34,8 @@ func BuildCharacter(ctx *context.Context) (context.Character, error) {
 			return AmazonLeveling{BaseCharacter: bc}, nil
 		case "warlock_leveling":
 			return WarlockLeveling{BaseCharacter: bc}, nil
+		case "warlock_cleave_leveling":
+			return &WarlockCleaveLeveling{BaseCharacter: bc}, nil
 		}
 
 		return nil, fmt.Errorf("leveling only available for sorceress, assassin, necromancer, druid, barbarian and paladin")

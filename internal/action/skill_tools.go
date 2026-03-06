@@ -75,6 +75,8 @@ func EnsureSkillPoints() error {
 		usePacketMode = ctx.CharacterCfg.Character.PaladinLeveling.UsePacketLearning
 	case "warlock_leveling":
 		usePacketMode = ctx.CharacterCfg.Character.WarlockLeveling.UsePacketLearning
+	case "warlock_cleave_leveling":
+		usePacketMode = ctx.CharacterCfg.Character.WarlockCleaveLeveling.UsePacketLearning
 	}
 	skillsBuild := char.SkillPoints()
 	targetLevels := make(map[skill.ID]int)

@@ -11,4 +11,5 @@
 !/config/template
 !/config/koolo.yaml.dist
 !/config/Settings.json
+third_party
 internal/buildnoise/noise_gen.go

@@ -2,14 +2,15 @@ let activeRunFilter = 'all';
 let currentSearchTerm = '';
 let runFilterTabs = [];
 const levelingBuilds = [
-    'paladin',
+    'paladin_leveling',
     'sorceress_leveling',
     'druid_leveling',
     'amazon_leveling',
     'necromancer',
     'assassin',
     'barb_leveling',
-    'warlock_leveling'
+    'warlock_leveling',
+    'warlock_cleave_leveling'
 ];
 
 window.onload = function () {
@@ -417,6 +418,7 @@ document.addEventListener('DOMContentLoaded', function () {
         ],
         warlock: [
             { value: 'warlock_leveling', label: 'Warlock (Leveling)' },
+            { value: 'warlock_cleave_leveling', label: 'Warlock (Cleave Leveling)' },
         ],
         other: [
             { value: 'mule', label: 'Mule' },

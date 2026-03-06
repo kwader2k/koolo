@@ -36,6 +36,7 @@ var (
 		data.Barbarian:   {"phlm"},
 		data.Druid:       {"pelt"},
 		data.Assassin:    {"h2h"},
+		data.Warlock:     {"grim"},
 	}
 
 	// shieldTypes defines items that should be equipped in right arm (technically they can be left or right arm but we don't want to try and equip two shields)
@@ -298,19 +299,21 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 	// Only apply two-handed checks if this is actually a weapon
 	isWeapon := bodyloc == item.LocLeftArm || bodyloc == item.LocRightArm
 	if _, isTwoHanded := newItem.FindStat(stat.TwoHandedMinDamage, 0); isTwoHanded && isWeapon {
-		// We need to fetch the level stat safely.
-		playerLevel := 0
-		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
-			playerLevel = lvl.Value
-		}
+		if ctx.Data.PlayerUnit.Class != data.Warlock {
+			// We need to fetch the level stat safely.
+			playerLevel := 0
+			if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
+				playerLevel = lvl.Value
+			}
 
-		//Avoid equiping 2 handed unless it's a runeword
-		if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword {
-			return false
-		}
+			//Avoid equiping 2 handed unless it's a runeword
+			if target == item.LocationEquipped && playerLevel > 5 && !newItem.IsRuneword {
+				return false
+			}
 
-		if target == item.LocationEquipped && playerLevel >= 24 && isSorc {
-			return false
+			if target == item.LocationEquipped && playerLevel >= 24 && isSorc {
+				return false
+			}
 		}
 	}
 	// Class specific item type checks
@@ -326,16 +329,17 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 	}
 
 	// Main Requirement Check (Level, Strength, Dexterity)
+	requireMulti := 1.0
+	if isWeapon && ctx.Data.PlayerUnit.Class == data.Warlock {
+		requireMulti = 1.0 - 0.2*float64(GetSkillTotalLevel(skill.Levitate))
+	}
 	if target == item.LocationEquipped {
-		var playerLevel int
+		playerLevel := 1
 		if lvl, found := ctx.Data.PlayerUnit.FindStat(stat.Level, 0); found {
 			playerLevel = lvl.Value
 		}
 
-		itemLevelReq := 0
-		if lvlReqStat, found := newItem.FindStat(stat.LevelRequire, 0); found {
-			itemLevelReq = lvlReqStat.Value
-		}
+		itemLevelReq := newItem.LevelReq
 
 		// Explicitly log the level comparison
 		if playerLevel < itemLevelReq {
@@ -355,8 +359,9 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 				baseDex -= dexBonus.Value
 			}
 		}
-
-		if baseStr < newItem.Desc().RequiredStrength || baseDex < newItem.Desc().RequiredDexterity {
+		RequiredStrength := int(float64(newItem.Desc().RequiredStrength) * requireMulti)
+		RequiredDexterity := int(float64(newItem.Desc().RequiredDexterity) * requireMulti)
+		if baseStr < RequiredStrength || baseDex < RequiredDexterity {
 			return false
 		}
 	}
@@ -460,6 +465,15 @@ func isValidLocation(i data.Item, bodyLoc item.LocationType, target item.Locatio
 				return false
 			}
 			return isClaws
+		case data.Warlock:
+			itemType := i.Desc().Type
+			warlockItem := slices.Contains(classItems[data.Warlock], itemType)
+
+			if warlockItem {
+				return true
+			}
+
+			return false
 		default:
 			return false
 		}
@@ -537,8 +551,8 @@ func evaluateItems(items []data.Item, target item.LocationType, scoreFunc func(d
 	}
 
 	// "Best Combo" logic for Two-Handed Weapons
-	if target == item.LocationEquipped {
-		class := ctx.Data.PlayerUnit.Class
+	class := ctx.Data.PlayerUnit.Class
+	if target == item.LocationEquipped && class != data.Warlock {
 		isBarbLeveling := isBarbLevelingCharacter()
 
 		if items, ok := itemsByLoc[item.LocLeftArm]; ok && len(items) > 0 {
