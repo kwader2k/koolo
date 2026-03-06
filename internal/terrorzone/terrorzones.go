@@ -69,7 +69,12 @@ var zones = map[area.ID]ZoneInfo{
 	area.GlacialTrail:            {Act: 5, ExpTier: TierA, LootTier: TierB, BossPack: "13-17", Immunities: []string{"f", "c", "l", "p", "ph"}, Group: "Glacial Trail / Drifter Cavern"},
 	area.TheAncientsWay:          {Act: 5, ExpTier: TierB, LootTier: TierB, BossPack: "6-8", Immunities: []string{"c", "l", "p", "ph"}, Group: "Ancient's Way / Icy Cellar"},
 	area.NihlathaksTemple:        {Act: 5, ExpTier: TierA, LootTier: TierA, BossPack: "12-14", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Nihlathak's Temple / Temple Halls"},
-	area.TheWorldStoneKeepLevel1: {Act: 5, ExpTier: TierS, LootTier: TierS, BossPack: "22-29", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Worldstone Keep / Throne of Destruction"},
+	area.TheWorldStoneKeepLevel1: {Act: 5, ExpTier: TierS, LootTier: TierS, BossPack: "22-29", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "The Worldstone Chamber"},
+	area.TalRashasTomb3:          {Act: 1, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Andariel / Boss"},
+	area.TalRashasTomb4:          {Act: 2, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Duriel / Boss"},
+	area.TalRashasTomb5:          {Act: 3, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Mephisto / Boss"},
+	area.TalRashasTomb6:          {Act: 4, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Diablo / Boss"},
+	area.TalRashasTomb7:          {Act: 5, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Baal / Boss"},
 }
 
 // -----------------------------------------------------------------------------
