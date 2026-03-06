@@ -98,6 +98,8 @@ func classToString(c data.Class) string {
 		return "Druid"
 	case data.Assassin:
 		return "Assassin"
+	case data.Warlock:
+		return "Warlock"
 	default:
 		return "Unknown"
 	}
