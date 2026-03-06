@@ -249,7 +249,13 @@ body {
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  z-index: 0;
+  cursor: grab;
+}
+
+.character-card.actions-open {
+  z-index: 30;
 }
 
 .character-card::before {
@@ -306,6 +312,65 @@ body {
   align-items: center;
   gap: var(--spacing-sm);
   letter-spacing: -0.3px;
+}
+
+.supervisor-name {
+  display: inline-flex;
+  align-items: center;
+}
+
+.supervisor-name-input {
+  display: none;
+  width: 140px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--primary);
+  border-radius: 6px;
+  background: rgba(12, 16, 22, 0.95);
+  color: var(--co-text);
+  font-size: 0.82em;
+  font-weight: 600;
+}
+
+.supervisor-rename-btn,
+.supervisor-rename-save,
+.supervisor-rename-cancel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.supervisor-rename-btn:hover,
+.supervisor-rename-save:hover,
+.supervisor-rename-cancel:hover {
+  background: rgba(0, 137, 235, 0.12);
+  color: var(--primary);
+}
+
+.supervisor-rename-save,
+.supervisor-rename-cancel {
+  display: none;
+}
+
+.character-card.renaming-supervisor .supervisor-name,
+.character-card.renaming-supervisor .supervisor-rename-btn {
+  display: none;
+}
+
+.character-card.renaming-supervisor .supervisor-name-input,
+.character-card.renaming-supervisor .supervisor-rename-save,
+.character-card.renaming-supervisor .supervisor-rename-cancel {
+  display: inline-flex;
 }
 
 /* ========================================
@@ -489,6 +554,7 @@ body {
 .character-controls {
   display: flex;
   gap: var(--spacing-sm);
+  align-items: center;
 }
 
 .toggle-details {
@@ -523,6 +589,153 @@ body {
 
 .character-card.expanded .toggle-details i {
   transform: rotate(180deg);
+}
+
+.card-actions-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  align-self: center;
+  margin: 0;
+  padding: 0;
+}
+
+.card-actions-toggle {
+  margin: 0;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  gap: 0;
+  position: relative;
+}
+
+.card-actions-toggle i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  line-height: 1;
+  margin: 0;
+  transform: translate(-50%, -50%);
+}
+
+.card-actions-dropdown {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  min-width: 170px;
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-lg);
+}
+
+.card-actions-menu.open .card-actions-dropdown {
+  display: block;
+}
+
+.card-action-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.card-action-btn:hover {
+  background: var(--bg-hover);
+}
+
+.card-action-btn.danger {
+  color: #ff8a8a;
+}
+
+.card-action-btn.danger:hover {
+  background: rgba(220, 53, 69, 0.12);
+}
+
+.hidden-supervisors-section {
+  margin-bottom: var(--spacing-md);
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  box-shadow: var(--shadow-sm);
+}
+
+.hidden-supervisors-header {
+  margin-bottom: 8px;
+  color: var(--text-secondary);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.hidden-supervisors-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hidden-supervisor-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  min-height: 28px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  box-shadow: none;
+}
+
+.hidden-supervisor-name {
+  display: inline-flex;
+  align-items: center;
+  color: var(--co-text);
+  font-weight: 600;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.hidden-supervisor-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  border-radius: 6px;
+  background: rgba(0, 137, 235, 0.12);
+  color: var(--primary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  align-self: center;
+  flex: 0 0 auto;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.hidden-supervisor-action i {
+  display: block;
+  line-height: 1;
+}
+
+.hidden-supervisor-action:hover {
+  background: rgba(0, 137, 235, 0.22);
+  color: var(--primary-hover);
 }
 
 /* ========================================
