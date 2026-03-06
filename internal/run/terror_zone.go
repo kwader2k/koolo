@@ -62,8 +62,15 @@ func (tz TerrorZone) Run(parameters *RunParameters) error {
 		return NewDiablo().Run(parameters)
 	case area.NihlathaksTemple:
 		return NewNihlathakTZ(tz.customTZEnemyFilter()).Run(parameters)
+		//custom tz boss runs - diablo already has default config so there is no need to add any additional config for it
+	case area.CatacombsLevel4:
+		return NewAndariel().Run(parameters)
+	case area.DurielsLair:
+		return NewDuriel().Run(parameters)
+	case area.DuranceOfHateLevel3:
+		return NewMephisto(nil).Run(parameters)
 	case area.TheWorldStoneKeepLevel1:
-		return NewBaal(tz.customTZEnemyFilter()).Run(parameters)
+		return NewBaal(nil).Run(parameters)
 	}
 
 	// --- Generic TZ handling via centralized routes ---

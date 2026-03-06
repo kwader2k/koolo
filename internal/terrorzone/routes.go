@@ -39,7 +39,7 @@ var Routes = map[area.ID][]Route{
 	area.BurialGrounds:  {{Move(area.ColdPlains), Clear(area.BurialGrounds), Clear(area.Crypt), Move(area.BurialGrounds), Clear(area.Mausoleum)}},
 	area.StonyField:     {{Clear(area.StonyField)}},
 	area.DarkWood:       {{Clear(area.DarkWood), Clear(area.UndergroundPassageLevel1), Clear(area.UndergroundPassageLevel2)}},
-	area.BlackMarsh:     {{Clear(area.BlackMarsh), Clear(area.ForgottenTower), Clear(area.TowerCellarLevel1), Clear(area.TowerCellarLevel2), Clear(area.TowerCellarLevel3), Clear(area.TowerCellarLevel4), Clear(area.TowerCellarLevel5), Clear(area.HoleLevel1), Clear(area.HoleLevel2)}},
+	area.BlackMarsh:     {{Clear(area.BlackMarsh), Clear(area.ForgottenTower), Clear(area.TowerCellarLevel1), Clear(area.TowerCellarLevel2), Clear(area.TowerCellarLevel3), Clear(area.TowerCellarLevel4), Clear(area.TowerCellarLevel5), Move(area.BlackMarsh), Clear(area.HoleLevel1), Clear(area.HoleLevel2)}},
 	area.ForgottenTower: {{Move(area.BlackMarsh), Clear(area.ForgottenTower), Clear(area.TowerCellarLevel1), Clear(area.TowerCellarLevel2), Clear(area.TowerCellarLevel3), Clear(area.TowerCellarLevel4), Clear(area.TowerCellarLevel5)}},
 	area.Barracks:       {{Move(area.OuterCloister), Clear(area.Barracks), Clear(area.JailLevel1), Clear(area.JailLevel2), Clear(area.JailLevel3)}},
 	area.Cathedral:      {{Move(area.InnerCloister), Clear(area.Cathedral), Clear(area.CatacombsLevel1), Clear(area.CatacombsLevel2), Clear(area.CatacombsLevel3), Clear(area.CatacombsLevel4)}},
@@ -74,13 +74,7 @@ var Routes = map[area.ID][]Route{
 	area.NihlathaksTemple:   {{Clear(area.NihlathaksTemple), Clear(area.HallsOfAnguish), Clear(area.HallsOfPain), Clear(area.HallsOfVaught)}},
 	// Nihlathak, Baal-> terror_zone.go -> NewPit().Run() ect...
 
-	//custom tz bos runs
-	//custom made areas for tz boss hunt
-	area.TalRashasTomb3: {{Move(area.CatacombsLevel2), Clear(area.CatacombsLevel4)}},                                                                                   //"Andariel / TZ Boss"},
-	area.TalRashasTomb4: {{Move(area.CanyonOfTheMagi), Clear(area.DurielsLair)}},                                                                                       //{Act: 2, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Duriel / TZ Boss"},
-	area.TalRashasTomb5: {{Move(area.DuranceOfHateLevel2), Clear(area.DuranceOfHateLevel3)}},                                                                           //{Act: 3, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Mephisto / TZ Boss"},
-	area.TalRashasTomb6: {{Move(area.RiverOfFlame), Clear(area.ChaosSanctuary)}},                                                                                       //{Act: 4, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Diablo / TZ Boss"},
-	area.TalRashasTomb7: {{Move(area.TheWorldStoneKeepLevel2), Move(area.TheWorldStoneKeepLevel3), Clear(area.ThroneOfDestruction), Clear(area.TheWorldstoneChamber)}}, //{Act: 5, ExpTier: TierS, LootTier: TierS, BossPack: "BamBam", Immunities: []string{"f", "c", "l", "p", "ph", "m"}, Group: "Baal / TZ Boss"},
+	//custom tz boss runs applied in terror_zone.go
 }
 
 // RoutesFor returns all routes for a given primary TZ area.
