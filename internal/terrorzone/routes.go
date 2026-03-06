@@ -39,7 +39,7 @@ var Routes = map[area.ID][]Route{
 	area.BurialGrounds:  {{Move(area.ColdPlains), Clear(area.BurialGrounds), Clear(area.Crypt), Move(area.BurialGrounds), Clear(area.Mausoleum)}},
 	area.StonyField:     {{Clear(area.StonyField)}},
 	area.DarkWood:       {{Clear(area.DarkWood), Clear(area.UndergroundPassageLevel1), Clear(area.UndergroundPassageLevel2)}},
-	area.BlackMarsh:     {{Clear(area.BlackMarsh), Clear(area.HoleLevel1), Clear(area.HoleLevel2)}},
+	area.BlackMarsh:     {{Clear(area.BlackMarsh), Clear(area.ForgottenTower),Clear(area.TowerCellarLevel1), Clear(area.TowerCellarLevel2), Clear(area.TowerCellarLevel3), Clear(area.TowerCellarLevel4), Clear(area.TowerCellarLevel5), Clear(area.HoleLevel1), Clear(area.HoleLevel2)}},
 	area.ForgottenTower: {{Move(area.BlackMarsh), Clear(area.ForgottenTower), Clear(area.TowerCellarLevel1), Clear(area.TowerCellarLevel2), Clear(area.TowerCellarLevel3), Clear(area.TowerCellarLevel4), Clear(area.TowerCellarLevel5)}},
 	area.Barracks:       {{Move(area.OuterCloister), Clear(area.Barracks), Clear(area.JailLevel1), Clear(area.JailLevel2), Clear(area.JailLevel3)}},
 	area.Cathedral:      {{Move(area.InnerCloister), Clear(area.Cathedral), Clear(area.CatacombsLevel1), Clear(area.CatacombsLevel2), Clear(area.CatacombsLevel3), Clear(area.CatacombsLevel4)}},

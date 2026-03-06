@@ -35,7 +35,7 @@ type ZoneInfo struct {
 
 var zones = map[area.ID]ZoneInfo{
 	area.Barracks:                {Act: 1, ExpTier: TierA, LootTier: TierS, BossPack: "24-32", Immunities: []string{"f", "c", "p", "ph"}, Group: "Barracks / Jail"},
-	area.BlackMarsh:              {Act: 1, ExpTier: TierA, LootTier: TierB, BossPack: "15-20", Immunities: []string{"f", "c", "l", "p"}, Group: "Black Marsh / The Hole"},
+	area.BlackMarsh:              {Act: 1, ExpTier: TierA, LootTier: TierB, BossPack: "15-20", Immunities: []string{"f", "c", "l", "p"}, Group: "Black Marsh / The Hole/ Tower"},
 	area.BloodMoor:               {Act: 1, ExpTier: TierF, LootTier: TierF, BossPack: "7-9", Immunities: []string{"f", "c"}, Group: "Blood Moor / Den of Evil"},
 	area.BurialGrounds:           {Act: 1, ExpTier: TierC, LootTier: TierD, BossPack: "8-10", Immunities: []string{"l"}, Group: "Burial Grounds / Crypt / Mausoleum"},
 	area.Cathedral:               {Act: 1, ExpTier: TierS, LootTier: TierS, BossPack: "27-35", Immunities: []string{"f", "c", "l", "ph"}, Group: "Cathedral / Catacombs"},

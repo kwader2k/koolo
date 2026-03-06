@@ -259,7 +259,7 @@ func (d *Diablo) killSealElite(sealEliteName string) error {
 	d.ctx.Logger.Debug(fmt.Sprintf("Starting kill sequence for %s", sealEliteName))
 	startTime := time.Now()
 
-	timeout := 20 * time.Second
+	timeout := 4 * time.Second
 
 	_, isLevelingChar := d.ctx.Char.(context.LevelingCharacter)
 	sealElite := data.Monster{}
