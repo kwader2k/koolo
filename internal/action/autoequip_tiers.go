@@ -190,9 +190,9 @@ var (
 			stat.PoisonResist:    0.5, // 1.5
 
 			//stat.AllSkills:      -150.0, //50
-			stat.AddClassSkills: -75.0,  //100
-			stat.AddSkillTab:    -100.0, //25
-			stat.SingleSkill:    -30.0,  //10
+			stat.AddClassSkills: -175.0, //0 bug that calculates skill points from other classes.
+			stat.AddSkillTab:    -125.0, //0 bug that calculates skill points from other classes.
+			stat.SingleSkill:    -40.0,  //0 bug that calculates skill points from other classes.
 			stat.FireSkills:     -30.0,  //10
 		},
 	}
