@@ -20,6 +20,7 @@ var (
 		stat.AddClassSkills: 175.0,
 		stat.AddSkillTab:    125.0,
 		stat.SingleSkill:    40.0,
+		stat.FireSkills:     40.0,
 	}
 
 	resistWeightsMain = map[stat.ID]float64{
@@ -70,6 +71,14 @@ var (
 		stat.ReplenishLife:        2.0,
 		stat.LifePerLevel:         3.0,
 		stat.ManaPerLevel:         2.0,
+		stat.EnhancedDamage:       0.0,
+		stat.MinDamage:            0.0,
+		stat.MaxDamage:            0.0,
+		stat.TwoHandedMinDamage:   0.0,
+		stat.TwoHandedMaxDamage:   0.0,
+		stat.DeadlyStrike:         0.0,
+		stat.LifeSteal:            0.0,
+		stat.ManaSteal:            0.0,
 	}
 
 	uniqueItemScores = map[item.Name]float64{
@@ -153,6 +162,38 @@ var (
 			stat.IncreasedAttackSpeed: 4.0,
 			stat.FasterCastRate:       -4.5,
 			stat.ManaRecovery:         -1.5,
+		},
+		data.Warlock: {
+			stat.FasterCastRate:       3.0,
+			stat.IncreasedAttackSpeed: 2.0,
+			stat.DeadlyStrike:         1.0,
+
+			stat.LifeSteal: 10.0,
+			stat.ManaSteal: 10.0,
+			stat.MaxMana:   1.0,
+			stat.MagicFind: 1.0,
+
+			stat.MaxDamage:          5.0,
+			stat.MinDamage:          5.0,
+			stat.TwoHandedMaxDamage: 5.0,
+			stat.TwoHandedMinDamage: 5.0,
+			stat.EnhancedDamage:     1.0,
+			stat.FireMaxDamage:      1.0,
+			stat.PoisonMaxDamage:    1.0,
+			stat.ColdMaxDamage:      1.0,
+			stat.MagicMaxDamage:     1.0,
+			stat.LightningMaxDamage: 1.0,
+
+			stat.FireResist:      0.0, // 3
+			stat.ColdResist:      0.0, // 2
+			stat.LightningResist: 0.0, // 3
+			stat.PoisonResist:    0.5, // 1.5
+
+			//stat.AllSkills:      -150.0, //50
+			stat.AddClassSkills: -175.0, //0 bug that calculates skill points from other classes.
+			stat.AddSkillTab:    -125.0, //0 bug that calculates skill points from other classes.
+			stat.SingleSkill:    -40.0,  //0 bug that calculates skill points from other classes.
+			stat.FireSkills:     -30.0,  //10
 		},
 	}
 
@@ -257,10 +298,11 @@ func PlayerScore(itm data.Item) map[item.LocationType]float64 {
 	// Should move valid location checks here maybe to avoid unneccessary calcs
 	scores := make(map[item.LocationType]float64)
 
+	generalScore := calculateGeneralScore(itm)
+	skillScore := calculateSkillScore(itm)
+
 	for _, loc := range bodyLocs {
-		generalScore := calculateGeneralScore(itm)
 		resistScore := calculateResistScore(itm, loc)
-		skillScore := calculateSkillScore(itm)
 
 		totalScore := BaseScore + generalScore + resistScore + skillScore
 
@@ -560,15 +602,23 @@ func calculateOtherResistScore(itm data.Item) float64 {
 func calculateSkillScore(itm data.Item) float64 {
 	ctx := context.Get()
 	score := 0.0
+	class := context.Get().Data.PlayerUnit.Class
+	classModifiers, hasClassModifiers := classWeightModifiers[class]
 
 	if statData, found := itm.FindStat(stat.AllSkills, 0); found {
 		allSkillScore := float64(statData.Value) * skillWeights[statData.ID]
-		//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +All skills: %d, weight: %.1f, score: %.1f", itm.IdentifiedName, statData.Value, skillWeights[statData.ID], allSkillScore))
+		if hasClassModifiers {
+			allSkillScore += float64(statData.Value) * classModifiers[statData.ID]
+		}
+		//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +All skills: %d, weight: %.1f, score: %.1f", itm.IdentifiedName, statData.Value, modSkillWeight[statData.ID], allSkillScore))
 		score += allSkillScore
 	}
 
 	if classSkillsStat, found := itm.FindStat(stat.AddClassSkills, int(ctx.Data.PlayerUnit.Class)); found {
 		classSkillScore := float64(classSkillsStat.Value) * skillWeights[classSkillsStat.ID]
+		if hasClassModifiers {
+			classSkillScore += float64(classSkillsStat.Value) * classModifiers[classSkillsStat.ID]
+		}
 		//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +Class skills: %d, weight: %.1f, score: %.1f", itm.IdentifiedName, classSkillsStat.Value, skillWeights[classSkillsStat.ID], classSkillScore))
 		score += classSkillScore
 	}
@@ -576,6 +626,9 @@ func calculateSkillScore(itm data.Item) float64 {
 	tabskill := int(ctx.Data.PlayerUnit.Class)*8 + (getMaxSkillTabPage() - 1)
 	if tabSkillsStat, found := itm.FindStat(stat.AddSkillTab, tabskill); found {
 		tabSkillScore := float64(tabSkillsStat.Value) * skillWeights[tabSkillsStat.ID]
+		if hasClassModifiers {
+			tabSkillScore += float64(tabSkillsStat.Value) * classModifiers[tabSkillsStat.ID]
+		}
 		//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +Tab skills (tab %d): %d, weight: %.1f, score: %.1f", itm.IdentifiedName, getMaxSkillTabPage(), tabSkillsStat.Value, skillWeights[tabSkillsStat.ID], tabSkillScore))
 		score += tabSkillScore
 	}
@@ -594,6 +647,9 @@ func calculateSkillScore(itm data.Item) float64 {
 	for _, usedSkill := range usedSkills {
 		if usedSkillsStat, found := itm.FindStat(stat.SingleSkill, int(usedSkill)); found {
 			usedSkillScore := float64(usedSkillsStat.Value) * skillWeights[usedSkillsStat.ID]
+			if hasClassModifiers {
+				usedSkillScore += float64(usedSkillsStat.Value) * classModifiers[usedSkillsStat.ID]
+			}
 			//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +%d to %s, weight: %.1f, score: %.1f", itm.IdentifiedName, usedSkillsStat.Value, usedSkill.Desc().Name, skillWeights[usedSkillsStat.ID], usedSkillScore))
 			score += usedSkillScore
 		}
@@ -604,9 +660,11 @@ func calculateSkillScore(itm data.Item) float64 {
 		for sk := range ctx.Data.PlayerUnit.Skills {
 			for _, fireSkill := range fireSkills {
 				if sk == fireSkill {
-					const fireSkillWeight = 40.0
-					fireSkillScore := float64(fireSkillsStat.Value) * fireSkillWeight
+					fireSkillScore := float64(fireSkillsStat.Value) * skillWeights[stat.FireSkills]
 					//ctx.Logger.Debug(fmt.Sprintf("Item: %s, +%d to Fire Skills, weight: %.1f, score: %.1f", itm.IdentifiedName, fireSkillsStat.Value, fireSkillWeight, fireSkillScore))
+					if hasClassModifiers {
+						fireSkillScore += float64(fireSkillsStat.Value) * classModifiers[stat.FireSkills]
+					}
 					score += fireSkillScore
 				}
 			}
