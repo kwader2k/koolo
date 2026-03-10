@@ -79,7 +79,7 @@ type Debug struct {
 }
 
 type CurrentGameHelper struct {
-	BlacklistedItems []data.Item
+	BlacklistedItems map[data.UnitID]BlacklistedItem
 	PickedUpItems    map[int]int
 	CurrentStashTab  int  // Tracks which stash tab/page the UI is showing (0 = unknown/closed)
 	HasOpenedStash   bool // True after the first stash open this game; the first open always lands on personal tab, subsequent opens remember the last position
@@ -99,6 +99,13 @@ type CurrentGameHelper struct {
 	ShouldCheckStash  bool
 	StashFull         bool
 	mutex             sync.Mutex
+}
+
+type BlacklistedItem struct {
+	Item      data.Item
+	Until     time.Time
+	Attempts  int
+	Permanent bool
 }
 
 func (ctx *Context) StopSupervisor() {
@@ -146,7 +153,7 @@ func NewGameHelper() *CurrentGameHelper {
 	return &CurrentGameHelper{
 		PickupItems:                true,
 		PickedUpItems:              make(map[int]int),
-		BlacklistedItems:           []data.Item{},
+		BlacklistedItems:           make(map[data.UnitID]BlacklistedItem),
 		FailedToCreateGameAttempts: 0,
 	}
 }
@@ -245,7 +252,7 @@ func (ctx *Context) Cleanup() {
 	ctx.Logger.Debug("Resetting blacklisted items")
 
 	// Remove all items from the blacklisted items list
-	ctx.CurrentGame.BlacklistedItems = []data.Item{}
+	ctx.CurrentGame.BlacklistedItems = make(map[data.UnitID]BlacklistedItem)
 
 	// flag reset in case something goes wrong (barb leveling)
 	ctx.IsBossEquipmentActive = false

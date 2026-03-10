@@ -18,6 +18,11 @@ import (
 	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
+const (
+	blacklistCooldown          = 5 * time.Second
+	blacklistMaxAttemptsPerUID = 3
+)
+
 func itemFitsInventory(i data.Item) bool {
 	invMatrix := context.Get().Data.Inventory.Matrix()
 
@@ -365,9 +370,7 @@ outer:
 
 		// If all attempts failed, blacklist *this specific ground instance* (UnitID), not the whole base item ID.
 		if totalAttemptCounter >= totalMaxAttempts && lastError != nil {
-			if !IsBlacklisted(itemToPickup) {
-				ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, itemToPickup)
-			}
+			BlacklistItem(itemToPickup, blacklistCooldown, false)
 
 			// Screenshot with show items on
 			ctx.HID.KeyDown(ctx.Data.KeyBindings.ShowItems)
@@ -637,11 +640,46 @@ func shouldBePickedUp(i data.Item) bool {
 }
 
 func IsBlacklisted(itm data.Item) bool {
-	for _, blacklisted := range context.Get().CurrentGame.BlacklistedItems {
-		// Blacklist is per-game. UnitID is the safest key: it targets only the problematic ground instance.
-		if itm.UnitID == blacklisted.UnitID {
-			return true
-		}
+	ctx := context.Get()
+	entry, ok := ctx.CurrentGame.BlacklistedItems[itm.UnitID]
+	if !ok {
+		return false
 	}
+
+	if entry.Permanent {
+		return true
+	}
+	if time.Now().Before(entry.Until) {
+		return true
+	}
+
+	delete(ctx.CurrentGame.BlacklistedItems, itm.UnitID)
 	return false
+}
+
+func BlacklistItem(itm data.Item, cooldown time.Duration, permanent bool) {
+	ctx := context.Get()
+
+	entry := ctx.CurrentGame.BlacklistedItems[itm.UnitID]
+	entry.Item = itm
+	if permanent {
+		entry.Permanent = true
+		entry.Attempts = blacklistMaxAttemptsPerUID
+		entry.Until = time.Time{}
+		ctx.CurrentGame.BlacklistedItems[itm.UnitID] = entry
+		return
+	}
+
+	entry.Attempts++
+	if entry.Attempts >= blacklistMaxAttemptsPerUID {
+		entry.Permanent = true
+		entry.Until = time.Time{}
+	} else {
+		if cooldown <= 0 {
+			cooldown = blacklistCooldown
+		}
+		entry.Until = time.Now().Add(cooldown)
+	}
+
+	ctx.CurrentGame.BlacklistedItems[itm.UnitID] = entry
 }

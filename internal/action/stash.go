@@ -518,8 +518,8 @@ func dropExcessItems() {
 }
 
 func blacklistItem(i data.Item) {
+	BlacklistItem(i, 0, true)
 	ctx := context.Get()
-	ctx.CurrentGame.BlacklistedItems = append(ctx.CurrentGame.BlacklistedItems, i)
 	ctx.Logger.Info(fmt.Sprintf("Blacklisted item %s (UnitID: %d) to prevent immediate re-pickup.", i.Name, i.UnitID))
 }
 
