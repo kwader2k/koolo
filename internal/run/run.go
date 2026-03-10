@@ -138,6 +138,13 @@ func BuildRun(run string) Run {
 		return NewRakanishu()
 	case string(config.ShoppingRun):
 		return NewShopping()
+		
+    // --- CUSTOM RUNS ---
+	case "viper_temple":
+		return NewViperTemple()
+	case "maggot_lair":
+		return NewMaggotLair()
+		
 	//Quests Runs
 	case string(config.DenRun):
 		return NewDen()
