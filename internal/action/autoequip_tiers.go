@@ -189,11 +189,11 @@ var (
 			stat.LightningResist: 0.0, // 3
 			stat.PoisonResist:    0.5, // 1.5
 
-			//stat.AllSkills:      -150.0, //50
-			stat.AddClassSkills: -175.0, //0 bug that calculates skill points from other classes.
-			stat.AddSkillTab:    -125.0, //0 bug that calculates skill points from other classes.
-			stat.SingleSkill:    -40.0,  //0 bug that calculates skill points from other classes.
-			stat.FireSkills:     -30.0,  //10
+			stat.AllSkills:      -100.0, //100
+			stat.AddClassSkills: -100.0, //75
+			stat.AddSkillTab:    -70.0,  //30
+			stat.SingleSkill:    -20.0,  //20
+			stat.FireSkills:     -20.0,  //20
 		},
 	}
 
