@@ -641,7 +641,7 @@ func shouldBePickedUp(i data.Item) bool {
 
 func IsBlacklisted(itm data.Item) bool {
 	ctx := context.Get()
-	entry, ok := ctx.CurrentGame.BlacklistedItems[itm.UnitID]
+	entry, ok := ctx.GetBlacklistedItem(itm.UnitID)
 	if !ok {
 		return false
 	}
@@ -654,20 +654,20 @@ func IsBlacklisted(itm data.Item) bool {
 	}
 
 	entry.Until = time.Time{}
-	ctx.CurrentGame.BlacklistedItems[itm.UnitID] = entry
+	ctx.SetBlacklistedItem(itm.UnitID, entry)
 	return false
 }
 
 func BlacklistItem(itm data.Item, cooldown time.Duration, permanent bool) {
 	ctx := context.Get()
 
-	entry := ctx.CurrentGame.BlacklistedItems[itm.UnitID]
+	entry, _ := ctx.GetBlacklistedItem(itm.UnitID)
 	entry.Item = itm
 	if permanent {
 		entry.Permanent = true
 		entry.Attempts = blacklistMaxAttemptsPerUID
 		entry.Until = time.Time{}
-		ctx.CurrentGame.BlacklistedItems[itm.UnitID] = entry
+		ctx.SetBlacklistedItem(itm.UnitID, entry)
 		return
 	}
 
@@ -682,5 +682,5 @@ func BlacklistItem(itm data.Item, cooldown time.Duration, permanent bool) {
 		entry.Until = time.Now().Add(cooldown)
 	}
 
-	ctx.CurrentGame.BlacklistedItems[itm.UnitID] = entry
+	ctx.SetBlacklistedItem(itm.UnitID, entry)
 }

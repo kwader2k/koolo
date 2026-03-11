@@ -225,6 +225,26 @@ func (ctx *Context) SetPickingItems(value bool) {
 	ctx.CurrentGame.mutex.Unlock()
 }
 
+func (ctx *Context) GetBlacklistedItem(id data.UnitID) (BlacklistedItem, bool) {
+	ctx.CurrentGame.mutex.Lock()
+	defer ctx.CurrentGame.mutex.Unlock()
+
+	entry, ok := ctx.CurrentGame.BlacklistedItems[id]
+	return entry, ok
+}
+
+func (ctx *Context) SetBlacklistedItem(id data.UnitID, entry BlacklistedItem) {
+	ctx.CurrentGame.mutex.Lock()
+	ctx.CurrentGame.BlacklistedItems[id] = entry
+	ctx.CurrentGame.mutex.Unlock()
+}
+
+func (ctx *Context) ResetBlacklistedItems() {
+	ctx.CurrentGame.mutex.Lock()
+	ctx.CurrentGame.BlacklistedItems = make(map[data.UnitID]BlacklistedItem)
+	ctx.CurrentGame.mutex.Unlock()
+}
+
 func (s *Status) PauseIfNotPriority() {
 	// This prevents bot from trying to move when loading screen is shown.
 	if s.Data.OpenMenus.LoadingScreen {
@@ -252,7 +272,7 @@ func (ctx *Context) Cleanup() {
 	ctx.Logger.Debug("Resetting blacklisted items")
 
 	// Remove all items from the blacklisted items list
-	ctx.CurrentGame.BlacklistedItems = make(map[data.UnitID]BlacklistedItem)
+	ctx.ResetBlacklistedItems()
 
 	// flag reset in case something goes wrong (barb leveling)
 	ctx.IsBossEquipmentActive = false
