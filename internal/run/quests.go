@@ -216,6 +216,13 @@ func (a Quests) rescueCainQuest() error {
 	scrollInifussUnitID := 539
 	scrollInifussAfterAkara := 540
 	scrollInifussName := "Scroll of Inifuss"
+	isInifussScroll := func(itm data.Item) bool {
+		if itm.ID == scrollInifussUnitID || itm.ID == scrollInifussAfterAkara || itm.ID == 540 {
+			return true
+		}
+		name := string(itm.Name)
+		return name == scrollInifussName || name == "ScrollOfInifuss" || name == "KeyToTheCairnStones"
+	}
 
 PickupLoop:
 	for i := 0; i < 5; i++ {
@@ -223,7 +230,7 @@ PickupLoop:
 
 		foundInInv := false
 		for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-			if itm.ID == scrollInifussUnitID || itm.ID == scrollInifussAfterAkara {
+			if isInifussScroll(itm) {
 				foundInInv = true
 				break
 			}
@@ -238,7 +245,7 @@ PickupLoop:
 		var scrollObj data.Item
 		foundOnGround := false
 		for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationGround) {
-			if itm.ID == scrollInifussUnitID {
+			if isInifussScroll(itm) {
 				scrollObj = itm
 				foundOnGround = true
 				break
@@ -282,7 +289,7 @@ PickupLoop:
 				a.ctx.RefreshGameData()
 				foundInInvAfterPickup := false
 				for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-					if itm.ID == scrollInifussUnitID {
+					if isInifussScroll(itm) {
 						foundInInvAfterPickup = true
 						break
 					}
@@ -301,7 +308,7 @@ PickupLoop:
 
 	foundInInv := false
 	for _, itm := range a.ctx.Data.Inventory.ByLocation(item.LocationInventory) {
-		if itm.ID == scrollInifussUnitID {
+		if isInifussScroll(itm) {
 			foundInInv = true
 			break
 		}
