@@ -649,11 +649,12 @@ func IsBlacklisted(itm data.Item) bool {
 	if entry.Permanent {
 		return true
 	}
-	if time.Now().Before(entry.Until) {
+	if !entry.Until.IsZero() && time.Now().Before(entry.Until) {
 		return true
 	}
 
-	delete(ctx.CurrentGame.BlacklistedItems, itm.UnitID)
+	entry.Until = time.Time{}
+	ctx.CurrentGame.BlacklistedItems[itm.UnitID] = entry
 	return false
 }
 
