@@ -544,6 +544,8 @@ type CharacterCfg struct {
 		GamePassword          string `yaml:"gamePassword"`
 		CompanionGameName     string `yaml:"companionGameName"`
 		CompanionGamePassword string `yaml:"companionGamePassword"`
+		WaitForParty          bool   `yaml:"waitForParty"`     // Wait for all party members to finish before exiting game
+		PartyWaitTimeout      int    `yaml:"partyWaitTimeout"` // Max seconds to wait for party (0 = 300s default)
 	} `yaml:"companion"`
 	Gambling struct {
 		Enabled bool     `yaml:"enabled"`

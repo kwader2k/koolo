@@ -2494,6 +2494,10 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			cfg.Companion.LeaderName = values.Get("companionLeaderName")
 			cfg.Companion.GameNameTemplate = values.Get("companionGameNameTemplate")
 			cfg.Companion.GamePassword = values.Get("companionGamePassword")
+			cfg.Companion.WaitForParty = values.Has("companionWaitForParty")
+			if v := values.Get("companionPartyWaitTimeout"); v != "" {
+				cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
+			}
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
@@ -3469,6 +3473,10 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Companion.LeaderName = r.Form.Get("companionLeaderName")
 		cfg.Companion.GameNameTemplate = r.Form.Get("companionGameNameTemplate")
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
+		cfg.Companion.WaitForParty = r.Form.Has("companionWaitForParty")
+		if v := r.Form.Get("companionPartyWaitTimeout"); v != "" {
+			cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
+		}
 
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
