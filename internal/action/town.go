@@ -310,7 +310,7 @@ func InRunReturnTownRoutine() error {
 	}
 	ctx.PauseIfNotPriority() // Check after RepairTownRoutine
 
-	if ctx.CharacterCfg.Companion.Leader {
+	if ctx.CharacterCfg.Companion.Leader || ctx.CharacterCfg.Companion.OpenTPForPlayer {
 		UsePortalInTown()
 		utils.Sleep(500)
 		return OpenTPIfLeader()

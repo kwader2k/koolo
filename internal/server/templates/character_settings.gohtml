@@ -1729,6 +1729,10 @@
                     <input name="companionPartyWaitTimeout" type="number" min="0" placeholder="300" value="{{ .Config.Companion.PartyWaitTimeout }}"/>
                 </label>
             </fieldset>
+            <label>
+                <input type="checkbox" name="companionOpenTPForPlayer" {{ if .Config.Companion.OpenTPForPlayer }}checked{{ end }}/>
+                Open TP for manual player (independent of leader role)
+            </label>
             <h3 id="run-settings"><i class="bi bi-play-circle section-icon" aria-hidden="true"></i>Run Settings</h3><br>
             <label>
                 Choose the runs that you want the bot to run. You can either drag & drop runs below to enable or disable them, or use the + - buttons. Click on any of the runs to expand them and see more details and options.

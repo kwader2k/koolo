@@ -2498,6 +2498,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			if v := values.Get("companionPartyWaitTimeout"); v != "" {
 				cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
 			}
+			cfg.Companion.OpenTPForPlayer = values.Has("companionOpenTPForPlayer")
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
@@ -3477,6 +3478,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		if v := r.Form.Get("companionPartyWaitTimeout"); v != "" {
 			cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
 		}
+		cfg.Companion.OpenTPForPlayer = r.Form.Has("companionOpenTPForPlayer")
 
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
