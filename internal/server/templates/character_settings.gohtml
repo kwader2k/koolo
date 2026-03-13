@@ -1799,6 +1799,11 @@
             <div id="mule-settings" style="{{ if not .Config.Muling.Enabled }}display: none;{{ end }}">
                 <!-- Farmer: Show mule profile list -->
                 <div id="farmer-mule-settings" style="{{ if eq .Config.Character.Class "mule" }}display: none;{{ end }}">
+                    <label>
+                        <input type="checkbox" name="autoMuling" id="autoMuling" {{ if .Config.Muling.AutoMuling }}checked{{ end }}/>
+                        Automatic Muling
+                    </label>
+                    <p><small>When enabled, mule characters are automatically created and configured when the stash is full. No manual mule setup required. You can still add manual mule profiles below — auto-created mules will be appended after them.</small></p>
                     <div id="mule-profiles-container">
                         <h6>Mule Characters (in order of use)</h6>
                         <p><small>Select which mule characters to use. Items will be transferred to them in the order listed. After all mules are full, this character will continue farming.</small></p>

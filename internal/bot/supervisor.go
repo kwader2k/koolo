@@ -13,6 +13,7 @@ import (
 	ct "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/mule"
 	"github.com/hectorgimenez/koolo/internal/run"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
 	"github.com/lxn/win"
@@ -220,7 +221,11 @@ func (s *baseSupervisor) waitUntilCharacterSelectionScreen() error {
 				slog.String("class", s.bot.ctx.CharacterCfg.Character.Class),
 			)
 
-			if err := AutoCreateCharacter(s.bot.ctx.CharacterCfg.Character.Class, s.bot.ctx.CharacterCfg.CharacterName); err != nil {
+			createClass := s.bot.ctx.CharacterCfg.Character.Class
+			if mule.IsMuleClass(createClass) {
+				createClass = mule.MuleGameClass()
+			}
+			if err := AutoCreateCharacter(createClass, s.bot.ctx.CharacterCfg.CharacterName); err != nil {
 				s.bot.ctx.Logger.Error("Auto-create failed, terminating client", slog.String("error", err.Error()))
 				if killErr := s.KillClient(); killErr != nil {
 					return killErr

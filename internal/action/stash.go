@@ -37,6 +37,19 @@ const (
 	StashTabRunes     = 102
 )
 
+// SharedStashPageCount returns the number of shared stash pages for the
+// current character. It reads the value from memory and falls back to 5
+// (DLC/ROTW) or 3 (base game) when the count is not detected.
+func SharedStashPageCount(ctx *context.Status) int {
+	if p := ctx.Data.Inventory.SharedStashPages; p > 0 {
+		return p
+	}
+	if ctx.Data.IsDLC() {
+		return 5
+	}
+	return 3
+}
+
 func Stash(forceStash bool) error {
 	ctx := context.Get()
 	ctx.SetLastAction("Stash")
