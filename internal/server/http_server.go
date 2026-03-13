@@ -2233,7 +2233,7 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 	}
 
 	// Nova Sorceress specific options
-	if cfg.Character.Class == "nova" || cfg.Character.Class == "lightsorc" {
+	if cfg.Character.Class == "nova" {
 		bossStaticThreshold, err := strconv.Atoi(values.Get("novaBossStaticThreshold"))
 		if err == nil {
 			minThreshold := 65
@@ -2361,6 +2361,7 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 		}
 		cfg.Character.LightningSorceress.StaticFieldOnElites = values.Get("lightSorcStaticFieldOnElites") == "on"
 		cfg.Character.LightningSorceress.StaticFieldOnAll = values.Get("lightSorcStaticFieldOnAll") == "on"
+		cfg.Character.LightningSorceress.UseInfinity = values.Has("lightSorcUseInfinity")
 	}
 
 	// Hydra Orb Sorceress specific options
@@ -2690,8 +2691,34 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Lightning Sorceress specific options
+		if cfg.Character.Class == "lightsorc" {
+			bossStaticThreshold, err := strconv.Atoi(r.Form.Get("lightSorcBossStaticThreshold"))
+			if err == nil {
+				minThreshold := 65
+				switch cfg.Game.Difficulty {
+				case difficulty.Normal:
+					minThreshold = 1
+				case difficulty.Nightmare:
+					minThreshold = 33
+				case difficulty.Hell:
+					minThreshold = 50
+				}
+				if bossStaticThreshold >= minThreshold && bossStaticThreshold <= 100 {
+					cfg.Character.LightningSorceress.BossStaticThreshold = bossStaticThreshold
+				} else {
+					cfg.Character.LightningSorceress.BossStaticThreshold = minThreshold
+				}
+			} else {
+				cfg.Character.LightningSorceress.BossStaticThreshold = 65
+			}
+			cfg.Character.LightningSorceress.StaticFieldOnElites = r.Form.Get("lightSorcStaticFieldOnElites") == "on"
+			cfg.Character.LightningSorceress.StaticFieldOnAll = r.Form.Get("lightSorcStaticFieldOnAll") == "on"
+			cfg.Character.LightningSorceress.UseInfinity = r.Form.Has("lightSorcUseInfinity")
+		}
+
 		// Nova Sorceress specific options
-		if cfg.Character.Class == "nova" || cfg.Character.Class == "lightsorc" {
+		if cfg.Character.Class == "nova" {
 			bossStaticThreshold, err := strconv.Atoi(r.Form.Get("novaBossStaticThreshold"))
 			if err == nil {
 				minThreshold := 65 // Default
