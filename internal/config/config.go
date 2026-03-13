@@ -51,6 +51,7 @@ type KooloCfg struct {
 	FirstRun              bool   `yaml:"firstRun"`
 	UseCustomSettings     bool   `yaml:"useCustomSettings"`
 	GameWindowArrangement bool   `yaml:"gameWindowArrangement"`
+	GameMonitor           int    `yaml:"gameMonitor"` // 0-based monitor index for game window placement
 	LogSaveDirectory      string `yaml:"logSaveDirectory"`
 	D2LoDPath             string `yaml:"D2LoDPath"`
 	D2RPath               string `yaml:"D2RPath"`

@@ -2059,6 +2059,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       config.Koolo,
 				ErrorMessage:   "Error parsing form",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2070,6 +2071,11 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		newConfig.CentralizedPickitPath = r.Form.Get("centralized_pickit_path")
 		newConfig.UseCustomSettings = r.Form.Get("use_custom_settings") == "true"
 		newConfig.GameWindowArrangement = r.Form.Get("game_window_arrangement") == "true"
+		gameMonitor, err := strconv.Atoi(r.Form.Get("game_monitor"))
+		if err != nil || gameMonitor < 0 {
+			gameMonitor = 0
+		}
+		newConfig.GameMonitor = gameMonitor
 		// Debug
 		newConfig.Debug.Log = r.Form.Get("debug_log") == "true"
 		newConfig.Debug.Screenshots = r.Form.Get("debug_screenshots") == "true"
@@ -2107,6 +2113,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "Invalid Telegram Chat ID",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2124,6 +2131,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "ngrok basic auth password is required when a username is set",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2132,6 +2140,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "ngrok basic auth username is required when a password is set",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2140,6 +2149,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "ngrok basic auth password must be at least 8 characters",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2172,6 +2182,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   err.Error(),
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2196,7 +2207,17 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		KooloCfg:       config.Koolo,
 		ErrorMessage:   "",
 		CurrentVersion: versionData,
+		Monitors:       s.getMonitorOptions(),
 	})
+}
+
+func (s *HttpServer) getMonitorOptions() []MonitorOption {
+	monitors := winproc.EnumMonitors()
+	opts := make([]MonitorOption, len(monitors))
+	for i, m := range monitors {
+		opts[i] = MonitorOption{Index: m.Index, Display: m.DisplayString()}
+	}
+	return opts
 }
 
 // ConfigUpdateOptions defines which sections of the configuration should be updated

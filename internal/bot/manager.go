@@ -430,8 +430,24 @@ func (mng *SupervisorManager) GetSupervisorStats(supervisor string) Stats {
 }
 
 func (mng *SupervisorManager) rearrangeWindows() {
-	width := win.GetSystemMetrics(0)
-	height := win.GetSystemMetrics(1)
+	// Determine the target monitor's origin and dimensions
+	var monitorOffsetX, monitorOffsetY int32
+	monitors := winproc.EnumMonitors()
+
+	var width, height int32
+	if idx := config.Koolo.GameMonitor; idx >= 0 && idx < len(monitors) {
+		m := monitors[idx]
+		monitorOffsetX = m.Left
+		monitorOffsetY = m.Top
+		width = m.Right - m.Left
+		height = m.Bottom - m.Top
+	}
+	// Fall back to primary monitor metrics if monitor lookup yielded nothing
+	if width == 0 || height == 0 {
+		width = win.GetSystemMetrics(0)
+		height = win.GetSystemMetrics(1)
+	}
+
 	var windowBorderX int32 = 2   // left + right window border is 2px
 	var windowBorderY int32 = 40  // upper window border is usually 40px
 	var windowOffsetX int32 = -10 // offset horizontal window placement by -10 pixel
@@ -455,7 +471,7 @@ func (mng *SupervisorManager) rearrangeWindows() {
 		}
 
 		if row <= maxRows {
-			sp.SetWindowPosition(int(column*(1280+windowBorderX)+windowOffsetX), int(row*(720+windowBorderY)))
+			sp.SetWindowPosition(int(column*(1280+windowBorderX)+windowOffsetX+monitorOffsetX), int(row*(720+windowBorderY)+monitorOffsetY))
 			mng.logger.Debug(
 				"Window Positions",
 				slog.String("supervisor", sp.Name()),
