@@ -301,6 +301,35 @@ func (s *SinglePlayerSupervisor) Start() error {
 			rand.Shuffle(len(runs), func(i, j int) { runs[i], runs[j] = runs[j], runs[i] })
 		}
 
+		// Check if this is a rejoin (same game) — skip already completed runs
+		currentGameID := s.bot.ctx.GameReader.LastGameName()
+		if s.bot.ctx.CurrentGame.CompletedGameID == currentGameID {
+			completed := s.bot.ctx.CurrentGame.GetCompletedRuns()
+			if len(completed) > 0 {
+				completedSet := make(map[string]bool, len(completed))
+				for _, name := range completed {
+					completedSet[name] = true
+				}
+				var filtered []run.Run
+				for _, r := range runs {
+					if !completedSet[r.Name()] {
+						filtered = append(filtered, r)
+					}
+				}
+				s.bot.ctx.Logger.Info(fmt.Sprintf("Rejoined game %s, skipping %d already completed runs, %d remaining", currentGameID, len(completed), len(filtered)))
+				runs = filtered
+				if len(runs) == 0 {
+					s.bot.ctx.Logger.Info("All runs already completed in this game, exiting")
+					s.bot.ctx.Manager.ExitGame()
+					utils.Sleep(3000)
+					timeSpentNotInGameStart = time.Now()
+					continue
+				}
+			}
+		} else {
+			s.bot.ctx.CurrentGame.ResetCompletedRuns(currentGameID)
+		}
+
 		event.Send(event.GameCreated(event.Text(s.name, "New game created"), s.bot.ctx.GameReader.LastGameName(), s.bot.ctx.GameReader.LastGamePass()))
 		s.bot.ctx.CurrentGame.FailedToCreateGameAttempts = 0
 		s.bot.ctx.LastBuffAt = time.Time{}

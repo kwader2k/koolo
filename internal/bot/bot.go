@@ -476,6 +476,9 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 						return err
 					}
 				}
+
+				// Record this run as completed (for rejoin skip after chicken)
+				b.ctx.CurrentGame.AddCompletedRun(r.Name())
 			}
 		}
 		return nil

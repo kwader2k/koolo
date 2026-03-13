@@ -99,6 +99,8 @@ type CurrentGameHelper struct {
 	CurrentMuleIndex  int
 	ShouldCheckStash  bool
 	StashFull         bool
+	CompletedRuns     []string // Runs completed in the current game session (for rejoin skip)
+	CompletedGameID   string   // Game name for which CompletedRuns is valid
 	mutex             sync.Mutex
 }
 
@@ -217,6 +219,30 @@ func (ctx *Context) SetPickingItems(value bool) {
 	ctx.CurrentGame.mutex.Lock()
 	ctx.CurrentGame.IsPickingItems = value
 	ctx.CurrentGame.mutex.Unlock()
+}
+
+// AddCompletedRun records a run as completed in the current game session.
+func (g *CurrentGameHelper) AddCompletedRun(name string) {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	g.CompletedRuns = append(g.CompletedRuns, name)
+}
+
+// GetCompletedRuns returns a copy of completed run names for the current game.
+func (g *CurrentGameHelper) GetCompletedRuns() []string {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	result := make([]string, len(g.CompletedRuns))
+	copy(result, g.CompletedRuns)
+	return result
+}
+
+// ResetCompletedRuns clears the completed runs list and sets the new game ID.
+func (g *CurrentGameHelper) ResetCompletedRuns(gameID string) {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	g.CompletedRuns = nil
+	g.CompletedGameID = gameID
 }
 
 func (s *Status) PauseIfNotPriority() {
