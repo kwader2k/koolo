@@ -446,8 +446,8 @@ function createCharacterCard(key) {
                   </div>
                 </div>
                  <div class="character-controls">
-                      <button class="btn btn-outline companion-join-btn" style="display:none;">
-                          <i class="bi bi-door-open btn-icon"></i>Join Game
+                      <button class="btn btn-outline party-btn" title="Party Setup">
+                          <i class="bi bi-people btn-icon"></i><span class="party-label">P</span>
                       </button>
                       <button class="btn btn-outline btn-games">
                           <i class="bi bi-controller btn-icon"></i><span class="games-count">0</span>
@@ -576,7 +576,6 @@ function setupEventListeners(card, key) {
   const renameCancelBtn = card.querySelector(".supervisor-rename-cancel");
   const supervisorName = card.querySelector(".supervisor-name");
   const supervisorNameInput = card.querySelector(".supervisor-name-input");
-  const companionJoinBtn = card.querySelector(".companion-join-btn");
   const armoryBtn = card.querySelector(".armory-btn");
   const settingsBtn = card.querySelector(".settings-btn");
   const attachBtn = card.querySelector(".attach-btn");
@@ -584,10 +583,19 @@ function setupEventListeners(card, key) {
 
   ensureActionMenuCloseHandler();
 
-  if (companionJoinBtn) {
-    companionJoinBtn.addEventListener("click", (e) => {
+  const partyBtn = card.querySelector(".party-btn");
+  if (partyBtn) {
+    partyBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      showCompanionJoinPopup(getSupervisorName());
+      const name = getSupervisorName();
+      const role = partyBtn.dataset.partyRole || "";
+      if (role === "leader" || role === "follower") {
+        // Toggle off — remove from party
+        partyRemove(name);
+      } else {
+        // Show party setup popup
+        showPartySetupPopup(name);
+      }
     });
   }
 
@@ -829,7 +837,6 @@ function updateCharacterCard(card, key, value, dropCount, schedulerInfo) {
   const stopBtn = card.querySelector(".stop");
   const attachBtn = card.querySelector(".attach-btn");
   const manualPlayBtn = card.querySelector(".manual-play");
-  const companionJoinBtn = card.querySelector(".companion-join-btn");
   const statusDetails = card.querySelector(".status-details");
   const statusBadge = statusDetails.querySelector(".status-badge");
   const statusIndicator = card.querySelector(".status-indicator");
@@ -847,16 +854,29 @@ function updateCharacterCard(card, key, value, dropCount, schedulerInfo) {
     updateButtons(startPauseBtn, stopBtn, attachBtn, manualPlayBtn, value.SupervisorStatus, value.manualModeActive);
   }
 
-  // Update companion join button visibility
-  if (companionJoinBtn) {
-    const isCompanionFollower = value.IsCompanionFollower || false;
-    // Only show the button if it's a companion follower AND the supervisor is running
-    const isRunning =
-      value.SupervisorStatus === "In game" ||
-      value.SupervisorStatus === "Paused" ||
-      value.SupervisorStatus === "Starting";
-    companionJoinBtn.style.display =
-      isCompanionFollower && isRunning ? "inline-flex" : "none";
+  // Update party button appearance
+  const partyBtnUpdate = card.querySelector(".party-btn");
+  if (partyBtnUpdate) {
+    const role = value.partyRole || "";
+    partyBtnUpdate.dataset.partyRole = role;
+    const partyLabel = partyBtnUpdate.querySelector(".party-label");
+    if (role === "leader") {
+      partyBtnUpdate.className = "btn btn-outline party-btn party-leader";
+      partyBtnUpdate.style.borderColor = "#dc3545";
+      partyBtnUpdate.style.color = "#dc3545";
+      if (partyLabel) partyLabel.textContent = "L";
+    } else if (role === "follower") {
+      partyBtnUpdate.className = "btn btn-outline party-btn party-follower";
+      partyBtnUpdate.style.borderColor = "#28a745";
+      partyBtnUpdate.style.color = "#28a745";
+      const leaderName = value.partyLeaderName || "?";
+      if (partyLabel) partyLabel.textContent = "F";
+    } else {
+      partyBtnUpdate.className = "btn btn-outline party-btn";
+      partyBtnUpdate.style.borderColor = "";
+      partyBtnUpdate.style.color = "";
+      if (partyLabel) partyLabel.textContent = "P";
+    }
   }
 
   updateStats(card, key, value.Games, dropCount);
@@ -2007,104 +2027,128 @@ function filterProcessList() {
   });
 }
 
-function showCompanionJoinPopup(characterName) {
+function showPartySetupPopup(supervisorName) {
+  // Close any existing party popup
+  closePartyPopup();
+
+  // Get list of all other supervisors from latest dashboard data
+  const allSupervisors = latestDashboardData ? Object.keys(latestDashboardData.Status) : [];
+  const otherSupervisors = allSupervisors.filter((s) => s !== supervisorName);
+
+  // Build follower dropdown options — only show supervisors that are not already leaders
+  let followerOptions = "";
+  otherSupervisors.forEach((s) => {
+    const status = latestDashboardData.Status[s];
+    const role = status ? (status.partyRole || "") : "";
+    // Don't show supervisors that are already leaders as follower targets
+    if (role !== "leader") {
+      return;
+    }
+    followerOptions += `<option value="${s}">${s}</option>`;
+  });
+
+  // If no leaders exist, show message
+  const followerSection = followerOptions
+    ? `<select id="party-leader-select" class="form-select">${followerOptions}</select>`
+    : `<span style="color:#999;font-size:0.9em;">No leaders available — set a leader first</span>`;
+
   const popup = document.createElement("div");
-  popup.className = "attach-popup"; // Reuse the attach popup styling
+  popup.className = "attach-popup party-setup-popup";
   popup.innerHTML = `
-            <h3>Join Game as Companion</h3>
-            <div class="popup-content">
-                <div class="form-group">
-                    <label for="game-name">Game Name:</label>
-                    <input type="text" id="game-name" placeholder="Enter game name">
-                </div>
-                <div class="form-group">
-                    <label for="game-password">Game Password:</label>
-                    <input type="text" id="game-password" placeholder="Enter game password">
-                </div>
-                <div class="popup-buttons">
-                    <button id="join-game-btn" class="btn btn-primary">Request Join</button>
-                    <button id="cancel-join" class="btn">Cancel</button>
-                </div>
-            </div>
-        `;
+    <h3>Party Setup: ${supervisorName}</h3>
+    <div class="popup-content">
+      <div class="popup-buttons" style="flex-direction:column;gap:10px;">
+        <button id="party-set-leader-btn" class="btn btn-primary" style="background:#dc3545;border-color:#dc3545;">
+          <i class="bi bi-star-fill"></i> Set as Leader
+        </button>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${followerSection}
+          ${followerOptions ? '<button id="party-set-follower-btn" class="btn btn-primary" style="background:#28a745;border-color:#28a745;"><i class="bi bi-person-plus"></i> Follow</button>' : ""}
+        </div>
+        <button id="party-cancel-btn" class="btn">Cancel</button>
+      </div>
+    </div>
+  `;
 
   document.body.appendChild(popup);
 
-  // Add event listeners
-  document.getElementById("join-game-btn").addEventListener("click", () => {
-    const gameName = document.getElementById("game-name").value.trim();
-    const password = document.getElementById("game-password").value.trim();
-
-    if (!gameName) {
-      alert("Please enter a game name");
-      return;
-    }
-
-    requestCompanionJoin(characterName, gameName, password);
+  // Set as Leader
+  document.getElementById("party-set-leader-btn").addEventListener("click", () => {
+    fetch("/api/party/set-leader", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supervisor: supervisorName }),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        closePartyPopup();
+        if (data.error) {
+          alert("Error: " + data.error);
+        }
+        fetchInitialData();
+      })
+      .catch((err) => {
+        console.error("Error setting leader:", err);
+        closePartyPopup();
+      });
   });
 
-  document
-    .getElementById("cancel-join")
-    .addEventListener("click", closeCompanionJoinPopup);
+  // Set as Follower
+  const followerBtn = document.getElementById("party-set-follower-btn");
+  if (followerBtn) {
+    followerBtn.addEventListener("click", () => {
+      const leaderSelect = document.getElementById("party-leader-select");
+      const leaderName = leaderSelect ? leaderSelect.value : "";
+      if (!leaderName) {
+        alert("Select a leader first");
+        return;
+      }
+      fetch("/api/party/set-follower", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ supervisor: supervisorName, leader: leaderName }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          closePartyPopup();
+          if (data.error) {
+            alert("Error: " + data.error);
+          }
+          fetchInitialData();
+        })
+        .catch((err) => {
+          console.error("Error setting follower:", err);
+          closePartyPopup();
+        });
+    });
+  }
+
+  // Cancel
+  document.getElementById("party-cancel-btn").addEventListener("click", closePartyPopup);
 }
 
-function closeCompanionJoinPopup() {
-  const popup = document.querySelector(".attach-popup");
+function closePartyPopup() {
+  const popup = document.querySelector(".party-setup-popup");
   if (popup) {
     popup.remove();
   }
 }
 
-function requestCompanionJoin(supervisor, gameName, password) {
-  // Show loading animation
-  const popup = document.querySelector(".attach-popup");
-  popup.innerHTML = `
-            <h3>Requesting Game Join</h3>
-            <div class="loading-spinner"></div>
-            <p>Please wait...</p>
-        `;
-
-  fetch("/api/companion-join", {
+function partyRemove(supervisorName) {
+  fetch("/api/party/remove", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      supervisor: supervisor,
-      gameName: gameName,
-      password: password,
-    }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ supervisor: supervisorName }),
   })
-    .then((response) => response.json())
+    .then((r) => r.json())
     .then((data) => {
-      if (data.success) {
-        // Show success message
-        popup.innerHTML = `
-                    <h3>Success</h3>
-                    <p>Join request sent for game "${gameName}"</p>
-                `;
-        // Close popup after 2 seconds
-        setTimeout(() => {
-          closeCompanionJoinPopup();
-        }, 2000);
-      } else {
-        // Show error message
-        popup.innerHTML = `
-                    <h3>Error</h3>
-                    <p>Failed to send join request: ${data.error || "Unknown error"
-          }</p>
-                    <button onclick="closeCompanionJoinPopup()" class="btn btn-primary">Close</button>
-                `;
+      if (data.error) {
+        alert("Error: " + data.error);
       }
+      fetchInitialData();
     })
-    .catch((error) => {
-      console.error("Error sending join request:", error);
-      // Show error message
-      popup.innerHTML = `
-                <h3>Error</h3>
-                <p>An error occurred while sending the join request.</p>
-                <button onclick="closeCompanionJoinPopup()" class="btn btn-primary">Close</button>
-            `;
+    .catch((err) => {
+      console.error("Error removing from party:", err);
     });
 }
 
