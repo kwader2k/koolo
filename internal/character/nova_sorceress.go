@@ -563,6 +563,10 @@ func (s NovaSorceress) KillMonsterSequence(
 	attackedThisEngagement := false
 	lastRepositionAt := time.Time{}
 
+	if !s.CharacterCfg.Character.NovaSorceress.UseInfinity {
+		skipOnImmunities = append(skipOnImmunities, stat.LightImmune)
+	}
+
 	for {
 		ctx.PauseIfNotPriority()
 
@@ -758,6 +762,10 @@ func (s NovaSorceress) PreCTABuffSkills() []skill.ID { return []skill.ID{} }
 // ShouldIgnoreMonster skips tiny leftover packs in aggressive mode (<3 normals nearby).
 func (s NovaSorceress) ShouldIgnoreMonster(m data.Monster) bool {
 	ctx := context.Get()
+
+	if !s.CharacterCfg.Character.NovaSorceress.UseInfinity && m.IsImmune(stat.LightImmune) {
+		return true
+	}
 
 	// If aggressive Nova is not enabled, never ignore.
 	if !ctx.CharacterCfg.Character.NovaSorceress.AggressiveNovaPositioning {

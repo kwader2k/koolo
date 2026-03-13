@@ -28,6 +28,9 @@ type FireballSorceress struct {
 }
 
 func (s FireballSorceress) ShouldIgnoreMonster(m data.Monster) bool {
+	if !s.CharacterCfg.Character.FireballSorceress.UseInfinity && m.IsImmune(stat.FireImmune) {
+		return true
+	}
 	return false
 }
 
@@ -70,6 +73,10 @@ func (f FireballSorceress) KillMonsterSequence(
 	previousUnitID := 0
 
 	lsOpts := step.Distance(fireballSorceressLSMinDistance, fireballSorceressLSMaxDistance)
+
+	if !f.CharacterCfg.Character.FireballSorceress.UseInfinity {
+		skipOnImmunities = append(skipOnImmunities, stat.FireImmune)
+	}
 
 	for {
 		context.Get().PauseIfNotPriority()

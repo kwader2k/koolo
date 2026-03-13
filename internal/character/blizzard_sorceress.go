@@ -36,6 +36,9 @@ type BlizzardSorceress struct {
 }
 
 func (s BlizzardSorceress) ShouldIgnoreMonster(m data.Monster) bool {
+	if !s.CharacterCfg.Character.BlizzardSorceress.UseInfinity && m.IsImmune(stat.ColdImmune) {
+		return true
+	}
 	return false
 }
 
@@ -75,6 +78,10 @@ func (s BlizzardSorceress) KillMonsterSequence(
 	lastReposition := time.Now()
 
 	attackOpts := step.StationaryDistance(minBlizzSorceressAttackDistance, maxBlizzSorceressAttackDistance)
+
+	if !s.CharacterCfg.Character.BlizzardSorceress.UseInfinity {
+		skipOnImmunities = append(skipOnImmunities, stat.ColdImmune)
+	}
 
 	for {
 		context.Get().PauseIfNotPriority()

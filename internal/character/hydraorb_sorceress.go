@@ -26,6 +26,9 @@ type HydraOrbSorceress struct {
 }
 
 func (s HydraOrbSorceress) ShouldIgnoreMonster(m data.Monster) bool {
+	if !s.CharacterCfg.Character.HydraOrbSorceress.UseInfinity && m.IsImmune(stat.ColdImmune) && m.IsImmune(stat.FireImmune) {
+		return true
+	}
 	return false
 }
 

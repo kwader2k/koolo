@@ -304,8 +304,8 @@ type CharacterCfg struct {
 		BlizzardSorceress struct {
 			UseMoatTrick        bool `yaml:"use_moat_trick"`
 			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
-
-			UseBlizzardPackets bool `yaml:"use_blizzard_packets"`
+			UseInfinity         bool `yaml:"use_infinity"`
+			UseBlizzardPackets  bool `yaml:"use_blizzard_packets"`
 		} `yaml:"blizzard_sorceress"`
 		SorceressLeveling struct {
 			UseMoatTrick        bool `yaml:"use_moat_trick"`
@@ -324,15 +324,17 @@ type CharacterCfg struct {
 			UsePacketLearning    bool `yaml:"use_packet_learning"`
 		} `yaml:"barb_leveling"`
 		NovaSorceress struct {
-			BossStaticThreshold int `yaml:"boss_static_threshold"`
-
+			BossStaticThreshold       int  `yaml:"boss_static_threshold"`
+			UseInfinity               bool `yaml:"use_infinity"`
 			AggressiveNovaPositioning bool `yaml:"aggressive_nova_positioning"`
 		} `yaml:"nova_sorceress"`
 		LightningSorceress struct {
 		} `yaml:"lightning_sorceress"`
 		HydraOrbSorceress struct {
+			UseInfinity bool `yaml:"use_infinity"`
 		} `yaml:"hydraorb_sorceress"`
 		FireballSorceress struct {
+			UseInfinity bool `yaml:"use_infinity"`
 		} `yaml:"fireball_sorceress"`
 		MosaicSin struct {
 			UseTigerStrike    bool `yaml:"useTigerStrike"`

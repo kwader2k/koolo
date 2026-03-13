@@ -776,6 +776,10 @@
                    {{ if .Config.Character.NovaSorceress.AggressiveNovaPositioning }}checked{{ end }}/>
             Aggressive Positioning (focus packs / skip leftovers)
         </label>
+        <label>
+            <input type="checkbox" name="novaUseInfinity" {{ if .Config.Character.NovaSorceress.UseInfinity }}checked{{ end }}/>
+            Using Infinity
+        </label>
     </fieldset>
 </div>
 
@@ -823,6 +827,10 @@
                             <input type="checkbox" id="blizzardUseStaticOnMephisto" name="blizzardUseStaticOnMephisto" {{ if .Config.Character.BlizzardSorceress.UseStaticOnMephisto }}checked{{ end }}/>
                             Use static on Mephisto
                         </label>
+                        <label>
+                            <input type="checkbox" name="blizzardUseInfinity" {{ if .Config.Character.BlizzardSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity
+                        </label>
                     </fieldset>
                 </div>
                 <div class="sorceress_leveling-options" style="display: none;">
@@ -847,10 +855,18 @@
                 </div>
                 <div class="hydraorb-options" style="display: none;">
                     <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="hydraOrbUseInfinity" {{ if .Config.Character.HydraOrbSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity
+                        </label>
                     </fieldset>
                 </div>
                 <div class="fireballsorc-options" style="display: none;">
                     <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="fireballSorcUseInfinity" {{ if .Config.Character.FireballSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity
+                        </label>
                     </fieldset>
                 </div>
                 <div class="mosaic-assassin-options" style="display: none;">

@@ -941,9 +941,9 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/reset-droplogs", s.resetDroplogs)
 	http.HandleFunc("/process-list", s.getProcessList)
 	http.HandleFunc("/attach-process", s.attachProcess)
-	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)                         // Web socket
-	http.HandleFunc("/initial-data", s.initialData)                            // Web socket data
-	http.HandleFunc("/api/reload-config", s.reloadConfig)                      // New handler
+	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)    // Web socket
+	http.HandleFunc("/initial-data", s.initialData)       // Web socket data
+	http.HandleFunc("/api/reload-config", s.reloadConfig) // New handler
 	http.HandleFunc("/api/supervisors/reorder", s.reorderSupervisors)
 	http.HandleFunc("/api/supervisors/hide", s.hideSupervisor)
 	http.HandleFunc("/api/supervisors/unhide", s.unhideSupervisor)
@@ -1197,7 +1197,6 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 
 	s.initialData(w, r)
 }
-
 
 func (s *HttpServer) reorderSupervisors(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1847,10 +1846,10 @@ func (s *HttpServer) index(w http.ResponseWriter) {
 	}
 
 	s.templates.ExecuteTemplate(w, "index.gohtml", IndexData{
-		Version:   config.Version,
+		Version:     config.Version,
 		Supervisors: supervisors,
-		Status:    status,
-		DropCount: drops,
+		Status:      status,
+		DropCount:   drops,
 	})
 }
 
@@ -2756,6 +2755,7 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 		cfg.Character.BlizzardSorceress.UseMoatTrick = values.Has("blizzardUseMoatTrick")
 		cfg.Character.BlizzardSorceress.UseStaticOnMephisto = values.Has("blizzardUseStaticOnMephisto")
 		cfg.Character.BlizzardSorceress.UseBlizzardPackets = values.Has("blizzardUseBlizzardPackets")
+		cfg.Character.BlizzardSorceress.UseInfinity = values.Has("blizzardUseInfinity")
 	}
 
 	// Sorceress Leveling specific options
@@ -2794,6 +2794,7 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 	// Nova Sorceress specific options (Extra)
 	if cfg.Character.Class == "nova" {
 		cfg.Character.NovaSorceress.AggressiveNovaPositioning = values.Has("aggressiveNovaPositioning")
+		cfg.Character.NovaSorceress.UseInfinity = values.Has("novaUseInfinity")
 	}
 
 	// Javazon specific options
@@ -2831,10 +2832,12 @@ func (s *HttpServer) updateClassSpecificConfig(values url.Values, cfg *config.Ch
 
 	// Hydra Orb Sorceress specific options
 	if cfg.Character.Class == "hydraorb" {
+		cfg.Character.HydraOrbSorceress.UseInfinity = values.Has("hydraOrbUseInfinity")
 	}
 
 	// Fireball Sorceress specific options
 	if cfg.Character.Class == "fireballsorc" {
+		cfg.Character.FireballSorceress.UseInfinity = values.Has("fireballSorcUseInfinity")
 	}
 }
 
@@ -3156,6 +3159,42 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
+		// Lightning Sorceress specific options
+		if cfg.Character.Class == "lightsorc" {
+			bossStaticThreshold, err := strconv.Atoi(r.Form.Get("lightSorcBossStaticThreshold"))
+			if err == nil {
+				minThreshold := 65
+				switch cfg.Game.Difficulty {
+				case difficulty.Normal:
+					minThreshold = 1
+				case difficulty.Nightmare:
+					minThreshold = 33
+				case difficulty.Hell:
+					minThreshold = 50
+				}
+				if bossStaticThreshold >= minThreshold && bossStaticThreshold <= 100 {
+					cfg.Character.LightningSorceress.BossStaticThreshold = bossStaticThreshold
+				} else {
+					cfg.Character.LightningSorceress.BossStaticThreshold = minThreshold
+				}
+			} else {
+				cfg.Character.LightningSorceress.BossStaticThreshold = 65
+			}
+			cfg.Character.LightningSorceress.StaticFieldOnElites = r.Form.Get("lightSorcStaticFieldOnElites") == "on"
+			cfg.Character.LightningSorceress.StaticFieldOnAll = r.Form.Get("lightSorcStaticFieldOnAll") == "on"
+			cfg.Character.LightningSorceress.UseInfinity = r.Form.Has("lightSorcUseInfinity")
+		}
+
+		// Hydra-Orb Sorceress specific options
+		if cfg.Character.Class == "hydraorb" {
+			cfg.Character.HydraOrbSorceress.UseInfinity = r.Form.Has("hydraOrbUseInfinity")
+		}
+
+		// Fireball Sorceress specific options
+		if cfg.Character.Class == "fireballsorc" {
+			cfg.Character.FireballSorceress.UseInfinity = r.Form.Has("fireballSorcUseInfinity")
+		}
+
 		// Nova Sorceress specific options
 		if cfg.Character.Class == "nova" || cfg.Character.Class == "lightsorc" {
 			bossStaticThreshold, err := strconv.Atoi(r.Form.Get("novaBossStaticThreshold"))
@@ -3197,6 +3236,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Character.BlizzardSorceress.UseMoatTrick = r.Form.Has("blizzardUseMoatTrick")
 			cfg.Character.BlizzardSorceress.UseStaticOnMephisto = r.Form.Has("blizzardUseStaticOnMephisto")
 			cfg.Character.BlizzardSorceress.UseBlizzardPackets = r.Form.Has("blizzardUseBlizzardPackets")
+			cfg.Character.BlizzardSorceress.UseInfinity = r.Form.Has("blizzardUseInfinity")
 		}
 
 		// Sorceress Leveling specific options
@@ -3235,6 +3275,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		// Nova Sorceress specific options
 		if cfg.Character.Class == "nova" {
 			cfg.Character.NovaSorceress.AggressiveNovaPositioning = r.Form.Has("aggressiveNovaPositioning")
+			cfg.Character.NovaSorceress.UseInfinity = r.Form.Has("novaUseInfinity")
 		}
 
 		// Javazon specific options
