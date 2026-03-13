@@ -27,6 +27,9 @@ type LightningSorceress struct {
 }
 
 func (s LightningSorceress) ShouldIgnoreMonster(m data.Monster) bool {
+	if !s.CharacterCfg.Character.LightningSorceress.UseInfinity && m.IsImmune(stat.LightImmune) {
+		return true
+	}
 	return false
 }
 
@@ -70,6 +73,11 @@ func (s LightningSorceress) KillMonsterSequence(
 	ldOpts := step.Distance(LightningMinDistance, LightningMaxDistance)
 	lightningOpts := []step.AttackOption{
 		step.RangedDistance(LightningMinDistance, LightningMaxDistance),
+	}
+
+	// If not using Infinity, skip lightning immune monsters
+	if !s.CharacterCfg.Character.LightningSorceress.UseInfinity {
+		skipOnImmunities = append(skipOnImmunities, stat.LightImmune)
 	}
 
 	for {
@@ -124,14 +132,22 @@ func (s LightningSorceress) KillMonsterSequence(
 }
 
 func (s LightningSorceress) shouldCastStaticField(monster data.Monster) bool {
-	// Only cast Static Field if monster HP is above threshold
 	maxLife := float64(monster.Stats[stat.MaxLife])
 	if maxLife == 0 {
 		return false
 	}
-
 	hpPercentage := (float64(monster.Stats[stat.Life]) / maxLife) * 100
-	return hpPercentage > LightningStaticFieldThreshold
+	if hpPercentage <= LightningStaticFieldThreshold {
+		return false
+	}
+	cfg := context.Get().CharacterCfg.Character.LightningSorceress
+	if cfg.StaticFieldOnAll {
+		return true
+	}
+	if cfg.StaticFieldOnElites {
+		return monster.IsElite()
+	}
+	return false
 }
 
 func (s LightningSorceress) killBossWithStatic(bossID npc.ID, monsterType data.MonsterType) error {
@@ -146,7 +162,7 @@ func (s LightningSorceress) killBossWithStatic(bossID npc.ID, monsterType data.M
 		}
 
 		bossHPPercent := (float64(boss.Stats[stat.Life]) / float64(boss.Stats[stat.MaxLife])) * 100
-		thresholdFloat := float64(ctx.CharacterCfg.Character.NovaSorceress.BossStaticThreshold)
+		thresholdFloat := float64(ctx.CharacterCfg.Character.LightningSorceress.BossStaticThreshold)
 
 		// Cast Static Field until boss HP is below threshold
 		if bossHPPercent > thresholdFloat {
