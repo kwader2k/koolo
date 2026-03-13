@@ -576,6 +576,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 				// Party: mark done on non-death errors (chicken/timeout) so others don't wait forever
 				if partyWaitEnabled {
 					GetPartyRegistry().MarkDone(s.name)
+					// If leader errors out, clear active game so companions don't rejoin a dead game
+					if s.bot.ctx.CharacterCfg.Companion.Leader {
+						GetPartyRegistry().ClearActiveGame()
+					}
 				}
 			}
 
@@ -668,6 +672,10 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 // waitForPartyMembers idles in-game until all party members have finished their runs.
 // Skipped if WaitForParty is disabled. Sets WaitingForParty flag to suppress activity monitor.
+//
+// Grace period: if only 1 member is registered (just self), waits up to 30s for
+// other members to join and register before accepting AllDone. This prevents the
+// leader from exiting before companions even enter the game.
 func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 	if !s.bot.ctx.CharacterCfg.Companion.Enabled || !s.bot.ctx.CharacterCfg.Companion.WaitForParty {
 		return
@@ -676,8 +684,44 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 	pr := GetPartyRegistry()
 	pr.MarkDone(s.name)
 
+	// Grace period: wait for other members to register before checking AllDone.
+	// Without this, leader finishes before companions enter the game → AllDone=true instantly.
+	const gracePeriod = 30 * time.Second
+	graceDeadline := time.Now().Add(gracePeriod)
+
+	if pr.MemberCount() <= 1 {
+		s.bot.ctx.Logger.Info("Party: only self registered, waiting grace period for others to join",
+			slog.Duration("gracePeriod", gracePeriod))
+		s.bot.ctx.WaitingForParty.Store(true)
+
+		graceTicker := time.NewTicker(2 * time.Second)
+		graceWait:
+		for {
+			select {
+			case <-ctx.Done():
+				graceTicker.Stop()
+				s.bot.ctx.WaitingForParty.Store(false)
+				return
+			case <-graceTicker.C:
+				if pr.MemberCount() > 1 {
+					s.bot.ctx.Logger.Info("Party: other members joined during grace period",
+						slog.Int("members", pr.MemberCount()))
+					break graceWait
+				}
+				if time.Now().After(graceDeadline) {
+					s.bot.ctx.Logger.Info("Party: grace period expired, no other members joined — proceeding solo")
+					graceTicker.Stop()
+					s.bot.ctx.WaitingForParty.Store(false)
+					return
+				}
+			}
+		}
+		graceTicker.Stop()
+	}
+
 	if pr.AllDone() {
 		s.bot.ctx.Logger.Info("Party: all members already done, no wait needed")
+		s.bot.ctx.WaitingForParty.Store(false)
 		return
 	}
 
