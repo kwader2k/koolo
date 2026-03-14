@@ -36,6 +36,7 @@ const (
 
 type SinglePlayerSupervisor struct {
 	*baseSupervisor
+	lastPlayedGame string // tracks the last game we SUCCESSFULLY played in (not just attempted to join)
 }
 
 func (s *SinglePlayerSupervisor) GetData() *game.Data {
@@ -686,6 +687,9 @@ func (s *SinglePlayerSupervisor) Start() error {
 			slog.Uint64("mapSeed", uint64(s.bot.ctx.GameReader.MapSeed())),
 		)
 
+		// Track last successfully played game BEFORE waiting (GameReader may change during wait)
+		s.lastPlayedGame = s.bot.ctx.GameReader.LastGameName()
+
 		// Party wait: idle in game until all party members finish their runs
 		s.waitForPartyMembers(ctx)
 
@@ -859,13 +863,25 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 		return
 	}
 
-	// Build bonus pool: short farming runs minus runs taken by party members
+	// Build bonus pool: use configured list or all short runs, minus runs taken by party members
+	allowedRuns := s.bot.ctx.CharacterCfg.Companion.BonusRunsList
+	allowedSet := make(map[string]bool, len(allowedRuns))
+	for _, r := range allowedRuns {
+		allowedSet[r] = true
+	}
+
 	takenRuns := pr.GetAllPartyRuns()
 	var bonusPool []string
 	for _, r := range config.ShortBonusRuns {
-		if !takenRuns[string(r)] {
-			bonusPool = append(bonusPool, string(r))
+		name := string(r)
+		if takenRuns[name] {
+			continue
 		}
+		// If user configured specific runs, only include those
+		if len(allowedSet) > 0 && !allowedSet[name] {
+			continue
+		}
+		bonusPool = append(bonusPool, name)
 	}
 	if len(bonusPool) == 0 {
 		s.bot.ctx.Logger.Info("Party: no available bonus runs (all short runs taken by party)")
@@ -879,10 +895,38 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 		slog.Any("bonusPool", bonusPool),
 		slog.Int("available", len(bonusPool)))
 
+	// Create a cancellable context for bonus runs — cancelled when leader starts new game
+	// or all members are done, so the current run aborts IMMEDIATELY.
+	bonusCtx, bonusCancel := context.WithCancel(ctx)
+	defer bonusCancel()
+
+	// Monitor goroutine: cancel bonus runs when leader creates new game or all done
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-bonusCtx.Done():
+				return
+			case <-ticker.C:
+				if s.leaderStartedNewGame() {
+					s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus run immediately")
+					bonusCancel()
+					return
+				}
+				if pr.AllDone() {
+					s.bot.ctx.Logger.Info("Party: all members done, aborting bonus run immediately")
+					bonusCancel()
+					return
+				}
+			}
+		}
+	}()
+
 	bonusDeadline := time.After(5 * time.Minute)
 	for i := 0; i < len(bonusPool); i++ {
 		select {
-		case <-ctx.Done():
+		case <-bonusCtx.Done():
 			return
 		case <-bonusDeadline:
 			s.bot.ctx.Logger.Warn("Party: bonus run timeout (5 min)")
@@ -895,10 +939,8 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 			return
 		}
 
-		// Leader crashed/chickened and created a new game — stop bonus runs and exit game to rejoin
 		if s.leaderStartedNewGame() {
-			s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus runs to rejoin",
-				slog.String("newGame", s.bot.ctx.CharacterCfg.Companion.CompanionGameName))
+			s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus runs to rejoin")
 			return
 		}
 
@@ -920,8 +962,13 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 
 		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
 
-		err := s.bot.Run(ctx, false, []run.Run{bonusRun})
+		err := s.bot.Run(bonusCtx, false, []run.Run{bonusRun})
 		if err != nil {
+			// Context cancelled = leader started new game or all done — not an error
+			if bonusCtx.Err() != nil {
+				s.bot.ctx.Logger.Info("Party: bonus run aborted (party event)", slog.String("run", runName))
+				return
+			}
 			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
 			return
 		}
@@ -1178,8 +1225,7 @@ func (s *SinglePlayerSupervisor) HandleCompanionMenuFlow() error {
 	}
 
 	// Don't rejoin the game we just finished — wait for leader to create a new one
-	lastGame := s.bot.ctx.GameReader.LastGameName()
-	if gameName != "" && gameName == lastGame {
+	if gameName != "" && gameName == s.lastPlayedGame {
 		s.bot.ctx.Logger.Debug("Party: active game is the same we just left, waiting for new game",
 			slog.String("game", gameName))
 		utils.Sleep(2000)

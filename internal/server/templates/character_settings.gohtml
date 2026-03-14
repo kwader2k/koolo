@@ -1727,9 +1727,27 @@
                     Wait for party
                 </label>
                 <label>
-                    <input type="checkbox" name="companionBonusRuns" {{ if .Config.Companion.BonusRuns }}checked{{ end }}/>
+                    <input type="checkbox" name="companionBonusRuns" id="companionBonusRuns" {{ if .Config.Companion.BonusRuns }}checked{{ end }}/>
                     Bonus runs while waiting
                 </label>
+            </fieldset>
+            <script>
+                document.getElementById('companionBonusRuns').addEventListener('change', function() {
+                    document.getElementById('bonusRunsListSection').style.display = this.checked ? '' : 'none';
+                });
+            </script>
+            <fieldset id="bonusRunsListSection" style="{{ if not .Config.Companion.BonusRuns }}display:none{{ end }}">
+                <legend>Bonus Run Pool (uncheck runs this character can't do)</legend>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;">
+                    {{ $selected := .Config.Companion.BonusRunsList }}
+                    {{ range $run := .ShortBonusRuns }}
+                    <label style="font-size:0.85em;">
+                        <input type="checkbox" name="companionBonusRunsList" value="{{ $run }}"
+                            {{ if eq (len $selected) 0 }}checked{{ else }}{{ range $selected }}{{ if eq . $run }}checked{{ end }}{{ end }}{{ end }}/>
+                        {{ $run }}
+                    </label>
+                    {{ end }}
+                </div>
             </fieldset>
             <fieldset class="grid">
                 <label>

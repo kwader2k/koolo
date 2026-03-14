@@ -2506,6 +2506,9 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			}
 			cfg.Companion.OpenTPForPlayer = values.Has("companionOpenTPForPlayer")
 			cfg.Companion.BonusRuns = values.Has("companionBonusRuns")
+			if bonusRunsList, ok := values["companionBonusRunsList"]; ok {
+				cfg.Companion.BonusRunsList = bonusRunsList
+			}
 			cfg.Companion.RandomGameNames = values.Has("companionRandomGameNames")
 
 			// Gambling
@@ -3488,6 +3491,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		}
 		cfg.Companion.OpenTPForPlayer = r.Form.Has("companionOpenTPForPlayer")
 		cfg.Companion.BonusRuns = r.Form.Has("companionBonusRuns")
+		cfg.Companion.BonusRunsList = r.Form["companionBonusRunsList"]
 		cfg.Companion.RandomGameNames = r.Form.Has("companionRandomGameNames")
 
 		// Back to town config
@@ -3708,7 +3712,16 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		FarmerProfiles:        farmerProfiles,
 		LevelingSequenceFiles: sequenceFiles,
 		Supervisors:           supervisors,
+		ShortBonusRuns:        shortBonusRunNames(),
 	})
+}
+
+func shortBonusRunNames() []string {
+	names := make([]string, len(config.ShortBonusRuns))
+	for i, r := range config.ShortBonusRuns {
+		names[i] = string(r)
+	}
+	return names
 }
 
 func (s *HttpServer) listLevelingSequenceFiles() []string {
