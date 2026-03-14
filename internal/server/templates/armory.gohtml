@@ -637,7 +637,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 4px 0;
+            padding: 6px 0;
             font-size: 13px;
         }
 
@@ -648,6 +648,36 @@
             background-repeat: no-repeat;
             background-position: center;
             image-rendering: pixelated;
+            flex-shrink: 0;
+        }
+
+        .drop-modal-item .item-qty-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .drop-modal-item .item-qty-wrap label {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .drop-modal-item input.item-qty {
+            width: 52px;
+            padding: 2px 6px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .drop-modal-item input.item-qty:focus {
+            outline: none;
+            border-color: #6B8AFF;
         }
 
         .drop-modal-form {
@@ -769,12 +799,44 @@
         .search-input-wrapper i {
             position: absolute;
             left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             color: #888;
+        }
+
+        .search-refresh-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.3em;
+            line-height: 1;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-refresh-btn:hover {
+            color: #ccc;
+        }
+
+        .search-refresh-btn.spinning i {
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: translateY(-50%) rotate(0deg); }
+            to { transform: translateY(-50%) rotate(360deg); }
         }
 
         .search-input {
             width: 100%;
-            padding: 12px 12px 12px 40px;
+            padding: 12px 40px 12px 40px;
             background: rgba(20, 20, 40, 0.8);
             border: 1px solid #4a4a4a;
             border-radius: 8px;
@@ -1359,6 +1421,9 @@
             <div class="search-input-wrapper">
                 <i class="bi bi-search"></i>
                 <input type="text" class="search-input" id="globalSearch" placeholder="Search items across all characters... (Press / to focus)" autocomplete="off">
+                <button class="search-refresh-btn" id="searchRefreshBtn" title="Refresh armory data" onclick="refreshArmoryData()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
             </div>
             <div class="search-filters">
                 <span class="filter-chip active" data-filter="all">All</span>
@@ -2115,16 +2180,30 @@
             const overlay = document.getElementById('dropModalOverlay');
             const itemsContainer = document.getElementById('dropModalItems');
             
-            // Populate items list
-            let html = '';
+            // Populate items list - group by item name to show one row per unique item
+            const itemGroups = new Map(); // name -> { item, count, stashTab }
             selectedItems.forEach((item, element) => {
+                const name = item.data.name;
+                if (!itemGroups.has(name)) {
+                    itemGroups.set(name, { item, count: 0, stashTab: item.stashTab });
+                }
+                itemGroups.get(name).count++;
+            });
+
+            let html = '';
+            itemGroups.forEach(({ item, count, stashTab }, name) => {
                 const qualityClass = 'item-quality-' + (item.data.quality || 'normal').toLowerCase();
                 const displayName = item.data.identifiedName || item.data.runewordName || item.data.name;
+                const stackQty = item.data.stackedQuantity || count;
                 html += `
-                    <div class="drop-modal-item">
+                    <div class="drop-modal-item" data-item-name="${name}">
                         <div class="item-icon" style="background-image: url('/items/${item.data.imageName}');"></div>
                         <span class="${qualityClass}">${displayName}</span>
-                        <span style="color: #666; font-size: 11px; margin-left: auto;">(${item.stashTab})</span>
+                        <span style="color: #555; font-size: 11px;">(${stashTab})</span>
+                        <div class="item-qty-wrap">
+                            <label>Qty</label>
+                            <input type="number" class="item-qty" min="0" max="${stackQty}" value="0" title="0 = drop all (${stackQty} available)">
+                        </div>
                     </div>
                 `;
             });
@@ -2161,53 +2240,43 @@
                 return;
             }
             
-            // Build custom items list from selection
-            // Only items that don't fit into runes/gems/keys go to customItems
-            const customItems = [];
+            // Build item quantities from modal qty inputs (0 = drop all available)
             const itemQuantities = {};
-            
-            selectedItems.forEach((item) => {
-                const itemName = item.data.name;
-                if (!itemQuantities[itemName]) {
-                    itemQuantities[itemName] = 0;
-                }
-                itemQuantities[itemName]++;
+            document.querySelectorAll('#dropModalItems .drop-modal-item').forEach(row => {
+                const name = row.dataset.itemName;
+                const qty = parseInt(row.querySelector('input.item-qty')?.value || '0') || 0;
+                itemQuantities[name] = qty;
             });
-            
+
             // Build filter with exact quantities
             const filter = {
                 enabled: true,
-                DropperOnlySelected: true, // Exclusive mode - only drop selected items
-                customItems: [],  // Will be populated only for non-rune/gem/key items
+                DropperOnlySelected: true,
+                customItems: [],
                 selectedRunes: [],
                 selectedGems: [],
                 selectedKeyTokens: [],
+                selectedMaterials: [],
                 allowedQualities: []
             };
-            
+
             // Categorize items into appropriate filter arrays WITH quantity limits
             Object.entries(itemQuantities).forEach(([name, qty]) => {
-                const lowerName = name.toLowerCase();
-                const normalizedName = lowerName.replace(/\s+/g, ''); // Remove spaces for matching
-                
+                const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+
                 if (isRune(name)) {
-                    // It's a rune - add with quantity limit
-                    // Use the original name as the API expects it (e.g., "BerRune" or "berrune")
                     filter.selectedRunes.push({ name: normalizedName, quantity: qty });
                 } else if (isGem(name)) {
-                    // It's a gem - add with quantity limit
                     filter.selectedGems.push({ name: normalizedName, quantity: qty });
                 } else if (isKeyOrToken(name)) {
-                    // It's a key or token - add with quantity limit
-                    // Normalize to match the format expected by drop filters (e.g., "keyofdestruction")
                     filter.selectedKeyTokens.push({ name: normalizedName, quantity: qty });
+                } else if (isMaterial(name)) {
+                    filter.selectedMaterials.push({ name: normalizedName, quantity: qty });
                 } else {
-                    // Other items go to customItems (no quantity support in current API)
-                    customItems.push(name);
+                    // customItems has no quantity support — qty is ignored
+                    filter.customItems.push(name);
                 }
             });
-            
-            filter.customItems = customItems;
             
             const requestBody = {
                 room: gameName,
@@ -2270,14 +2339,27 @@
         }
 
         function isKeyOrToken(name) {
-            // Match both formats: "KeyOfDestruction" and "keyofdestruction"
-            const keyTokenPatterns = ['keyofterror', 'keyofhate', 'keyofdestruction', 'tokenofabsolution'];
-            const lowerName = name.toLowerCase().replace(/\s+/g, ''); // Remove spaces and lowercase
-            return keyTokenPatterns.some(kt => lowerName.includes(kt));
+            const patterns = [
+                'keyofterror', 'keyofhate', 'keyofdestruction', 'tokenofabsolution',
+                'diabloshorn', 'baalseye', 'mephistosbrain',
+                'twistedessenceofsuffering', 'chargedessenceofhatred',
+                'burningessenceofterror', 'festeringessenceofdestruction'
+            ];
+            const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+            return patterns.some(p => normalizedName.includes(p));
+        }
+
+        function isMaterial(name) {
+            const patterns = [
+                'westernworldstoneshard', 'easternworldstoneshard', 'southernworldstoneshard',
+                'deepworldstoneshard', 'northernworldstoneshard',
+                'uberancientsummonmaterial'
+            ];
+            const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+            return patterns.some(p => normalizedName.includes(p));
         }
 
         function isRune(name) {
-            // Match rune names like "ElRune", "BerRune", etc.
             const lowerName = name.toLowerCase();
             return lowerName.endsWith('rune');
         }
@@ -2489,6 +2571,8 @@
 
         // ============ SEARCH ============
         let allArmoryData = null;
+        let allArmoryDataFetchedAt = 0;
+        const ARMORY_CACHE_TTL_MS = 60000; // 60 seconds
         let activeFilter = 'all';
 
         document.getElementById('globalSearch').addEventListener('input', debounce(performSearch, 300));
@@ -2511,15 +2595,28 @@
         }
 
         async function fetchAllArmoryData() {
-            if (allArmoryData) return allArmoryData;
+            const now = Date.now();
+            if (allArmoryData && (now - allArmoryDataFetchedAt) < ARMORY_CACHE_TTL_MS) return allArmoryData;
             try {
                 const response = await fetch('/api/armory/all');
                 allArmoryData = await response.json();
+                allArmoryDataFetchedAt = now;
                 return allArmoryData;
             } catch (error) {
                 console.error('Failed to fetch armory data:', error);
                 return {};
             }
+        }
+
+        async function refreshArmoryData() {
+            const btn = document.getElementById('searchRefreshBtn');
+            if (btn) btn.classList.add('spinning');
+            allArmoryData = null;
+            allArmoryDataFetchedAt = 0;
+            await fetchAllArmoryData();
+            if (btn) btn.classList.remove('spinning');
+            const query = document.getElementById('globalSearch').value.trim();
+            if (query.length >= 2) performSearch();
         }
 
         async function performSearch() {
@@ -2554,7 +2651,7 @@
 
                 for (const loc of locations) {
                     for (const item of loc.items) {
-                        if (matchesSearch(item, query) && matchesFilter(item)) {
+                        if (matchesSearch(item, query, loc.location) && matchesFilter(item)) {
                             results.push({
                                 item: item,
                                 character: charName,
@@ -2568,12 +2665,25 @@
             renderSearchResults(results);
         }
 
-        function matchesSearch(item, query) {
+        function matchesSearch(item, query, location) {
+            // Skip DLC tab items with zero quantity — they render as empty slots
+            const isDLCTab = location === 'Gems Tab' || location === 'Materials Tab' || location === 'Runes Tab';
+            if (isDLCTab && !(item.stackedQuantity >= 1)) return false;
+
+            // For rune searches (query ends with 'rune'), only match against
+            // the item name exactly — never against stat strings or base names,
+            // which can produce false positives.
+            const isRuneQuery = query.endsWith('rune');
+            if (isRuneQuery) {
+                return (item.name?.toLowerCase() || '') === query ||
+                       (item.runewordName?.toLowerCase() || '').includes(query);
+            }
+
             const searchFields = [
                 item.name?.toLowerCase() || '',
-                item.identifiedName?.toLowerCase() || '',  // Unique/Set item names
+                item.identifiedName?.toLowerCase() || '',
                 item.baseName?.toLowerCase() || '',
-                item.runewordName?.toLowerCase() || '',    // Runeword names
+                item.runewordName?.toLowerCase() || '',
                 (item.stats || []).map(s => s.string?.toLowerCase() || '').join(' ')
             ];
             return searchFields.some(field => field.includes(query));
