@@ -200,7 +200,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 	// NORMAL MODE: Original code unchanged from here
 	firstRun := true
 	var timeSpentNotInGameStart = time.Now()
-	const maxTimeNotInGame = 3 * time.Minute
+	const maxTimeNotInGame = 45 * time.Second
 
 	for {
 		// Check if the main context has been cancelled
@@ -270,6 +270,11 @@ func (s *SinglePlayerSupervisor) Start() error {
 						return err
 					}
 					if err.Error() == "loading screen" || err.Error() == "" || err.Error() == "idle" {
+						// Companions legitimately idle in menu waiting for leader's new game —
+						// reset watchdog so 45s timeout doesn't kill the client
+						if err.Error() == "idle" {
+							timeSpentNotInGameStart = time.Now()
+						}
 						utils.Sleep(100)
 						continue
 					}
@@ -326,6 +331,8 @@ func (s *SinglePlayerSupervisor) Start() error {
 				runs = filtered
 				if len(runs) == 0 {
 					s.bot.ctx.Logger.Info("All runs already completed in this game, exiting")
+					// Track as played so companion menu flow doesn't rejoin the same game after restart
+					s.lastPlayedGame = currentGameID
 					s.bot.ctx.Manager.ExitGame()
 					utils.Sleep(3000)
 					timeSpentNotInGameStart = time.Now()
