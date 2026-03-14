@@ -72,6 +72,9 @@ type Context struct {
 	Drop                      *drop.Manager // Drop: Per-supervisor Drop manager
 	IsAllocatingStatsOrSkills atomic.Bool   // Prevents stuck detection during stat/skill allocation
 	WaitingForParty          atomic.Bool   // Prevents stuck detection while waiting for party members
+	CompletedRuns             []string      // Runs completed in current game (survives bot.Run() reset)
+	CompletedGameID           string        // Game name for which CompletedRuns is valid
+	completedRunsMu           sync.Mutex
 }
 
 type Debug struct {
@@ -99,9 +102,7 @@ type CurrentGameHelper struct {
 	CurrentMuleIndex  int
 	ShouldCheckStash  bool
 	StashFull         bool
-	CompletedRuns     []string // Runs completed in the current game session (for rejoin skip)
-	CompletedGameID   string   // Game name for which CompletedRuns is valid
-	mutex             sync.Mutex
+	mutex sync.Mutex
 }
 
 func (ctx *Context) StopSupervisor() {
@@ -222,27 +223,27 @@ func (ctx *Context) SetPickingItems(value bool) {
 }
 
 // AddCompletedRun records a run as completed in the current game session.
-func (g *CurrentGameHelper) AddCompletedRun(name string) {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
-	g.CompletedRuns = append(g.CompletedRuns, name)
+func (ctx *Context) AddCompletedRun(name string) {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	ctx.CompletedRuns = append(ctx.CompletedRuns, name)
 }
 
 // GetCompletedRuns returns a copy of completed run names for the current game.
-func (g *CurrentGameHelper) GetCompletedRuns() []string {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
-	result := make([]string, len(g.CompletedRuns))
-	copy(result, g.CompletedRuns)
+func (ctx *Context) GetCompletedRuns() []string {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	result := make([]string, len(ctx.CompletedRuns))
+	copy(result, ctx.CompletedRuns)
 	return result
 }
 
 // ResetCompletedRuns clears the completed runs list and sets the new game ID.
-func (g *CurrentGameHelper) ResetCompletedRuns(gameID string) {
-	g.mutex.Lock()
-	defer g.mutex.Unlock()
-	g.CompletedRuns = nil
-	g.CompletedGameID = gameID
+func (ctx *Context) ResetCompletedRuns(gameID string) {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	ctx.CompletedRuns = nil
+	ctx.CompletedGameID = gameID
 }
 
 func (s *Status) PauseIfNotPriority() {

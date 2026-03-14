@@ -303,8 +303,8 @@ func (s *SinglePlayerSupervisor) Start() error {
 
 		// Check if this is a rejoin (same game) — skip already completed runs
 		currentGameID := s.bot.ctx.GameReader.LastGameName()
-		if s.bot.ctx.CurrentGame.CompletedGameID == currentGameID {
-			completed := s.bot.ctx.CurrentGame.GetCompletedRuns()
+		if s.bot.ctx.CompletedGameID == currentGameID {
+			completed := s.bot.ctx.GetCompletedRuns()
 			if len(completed) > 0 {
 				completedSet := make(map[string]bool, len(completed))
 				for _, name := range completed {
@@ -327,7 +327,7 @@ func (s *SinglePlayerSupervisor) Start() error {
 				}
 			}
 		} else {
-			s.bot.ctx.CurrentGame.ResetCompletedRuns(currentGameID)
+			s.bot.ctx.ResetCompletedRuns(currentGameID)
 		}
 
 		event.Send(event.GameCreated(event.Text(s.name, "New game created"), s.bot.ctx.GameReader.LastGameName(), s.bot.ctx.GameReader.LastGamePass()))
