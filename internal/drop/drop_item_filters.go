@@ -22,6 +22,7 @@ type Filters struct {
 	SelectedRunes       []ItemQuantity `json:"selectedRunes"`
 	SelectedGems        []ItemQuantity `json:"selectedGems"`
 	SelectedKeyTokens   []ItemQuantity `json:"selectedKeyTokens"`
+	SelectedMaterials   []ItemQuantity `json:"selectedMaterials"`
 	CustomItems         []string       `json:"customItems"`      // Legacy: simple names without quantity information
 	AllowedQualities    []string       `json:"allowedQualities"` // e.g., base, magic, rare, set, unique, crafted, runeword
 }
@@ -33,6 +34,7 @@ func (f Filters) Normalize() Filters {
 	f.SelectedRunes = normalizeItemQuantities(f.SelectedRunes)
 	f.SelectedGems = normalizeItemQuantities(f.SelectedGems)
 	f.SelectedKeyTokens = normalizeItemQuantities(f.SelectedKeyTokens)
+	f.SelectedMaterials = normalizeItemQuantities(f.SelectedMaterials)
 	f.CustomItems = normalizeList(f.CustomItems)
 	f.AllowedQualities = normalizeList(f.AllowedQualities)
 	return f
@@ -63,6 +65,7 @@ func (f Filters) BuildSet() map[string]struct{} {
 	addQuantities(f.SelectedRunes)
 	addQuantities(f.SelectedGems)
 	addQuantities(f.SelectedKeyTokens)
+	addQuantities(f.SelectedMaterials)
 	addStrings(f.CustomItems)
 	return set
 }
@@ -84,6 +87,12 @@ func (f Filters) GetItemQuantity(itemName string) int {
 		}
 	}
 	for _, item := range f.SelectedKeyTokens {
+		if strings.ToLower(item.Name) == lowerName {
+			return item.Quantity
+		}
+	}
+
+	for _, item := range f.SelectedMaterials {
 		if strings.ToLower(item.Name) == lowerName {
 			return item.Quantity
 		}
@@ -118,6 +127,26 @@ var keyTokenNames = map[string]struct{}{
 	"keyofhate":         {},
 	"keyofdestruction":  {},
 	"tokenofabsolution": {},
+	"diabloshorn":       {},
+	"baalseye":          {},
+	"mephistosbrain":    {},
+}
+
+var materialNames = map[string]struct{}{
+	"twistedessenceofsuffering":     {},
+	"chargedessenceofhatred":        {},
+	"burningessenceofterror":        {},
+	"festeringessenceofdestruction": {},
+	"westernworldstoneshard":        {},
+	"easternworldstoneshard":        {},
+	"southernworldstoneshard":       {},
+	"deepworldstoneshard":           {},
+	"northernworldstoneshard":       {},
+	"uberancientsummonmaterialact1": {},
+	"uberancientsummonmaterialact2": {},
+	"uberancientsummonmaterialact3": {},
+	"uberancientsummonmaterialact4": {},
+	"uberancientsummonmaterialact5": {},
 }
 
 // type codes for any gem/rune tier
@@ -268,10 +297,16 @@ func (s *ContextFilters) HasDropQuotaLimits() bool {
 			return true
 		}
 	}
+	for _, item := range s.filters.SelectedMaterials {
+		if item.Quantity > 0 {
+			return true
+		}
+	}
 	return false
 }
 
 // AreDropQuotasSatisfied reports whether all finite quotas are satisfied (no more items to Dropper).
+// Returns false if any item has quantity=0 (unlimited), since those can never be fully satisfied.
 func (s *ContextFilters) AreDropQuotasSatisfied() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -279,31 +314,22 @@ func (s *ContextFilters) AreDropQuotasSatisfied() bool {
 		return false
 	}
 	hasFinite := false
-	for _, item := range s.filters.SelectedRunes {
-		if item.Quantity <= 0 {
-			continue
-		}
-		hasFinite = true
-		if s.Droppered[strings.ToLower(item.Name)] < item.Quantity {
-			return false
-		}
+	allLists := [][]ItemQuantity{
+		s.filters.SelectedRunes,
+		s.filters.SelectedGems,
+		s.filters.SelectedKeyTokens,
+		s.filters.SelectedMaterials,
 	}
-	for _, item := range s.filters.SelectedGems {
-		if item.Quantity <= 0 {
-			continue
-		}
-		hasFinite = true
-		if s.Droppered[strings.ToLower(item.Name)] < item.Quantity {
-			return false
-		}
-	}
-	for _, item := range s.filters.SelectedKeyTokens {
-		if item.Quantity <= 0 {
-			continue
-		}
-		hasFinite = true
-		if s.Droppered[strings.ToLower(item.Name)] < item.Quantity {
-			return false
+	for _, list := range allLists {
+		for _, item := range list {
+			if item.Quantity <= 0 {
+				// Unlimited item selected — quotas can never be considered satisfied
+				return false
+			}
+			hasFinite = true
+			if s.Droppered[strings.ToLower(item.Name)] < item.Quantity {
+				return false
+			}
 		}
 	}
 	return hasFinite
@@ -357,6 +383,9 @@ func isRuneOrGem(name string) bool {
 		return true
 	}
 	if _, ok := keyTokenNames[l]; ok {
+		return true
+	}
+	if _, ok := materialNames[l]; ok {
 		return true
 	}
 	return false

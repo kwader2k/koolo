@@ -246,7 +246,7 @@ h2, h3, p { margin: 0; }
   flex: 1 !important; margin: 0 !important; white-space: nowrap !important; overflow: hidden !important;
   text-overflow: ellipsis !important; line-height: 32px !important; cursor: pointer !important; display: flex; align-items: center; gap: 0.4rem;
 }
-.filter-checkbox-item input[type="checkbox"] { margin: 0; }
+.filter-checkbox-item input[type="checkbox"] { margin: 0; flex-shrink: 0; }
 
 /* Quantity Input (Tiny & Auto-show) */
 .filter-checkbox-item input.quantity-value {

@@ -30,8 +30,27 @@ const CONFIG = {
     { label: "T-key", value: "keyofterror" },
     { label: "H-key", value: "keyofhate" },
     { label: "D-Key", value: "keyofdestruction" },
+    { label: "Diablo's Horn", value: "DiablosHorn" },
+    { label: "Baal's Eye", value: "BaalsEye" },
+    { label: "Mephisto's Brain", value: "MephistosBrain" },
     { label: "Token", value: "tokenofabsolution" },
-  ]
+    { label: "Twisted Essence", value: "TwistedEssenceOfSuffering" },
+    { label: "Charged Essence", value: "ChargedEssenceOfHatred" },
+    { label: "Burning Essence", value: "BurningEssenceOfTerror" },
+    { label: "Festering Essence", value: "FesteringEssenceOfDestruction" },
+  ],
+  MATERIALS: [
+    { label: "Western Shard", value: "WesternWorldstoneShard" },
+    { label: "Eastern Shard", value: "EasternWorldstoneShard" },
+    { label: "Southern Shard", value: "SouthernWorldstoneShard" },
+    { label: "Deep Shard", value: "DeepWorldstoneShard" },
+    { label: "Northern Shard", value: "NorthernWorldstoneShard" },
+    { label: "Talic's Anguish", value: "UberAncientSummonMaterialAct1" },
+    { label: "Korlic's Pain", value: "UberAncientSummonMaterialAct2" },
+    { label: "Madawc's Ire", value: "UberAncientSummonMaterialAct3" },
+    { label: "Bul-Kathos' Nightmare", value: "UberAncientSummonMaterialAct4" },
+    { label: "Worusk's End", value: "UberAncientSummonMaterialAct5" },
+  ],
 };
 
 const DROP_MODES = {
@@ -228,6 +247,7 @@ const State = {
         parsed.forEach((c) => {
           if (c.filter) {
              c.filter.selectedKeyTokens = c.filter.selectedKeyTokens || [];
+             c.filter.selectedMaterials = c.filter.selectedMaterials || [];
              c.filter.customItems = c.filter.customItems || [];
              c.filter.selectedRunes = c.filter.selectedRunes || [];         
              c.filter.selectedGems = c.filter.selectedGems || [];           
@@ -277,7 +297,7 @@ const State = {
   
   defaultFilter: () => ({
     enabled: false, DropperOnlySelected: true,
-    selectedRunes: [], selectedGems: [], selectedKeyTokens: [], customItems: [], allowedQualities: []
+    selectedRunes: [], selectedGems: [], selectedKeyTokens: [], selectedMaterials: [], customItems: [], allowedQualities: []
   }),
 
   getHintKey(sup, room) {
@@ -400,7 +420,7 @@ const State = {
 
   hasActiveFilter(f) { 
     if(!f) return false;
-    return f.enabled || (f.selectedRunes?.length || f.selectedGems?.length || f.selectedKeyTokens?.length || f.customItems?.length || f.allowedQualities?.length); 
+    return f.enabled || (f.selectedRunes?.length || f.selectedGems?.length || f.selectedKeyTokens?.length || f.selectedMaterials?.length || f.customItems?.length || f.allowedQualities?.length); 
   }
 };
 
@@ -709,6 +729,8 @@ const UI = {
     if(gemBox) { gemBox.innerHTML=""; CONFIG.GEMS.forEach(g => gemBox.appendChild(makeItem(g.label, g.value))); }
     const keyTokenBox = $.get("dm-card-keytoken-checkboxes");
     if(keyTokenBox) { keyTokenBox.innerHTML=""; CONFIG.KEY_TOKENS.forEach(k => keyTokenBox.appendChild(makeItem(k.label, k.value))); }
+    const materialBox = $.get("dm-card-material-checkboxes");
+    if(materialBox) { materialBox.innerHTML=""; CONFIG.MATERIALS.forEach(m => materialBox.appendChild(makeItem(m.label, m.value))); }
   },
 
   populateFilterModal(filter) {
@@ -723,6 +745,7 @@ const UI = {
     $.setCheckboxValues("dm-card-rune-checkboxes", filter.selectedRunes || []);
     $.setCheckboxValues("dm-card-gem-checkboxes", filter.selectedGems || []);
     $.setCheckboxValues("dm-card-keytoken-checkboxes", filter.selectedKeyTokens || []);
+    $.setCheckboxValues("dm-card-material-checkboxes", filter.selectedMaterials || []);
     $.setVal("dm-card-custom-items", (filter.customItems || []).join("\n"));
 
     const qualities = filter.allowedQualities || [];
@@ -753,6 +776,7 @@ const UI = {
     items.push(...getFormattedItems(filter.selectedRunes));
     items.push(...getFormattedItems(filter.selectedGems));
     items.push(...getFormattedItems(filter.selectedKeyTokens)); 
+    items.push(...getFormattedItems(filter.selectedMaterials));
     
     if (filter.allowedQualities?.length) {
         const qualityLabels = {
@@ -812,8 +836,9 @@ const UI = {
     const runes = $.getCheckedValues("dm-card-rune-checkboxes");
     const gems = $.getCheckedValues("dm-card-gem-checkboxes");
     const keyTokens = $.getCheckedValues("dm-card-keytoken-checkboxes"); 
+    const materials = $.getCheckedValues("dm-card-material-checkboxes");
     
-    [...runes, ...gems, ...keyTokens].forEach(item => {
+    [...runes, ...gems, ...keyTokens, ...materials].forEach(item => {
         hasItems = true;
         const qtyText = item.quantity > 0 ? `(${item.quantity})` : "(All)";
         const displayName = formatItemName(item.name);
@@ -867,6 +892,7 @@ const UI = {
     return $.getCheckedValues("dm-card-rune-checkboxes").length > 0 ||
            $.getCheckedValues("dm-card-gem-checkboxes").length > 0 ||
            $.getCheckedValues("dm-card-keytoken-checkboxes").length > 0 ||
+           $.getCheckedValues("dm-card-material-checkboxes").length > 0 ||
            document.querySelectorAll("#dm-card-quality-checkboxes input:checked").length > 0 ||
            $.val("dm-card-custom-items").trim().length > 0;
   }
@@ -922,6 +948,7 @@ requestCard(card) {
     selectedRunes: filter.selectedRunes || [],
     selectedGems: filter.selectedGems || [],
     selectedKeyTokens: filter.selectedKeyTokens || [],
+    selectedMaterials: filter.selectedMaterials || [],
     allowedQualities: filter.allowedQualities || [],
     customItems: filter.customItems || []
   };
@@ -1012,6 +1039,7 @@ requestCard(card) {
         selectedRunes: $.getCheckedValues("dm-card-rune-checkboxes"),
         selectedGems: $.getCheckedValues("dm-card-gem-checkboxes"),
         selectedKeyTokens: $.getCheckedValues("dm-card-keytoken-checkboxes"),
+        selectedMaterials: $.getCheckedValues("dm-card-material-checkboxes"),
         allowedQualities: qualities,
         customItems: customLines
     };
@@ -1111,7 +1139,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   bind("dm-drop-mode-close", "click", () => DropModeModal.close());
 
-  ["rune", "gem", "quality", "keytoken"].forEach(type => {
+  ["rune", "gem", "quality", "keytoken", "material"].forEach(type => {
       const toggle = $.get(`dm-card-${type}-selectall`);
       const box = $.get(`dm-card-${type}-checkboxes`);
       if(toggle && box) {

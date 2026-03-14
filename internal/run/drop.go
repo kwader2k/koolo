@@ -308,6 +308,8 @@ func (d Drop) dropStashItems(ctx *context.Status) (int, error) {
 	for i := 0; i < sharedPages; i++ {
 		stashTabs[i+1] = i + 2 // Shared tabs start at 2
 	}
+	// Append DLC-only tabs (Gems=100, Materials=101, Runes=102)
+	stashTabs = append(stashTabs, action.StashTabGems, action.StashTabMaterials, action.StashTabRunes)
 
 	startTime := time.Now()
 	for pass := 0; pass < maxPasses; pass++ {
@@ -428,6 +430,16 @@ func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.
 		}
 	}
 
+	// DLC tab items (gems, materials, runes) are stackable: ctrl+click moves only 1
+	// unit at a time. We must loop once per unit in the stack.
+	isDLCTab := updated.Location.LocationType == item.LocationGemsTab ||
+		updated.Location.LocationType == item.LocationMaterialsTab ||
+		updated.Location.LocationType == item.LocationRunesTab
+
+	if isDLCTab {
+		return d.moveDLCStackToInventory(ctx, updated)
+	}
+
 	screenPos := ui.GetScreenCoordsForItem(updated)
 	ctx.Logger.Debug("Drop: attempting to move item via ctrl+click", "item", updated.Name, "tab", updated.Location.Page+1, "locationType", updated.Location.LocationType, "gridX", updated.Position.X, "gridY", updated.Position.Y, "screenX", screenPos.X, "screenY", screenPos.Y)
 	prevInventoryCount := len(ctx.Data.Inventory.ByLocation(item.LocationInventory))
@@ -450,7 +462,7 @@ func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.
 		return it, true
 	}
 
-	for _, stashItem := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash) {
+	for _, stashItem := range ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab) {
 		if stashItem.UnitID == it.UnitID {
 			ctx.Logger.Debug("Drop: item still present in stash after move attempt", "item", it.Name)
 			return it, false
@@ -459,6 +471,83 @@ func (d Drop) moveStashItemToInventory(ctx *context.Status, it data.Item) (data.
 
 	ctx.Logger.Debug("Drop: unable to determine new location of item after move attempt", "item", updated.Name)
 	return updated, false
+}
+
+// moveDLCStackToInventory moves a full DLC tab stack to inventory by issuing
+// one ctrl+click per unit (the game only moves 1 at a time from these tabs).
+// When inventory fills up mid-stack it flushes to the ground and continues.
+func (d Drop) moveDLCStackToInventory(ctx *context.Status, it data.Item) (data.Item, bool) {
+	qty := it.StackedQuantity
+	if qty <= 0 {
+		qty = 1
+	}
+
+	// Respect finite quotas: only move up to the remaining allowed quantity.
+	if ctx.Drop != nil {
+		limit := ctx.Drop.GetDropItemQuantity(string(it.Name))
+		if limit > 0 {
+			alreadyDroppered := ctx.Drop.GetDropperedItemCount(string(it.Name))
+			remaining := limit - alreadyDroppered
+			if remaining <= 0 {
+				return it, false
+			}
+			if qty > remaining {
+				qty = remaining
+			}
+		}
+	}
+
+	ctx.Logger.Debug("Drop: moving DLC stack to inventory", "item", it.Name, "qty", qty)
+
+	screenPos := ui.GetScreenCoordsForItem(it)
+	movedAny := false
+
+	for i := 0; i < qty; i++ {
+		// Check for inventory space; flush if needed
+		if _, hasSpace := findInventorySpace(ctx, it); !hasSpace {
+			ctx.Logger.Debug("Drop: inventory full mid-stack, flushing to ground", "item", it.Name, "movedSoFar", i)
+			dlcTab := dlcTabForLocation(it)
+			if dropped, err := d.dropInventoryDropperables(ctx, dlcTab, nil); err != nil || dropped == 0 {
+				ctx.Logger.Warn("Drop: failed to flush inventory mid-stack", "item", it.Name, "error", err)
+				break
+			}
+			ctx.RefreshGameData()
+			// dropInventoryDropperables with reopenTab>0 already reopens stash and switches tab
+			// just verify we're on the right tab
+			if err := d.ensureStashTabReady(ctx, dlcTab); err != nil {
+				ctx.Logger.Warn("Drop: failed to reswitch DLC tab after flush", "error", err)
+				break
+			}
+			ctx.RefreshInventory()
+			// Recompute screen pos in case of UI refresh
+			screenPos = ui.GetScreenCoordsForItem(it)
+		}
+
+		ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
+		utils.PingSleep(utils.Medium, 200)
+		ctx.RefreshInventory()
+		movedAny = true
+	}
+
+	utils.PingSleep(utils.Medium, 300)
+	ctx.RefreshInventory()
+	if movedAny {
+		logDropQuotaProgress(ctx, "moved-dlc-stack-to-inventory", it)
+	}
+	return it, movedAny
+}
+
+// dlcTabForLocation returns the stash tab constant for a DLC location type.
+func dlcTabForLocation(it data.Item) int {
+	switch it.Location.LocationType {
+	case item.LocationGemsTab:
+		return action.StashTabGems
+	case item.LocationMaterialsTab:
+		return action.StashTabMaterials
+	case item.LocationRunesTab:
+		return action.StashTabRunes
+	}
+	return action.StashTabGems
 }
 
 func (d Drop) dropInventoryDropperables(ctx *context.Status, reopenTab int, quotas *DropQuotaTracker) (int, error) {
@@ -533,7 +622,8 @@ func (d Drop) dropInventoryDropperables(ctx *context.Status, reopenTab int, quot
 }
 
 func (d Drop) collectDropperablesForTab(ctx *context.Status, tab int, quotas *DropQuotaTracker) []data.Item {
-	stashItems := ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash)
+	rawItems := ctx.Data.Inventory.ByLocation(item.LocationStash, item.LocationSharedStash, item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab)
+	stashItems := action.FilterDLCGhostItems(rawItems)
 	Dropperables := make([]data.Item, 0, len(stashItems))
 
 	for _, it := range stashItems {
@@ -559,6 +649,12 @@ func (d Drop) itemBelongsToTab(it data.Item, tab int) bool {
 		return tab == 1
 	case item.LocationSharedStash:
 		return tab == it.Location.Page+1
+	case item.LocationGemsTab:
+		return tab == action.StashTabGems
+	case item.LocationMaterialsTab:
+		return tab == action.StashTabMaterials
+	case item.LocationRunesTab:
+		return tab == action.StashTabRunes
 	default:
 		return false
 	}
