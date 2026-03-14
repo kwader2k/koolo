@@ -93,7 +93,7 @@ func (m Mule) Run(parameters *RunParameters) error {
 	} else {
 		// Stash is not full, proceed with muling logic
 		// Tab 1 = Personal stash (always)
-		// Tabs 2..N = Shared stash pages (DLC: 1 page, Non-DLC LoD: 3 pages)
+		// Tabs 2..N = Shared stash pages (DLC/ROTW: 5 pages, Non-DLC LoD: 3 pages)
 		sharedPages := action.SharedStashPageCount(ctx)
 		maxSharedTab := 1 + sharedPages // personal (1) + shared pages
 		ctx.Logger.Info("Mule stash layout detected", "sharedPages", sharedPages, "maxSharedTab", maxSharedTab)

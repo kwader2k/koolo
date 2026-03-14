@@ -16,12 +16,6 @@ import (
 func StashFull() bool {
 	ctx := context.Get()
 
-	// If a previous stash attempt flagged that a quest item could not fit
-	// into the personal stash, honour that signal so auto-mule can trigger.
-	if ctx.CurrentGame.StashFull {
-		return true
-	}
-
 	totalUsedSpace := 0
 
 	// ByLocation(LocationSharedStash) returns items from ALL shared stash

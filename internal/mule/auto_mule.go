@@ -60,13 +60,31 @@ func CreateAutoMuleProfile(logger *slog.Logger, farmerName string, farmerCfg *co
 		return "", fmt.Errorf("failed to generate unique mule name after retries")
 	}
 
-	logger.Info("Creating auto-mule profile",
-		slog.String("farmer", farmerName),
-		slog.String("muleName", muleName))
+	// Create config directory from template, retrying on name-collision races.
+	const maxCreateAttempts = 10
+	var lastErr error
+	for attempt := 0; attempt < maxCreateAttempts; attempt++ {
+		logger.Info("Creating auto-mule profile",
+			slog.String("farmer", farmerName),
+			slog.String("muleName", muleName),
+			slog.Int("attempt", attempt+1))
 
-	// Create config directory from template
-	if err := config.CreateFromTemplate(muleName); err != nil {
-		return "", fmt.Errorf("failed to create mule config from template: %w", err)
+		if err := config.CreateFromTemplate(muleName); err != nil {
+			if strings.Contains(err.Error(), "configuration with that name already exists") {
+				lastErr = err
+				muleName, err = GenerateMuleName()
+				if err != nil {
+					return "", err
+				}
+				continue
+			}
+			return "", fmt.Errorf("failed to create mule config from template: %w", err)
+		}
+		lastErr = nil
+		break
+	}
+	if lastErr != nil {
+		return "", fmt.Errorf("failed to create unique mule config after retries: %w", lastErr)
 	}
 
 	// Load the newly created config
@@ -91,7 +109,7 @@ func CreateAutoMuleProfile(logger *slog.Logger, farmerName string, farmerCfg *co
 	// Copy game version settings from farmer
 	muleCfg.Game.GameVersion = farmerCfg.Game.GameVersion
 	muleCfg.Game.IsNonLadderChar = farmerCfg.Game.IsNonLadderChar
-	muleCfg.Game.IsHardCoreChar = false // Mules should never be hardcore
+	muleCfg.Game.IsHardCoreChar = farmerCfg.Game.IsHardCoreChar
 	muleCfg.Game.DLCEnabled = farmerCfg.Game.DLCEnabled
 
 	// Set runs to only the mule run and difficulty to Normal (new level 1 character)
