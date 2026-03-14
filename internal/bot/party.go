@@ -224,6 +224,15 @@ func (pr *PartyRegistry) SetMemberRuns(name string, runs []string) {
 	}
 }
 
+// AddMemberRun appends a single run to a member's run list (used for bonus runs).
+func (pr *PartyRegistry) AddMemberRun(name string, runName string) {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	if m, ok := pr.members[name]; ok {
+		m.runs = append(m.runs, runName)
+	}
+}
+
 // GetAllPartyRuns returns all run names configured across all party members.
 func (pr *PartyRegistry) GetAllPartyRuns() map[string]bool {
 	pr.mu.Lock()

@@ -828,12 +828,15 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 		return
 	}
 
+	// Shuffle pool so bonus runs are in random order, then execute without repeats
+	rand.Shuffle(len(bonusPool), func(i, j int) { bonusPool[i], bonusPool[j] = bonusPool[j], bonusPool[i] })
+
 	s.bot.ctx.Logger.Info("Party: starting bonus runs while waiting",
 		slog.Any("bonusPool", bonusPool),
 		slog.Int("available", len(bonusPool)))
 
 	bonusDeadline := time.After(5 * time.Minute)
-	for {
+	for i := 0; i < len(bonusPool); i++ {
 		select {
 		case <-ctx.Done():
 			return
@@ -848,16 +851,24 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 			return
 		}
 
-		runName := bonusPool[rand.Intn(len(bonusPool))]
+		runName := bonusPool[i]
+
+		// Re-check: another party member might have claimed this run as bonus in the meantime
+		if pr.GetAllPartyRuns()[runName] {
+			s.bot.ctx.Logger.Debug("Party: bonus run already taken, skipping", slog.String("run", runName))
+			continue
+		}
+
 		bonusRun := run.BuildRun(runName)
 		if bonusRun == nil {
 			continue
 		}
 
+		// Register in party registry so other members exclude this run from their pool
+		pr.AddMemberRun(s.name, runName)
+
 		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
 
-		// bot.Run() handles everything: priority reset, data refresh, health manager,
-		// item pickup, panic recovery — no need to duplicate that infrastructure.
 		err := s.bot.Run(ctx, false, []run.Run{bonusRun})
 		if err != nil {
 			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
@@ -866,6 +877,8 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 
 		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
 	}
+
+	s.bot.ctx.Logger.Info("Party: all bonus runs exhausted")
 }
 
 func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
