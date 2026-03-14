@@ -807,6 +807,11 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 // doBonusRuns picks random runs from BonusRunList and executes them while party members are still playing.
 // Stops when AllDone or after 5 min without leader heartbeat.
 func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) {
+	// After bot.Run() returns, ExecutionPriority is PriorityStop (set by b.Stop()).
+	// We must reset it so that PauseIfNotPriority() doesn't panic("Bot is stopped").
+	s.bot.ctx.SwitchPriority(ct.PriorityNormal)
+	s.bot.ctx.AttachRoutine(ct.PriorityNormal)
+
 	// Don't start bonus runs if character is dead — PreRun can't interact with NPCs at 0 HP
 	s.bot.ctx.RefreshGameData()
 	if s.bot.ctx.Data.PlayerUnit.HPPercent() <= 0 {
@@ -858,25 +863,43 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 
 		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
 
-		// Execute PreRun → Run → PostRun like normal
-		if err := action.PreRun(false); err != nil {
-			s.bot.ctx.Logger.Warn("Party: bonus run PreRun failed", slog.Any("error", err))
-			return
-		}
-
-		if err := bonusRun.Run(nil); err != nil {
+		err := s.executeBonusRun(bonusRun, runName)
+		if err != nil {
 			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
-			return
-		}
-
-		if err := action.PostRun(false); err != nil {
-			s.bot.ctx.Logger.Warn("Party: bonus run PostRun failed", slog.Any("error", err))
 			return
 		}
 
 		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
 		s.bot.ctx.CurrentGame.AddCompletedRun(runName)
+
+		// Reset priority for next iteration (PostRun/Run may leave it in a different state)
+		s.bot.ctx.SwitchPriority(ct.PriorityNormal)
 	}
+}
+
+// executeBonusRun runs a single bonus run with panic recovery.
+// bot.Run() goroutines use recover() internally; bonus runs must do the same.
+func (s *SinglePlayerSupervisor) executeBonusRun(bonusRun run.Run, runName string) (returnErr error) {
+	defer func() {
+		if r := recover(); r != nil {
+			s.bot.ctx.Logger.Warn("Party: bonus run panic recovered", slog.String("run", runName), slog.Any("panic", r))
+			returnErr = fmt.Errorf("bonus run panic: %v", r)
+		}
+	}()
+
+	if err := action.PreRun(false); err != nil {
+		return fmt.Errorf("PreRun: %w", err)
+	}
+
+	if err := bonusRun.Run(nil); err != nil {
+		return fmt.Errorf("Run: %w", err)
+	}
+
+	if err := action.PostRun(false); err != nil {
+		return fmt.Errorf("PostRun: %w", err)
+	}
+
+	return nil
 }
 
 func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
