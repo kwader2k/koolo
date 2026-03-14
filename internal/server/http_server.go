@@ -941,9 +941,9 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/reset-droplogs", s.resetDroplogs)
 	http.HandleFunc("/process-list", s.getProcessList)
 	http.HandleFunc("/attach-process", s.attachProcess)
-	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)                         // Web socket
-	http.HandleFunc("/initial-data", s.initialData)                            // Web socket data
-	http.HandleFunc("/api/reload-config", s.reloadConfig)                      // New handler
+	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)    // Web socket
+	http.HandleFunc("/initial-data", s.initialData)       // Web socket data
+	http.HandleFunc("/api/reload-config", s.reloadConfig) // New handler
 	http.HandleFunc("/api/supervisors/reorder", s.reorderSupervisors)
 	http.HandleFunc("/api/supervisors/hide", s.hideSupervisor)
 	http.HandleFunc("/api/supervisors/unhide", s.unhideSupervisor)
@@ -1197,7 +1197,6 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 
 	s.initialData(w, r)
 }
-
 
 func (s *HttpServer) reorderSupervisors(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1847,10 +1846,10 @@ func (s *HttpServer) index(w http.ResponseWriter) {
 	}
 
 	s.templates.ExecuteTemplate(w, "index.gohtml", IndexData{
-		Version:   config.Version,
+		Version:     config.Version,
 		Supervisors: supervisors,
-		Status:    status,
-		DropCount: drops,
+		Status:      status,
+		DropCount:   drops,
 	})
 }
 
@@ -2059,6 +2058,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       config.Koolo,
 				ErrorMessage:   "Error parsing form",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2070,6 +2070,16 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		newConfig.CentralizedPickitPath = r.Form.Get("centralized_pickit_path")
 		newConfig.UseCustomSettings = r.Form.Get("use_custom_settings") == "true"
 		newConfig.GameWindowArrangement = r.Form.Get("game_window_arrangement") == "true"
+		// Only update GameMonitor when the form field is present (dropdown rendered)
+		if r.Form.Has("game_monitor") {
+			gameMonitor, err := strconv.Atoi(r.Form.Get("game_monitor"))
+			if err != nil || gameMonitor < 0 {
+				gameMonitor = 0
+			} else if monitors := s.getMonitorOptions(); len(monitors) > 0 && gameMonitor >= len(monitors) {
+				gameMonitor = len(monitors) - 1
+			}
+			newConfig.GameMonitor = gameMonitor
+		}
 		// Debug
 		newConfig.Debug.Log = r.Form.Get("debug_log") == "true"
 		newConfig.Debug.Screenshots = r.Form.Get("debug_screenshots") == "true"
@@ -2107,6 +2117,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "Invalid Telegram Chat ID",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2124,6 +2135,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "ngrok basic auth password is required when a username is set",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2132,6 +2144,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "ngrok basic auth username is required when a password is set",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2140,6 +2153,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   "ngrok basic auth password must be at least 8 characters",
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2172,6 +2186,7 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 				KooloCfg:       &newConfig,
 				ErrorMessage:   err.Error(),
 				CurrentVersion: s.getVersionData(),
+				Monitors:       s.getMonitorOptions(),
 			})
 			return
 		}
@@ -2196,7 +2211,17 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 		KooloCfg:       config.Koolo,
 		ErrorMessage:   "",
 		CurrentVersion: versionData,
+		Monitors:       s.getMonitorOptions(),
 	})
+}
+
+func (s *HttpServer) getMonitorOptions() []MonitorOption {
+	monitors := winproc.EnumMonitors()
+	opts := make([]MonitorOption, len(monitors))
+	for i, m := range monitors {
+		opts[i] = MonitorOption{Index: m.Index, Display: m.DisplayString()}
+	}
+	return opts
 }
 
 // ConfigUpdateOptions defines which sections of the configuration should be updated

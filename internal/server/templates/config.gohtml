@@ -399,6 +399,16 @@
                     />
                     Auto reposition game windows
                 </label>
+                {{ if .Monitors }}
+                <label>
+                    Game window monitor
+                    <select name="game_monitor">
+                        {{ range .Monitors }}
+                            <option value="{{ .Index }}" {{ if eq .Index $.GameMonitor }}selected{{ end }}>{{ .Display }}</option>
+                        {{ end }}
+                    </select>
+                </label>
+                {{ end }}
                 <h4>Debug</h4>
                 <fieldset class="grid">
                     <label>

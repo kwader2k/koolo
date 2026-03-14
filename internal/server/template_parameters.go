@@ -104,7 +104,14 @@ type SkillOption struct {
 type ConfigData struct {
 	ErrorMessage   string
 	CurrentVersion *VersionData
+	Monitors       []MonitorOption
 	*config.KooloCfg
+}
+
+// MonitorOption is a display-friendly monitor entry for the settings dropdown.
+type MonitorOption struct {
+	Index   int
+	Display string
 }
 
 type VersionData struct {
