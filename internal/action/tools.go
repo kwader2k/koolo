@@ -14,7 +14,7 @@ func OpenTPIfLeader() error {
 	ctx := context.Get()
 	ctx.SetLastAction("OpenTPIfLeader")
 
-	if ctx.CharacterCfg.Companion.Leader || ctx.CharacterCfg.Companion.OpenTPForPlayer {
+	if ctx.CharacterCfg.Companion.OpenTPForPlayer {
 		return step.OpenPortal()
 	}
 

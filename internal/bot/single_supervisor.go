@@ -340,6 +340,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 		if s.bot.ctx.CharacterCfg.Companion.Enabled && s.bot.ctx.CharacterCfg.Companion.WaitForParty {
 			gameID := s.bot.ctx.GameReader.LastGameName()
 			GetPartyRegistry().RegisterMember(s.name, gameID)
+			// Store this member's configured runs so bonus run logic knows what's taken
+			runNames := make([]string, len(s.bot.ctx.CharacterCfg.Game.Runs))
+			for i, r := range s.bot.ctx.CharacterCfg.Game.Runs {
+				runNames[i] = string(r)
+			}
+			GetPartyRegistry().SetMemberRuns(s.name, runNames)
 		}
 
 		// Dump armory data on game start
@@ -754,6 +760,14 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 		return
 	}
 
+	// Bonus runs: do extra runs while waiting for party members instead of idling
+	if s.bot.ctx.CharacterCfg.Companion.BonusRuns {
+		s.doBonusRuns(ctx, pr)
+		if pr.AllDone() {
+			return
+		}
+	}
+
 	// Set flag so activity monitor doesn't kill us
 	s.bot.ctx.WaitingForParty.Store(true)
 	defer s.bot.ctx.WaitingForParty.Store(false)
@@ -787,6 +801,81 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 				return
 			}
 		}
+	}
+}
+
+// doBonusRuns picks random runs from BonusRunList and executes them while party members are still playing.
+// Stops when AllDone or after 5 min without leader heartbeat.
+func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) {
+	// Don't start bonus runs if character is dead — PreRun can't interact with NPCs at 0 HP
+	s.bot.ctx.RefreshGameData()
+	if s.bot.ctx.Data.PlayerUnit.HPPercent() <= 0 {
+		s.bot.ctx.Logger.Warn("Party: character is dead, skipping bonus runs")
+		return
+	}
+
+	// Build bonus pool: short farming runs minus all runs taken by party members
+	takenRuns := pr.GetAllPartyRuns()
+	var bonusPool []string
+	for _, r := range config.ShortBonusRuns {
+		if !takenRuns[string(r)] {
+			bonusPool = append(bonusPool, string(r))
+		}
+	}
+
+	if len(bonusPool) == 0 {
+		s.bot.ctx.Logger.Info("Party: no available bonus runs (all short runs taken by party)")
+		return
+	}
+
+	s.bot.ctx.Logger.Info("Party: starting bonus runs while waiting",
+		slog.Any("bonusPool", bonusPool),
+		slog.Int("available", len(bonusPool)))
+
+	bonusTimeout := time.After(5 * time.Minute)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-bonusTimeout:
+			s.bot.ctx.Logger.Warn("Party: bonus run timeout (5 min), stopping bonus runs")
+			return
+		default:
+		}
+
+		if pr.AllDone() {
+			s.bot.ctx.Logger.Info("Party: all members done, stopping bonus runs")
+			return
+		}
+
+		runName := bonusPool[rand.Intn(len(bonusPool))]
+		bonusRun := run.BuildRun(runName)
+		if bonusRun == nil {
+			s.bot.ctx.Logger.Warn("Party: bonus run not found, skipping", slog.String("run", runName))
+			continue
+		}
+
+		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
+
+		// Execute PreRun → Run → PostRun like normal
+		if err := action.PreRun(false); err != nil {
+			s.bot.ctx.Logger.Warn("Party: bonus run PreRun failed", slog.Any("error", err))
+			return
+		}
+
+		if err := bonusRun.Run(nil); err != nil {
+			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
+			return
+		}
+
+		if err := action.PostRun(false); err != nil {
+			s.bot.ctx.Logger.Warn("Party: bonus run PostRun failed", slog.Any("error", err))
+			return
+		}
+
+		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
+		s.bot.ctx.CurrentGame.AddCompletedRun(runName)
 	}
 }
 

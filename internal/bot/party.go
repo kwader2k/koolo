@@ -26,6 +26,7 @@ type partyMember struct {
 	name       string
 	done       bool
 	registedAt time.Time
+	runs       []string // configured run names for this member
 }
 
 // ActiveGameInfo holds the connection details for the current party game.
@@ -210,6 +211,30 @@ func (pr *PartyRegistry) Reset() {
 	pr.gameID = ""
 	pr.gameInfo = nil
 	pr.log().Info("Party registry: reset")
+}
+
+// SetMemberRuns stores the configured run names for a member.
+// Called after registration so bonus run logic knows what's taken.
+func (pr *PartyRegistry) SetMemberRuns(name string, runs []string) {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	if m, ok := pr.members[name]; ok {
+		m.runs = make([]string, len(runs))
+		copy(m.runs, runs)
+	}
+}
+
+// GetAllPartyRuns returns all run names configured across all party members.
+func (pr *PartyRegistry) GetAllPartyRuns() map[string]bool {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	taken := make(map[string]bool)
+	for _, m := range pr.members {
+		for _, r := range m.runs {
+			taken[r] = true
+		}
+	}
+	return taken
 }
 
 // Status returns a snapshot of all members and their done state (for logging/debug).

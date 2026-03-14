@@ -1683,13 +1683,17 @@
             <fieldset class="grid">
                 <label>
                     Game name pattern
-                    <input name="companionGameNameTemplate" placeholder="{{ .Config.Companion.GameNameTemplate }}" value="{{ .Config.Companion.GameNameTemplate }}"/>
+                    <input id="gameNameTemplate" name="companionGameNameTemplate" placeholder="{{ .Config.Companion.GameNameTemplate }}" value="{{ .Config.Companion.GameNameTemplate }}"/>
                 </label>
                 <label>
                     Game password (leave blank for public games)
-                    <input name="companionGamePassword" placeholder="{{ .Config.Companion.GamePassword }}" value="{{ .Config.Companion.GamePassword }}"/>
+                    <input id="gamePassword" name="companionGamePassword" placeholder="{{ .Config.Companion.GamePassword }}" value="{{ .Config.Companion.GamePassword }}"/>
                 </label>
             </fieldset>
+            <label>
+                <input type="checkbox" name="companionRandomGameNames" {{ if .Config.Companion.RandomGameNames }}checked{{ end }}/>
+                Random game names (auto-generate 5-char name + 3-char password each game)
+            </label>
             <fieldset class="grid">
                 <label>
                     Game Difficulty
@@ -1705,34 +1709,38 @@
                 </label>
             </fieldset>
             <h3 id="companion-settings"><i class="bi bi-people section-icon" aria-hidden="true"></i>Companion System</h3><br>
-            <label>
-                <input type="checkbox" name="companionEnabled" {{ if .Config.Companion.Enabled }}checked{{ end }}/>
-                Enable Companion System
-            </label>
-            <label>
-                <input type="checkbox" name="companionLeader" id="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
-                This character is the Leader
-            </label>
+            <fieldset class="grid" style="grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                <label>
+                    <input type="checkbox" name="companionEnabled" {{ if .Config.Companion.Enabled }}checked{{ end }}/>
+                    Enable Companion
+                </label>
+                <label>
+                    <input type="checkbox" name="companionLeader" id="companionLeader" {{ if .Config.Companion.Leader }}checked{{ end }}/>
+                    Leader
+                </label>
+                <label>
+                    <input type="checkbox" name="companionOpenTPForPlayer" {{ if .Config.Companion.OpenTPForPlayer }}checked{{ end }}/>
+                    Open TP
+                </label>
+                <label>
+                    <input type="checkbox" name="companionWaitForParty" {{ if .Config.Companion.WaitForParty }}checked{{ end }}/>
+                    Wait for party
+                </label>
+                <label>
+                    <input type="checkbox" name="companionBonusRuns" {{ if .Config.Companion.BonusRuns }}checked{{ end }}/>
+                    Bonus runs while waiting
+                </label>
+            </fieldset>
             <fieldset class="grid">
                 <label>
                     Leader Name (for followers)
                     <input name="companionLeaderName" placeholder="Leave empty to follow any leader" value="{{ .Config.Companion.LeaderName }}"/>
                 </label>
-            </fieldset>
-            <label>
-                <input type="checkbox" name="companionWaitForParty" {{ if .Config.Companion.WaitForParty }}checked{{ end }}/>
-                Wait for all party members to finish before exiting game
-            </label>
-            <fieldset class="grid">
                 <label>
                     Party Wait Timeout (seconds, 0 = 300s default)
                     <input name="companionPartyWaitTimeout" type="number" min="0" placeholder="300" value="{{ .Config.Companion.PartyWaitTimeout }}"/>
                 </label>
             </fieldset>
-            <label>
-                <input type="checkbox" name="companionOpenTPForPlayer" {{ if .Config.Companion.OpenTPForPlayer }}checked{{ end }}/>
-                Open TP for manual player (independent of leader role)
-            </label>
             <h3 id="run-settings"><i class="bi bi-play-circle section-icon" aria-hidden="true"></i>Run Settings</h3><br>
             <label>
                 Choose the runs that you want the bot to run. You can either drag & drop runs below to enable or disable them, or use the + - buttons. Click on any of the runs to expand them and see more details and options.
@@ -2051,6 +2059,7 @@ document.addEventListener('click', e => {
     const allChecked = checkboxes.every(cb => cb.checked);
     checkboxes.forEach(cb => cb.checked = !allChecked);
 });
+
 </script>
 </body>
 </html>

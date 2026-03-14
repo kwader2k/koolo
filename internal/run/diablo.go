@@ -100,7 +100,7 @@ func (d *Diablo) Run(parameters *RunParameters) error {
 			}
 		}
 		//open portal if leader
-		if d.ctx.CharacterCfg.Companion.Leader || d.ctx.CharacterCfg.Companion.OpenTPForPlayer {
+		if d.ctx.CharacterCfg.Companion.OpenTPForPlayer {
 			action.OpenTPIfLeader()
 			action.Buff()
 			action.ClearAreaAroundPlayer(30, data.MonsterAnyFilter())
@@ -117,7 +117,7 @@ func (d *Diablo) Run(parameters *RunParameters) error {
 		}
 	} else {
 		//open portal in entrance
-		if d.ctx.CharacterCfg.Companion.Leader || d.ctx.CharacterCfg.Companion.OpenTPForPlayer {
+		if d.ctx.CharacterCfg.Companion.OpenTPForPlayer {
 			action.OpenTPIfLeader()
 			action.Buff()
 			action.ClearAreaAroundPlayer(30, data.MonsterAnyFilter())

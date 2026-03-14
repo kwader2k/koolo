@@ -100,7 +100,7 @@ func (s *Baal) Run(parameters *RunParameters) error {
 	}
 
 	// Let's move to a safe area and open the portal in companion mode
-	if s.ctx.CharacterCfg.Companion.Leader || s.ctx.CharacterCfg.Companion.OpenTPForPlayer {
+	if s.ctx.CharacterCfg.Companion.OpenTPForPlayer {
 		action.MoveToCoords(data.Position{X: 15116, Y: 5071})
 		action.OpenTPIfLeader()
 	}

@@ -2505,6 +2505,8 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 				cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
 			}
 			cfg.Companion.OpenTPForPlayer = values.Has("companionOpenTPForPlayer")
+			cfg.Companion.BonusRuns = values.Has("companionBonusRuns")
+			cfg.Companion.RandomGameNames = values.Has("companionRandomGameNames")
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
@@ -3485,6 +3487,8 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 			cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
 		}
 		cfg.Companion.OpenTPForPlayer = r.Form.Has("companionOpenTPForPlayer")
+		cfg.Companion.BonusRuns = r.Form.Has("companionBonusRuns")
+		cfg.Companion.RandomGameNames = r.Form.Has("companionRandomGameNames")
 
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
@@ -3744,6 +3748,7 @@ func (s *HttpServer) partySetLeader(w http.ResponseWriter, r *http.Request) {
 	cfg.Companion.Enabled = true
 	cfg.Companion.Leader = true
 	cfg.Companion.WaitForParty = true
+	cfg.Companion.OpenTPForPlayer = true
 	if err := config.SaveSupervisorConfig(req.Supervisor, cfg); err != nil {
 		http.Error(w, "Failed to save config", http.StatusInternalServerError)
 		return
