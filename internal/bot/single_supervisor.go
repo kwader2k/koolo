@@ -804,22 +804,18 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 	}
 }
 
-// doBonusRuns picks random runs from BonusRunList and executes them while party members are still playing.
-// Stops when AllDone or after 5 min without leader heartbeat.
+// doBonusRuns executes random short farming runs while waiting for party members.
+// It reuses bot.Run() for each bonus run, which provides all background infrastructure
+// (data refresh, health manager, item pickup, panic recovery) automatically.
 func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) {
-	// After bot.Run() returns, ExecutionPriority is PriorityStop (set by b.Stop()).
-	// We must reset it so that PauseIfNotPriority() doesn't panic("Bot is stopped").
-	s.bot.ctx.SwitchPriority(ct.PriorityNormal)
-	s.bot.ctx.AttachRoutine(ct.PriorityNormal)
-
-	// Don't start bonus runs if character is dead — PreRun can't interact with NPCs at 0 HP
+	// Don't start bonus runs if character is dead
 	s.bot.ctx.RefreshGameData()
 	if s.bot.ctx.Data.PlayerUnit.HPPercent() <= 0 {
 		s.bot.ctx.Logger.Warn("Party: character is dead, skipping bonus runs")
 		return
 	}
 
-	// Build bonus pool: short farming runs minus all runs taken by party members
+	// Build bonus pool: short farming runs minus runs taken by party members
 	takenRuns := pr.GetAllPartyRuns()
 	var bonusPool []string
 	for _, r := range config.ShortBonusRuns {
@@ -827,7 +823,6 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 			bonusPool = append(bonusPool, string(r))
 		}
 	}
-
 	if len(bonusPool) == 0 {
 		s.bot.ctx.Logger.Info("Party: no available bonus runs (all short runs taken by party)")
 		return
@@ -837,14 +832,13 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 		slog.Any("bonusPool", bonusPool),
 		slog.Int("available", len(bonusPool)))
 
-	bonusTimeout := time.After(5 * time.Minute)
-
+	bonusDeadline := time.After(5 * time.Minute)
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-bonusTimeout:
-			s.bot.ctx.Logger.Warn("Party: bonus run timeout (5 min), stopping bonus runs")
+		case <-bonusDeadline:
+			s.bot.ctx.Logger.Warn("Party: bonus run timeout (5 min)")
 			return
 		default:
 		}
@@ -857,49 +851,21 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 		runName := bonusPool[rand.Intn(len(bonusPool))]
 		bonusRun := run.BuildRun(runName)
 		if bonusRun == nil {
-			s.bot.ctx.Logger.Warn("Party: bonus run not found, skipping", slog.String("run", runName))
 			continue
 		}
 
 		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
 
-		err := s.executeBonusRun(bonusRun, runName)
+		// bot.Run() handles everything: priority reset, data refresh, health manager,
+		// item pickup, panic recovery — no need to duplicate that infrastructure.
+		err := s.bot.Run(ctx, false, []run.Run{bonusRun})
 		if err != nil {
 			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
 			return
 		}
 
 		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
-		s.bot.ctx.CurrentGame.AddCompletedRun(runName)
-
-		// Reset priority for next iteration (PostRun/Run may leave it in a different state)
-		s.bot.ctx.SwitchPriority(ct.PriorityNormal)
 	}
-}
-
-// executeBonusRun runs a single bonus run with panic recovery.
-// bot.Run() goroutines use recover() internally; bonus runs must do the same.
-func (s *SinglePlayerSupervisor) executeBonusRun(bonusRun run.Run, runName string) (returnErr error) {
-	defer func() {
-		if r := recover(); r != nil {
-			s.bot.ctx.Logger.Warn("Party: bonus run panic recovered", slog.String("run", runName), slog.Any("panic", r))
-			returnErr = fmt.Errorf("bonus run panic: %v", r)
-		}
-	}()
-
-	if err := action.PreRun(false); err != nil {
-		return fmt.Errorf("PreRun: %w", err)
-	}
-
-	if err := bonusRun.Run(nil); err != nil {
-		return fmt.Errorf("Run: %w", err)
-	}
-
-	if err := action.PostRun(false); err != nil {
-		return fmt.Errorf("PostRun: %w", err)
-	}
-
-	return nil
 }
 
 func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {
