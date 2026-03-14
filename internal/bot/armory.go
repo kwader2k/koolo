@@ -36,13 +36,14 @@ type ArmoryItem struct {
 	Sockets        []ArmoryItem     `json:"sockets"`
 	HasSockets     bool             `json:"hasSockets"`
 	SocketCount    int              `json:"socketCount"`
-	ImageName      string           `json:"imageName"`
-	ItemType       string           `json:"itemType"`
-	Defense        int              `json:"defense"`
-	MinDamage      int              `json:"minDamage"`
-	MaxDamage      int              `json:"maxDamage"`
-	Durability     int              `json:"durability"`
-	MaxDurability  int              `json:"maxDurability"`
+	ImageName       string           `json:"imageName"`
+	ItemType        string           `json:"itemType"`
+	Defense         int              `json:"defense"`
+	MinDamage       int              `json:"minDamage"`
+	MaxDamage       int              `json:"maxDamage"`
+	Durability      int              `json:"durability"`
+	MaxDurability   int              `json:"maxDurability"`
+	StackedQuantity int              `json:"stackedQuantity"`
 }
 
 // ArmoryItemStat represents a single stat on an item
@@ -130,6 +131,7 @@ func convertArmoryItem(itm data.Item, assetsPath string) ArmoryItem {
 		ItemType:       desc.Type,
 		MinDamage:      desc.MinDamage,
 		MaxDamage:      desc.MaxDamage,
+		StackedQuantity: itm.StackedQuantity,
 	}
 
 	// Convert stats
@@ -239,6 +241,240 @@ func findArmoryImageFile(baseName, assetsPath string) string {
 // getArmoryItemImageName returns the image filename for an item
 // Tries to use identified name first, falls back to base item name
 // Supports multiple image formats: .webp, .png, .jpg, .jpeg, .gif
+// armoryImageFallbacks maps higher-tier base item names to their normal-tier sprite.
+// Items within the same D2 type progression share the same inventory icon.
+var armoryImageFallbacks = map[string]string{
+	// Helms
+	"WarHat": "Cap",
+	"Shako": "Cap",
+	"Basinet": "Helm",
+	"Casque": "FullHelm",
+	"Armet": "FullHelm",
+	"GiantConch": "GreatHelm",
+	"SpiredHelm": "GreatHelm",
+	"GrandCrown": "Crown",
+	"Corona": "Crown",
+	"DeathMask": "Mask",
+	"DemonHead": "Mask",
+	"MummifiedTrophy": "BoneHelm",
+	"BoneVisage": "BoneHelm",
+	"HyenaPelt": "WolfHead",
+	"BloodSpirit": "WolfHead",
+	"FalconMask": "HawkHelm",
+	"StormMask": "HawkHelm",
+	"RamHorns": "Antlers",
+	"GiantHorns": "Antlers",
+	"JawboneVisor": "JawboneCap",
+	"BerserkersMask": "JawboneCap",
+	"ToothHelm": "FangedHelm",
+	"ConquererCrown": "FangedHelm",
+	"DestroyerHelm": "HornedHelm",
+	"GoreHelm": "HornedHelm",
+	"WarHelm": "AssaultHelmet",
+	"AvengerGuard": "AssaultHelmet",
+	"WingedHelm": "GrimHelm",
+	"BattleHelm": "GrimHelm",
+	"Circlet": "Diadem",
+	"Coronet": "Diadem",
+	"Tiara": "Diadem",
+
+	// Body Armor
+	"GhostArmor": "QuiltedArmor",
+	"DuskShroud": "QuiltedArmor",
+	"SerpentskinArmor": "LeatherArmor",
+	"Wyrmhide": "LeatherArmor",
+	"DemonhideArmor": "HardLeatherArmor",
+	"ScarabHusk": "HardLeatherArmor",
+	"TrellisedArmor": "StuddedLeather",
+	"WireFleece": "StuddedLeather",
+	"LinkedMail": "RingMail",
+	"DiamondMail": "RingMail",
+	"TigulatedMail": "ScaleMail",
+	"LoricatedMail": "ScaleMail",
+	"Cuirass": "BreastPlate",
+	"GreatHauberk": "BreastPlate",
+	"RussetArmor": "SplintMail",
+	"Boneweave": "SplintMail",
+	"BalrogSkin": "SplintMail",
+	"TemplarsMight": "PlateMail",
+	"KrakenShell": "PlateMail",
+	"SharkskinPlate": "FieldPlate",
+	"LacqueredPlate": "FieldPlate",
+	"VampirebonePlate": "GothicPlate",
+	"ShadowPlate": "GothicPlate",
+	"MagePlate": "FullPlateMail",
+	"ArchonPlate": "FullPlateMail",
+	"SacredArmor": "AncientArmor",
+
+	// Belts
+	"DemonHideSash": "Sash",
+	"SpiderWebSash": "Sash",
+	"SharkskinBelt": "LightBelt",
+	"VampirefangBelt": "LightBelt",
+	"MeshBelt": "Belt",
+	"MithrilCoil": "Belt",
+	"BattleBelt": "HeavyBelt",
+	"TrollBelt": "HeavyBelt",
+	"WarBelt": "PlatedBelt",
+	"ColossusGirdle": "PlatedBelt",
+
+	// Boots
+	"DemonhideBoots": "Boots",
+	"WyrmhideBoots": "Boots",
+	"SharkskinBoots": "HeavyBoots",
+	"ScarabshellBoots": "HeavyBoots",
+	"BattleBoots": "ChainBoots",
+	"BoneweaveBoots": "ChainBoots",
+	"MirroredBoots": "LightPlatedBoots",
+	"MyrmidonGreaves": "LightPlatedBoots",
+	"WarBoots": "Greaves",
+	"GoreRider": "Greaves",
+
+	// Gloves
+	"DemonhideGloves": "LeatherGloves",
+	"BrambleMitts": "LeatherGloves",
+	"SharkskinGloves": "HeavyGloves",
+	"VampireboneGloves": "HeavyGloves",
+	"BattleGauntlets": "ChainGloves",
+	"OgreGauntlets": "ChainGloves",
+	"TemperedGauntlets": "LightGauntlets",
+	"LaceGauntlets": "LightGauntlets",
+	"WarGauntlets": "Gauntlets",
+	"CrusaderGauntlets": "Gauntlets",
+
+	// Shields - Normal line
+	"Defender": "Buckler",
+	"HyperionShield": "Buckler",
+	"RoundShield": "SmallShield",
+	"Luna": "SmallShield",
+	"Scutum": "LargeShield",
+	"Monarch": "LargeShield",
+	"BasketShield": "KiteShield",
+	"MonarchShield": "KiteShield",
+	"AkaranRondache": "TowerShield",
+	"ColossusShield": "TowerShield",
+	"WarriorsGuard": "GothicShield",
+	"AvengerShield": "GothicShield",
+	"GrimShield": "BoneShield",
+	"TrollNest": "BoneShield",
+	"BarbedShield": "SpikedShield",
+	"BladeBarrier": "SpikedShield",
+	// Paladin shields
+	"AkaranTarge": "Targe",
+	"SacredTarge": "Targe",
+	"AkaranRondache2": "Rondache",
+	"SacredRondache": "Rondache",
+	"AerinShield": "HeraldicShield",
+	"GildedShield": "HeraldicShield",
+	"ZakarumShield2": "ZakarumShield",
+	"ZakarumShield3": "ZakarumShield",
+	"VortexShield": "CrownShield",
+	"SacredShield": "CrownShield",
+
+	// Swords
+	"Gladius": "ShortSword",
+	"Cutlass": "ShortSword",
+	"Shamshir": "Scimitar",
+	"Tulwar": "Scimitar",
+	"Saber": "Falchion",
+	"DimensionalBlade": "Falchion",
+	"BattleSword": "BroadSword",
+	"RuneSword": "BroadSword",
+	"AncientSword": "LongSword",
+	"ElderSword": "LongSword",
+	"Espadon": "GiantSword",
+	"DacianFalx": "GiantSword",
+	"GothicSword": "Claymore",
+	"TuskSword": "Claymore",
+	"WardSword": "GreatSword",
+	"LegendSword": "GreatSword",
+	"ChampionSword": "BastardSword",
+	"HighlanderSword": "BastardSword",
+	"ColossusSword": "Flamberge",
+	"ColossusBlade": "Flamberge",
+	"PhaseBlade": "CrystalSword",
+
+	// Axes
+	"Hatchet": "Axe",
+	"Cleaver": "Axe",
+	"Tomahawk": "Axe",
+	"TwinAxe": "DoubleAxe",
+	"Crowbill": "DoubleAxe",
+	"BeardedAxe": "BattleAxe",
+	"Tabar": "BattleAxe",
+	"SilverEdgedAxe": "GreatAxe",
+	"GloriousAxe": "GreatAxe",
+	"HelixAxe": "BroadAxe",
+	"Naga": "BroadAxe",
+	"OgreAxe": "CrypticAxe",
+	"ColossusVoulge": "CrypticAxe",
+	"GiantThresher": "GreatPoleaxe",
+	"Thresher": "GreatPoleaxe",
+	"ColossusScythe": "GreatPoleaxe",
+
+	// Maces/Scepters
+	"RuneScepter": "Scepter",
+	"HolyWaterSprinkler": "Scepter",
+	"DivineScepter": "GrandScepter",
+	"MightyScepter": "GrandScepter",
+	"SeraphRod": "WarScepter",
+	"Caduceus": "WarScepter",
+
+	// Staves/Wands
+	"GnarledStaff": "ShortStaff",
+	"RuneStaff": "ShortStaff",
+	"TwistedStaff": "LongStaff",
+	"QStaff": "LongStaff",
+	"Shillelagh": "BattleStaff",
+	"ArchonStaff": "BattleStaff",
+	"CedarStaff": "ElderStaff",
+	"WardedStaff": "WarStaff",
+	"GlowingStaff": "WarStaff",
+	"BurntWand": "Wand",
+	"TombWand": "Wand",
+	"GraveWand": "BoneWand",
+	"LichWand": "BoneWand",
+	"PetrifiedWand": "GrimWand",
+	"UnearthedWand": "GrimWand",
+
+	// Claws
+	"Quhab": "Katar",
+	"Suwayyah": "Katar",
+	"WristBlade": "Claws",
+	"WristSword": "Claws",
+	"FalcataBlades": "Claws",
+	"RunicTalons": "GreaterClaws",
+	"ScissorsQuhab": "ScissorsKatar",
+	"ScissorsSuwayyah": "ScissorsKatar",
+
+	// Bows
+	"EdgeBow": "ShortBow",
+	"SpiderBow": "ShortBow",
+	"ReflexBow": "HuntersBow",
+	"BladeHuntersBow": "HuntersBow",
+	"CedarBow": "LongBow",
+	"RazorBow": "LongBow",
+	"DoubleBow": "CompositeBow",
+	"GrandMatronBow": "CompositeBow",
+	"LargeWarBow": "ShortBattleBow",
+	"RuneBow": "ShortBattleBow",
+	"GothicBow": "LongBattleBow",
+	"CeremonialBow": "LongBattleBow",
+	"WardBow": "LongWarBow",
+	"HydraBow": "LongWarBow",
+	"PelletBow": "CrusaderBow",
+
+	// Orbs (Sorceress)
+	"SagesOrb": "EagleOrb",
+	"MaelstromOrb": "EagleOrb",
+	"OccultCodex": "SacredGlobe",
+	"JaredsStone": "SacredGlobe",
+	"ClaspedOrb": "SmokedSphere",
+	"SwirlCrystal": "SmokedSphere",
+	"SparklingBall": "ClaspedOrb",
+	"EyeOfEtlich": "ClaspedOrb",
+}
+
 func getArmoryItemImageName(itm data.Item, assetsPath string) string {
 	// For unique/set items, try identified name first
 	if (itm.Quality == item.QualityUnique || itm.Quality == item.QualitySet) && itm.IdentifiedName != "" {
@@ -256,11 +492,19 @@ func getArmoryItemImageName(itm data.Item, assetsPath string) string {
 		}
 	}
 
-	// Fall back to base item name - try to find with any supported extension
+	// Try base item name directly
 	name := sanitizeArmoryImageName(string(itm.Name))
 	if found := findArmoryImageFile(name, assetsPath); found != "" {
 		return found
 	}
+
+	// Try tier fallback map
+	if fallback, ok := armoryImageFallbacks[name]; ok {
+		if found := findArmoryImageFile(fallback, assetsPath); found != "" {
+			return found
+		}
+	}
+
 	// Default to .webp if no file found (will show missing image)
 	return name + ".webp"
 }
@@ -307,6 +551,15 @@ func dumpArmoryData(characterName string, gameData *game.Data, gameName string) 
 
 	// Process items from AllItems
 	for _, itm := range gameData.Inventory.AllItems {
+		// Skip ghost entries for empty DLC tab slots — the game keeps these
+		// in memory with StackedQuantity == 0 after all copies are consumed.
+		switch itm.Location.LocationType {
+		case item.LocationGemsTab, item.LocationMaterialsTab, item.LocationRunesTab:
+			if itm.StackedQuantity <= 0 {
+				continue
+			}
+		}
+
 		armoryItem := convertArmoryItem(itm, assetsPath)
 
 		switch itm.Location.LocationType {
