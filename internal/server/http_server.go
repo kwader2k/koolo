@@ -941,9 +941,9 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/reset-droplogs", s.resetDroplogs)
 	http.HandleFunc("/process-list", s.getProcessList)
 	http.HandleFunc("/attach-process", s.attachProcess)
-	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)                         // Web socket
-	http.HandleFunc("/initial-data", s.initialData)                            // Web socket data
-	http.HandleFunc("/api/reload-config", s.reloadConfig)                      // New handler
+	http.HandleFunc("/ws", s.wsServer.HandleWebSocket)    // Web socket
+	http.HandleFunc("/initial-data", s.initialData)       // Web socket data
+	http.HandleFunc("/api/reload-config", s.reloadConfig) // New handler
 	http.HandleFunc("/api/supervisors/reorder", s.reorderSupervisors)
 	http.HandleFunc("/api/supervisors/hide", s.hideSupervisor)
 	http.HandleFunc("/api/supervisors/unhide", s.unhideSupervisor)
@@ -1197,7 +1197,6 @@ func (s *HttpServer) startSupervisor(w http.ResponseWriter, r *http.Request) {
 
 	s.initialData(w, r)
 }
-
 
 func (s *HttpServer) reorderSupervisors(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -1847,10 +1846,10 @@ func (s *HttpServer) index(w http.ResponseWriter) {
 	}
 
 	s.templates.ExecuteTemplate(w, "index.gohtml", IndexData{
-		Version:   config.Version,
+		Version:     config.Version,
 		Supervisors: supervisors,
-		Status:    status,
-		DropCount: drops,
+		Status:      status,
+		DropCount:   drops,
 	})
 }
 
@@ -2547,6 +2546,7 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 	// Muling
 	if sections.Muling {
 		cfg.Muling.Enabled = values.Get("mulingEnabled") == "on"
+		cfg.Muling.AutoMuling = values.Get("autoMuling") == "on"
 		cfg.Muling.ReturnTo = values.Get("mulingReturnTo")
 
 		// Validate mule profiles
@@ -3571,6 +3571,7 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 
 		// Muling
 		cfg.Muling.Enabled = r.FormValue("mulingEnabled") == "on"
+		cfg.Muling.AutoMuling = r.FormValue("autoMuling") == "on"
 
 		// Validate mule profiles - filter out any deleted mule profiles
 		requestedMuleProfiles := r.Form["mulingMuleProfiles[]"]

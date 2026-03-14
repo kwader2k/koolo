@@ -554,6 +554,7 @@ type CharacterCfg struct {
 		SwitchToMule string   `yaml:"switchToMule"`
 		ReturnTo     string   `yaml:"returnTo"`
 		MuleProfiles []string `yaml:"muleProfiles"`
+		AutoMuling   bool     `yaml:"autoMuling"`
 	} `yaml:"muling"`
 	MulingState struct {
 		CurrentMuleIndex int `yaml:"currentMuleIndex"`
