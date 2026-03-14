@@ -304,8 +304,8 @@ type CharacterCfg struct {
 		BlizzardSorceress struct {
 			UseMoatTrick        bool `yaml:"use_moat_trick"`
 			UseStaticOnMephisto bool `yaml:"use_static_on_mephisto"`
-
-			UseBlizzardPackets bool `yaml:"use_blizzard_packets"`
+			UseInfinity         bool `yaml:"use_infinity"`
+			UseBlizzardPackets  bool `yaml:"use_blizzard_packets"`
 		} `yaml:"blizzard_sorceress"`
 		SorceressLeveling struct {
 			UseMoatTrick        bool `yaml:"use_moat_trick"`
@@ -324,15 +324,21 @@ type CharacterCfg struct {
 			UsePacketLearning    bool `yaml:"use_packet_learning"`
 		} `yaml:"barb_leveling"`
 		NovaSorceress struct {
-			BossStaticThreshold int `yaml:"boss_static_threshold"`
-
+			BossStaticThreshold       int  `yaml:"boss_static_threshold"`
+			UseInfinity               bool `yaml:"use_infinity"`
 			AggressiveNovaPositioning bool `yaml:"aggressive_nova_positioning"`
 		} `yaml:"nova_sorceress"`
 		LightningSorceress struct {
+			BossStaticThreshold int  `yaml:"boss_static_threshold"`
+			StaticFieldOnElites bool `yaml:"static_field_on_elites"`
+			StaticFieldOnAll    bool `yaml:"static_field_on_all"`
+			UseInfinity         bool `yaml:"use_infinity"`
 		} `yaml:"lightning_sorceress"`
 		HydraOrbSorceress struct {
+			UseInfinity bool `yaml:"use_infinity"`
 		} `yaml:"hydraorb_sorceress"`
 		FireballSorceress struct {
+			UseInfinity bool `yaml:"use_infinity"`
 		} `yaml:"fireball_sorceress"`
 		MosaicSin struct {
 			UseTigerStrike    bool `yaml:"useTigerStrike"`
@@ -1129,18 +1135,25 @@ func SaveSupervisorConfig(supervisorName string, config *CharacterCfg) error {
 }
 
 func (c *CharacterCfg) Validate() {
-	if c.Character.Class == "nova" || c.Character.Class == "lightsorc" {
-		minThreshold := 65 // Default
-		switch c.Game.Difficulty {
-		case difficulty.Normal:
-			minThreshold = 1
-		case difficulty.Nightmare:
-			minThreshold = 33
-		case difficulty.Hell:
-			minThreshold = 50
-		}
+	minThreshold := 65 // Default
+	switch c.Game.Difficulty {
+	case difficulty.Normal:
+		minThreshold = 1
+	case difficulty.Nightmare:
+		minThreshold = 33
+	case difficulty.Hell:
+		minThreshold = 50
+	}
+
+	if c.Character.Class == "nova" {
 		if c.Character.NovaSorceress.BossStaticThreshold < minThreshold || c.Character.NovaSorceress.BossStaticThreshold > 100 {
 			c.Character.NovaSorceress.BossStaticThreshold = minThreshold
+		}
+	}
+
+	if c.Character.Class == "lightsorc" {
+		if c.Character.LightningSorceress.BossStaticThreshold < minThreshold || c.Character.LightningSorceress.BossStaticThreshold > 100 {
+			c.Character.LightningSorceress.BossStaticThreshold = minThreshold
 		}
 	}
 }

@@ -776,6 +776,10 @@
                    {{ if .Config.Character.NovaSorceress.AggressiveNovaPositioning }}checked{{ end }}/>
             Aggressive Positioning (focus packs / skip leftovers)
         </label>
+        <label>
+            <input type="checkbox" name="novaUseInfinity" {{ if .Config.Character.NovaSorceress.UseInfinity }}checked{{ end }}/>
+            Using Infinity / Sunder
+        </label>
     </fieldset>
 </div>
 
@@ -823,6 +827,10 @@
                             <input type="checkbox" id="blizzardUseStaticOnMephisto" name="blizzardUseStaticOnMephisto" {{ if .Config.Character.BlizzardSorceress.UseStaticOnMephisto }}checked{{ end }}/>
                             Use static on Mephisto
                         </label>
+                        <label>
+                            <input type="checkbox" name="blizzardUseInfinity" {{ if .Config.Character.BlizzardSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity / Sunder
+                        </label>
                     </fieldset>
                 </div>
                 <div class="sorceress_leveling-options" style="display: none;">
@@ -843,14 +851,45 @@
                 </div>
                 <div class="lightsorc-options" style="display: none;">
                     <fieldset class="grid">
+                        <label>
+                            Boss Static HP (%)
+                            <input type="number"
+                                name="lightSorcBossStaticThreshold"
+                                min="1"
+                                max="100"
+                                step="1"
+                                value="{{ .Config.Character.LightningSorceress.BossStaticThreshold }}">
+                        </label>
+                        <label>
+                            <input type="checkbox" name="lightSorcStaticFieldOnElites"
+                                {{ if .Config.Character.LightningSorceress.StaticFieldOnElites }}checked{{ end }}/>
+                            Static Field on Elites, Champions &amp; Super Uniques
+                        </label>
+                        <label>
+                            <input type="checkbox" name="lightSorcStaticFieldOnAll"
+                                {{ if .Config.Character.LightningSorceress.StaticFieldOnAll }}checked{{ end }}/>
+                            Static Field on all monsters
+                        </label>
+                        <label>
+                            <input type="checkbox" name="lightSorcUseInfinity" {{ if .Config.Character.LightningSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity / Sunder
+                        </label>
                     </fieldset>
                 </div>
                 <div class="hydraorb-options" style="display: none;">
                     <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="hydraOrbUseInfinity" {{ if .Config.Character.HydraOrbSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity / Sunder
+                        </label>
                     </fieldset>
                 </div>
                 <div class="fireballsorc-options" style="display: none;">
                     <fieldset class="grid">
+                        <label>
+                            <input type="checkbox" name="fireballSorcUseInfinity" {{ if .Config.Character.FireballSorceress.UseInfinity }}checked{{ end }}/>
+                            Using Infinity / Sunder
+                        </label>
                     </fieldset>
                 </div>
                 <div class="mosaic-assassin-options" style="display: none;">
