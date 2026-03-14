@@ -529,6 +529,70 @@
                         Show NIP rule (send text only)
                     </label>
                 </fieldset>
+                <h4>OBS Replay Recording</h4>
+                <p><small style="color:#fff">
+                    Records replay clips on chicken, death, or errors. Place obs-studio inside your build directory, or specify the full path to obs64.exe below.
+                </small></p>
+                <p><small style="color:#fff">
+                    Note: Uploading replay clips to Discord requires bot mode.
+                    <a href="https://obsproject.com" target="_blank">Download OBS</a>
+                </small></p>
+                <div style="display:flex; gap:1rem; align-items:center;">
+                    <label>
+                        <input
+                            {{ if .OBS.Enabled }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="obs_enabled"
+                            value="true"
+                        />
+                        Enabled (Restart required)
+                    </label>
+                    <label>
+                        <input
+                            {{ if .OBS.RecordOnChickenDeath }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="obs_record_on_chicken_death"
+                            value="true"
+                        />
+                        Record on Chicken/Death
+                    </label>
+                    <label>
+                        <input
+                            {{ if .OBS.RecordOnError }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="obs_record_on_error"
+                            value="true"
+                        />
+                        Record on Error
+                    </label>
+                    <label>
+                        <input
+                            {{ if .OBS.UploadToDiscord }}
+                                checked="checked"
+                            {{ end }}
+                            type="checkbox"
+                            name="obs_upload_to_discord"
+                            value="true"
+                        />
+                        Upload clips to Discord
+                    </label>
+                </div>
+                <input
+                    name="obs_path"
+                    placeholder="OBS path (leave blank to use obs-studio folder in build directory)"
+                    value="{{ .OBS.OBSPath }}"
+                />
+                <input
+                    name="obs_replay_path"
+                    placeholder="Replay save path (leave blank to use Videos/Replays)"
+                    value="{{ .OBS.ReplayPath }}"
+                />
                 <h4>Telegram integration</h4>
                 <label>
                     <input

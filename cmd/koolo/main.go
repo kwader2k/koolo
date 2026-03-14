@@ -25,6 +25,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/server"
 	"github.com/hectorgimenez/koolo/internal/utils"
 	"github.com/hectorgimenez/koolo/internal/utils/winproc"
+	"github.com/hectorgimenez/koolo/internal/utils/obs"
 	"github.com/inkeliz/gowebview"
 	"golang.org/x/sync/errgroup"
 )
@@ -124,6 +125,8 @@ func main() {
 	dropWriter := droplog.NewWriter(dropDir, logger)
 	eventListener.Register(dropWriter.Handle)
 	manager := bot.NewSupervisorManager(logger, eventListener)
+	go obs.StartOBS(logger)
+	defer obs.StopOBS(logger)
 	scheduler := bot.NewScheduler(manager, logger)
 	go scheduler.Start()
 	srv, err := server.New(logger, manager, scheduler)

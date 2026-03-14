@@ -3,12 +3,15 @@ package discord
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"slices"
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
 	"github.com/hectorgimenez/koolo/internal/bot"
 	"github.com/hectorgimenez/koolo/internal/config"
+	"github.com/hectorgimenez/koolo/internal/utils/obs"
+	"github.com/hectorgimenez/koolo/internal/event"
 )
 
 type Bot struct {
@@ -110,6 +113,18 @@ func (b *Bot) onMessageCreated(s *discordgo.Session, m *discordgo.MessageCreate)
 		b.handleHelpRequest(s, m)
 	case "!drops":
 		b.handleDropsRequest(s, m)
+	case "!obscapture":
+    if !config.Koolo.OBS.Enabled {
+        s.ChannelMessageSend(m.ChannelID, "OBS recording is not enabled.")
+        break
+    }
+    filePath := obs.SaveReplay(slog.Default(), "test")
+    if filePath != "" {
+        event.Send(event.ReplayClip(event.Text("test", "Replay clip saved"), filePath))
+        s.ChannelMessageSend(m.ChannelID, "OBS replay save triggered, uploading clip...")
+    } else {
+        s.ChannelMessageSend(m.ChannelID, "OBS replay save triggered but no file found")
+    }
 	default:
 		// Unknown command - send help
 		s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Unknown command: `%s`. Type `!help` for available commands.", prefix))

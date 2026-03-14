@@ -42,6 +42,13 @@ ngrok:
   domain: ''         # Optional reserved domain
   basicAuthUser: ''  # Optional
   basicAuthPass: ''  # Optional
+
+# OBS - Used to Record Gameplay on Chicken, Death, or Errors
+obs:
+  webSocketPort: 4455
+  obsPath: ""  # Optional: full path to obs64.exe if install directory is not in the build folder.
+  replayPath: "" # Optional: custom path for replay clips to store. Defaults to User/Videos/Replays
+
 # Ping Monitor - Automatically stop bot on sustained high ping
 pingMonitor:
   enabled: false             # Set to true to enable ping monitoring

@@ -56,6 +56,18 @@ func GameFinished(be BaseEvent, reason FinishReason) GameFinishedEvent {
 	}
 }
 
+type ReplayClipEvent struct {
+	BaseEvent
+	FilePath string
+}
+
+func ReplayClip(be BaseEvent, filePath string) ReplayClipEvent {
+	return ReplayClipEvent{
+		BaseEvent: be,
+		FilePath:  filePath,
+	}
+}
+
 type RunFinishedEvent struct {
 	BaseEvent
 	RunName string

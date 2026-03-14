@@ -12,3 +12,5 @@
 !/config/koolo.yaml.dist
 !/config/Settings.json
 internal/buildnoise/noise_gen.go
+
+obs-studio/

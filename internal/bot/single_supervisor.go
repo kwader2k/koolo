@@ -23,6 +23,7 @@ import (
 	"github.com/hectorgimenez/koolo/internal/health"
 	"github.com/hectorgimenez/koolo/internal/run"
 	"github.com/hectorgimenez/koolo/internal/utils"
+	"github.com/hectorgimenez/koolo/internal/utils/obs"
 )
 
 // Define a constant for the timeout on menu operations
@@ -568,16 +569,41 @@ func (s *SinglePlayerSupervisor) Start() error {
 			timeSpentNotInGameStart = time.Now()
 
 			var gameFinishReason event.FinishReason
+
 			switch {
 			case errors.Is(err, health.ErrChicken):
 				gameFinishReason = event.FinishedChicken
+				if config.Koolo.OBS.Enabled && config.Koolo.OBS.RecordOnChickenDeath {
+					filePath := obs.SaveReplay(s.bot.ctx.Logger, s.name)
+					if filePath != "" {
+						event.Send(event.ReplayClip(event.Text(s.name, "Replay clip saved"), filePath))
+					}
+				}
 			case errors.Is(err, health.ErrMercChicken):
 				gameFinishReason = event.FinishedMercChicken
 			case errors.Is(err, health.ErrDied):
 				gameFinishReason = event.FinishedDied
+				if config.Koolo.OBS.Enabled && config.Koolo.OBS.RecordOnChickenDeath {
+					filePath := obs.SaveReplay(s.bot.ctx.Logger, s.name)
+					if filePath != "" {
+						event.Send(event.ReplayClip(event.Text(s.name, "Replay clip saved"), filePath))
+					}
+				}
+				if s.bot.ctx.CharacterCfg.Game.IsHardCoreChar {
+					event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), gameFinishReason))
+					s.bot.ctx.Logger.Error("Hardcore character died. Stopping bot.")
+					return health.ErrDied
+				}
 			default:
 				gameFinishReason = event.FinishedError
+				if config.Koolo.OBS.Enabled && config.Koolo.OBS.RecordOnError {
+					filePath := obs.SaveReplay(s.bot.ctx.Logger, s.name)
+					if filePath != "" {
+						event.Send(event.ReplayClip(event.Text(s.name, "Error clip saved"), filePath))
+					}
+				}
 			}
+
 			event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), gameFinishReason))
 
 			s.bot.ctx.Logger.Warn(
