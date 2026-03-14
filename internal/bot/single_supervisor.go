@@ -738,6 +738,13 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 				s.bot.ctx.WaitingForParty.Store(false)
 				return
 			case <-graceTicker.C:
+				if s.leaderStartedNewGame() {
+					s.bot.ctx.Logger.Info("Party: leader started new game during grace period, exiting to rejoin",
+						slog.String("newGame", s.bot.ctx.CharacterCfg.Companion.CompanionGameName))
+					graceTicker.Stop()
+					s.bot.ctx.WaitingForParty.Store(false)
+					return
+				}
 				if pr.MemberCount() > 1 {
 					s.bot.ctx.Logger.Info("Party: other members joined during grace period",
 						slog.Int("members", pr.MemberCount()))
@@ -795,6 +802,11 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 				s.bot.ctx.Logger.Info("Party: all members done, proceeding to exit game")
 				return
 			}
+			if s.leaderStartedNewGame() {
+				s.bot.ctx.Logger.Info("Party: leader started new game, exiting to rejoin",
+					slog.String("newGame", s.bot.ctx.CharacterCfg.Companion.CompanionGameName))
+				return
+			}
 			if time.Now().After(deadline) {
 				s.bot.ctx.Logger.Warn("Party: wait timeout reached, proceeding to exit game",
 					slog.Any("status", pr.Status()))
@@ -802,6 +814,17 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 			}
 		}
 	}
+}
+
+// leaderStartedNewGame returns true if the leader has created a new game and is
+// waiting for this follower to join. Used to break out of bonus runs / idle wait
+// when the leader crashes/chickens and starts fresh.
+func (s *SinglePlayerSupervisor) leaderStartedNewGame() bool {
+	if !s.bot.ctx.CharacterCfg.Companion.Enabled || s.bot.ctx.CharacterCfg.Companion.Leader {
+		return false
+	}
+	newGame := s.bot.ctx.CharacterCfg.Companion.CompanionGameName
+	return newGame != "" && newGame != s.bot.ctx.Data.Game.LastGameName
 }
 
 // doBonusRuns executes random short farming runs while waiting for party members.
@@ -848,6 +871,13 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 
 		if pr.AllDone() {
 			s.bot.ctx.Logger.Info("Party: all members done, stopping bonus runs")
+			return
+		}
+
+		// Leader crashed/chickened and created a new game — stop bonus runs and exit game to rejoin
+		if s.leaderStartedNewGame() {
+			s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus runs to rejoin",
+				slog.String("newGame", s.bot.ctx.CharacterCfg.Companion.CompanionGameName))
 			return
 		}
 
