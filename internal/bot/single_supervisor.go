@@ -231,8 +231,13 @@ func (s *SinglePlayerSupervisor) Start() error {
 		}
 
 		if firstRun {
-			if err = s.waitUntilCharacterSelectionScreen(); err != nil {
-				return fmt.Errorf("error waiting for character selection screen: %w", err)
+			// Companions may end up in lobby after a failed game join — skip waiting
+			// for character selection screen if we're already in lobby, HandleMenuFlow
+			// will handle it via HandleCompanionMenuFlow.
+			if !(s.bot.ctx.CharacterCfg.Companion.Enabled && !s.bot.ctx.CharacterCfg.Companion.Leader && s.bot.ctx.GameReader.IsInLobby()) {
+				if err = s.waitUntilCharacterSelectionScreen(); err != nil {
+					return fmt.Errorf("error waiting for character selection screen: %w", err)
+				}
 			}
 		}
 
@@ -1170,6 +1175,15 @@ func (s *SinglePlayerSupervisor) HandleCompanionMenuFlow() error {
 				gamePassword = activeGame.Password
 			}
 		}
+	}
+
+	// Don't rejoin the game we just finished — wait for leader to create a new one
+	lastGame := s.bot.ctx.GameReader.LastGameName()
+	if gameName != "" && gameName == lastGame {
+		s.bot.ctx.Logger.Debug("Party: active game is the same we just left, waiting for new game",
+			slog.String("game", gameName))
+		utils.Sleep(2000)
+		return fmt.Errorf("idle")
 	}
 
 	if gameName == "" {
