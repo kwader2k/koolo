@@ -124,6 +124,7 @@ func (pr *PartyRegistry) RegisterMember(name string, gameID string) {
 		for _, m := range pr.members {
 			m.done = false
 			m.runs = nil
+			m.registedAt = time.Time{} // zero = stale until re-registered
 		}
 		pr.gameID = gameID
 	}
@@ -137,6 +138,22 @@ func (pr *PartyRegistry) RegisterMember(name string, gameID string) {
 		slog.String("member", name),
 		slog.String("game", gameID),
 		slog.Int("totalMembers", len(pr.members)))
+}
+
+// PurgeStaleMembers removes members that were preserved from a previous game
+// but haven't re-registered for the current one (registedAt is zero).
+// Called after the grace period so paused/stopped bots don't block the party.
+func (pr *PartyRegistry) PurgeStaleMembers() {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+
+	for name, m := range pr.members {
+		if m.registedAt.IsZero() {
+			pr.log().Info("Party registry: purging stale member (did not rejoin)",
+				slog.String("member", name))
+			delete(pr.members, name)
+		}
+	}
 }
 
 // UnregisterMember removes a supervisor from the party (crash, stop, etc.).

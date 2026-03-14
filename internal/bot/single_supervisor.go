@@ -761,6 +761,10 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 		graceTicker.Stop()
 	}
 
+	// Remove members that were preserved from previous game but didn't rejoin
+	// (e.g. paused/stopped bots). Without this, leader waits PartyWaitTimeout every game.
+	pr.PurgeStaleMembers()
+
 	if pr.AllDone() {
 		s.bot.ctx.Logger.Info("Party: all members already done, no wait needed")
 		s.bot.ctx.WaitingForParty.Store(false)
@@ -824,6 +828,18 @@ func (s *SinglePlayerSupervisor) leaderStartedNewGame() bool {
 		return false
 	}
 	newGame := s.bot.ctx.CharacterCfg.Companion.CompanionGameName
+
+	// Fallback: check party registry (same as HandleCompanionMenuFlow)
+	if newGame == "" {
+		if activeGame := GetPartyRegistry().GetActiveGame(); activeGame != nil {
+			leaderOK := s.bot.ctx.CharacterCfg.Companion.LeaderName == "" ||
+				s.bot.ctx.CharacterCfg.Companion.LeaderName == activeGame.LeaderName
+			if leaderOK {
+				newGame = activeGame.GameName
+			}
+		}
+	}
+
 	return newGame != "" && newGame != s.bot.ctx.Data.Game.LastGameName
 }
 
