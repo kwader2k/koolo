@@ -477,7 +477,7 @@ func (mng *SupervisorManager) rearrangeWindows() {
 				slog.String("supervisor", sp.Name()),
 				slog.String("column", strconv.FormatInt(int64(column), 10)),
 				slog.String("row", strconv.FormatInt(int64(row), 10)),
-				slog.String("position", strconv.FormatInt(int64(column*(1280+windowBorderX)+windowOffsetX), 10)+"x"+strconv.FormatInt(int64(row*(720+windowBorderY)), 10)),
+				slog.String("position", strconv.FormatInt(int64(column*(1280+windowBorderX)+windowOffsetX+monitorOffsetX), 10)+"x"+strconv.FormatInt(int64(row*(720+windowBorderY)+monitorOffsetY), 10)),
 			)
 			column++
 		} else {

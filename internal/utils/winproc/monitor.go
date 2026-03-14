@@ -2,6 +2,7 @@ package winproc
 
 import (
 	"fmt"
+	"log/slog"
 	"syscall"
 	"unsafe"
 
@@ -54,7 +55,14 @@ func EnumMonitors() []MonitorInfo {
 		return 1 // continue enumeration
 	})
 
-	enumDisplayMonitors.Call(0, 0, cb, 0)
+	ret, _, callErr := enumDisplayMonitors.Call(0, 0, cb, 0)
+	if ret == 0 {
+		if callErr == syscall.Errno(0) {
+			callErr = syscall.GetLastError()
+		}
+		slog.Error("EnumDisplayMonitors failed", slog.Any("error", callErr))
+		return nil
+	}
 	return monitors
 }
 
