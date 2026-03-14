@@ -109,6 +109,10 @@ func (o Organs) Run(parameters *RunParameters) error {
 
 		action.ReviveMerc()
 
+		if err := action.RepairTownRoutine(); err != nil {
+			o.ctx.Logger.Warn(fmt.Sprintf("Failed to repair gear after portal %d: %v", portalNum, err))
+		}
+
 		if err := action.Stash(true); err != nil {
 			o.ctx.Logger.Warn(fmt.Sprintf("Failed to stash items after portal %d: %v", portalNum, err))
 		}

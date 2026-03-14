@@ -113,6 +113,10 @@ func (t Torch) Run(parameters *RunParameters) error {
 
 	action.ReviveMerc()
 
+	if err := action.RepairTownRoutine(); err != nil {
+		t.ctx.Logger.Warn(fmt.Sprintf("Failed to repair gear: %v", err))
+	}
+
 	if err := action.Stash(true); err != nil {
 		t.ctx.Logger.Warn(fmt.Sprintf("Failed to stash items: %v", err))
 	}
