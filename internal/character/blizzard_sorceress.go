@@ -173,18 +173,22 @@ func (s BlizzardSorceress) killMonster(npc npc.ID, t data.MonsterType) error {
 }
 
 func (s BlizzardSorceress) killMonsterByName(id npc.ID, monsterType data.MonsterType, skipOnImmunities []stat.Resist) error {
+	if !s.CharacterCfg.Character.BlizzardSorceress.UseInfinity {
+		skipOnImmunities = append(skipOnImmunities, stat.ColdImmune)
+	}
 	// while the monster is alive, keep attacking it
 	for {
 		if m, found := s.Data.Monsters.FindOne(id, monsterType); found {
 			if m.Stats[stat.Life] <= 0 {
 				break
 			}
-
+			if !s.preBattleChecks(m.UnitID, skipOnImmunities) {
+				return nil
+			}
 			s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
 				if m, found := d.Monsters.FindOne(id, monsterType); found {
 					return m.UnitID, true
 				}
-
 				return 0, false
 			}, skipOnImmunities)
 		} else {
