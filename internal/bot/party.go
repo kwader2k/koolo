@@ -108,17 +108,23 @@ func (pr *PartyRegistry) GetActiveGame() *ActiveGameInfo {
 }
 
 // RegisterMember adds a supervisor to the party for a given game.
-// If the game changed, the registry is reset automatically.
+// If the game changed, member state (done/runs) is reset but the member list
+// is preserved so the leader knows followers exist and waits for them.
 func (pr *PartyRegistry) RegisterMember(name string, gameID string) {
 	pr.mu.Lock()
 	defer pr.mu.Unlock()
 
 	if pr.gameID != gameID {
-		// New game — reset all members
-		pr.log().Info("Party registry: new game detected, resetting",
+		// New game — reset done/runs state but keep member list so leader
+		// doesn't proceed solo while followers are still transitioning
+		pr.log().Info("Party registry: new game detected, resetting member state",
 			slog.String("oldGame", pr.gameID),
-			slog.String("newGame", gameID))
-		pr.members = make(map[string]*partyMember)
+			slog.String("newGame", gameID),
+			slog.Int("preservedMembers", len(pr.members)))
+		for _, m := range pr.members {
+			m.done = false
+			m.runs = nil
+		}
 		pr.gameID = gameID
 	}
 
