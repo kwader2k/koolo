@@ -101,6 +101,10 @@ var ShortBonusRuns = []Run{
 	FireEyeRun,
 	RakanishuRun,
 	LowerKurastChestRun,
+	DiabloRun,
+	BaalRun,
+	CowsRun,
+	DurielRun,
 }
 
 type LevelingRunInfo struct {

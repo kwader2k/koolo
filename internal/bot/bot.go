@@ -431,6 +431,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 				// Update activity before the main run logic is executed.
 				b.updateActivityAndPosition()
+				b.ctx.CurrentRunName = r.Name()
 				err = r.Run(nil)
 
 				// Drop: Handle Drop interrupt from step functions

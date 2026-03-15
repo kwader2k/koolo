@@ -75,6 +75,7 @@ type Context struct {
 	CompletedRuns             []string      // Runs completed in current game (survives bot.Run() reset)
 	CompletedGameID           string        // Game name for which CompletedRuns is valid
 	completedRunsMu           sync.Mutex
+	CurrentRunName            string        // Name of the currently executing run (for failed run tracking)
 }
 
 type Debug struct {

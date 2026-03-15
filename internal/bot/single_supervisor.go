@@ -603,6 +603,14 @@ func (s *SinglePlayerSupervisor) Start() error {
 		firstRun = false
 
 		if err != nil {
+			// Track the failed run so rejoin skips it (prevents infinite retry loops)
+			if failedRun := s.bot.ctx.CurrentRunName; failedRun != "" {
+				s.bot.ctx.AddCompletedRun(failedRun)
+				s.bot.ctx.Logger.Info("Marking failed run as completed for skip on rejoin",
+					slog.String("run", failedRun),
+					slog.String("error", err.Error()))
+			}
+
 			if errors.Is(err, drop.ErrInterrupt) {
 				s.bot.ctx.Logger.Info("Drop interrupt received. Exiting game and restarting loop.")
 				s.bot.ctx.Manager.ExitGame()
@@ -1021,9 +1029,14 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 				s.bot.ctx.Logger.Info("Party: bonus run aborted (party event)", slog.String("run", runName))
 				return false
 			}
-			// Any other error (chicken, death, etc.) — signal caller to exit game
-			s.bot.ctx.Logger.Warn("Party: bonus run failed, need chicken", slog.String("run", runName), slog.Any("error", err))
-			return true
+			// Fatal errors (chicken/death) — signal caller to exit game
+			if errors.Is(err, health.ErrChicken) || errors.Is(err, health.ErrDied) || errors.Is(err, health.ErrMercChicken) {
+				s.bot.ctx.Logger.Warn("Party: bonus run chicken/death, exiting game", slog.String("run", runName), slog.Any("error", err))
+				return true
+			}
+			// Non-fatal error (seal elite not found, path error, etc.) — skip to next run
+			s.bot.ctx.Logger.Warn("Party: bonus run failed, skipping to next", slog.String("run", runName), slog.Any("error", err))
+			continue
 		}
 
 		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
