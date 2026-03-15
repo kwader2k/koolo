@@ -1,52 +1,76 @@
 // IGNORED by default, this directory is ONLY evaluated DURING the character leveling process.
 // Rules here are included ADDITIONALLY to the main pickit rules
 
-[name] == talrune # # [maxquantity] == 4
-[name] == ethrune # # [maxquantity] == 1
-[name] == ralrune # # [maxquantity] == 3
-[name] == ortrune # # [maxquantity] == 3
-[name] == solrune # # [maxquantity] == 3
-[name] == tirrune # # [maxquantity] == 1
-[name] == thulrune # # [maxquantity] == 3
-[name] == amnrune # # [maxquantity] == 2
-[name] == shaelrune # # [maxquantity] == 3
-[name] == eldrune # # [maxquantity] == 1
-[name] == nefrune # # [maxquantity] == 1
-[name] == lumrune # # [maxquantity] == 1
-[name] == korune # # [maxquantity] == 2
-[name] == helrune # # [maxquantity] == 5
-[name] == iorune # # [maxquantity] == 1
-[name] == lemrune
-[name] == pulrune
-[name] == umrune
-[name] == malrune
-[name] == istrune
-[name] == gulrune
-[name] == vexrune
-[name] == ohmrune
-[name] == lorune
-[name] == surrune
-[name] == berrune
-[name] == jahrune
-[name] == chamrune
-[name] == zodrune
+[name] == elrune # # [maxquantity] == 99
+[name] == eldrune # # [maxquantity] == 99
+[name] == tirrune # # [maxquantity] == 99
+[name] == nefrune # # [maxquantity] == 99
+[name] == ethrune # # [maxquantity] == 99
+[name] == ithrune # # [maxquantity] == 99
+[name] == talrune # # [maxquantity] == 99
+[name] == ralrune # # [maxquantity] == 99
+[name] == ortrune # # [maxquantity] == 99
+[name] == thulrune # # [maxquantity] == 99
+[name] == amnrune # # [maxquantity] == 99
+[name] == solrune # # [maxquantity] == 99
+[name] == shaelrune # # [maxquantity] == 99
+[name] == dolrune # # [maxquantity] == 99
+[name] == helrune # # [maxquantity] == 99
+[name] == iorune # # [maxquantity] == 99
+[name] == lumrune # # [maxquantity] == 99
+[name] == korune # # [maxquantity] == 99
+[name] == falrune # # [maxquantity] == 99
+[name] == lemrune # # [maxquantity] == 99
+[name] == pulrune # # [maxquantity] == 99
+[name] == umrune # # [maxquantity] == 99
+[name] == malrune # # [maxquantity] == 99
+[name] == istrune # # [maxquantity] == 99
+[name] == gulrune # # [maxquantity] == 99
+[name] == vexrune # # [maxquantity] == 99
+[name] == ohmrune # # [maxquantity] == 99
+[name] == lorune # # [maxquantity] == 99
+[name] == surrune # # [maxquantity] == 99
+[name] == berrune # # [maxquantity] == 99
+[name] == jahrune # # [maxquantity] == 99
+[name] == chamrune # # [maxquantity] == 99
+[name] == zodrune # # [maxquantity] == 99
 
 //gems
-//[name] == chippedamethyst # # [maxquantity] == 2
-//[name] == chippeddiamond # # [maxquantity] == 2
-//[name] == chippedemerald # # [maxquantity] == 2
-//[name] == chippedruby # # [maxquantity] = 2
-//[name] == chippedsapphire # # [maxquantity] == 2
-//[name] == chippedskull # # [maxquantity] == 2
-//[name] == chippedtopaz # # [maxquantity] == 5
-//[name] == flawedamethyst # # [maxquantity] == 5
-//[name] == flaweddiamond # # [maxquantity] == 5
-//[name] == flawedemerald # # [maxquantity] == 5
-//[name] == flawedruby # # [maxquantity] == 5
-//[name] == flawedsapphire # # [maxquantity] == 5
-//[name] == flawedskull # # [maxquantity] == 5
-//[name] == flawedtopaz # # [maxquantity] == 5
-[name] == flawlessamethyst # # [maxquantity] == 3
+[name] == chippedamethyst # # [maxquantity] == 99
+[name] == chippeddiamond # # [maxquantity] == 99
+[name] == chippedemerald # # [maxquantity] == 99
+[name] == chippedruby # # [maxquantity] == 99
+[name] == chippedsapphire # # [maxquantity] == 99
+[name] == chippedskull # # [maxquantity] == 99
+[name] == chippedtopaz # # [maxquantity] == 99
+[name] == flawedamethyst # # [maxquantity] == 99
+[name] == flaweddiamond # # [maxquantity] == 99
+[name] == flawedemerald # # [maxquantity] == 99
+[name] == flawedruby # # [maxquantity] == 99
+[name] == flawedsapphire # # [maxquantity] == 99
+[name] == flawedskull # # [maxquantity] == 99
+[name] == flawedtopaz # # [maxquantity] == 99
+[name] == amethyst # # [maxquantity] == 99
+[name] == diamond # # [maxquantity] == 99
+[name] == emerald # # [maxquantity] == 99
+[name] == ruby # # [maxquantity] == 99
+[name] == sapphire # # [maxquantity] == 99
+[name] == skull # # [maxquantity] == 99
+[name] == topaz # # [maxquantity] == 99
+[name] == flawlessamethyst # # [maxquantity] == 99
+[name] == flawlessdiamond # # [maxquantity] == 99
+[name] == flawlessemerald # # [maxquantity] == 99
+[name] == flawlessruby # # [maxquantity] == 99
+[name] == flawlesssapphire # # [maxquantity] == 99
+[name] == flawlessskull # # [maxquantity] == 99
+[name] == flawlesstopaz # # [maxquantity] == 99
+[name] == perfectamethyst # # [maxquantity] == 99
+[name] == perfectdiamond # # [maxquantity] == 99
+[name] == perfectemerald # # [maxquantity] == 99
+[name] == perfectruby # # [maxquantity] == 99
+[name] == perfectsapphire # # [maxquantity] == 99
+[name] == perfectskull # # [maxquantity] == 99
+[name] == perfecttopaz # # [maxquantity] == 99
 
 // potions
 [name] == minorhealingpotion
