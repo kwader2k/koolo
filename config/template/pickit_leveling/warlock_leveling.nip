@@ -116,7 +116,7 @@
 [name] == demonhidesash && [quality] == unique && [flag] != ethereal # [damageresist] >= 10 # [tier] == 4000 //string of ears
 
 // Boots
-[name] == mirroredboots && quality == unique && [flag] != ethereal # # [tier] == 11000
+[name] == mirroredboots && [quality] == unique && [flag] != ethereal # # [tier] == 11000
 [name] == battleboots && [quality] == unique && [flag] != ethereal # # [tier] == 10000 //War travellers
 [name] == meshboots && [quality] == unique && [flag] != ethereal # # [tier] == 6000 //Silkweaves
 [name] == sharkskinboots && [quality] == unique && [flag] != ethereal # # [tier] == 5000 //Waterwalks
