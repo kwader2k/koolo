@@ -323,12 +323,11 @@ func calculateGeneralScore(itm data.Item) float64 {
 	}
 	ctx := context.Get()
 
-	// Unique item override
-	if score, found := uniqueItemScores[itemName]; found {
-		return score
-	}
-
 	score := BaseScore
+	// Unique item override
+	if uniqueScore, found := uniqueItemScores[itemName]; found {
+		score += uniqueScore
+	}
 
 	tierRule, _ := ctx.CharacterCfg.Runtime.Rules.EvaluateTiers(itm, ctx.CharacterCfg.Runtime.TierRules)
 	if tierRule.Tier() > 0 {

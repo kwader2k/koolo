@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"slices"
 	"sort"
+	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/item"
@@ -65,9 +66,17 @@ func isBarbLevelingCharacter() bool {
 	return ctx.CharacterCfg.Character.Class == "barb_leveling"
 }
 
+var ignoreItems = make(map[data.UnitID]bool)
+var ignoreTime time.Time
+
 // AutoEquip evaluates and equips items for both player and mercenary
 func AutoEquip() error {
 	ctx := context.Get()
+
+	if time.Since(ignoreTime) > time.Minute*20 {
+		ignoreItems = make(map[data.UnitID]bool)
+		ignoreTime = time.Now()
+	}
 
 	// skip autoequip for barb leveling during boss town routines
 	if ctx.IsBossEquipmentActive {
@@ -108,6 +117,7 @@ func AutoEquip() error {
 				playerEvalItems = append(playerEvalItems, itm)
 			}
 		}
+		ctx.Logger.Debug("Start Player equipBestItems")
 		playerItems, playerScores := evaluateItems(playerEvalItems, item.LocationEquipped, PlayerScore)
 		playerChanged, err := equipBestItems(playerItems, playerScores, item.LocationEquipped)
 		if err != nil {
@@ -135,6 +145,7 @@ func AutoEquip() error {
 			}
 
 			// Use this new filtered list for the mercenary evaluation.
+			ctx.Logger.Debug("Start Merc equipBestItems")
 			mercItems, mercScores := evaluateItems(mercEvalItems, item.LocationMercenary, MercScore)
 			mercChanged, err = equipBestItems(mercItems, mercScores, item.LocationMercenary) // Pass mercScores
 			if err != nil {
@@ -331,7 +342,7 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 	// Main Requirement Check (Level, Strength, Dexterity)
 	requireMulti := 1.0
 	if isWeapon && ctx.Data.PlayerUnit.Class == data.Warlock {
-		requireMulti = 1.0 - 0.2*float64(GetSkillTotalLevel(skill.Levitate))
+		requireMulti = 1.0 - 0.02*float64(GetSkillTotalLevel(skill.Levitate))
 	}
 	if target == item.LocationEquipped {
 		playerLevel := 1
@@ -340,10 +351,15 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 		}
 
 		itemLevelReq := newItem.LevelReq
-
 		// Explicitly log the level comparison
 		if playerLevel < itemLevelReq {
-			return false
+			ctx.Logger.Debug(fmt.Sprintf(
+				"Cannot equip %s: player level %d < required level %d",
+				newItem.IdentifiedName,
+				playerLevel,
+				itemLevelReq,
+			))
+			// return false // temp fix
 		}
 
 		// Now check stats, considering the item that will be unequipped
@@ -359,10 +375,23 @@ func isEquippable(newItem data.Item, bodyloc item.LocationType, target item.Loca
 				baseDex -= dexBonus.Value
 			}
 		}
-		RequiredStrength := int(float64(newItem.Desc().RequiredStrength) * requireMulti)
-		RequiredDexterity := int(float64(newItem.Desc().RequiredDexterity) * requireMulti)
+
+		RequiredStrength := newItem.Desc().RequiredStrength
+		RequiredDexterity := newItem.Desc().RequiredDexterity
+		if isWeapon {
+			RequiredStrength = int(float64(RequiredStrength) * requireMulti)
+			RequiredDexterity = int(float64(RequiredDexterity) * requireMulti)
+		}
 		if baseStr < RequiredStrength || baseDex < RequiredDexterity {
-			return false
+			ctx.Logger.Debug(fmt.Sprintf(
+				"Cannot equip %s: player baseStr %d < RequiredStrength %d baseDex %d < RequiredDexterity %d",
+				newItem.IdentifiedName,
+				baseStr,
+				RequiredStrength,
+				baseDex,
+				RequiredDexterity,
+			))
+			// return false // temp fix
 		}
 	}
 
@@ -1071,6 +1100,10 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 	ctx.SetLastAction("Equip")
 	defer step.CloseAllMenus()
 
+	if ignoreItems[itm.UnitID] {
+		return nil
+	}
+
 	if target == item.LocationEquipped && !isAllowedEtherealForPlayer(itm) {
 		return fmt.Errorf("ethereal item %s is not allowed for player equip", itm.IdentifiedName)
 	}
@@ -1106,7 +1139,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			}
 		}
 		if !found {
-			return fmt.Errorf("item %s not found in inventory after moving from stash", itm.IdentifiedName)
+			ctx.Logger.Info(fmt.Sprintf("item %s not found in inventory after moving from stash", itm.IdentifiedName))
 		}
 		step.CloseAllMenus()
 	}
@@ -1218,7 +1251,7 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 		*ctx.Data = ctx.GameReader.GetData()
 		var itemEquipped bool
 		for i := 0; i < 3; i++ {
-			utils.Sleep(800)
+			utils.Sleep(100)
 			*ctx.Data = ctx.GameReader.GetData()
 			for _, inPlace := range ctx.Data.Inventory.ByLocation(target) {
 				if inPlace.UnitID == itm.UnitID && inPlace.Location.BodyLocation == bodyloc {
@@ -1234,9 +1267,28 @@ func equip(itm data.Item, bodyloc item.LocationType, target item.LocationType) e
 			return nil
 		}
 		ctx.Logger.Debug(fmt.Sprintf("Equip attempt %d failed, retrying...", attempt+1))
-		utils.Sleep(500)
+		utils.Sleep(200)
 	}
-	return fmt.Errorf("verification failed after all attempts to equip %s", itm.IdentifiedName)
+
+	ctx.Logger.Debug(fmt.Sprintf("verification failed after all attempts to equip %s", itm.IdentifiedName))
+	ignoreItems[itm.UnitID] = true
+
+	step.CloseAllMenus()
+	utils.Sleep(100)
+	if err := OpenStash(); err != nil {
+		return err
+	}
+	utils.Sleep(EquipDelayMS)
+	SwitchStashTab(2)
+	screenPos := ui.GetScreenCoordsForItem(itm)
+	ctx.HID.MovePointer(screenPos.X, screenPos.Y)
+	utils.Sleep(100)
+	// ctrl + click item → move to stash
+	ctx.HID.ClickWithModifier(game.LeftButton, screenPos.X, screenPos.Y, game.CtrlKey)
+	utils.Sleep(100)
+	ctx.RefreshGameData()
+	step.CloseAllMenus()
+	return nil
 }
 
 // findInventorySpace finds the top-left grid coordinates for a free spot in the inventory.
