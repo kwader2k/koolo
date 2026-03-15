@@ -781,16 +781,22 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 	// (e.g. paused/stopped bots). Without this, leader waits PartyWaitTimeout every game.
 	pr.PurgeStaleMembers()
 
+	isLeader := s.bot.ctx.CharacterCfg.Companion.Leader
+
 	if pr.AllDone() {
-		s.bot.ctx.Logger.Info("Party: all members already done, no wait needed")
-		s.bot.ctx.WaitingForParty.Store(false)
-		return
+		if isLeader {
+			s.bot.ctx.Logger.Info("Party: all members already done, leader proceeding to create new game")
+			s.bot.ctx.WaitingForParty.Store(false)
+			return
+		}
+		s.bot.ctx.Logger.Info("Party: all members done, companion waiting in town for leader's new game")
+		// Fall through to idle loop — companion stays in game until leader creates new game
 	}
 
 	// Bonus runs: do extra runs while waiting for party members instead of idling
 	if s.bot.ctx.CharacterCfg.Companion.BonusRuns {
 		s.doBonusRuns(ctx, pr)
-		if pr.AllDone() {
+		if pr.AllDone() && isLeader {
 			return
 		}
 	}
@@ -818,8 +824,8 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 			s.bot.ctx.Logger.Info("Party: context cancelled while waiting")
 			return
 		case <-ticker.C:
-			if pr.AllDone() {
-				s.bot.ctx.Logger.Info("Party: all members done, proceeding to exit game")
+			if isLeader && pr.AllDone() {
+				s.bot.ctx.Logger.Info("Party: all members done, leader proceeding to exit game")
 				return
 			}
 			if s.leaderStartedNewGame() {
