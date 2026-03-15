@@ -849,17 +849,6 @@ func (s NovaSorceress) KillIzual() error {
 	return s.killBossWithStatic(npc.Izual, data.MonsterTypeUnique)
 }
 
-func (s NovaSorceress) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		for _, m := range d.Monsters.Enemies() {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				return m.UnitID, true
-			}
-		}
-		return 0, false
-	}, nil)
-}
-
 func (s NovaSorceress) KillPindle() error {
 	return s.killMonsterByName(
 		npc.DefiledWarrior,

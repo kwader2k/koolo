@@ -256,17 +256,6 @@ func (s LightningSorceress) KillIzual() error {
 	return s.killBossWithStatic(npc.Izual, data.MonsterTypeUnique)
 }
 
-func (s LightningSorceress) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		for _, m := range d.Monsters.Enemies() {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				return m.UnitID, true
-			}
-		}
-		return 0, false
-	}, nil)
-}
-
 func (s LightningSorceress) KillPindle() error {
 	return s.killMonsterByName(npc.DefiledWarrior, data.MonsterTypeSuperUnique, s.CharacterCfg.Game.Pindleskin.SkipOnImmunities)
 }

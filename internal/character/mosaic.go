@@ -3,7 +3,6 @@ package character
 import (
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -218,29 +217,6 @@ func (s MosaicSin) KillSummoner() error {
 
 func (s MosaicSin) KillDuriel() error {
 	return s.killMonster(npc.Duriel, data.MonsterTypeUnique)
-}
-
-func (s MosaicSin) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		var councilMembers []data.Monster
-		for _, m := range d.Monsters {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				councilMembers = append(councilMembers, m)
-			}
-		}
-
-		sort.Slice(councilMembers, func(i, j int) bool {
-			distanceI := s.PathFinder.DistanceFromMe(councilMembers[i].Position)
-			distanceJ := s.PathFinder.DistanceFromMe(councilMembers[j].Position)
-			return distanceI < distanceJ
-		})
-
-		if len(councilMembers) > 0 {
-			return councilMembers[0].UnitID, true
-		}
-
-		return 0, false
-	}, nil)
 }
 
 func (s MosaicSin) KillMephisto() error {

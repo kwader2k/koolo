@@ -62,7 +62,6 @@ func (f FireballSorceress) CheckKeyBindings() []skill.ID {
 
 func (f FireballSorceress) KillMonsterSequence(
 	monsterSelector func(d game.Data) (data.UnitID, bool),
-
 	skipOnImmunities []stat.Resist,
 ) error {
 
@@ -167,33 +166,6 @@ func (f FireballSorceress) KillSummoner() error {
 
 func (f FireballSorceress) KillDuriel() error {
 	return f.killMonsterByName(npc.Duriel, data.MonsterTypeUnique, nil)
-}
-
-func (f FireballSorceress) KillCouncil() error {
-	return f.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		// Exclude monsters that are not council members
-		var councilMembers []data.Monster
-		var fireImmunes []data.Monster
-		for _, m := range d.Monsters.Enemies() {
-
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				if m.IsImmune(stat.FireImmune) {
-					fireImmunes = append(fireImmunes, m)
-				} else {
-					councilMembers = append(councilMembers, m)
-				}
-			}
-
-		}
-
-		councilMembers = append(councilMembers, fireImmunes...)
-
-		for _, m := range councilMembers {
-			return m.UnitID, true
-		}
-
-		return 0, false
-	}, nil)
 }
 
 func (f FireballSorceress) KillMephisto() error {

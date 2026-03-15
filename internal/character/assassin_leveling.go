@@ -3,7 +3,6 @@ package character
 import (
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -427,30 +426,6 @@ func (s AssassinLeveling) KillSummoner() error {
 
 func (s AssassinLeveling) KillDuriel() error {
 	return s.killBoss(npc.Duriel, time.Second*220)
-}
-
-func (s AssassinLeveling) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		var councilMembers []data.Monster
-		for _, m := range d.Monsters {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				councilMembers = append(councilMembers, m)
-			}
-		}
-
-		sort.Slice(councilMembers, func(i, j int) bool {
-			distanceI := s.PathFinder.DistanceFromMe(councilMembers[i].Position)
-			distanceJ := s.PathFinder.DistanceFromMe(councilMembers[j].Position)
-
-			return distanceI < distanceJ
-		})
-
-		for _, m := range councilMembers {
-			return m.UnitID, true
-		}
-
-		return 0, false
-	}, nil)
 }
 
 func (s AssassinLeveling) KillMephisto() error {

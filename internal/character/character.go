@@ -4,11 +4,16 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/area"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
+	"github.com/hectorgimenez/koolo/internal/action"
 	"github.com/hectorgimenez/koolo/internal/context"
+	"github.com/hectorgimenez/koolo/internal/game"
+	"github.com/hectorgimenez/koolo/internal/utils"
 )
 
 func BuildCharacter(ctx *context.Context) (context.Character, error) {
@@ -109,6 +114,13 @@ func (bc BaseCharacter) KillUberBaal() error {
 	return fmt.Errorf("character class %s does not support KillUberBaal", bc.CharacterCfg.Character.Class)
 }
 
+func (bc BaseCharacter) KillMonsterSequence(
+	_ func(d game.Data) (data.UnitID, bool),
+	_ []stat.Resist,
+) error {
+	return fmt.Errorf("character class %s does not support KillMonsterSequence", bc.CharacterCfg.Character.Class)
+}
+
 func (bc BaseCharacter) preBattleChecks(id data.UnitID, skipOnImmunities []stat.Resist) bool {
 	monster, found := bc.Data.Monsters.FindByID(id)
 	if !found {
@@ -148,4 +160,69 @@ func (bc BaseCharacter) preBattleChecks(id data.UnitID, skipOnImmunities []stat.
 	}
 
 	return true
+}
+
+func (bc BaseCharacter) KillCouncil() error {
+	// Disable item pickup while killing council members
+	context.Get().DisableItemPickup()
+	defer context.Get().EnableItemPickup()
+
+	err := bc.killAllCouncilMembers()
+	if err != nil {
+		return err
+	}
+
+	// Wait a moment for items to settle
+	time.Sleep(300 * time.Millisecond)
+
+	// Re-enable item pickup and do a final pickup pass
+	err = action.ItemPickup(40)
+	if err != nil {
+		bc.Logger.Warn("Error during final item pickup after council", "error", err)
+	}
+	return nil
+}
+
+func (bc BaseCharacter) killAllCouncilMembers() error {
+	for {
+		bc.returnToTrav()
+		bc.RefreshGameData()
+		if !bc.anyCouncilMemberAlive() {
+			return nil
+		}
+
+		err := bc.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
+			for _, m := range d.Monsters.Enemies() {
+				if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
+					return m.UnitID, true
+				}
+			}
+			return 0, false
+		}, nil)
+
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (bc BaseCharacter) anyCouncilMemberAlive() bool {
+	for _, m := range bc.Data.Monsters.Enemies() {
+		if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
+			return true
+		}
+
+	}
+	return false
+}
+
+func (bc BaseCharacter) returnToTrav() {
+	if bc.Context.Data.PlayerUnit.Area == area.DuranceOfHateLevel1 {
+		bc.Context.Logger.Warn("Detected Durance of Hate Level 1 at run start, attempting to return to Travincal via entrance")
+		if err := action.MoveToArea(area.Travincal); err != nil {
+			bc.Context.Logger.Warn("Failed to return to Travincal via entrance", "error", err)
+		}
+
+		utils.PingSleep(utils.Medium, 300)
+	}
 }

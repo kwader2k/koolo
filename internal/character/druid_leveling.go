@@ -3,7 +3,6 @@ package character
 import (
 	"fmt"
 	"log/slog"
-	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data/mode"
@@ -573,28 +572,6 @@ func (s DruidLeveling) KillSummoner() error {
 
 func (s DruidLeveling) KillDuriel() error {
 	return s.killMonster(npc.Duriel, data.MonsterTypeUnique)
-}
-
-// Targets multiple council members, sorted by distance
-func (s DruidLeveling) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		var councilMembers []data.Monster
-		for _, m := range d.Monsters {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				councilMembers = append(councilMembers, m)
-			}
-		}
-
-		sort.Slice(councilMembers, func(i, j int) bool {
-			return s.PathFinder.DistanceFromMe(councilMembers[i].Position) < s.PathFinder.DistanceFromMe(councilMembers[j].Position)
-		})
-
-		for _, m := range councilMembers {
-			return m.UnitID, true
-		}
-
-		return 0, false
-	}, nil)
 }
 
 func (s DruidLeveling) KillMephisto() error {

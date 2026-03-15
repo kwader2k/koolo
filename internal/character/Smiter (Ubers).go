@@ -4,8 +4,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hectorgimenez/koolo/internal/action"
-
 	"github.com/hectorgimenez/d2go/pkg/data"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
@@ -183,59 +181,6 @@ func (f Smiter) KillSummoner() error {
 
 func (f Smiter) KillDuriel() error {
 	return f.killBoss(npc.Duriel, data.MonsterTypeUnique)
-}
-
-func (f Smiter) KillCouncil() error {
-	// Disable item pickup while killing council members
-	context.Get().DisableItemPickup()
-	defer context.Get().EnableItemPickup()
-
-	err := f.killAllCouncilMembers()
-	if err != nil {
-		return err
-	}
-
-	// Wait a moment for items to settle
-	time.Sleep(300 * time.Millisecond)
-
-	// Re-enable item pickup and do a final pickup pass
-	err = action.ItemPickup(40)
-	if err != nil {
-		f.Logger.Warn("Error during final item pickup after council", "error", err)
-	}
-
-	return nil
-}
-
-func (f Smiter) killAllCouncilMembers() error {
-	for {
-		if !f.anyCouncilMemberAlive() {
-			return nil
-		}
-
-		err := f.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-			for _, m := range d.Monsters.Enemies() {
-				if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-					return m.UnitID, true
-				}
-			}
-			return 0, false
-		}, nil)
-
-		if err != nil {
-			return err
-		}
-	}
-}
-
-func (f Smiter) anyCouncilMemberAlive() bool {
-	for _, m := range f.Data.Monsters.Enemies() {
-		if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-			return true
-		}
-
-	}
-	return false
 }
 
 func (f Smiter) KillMephisto() error {

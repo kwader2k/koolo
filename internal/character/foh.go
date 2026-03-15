@@ -5,10 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/hectorgimenez/d2go/pkg/data/mode"
-	"github.com/hectorgimenez/koolo/internal/action"
-
 	"github.com/hectorgimenez/d2go/pkg/data"
+	"github.com/hectorgimenez/d2go/pkg/data/mode"
 	"github.com/hectorgimenez/d2go/pkg/data/npc"
 	"github.com/hectorgimenez/d2go/pkg/data/skill"
 	"github.com/hectorgimenez/d2go/pkg/data/stat"
@@ -213,7 +211,7 @@ func (f Foh) handleBoss(bossID data.UnitID, fohOpts, hbOpts []step.AttackOption,
 			}
 		}
 
-		(*completedAttackLoops)++
+		*completedAttackLoops++
 	}
 	return nil
 }
@@ -301,58 +299,6 @@ func (f Foh) KillSummoner() error {
 
 func (f Foh) KillDuriel() error {
 	return f.killBoss(npc.Duriel, data.MonsterTypeUnique)
-}
-
-func (f Foh) KillCouncil() error {
-	// Disable item pickup while killing council members
-	context.Get().DisableItemPickup()
-	defer context.Get().EnableItemPickup()
-
-	err := f.killAllCouncilMembers()
-	if err != nil {
-		return err
-	}
-
-	// Wait a moment for items to settle
-	time.Sleep(300 * time.Millisecond)
-
-	// Re-enable item pickup and do a final pickup pass
-	err = action.ItemPickup(40)
-	if err != nil {
-		f.Logger.Warn("Error during final item pickup after council", "error", err)
-	}
-
-	return nil
-}
-func (f Foh) killAllCouncilMembers() error {
-	for {
-		if !f.anyCouncilMemberAlive() {
-			return nil
-		}
-
-		err := f.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-			for _, m := range d.Monsters.Enemies() {
-				if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-					return m.UnitID, true
-				}
-			}
-			return 0, false
-		}, nil)
-
-		if err != nil {
-			return err
-		}
-	}
-}
-
-func (f Foh) anyCouncilMemberAlive() bool {
-	for _, m := range f.Data.Monsters.Enemies() {
-		if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-			return true
-		}
-
-	}
-	return false
 }
 
 func (f Foh) KillMephisto() error {
