@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"slices"
-	"sort"
 	"time"
 
 	"github.com/hectorgimenez/d2go/pkg/data"
@@ -482,31 +481,6 @@ func (s BarbLeveling) KillDuriel() error {
 	s.equipBossEquipment(npc.Duriel)
 	defer s.restoreEquipment()
 	return s.killBoss(npc.Duriel)
-}
-
-func (s BarbLeveling) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		var councilMembers []data.Monster
-		for _, m := range d.Monsters {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				councilMembers = append(councilMembers, m)
-			}
-		}
-
-		// Order council members by distance
-		sort.Slice(councilMembers, func(i, j int) bool {
-			distanceI := s.PathFinder.DistanceFromMe(councilMembers[i].Position)
-			distanceJ := s.PathFinder.DistanceFromMe(councilMembers[j].Position)
-
-			return distanceI < distanceJ
-		})
-
-		if len(councilMembers) > 0 {
-			return councilMembers[0].UnitID, true
-		}
-
-		return 0, false
-	}, nil)
 }
 
 func (s BarbLeveling) KillMephisto() error {

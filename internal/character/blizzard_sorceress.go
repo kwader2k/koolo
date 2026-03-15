@@ -224,31 +224,6 @@ func (s BlizzardSorceress) KillDuriel() error {
 	return s.killMonsterByName(npc.Duriel, data.MonsterTypeUnique, nil)
 }
 
-func (s BlizzardSorceress) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		// Exclude monsters that are not council members
-		var councilMembers []data.Monster
-		var coldImmunes []data.Monster
-		for _, m := range d.Monsters.Enemies() {
-			if m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3 {
-				if m.IsImmune(stat.ColdImmune) {
-					coldImmunes = append(coldImmunes, m)
-				} else {
-					councilMembers = append(councilMembers, m)
-				}
-			}
-		}
-
-		councilMembers = append(councilMembers, coldImmunes...)
-
-		for _, m := range councilMembers {
-			return m.UnitID, true
-		}
-
-		return 0, false
-	}, nil)
-}
-
 /*
 func (s BlizzardSorceress) KillMephisto() error {
     // Find Mephisto

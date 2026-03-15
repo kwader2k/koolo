@@ -678,39 +678,6 @@ func (s *Berserker) KillCouncil() error {
 	return nil
 }
 
-func (s *Berserker) killAllCouncilMembers() error {
-	context.Get().DisableItemPickup()
-	for {
-		if !s.anyCouncilMemberAlive() {
-			s.Logger.Info("All council members have been defeated!!!!")
-			return nil
-		}
-
-		err := s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-			for _, m := range d.Monsters.Enemies() {
-				if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-					return m.UnitID, true
-				}
-			}
-			return 0, false
-		}, nil)
-
-		if err != nil {
-			return err
-		}
-	}
-}
-
-func (s *Berserker) anyCouncilMemberAlive() bool {
-	for _, m := range s.Data.Monsters.Enemies() {
-		if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-			return true
-		}
-
-	}
-	return false
-}
-
 func (s *Berserker) KillIzual() error {
 	return s.killMonster(npc.Izual, data.MonsterTypeUnique)
 }

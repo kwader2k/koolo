@@ -242,17 +242,6 @@ func (d Dragondin) KillDuriel() error {
 	return d.killMonsterByName(npc.Duriel, data.MonsterTypeUnique)
 }
 
-func (d Dragondin) KillCouncil() error {
-	return d.KillMonsterSequence(func(gd game.Data) (data.UnitID, bool) {
-		for _, m := range gd.Monsters.Enemies() {
-			if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-				return m.UnitID, true
-			}
-		}
-		return 0, false
-	}, nil)
-}
-
 func (d Dragondin) KillMephisto() error {
 	return d.killMonsterByName(npc.Mephisto, data.MonsterTypeUnique)
 }

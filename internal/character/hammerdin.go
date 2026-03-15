@@ -159,17 +159,6 @@ func (s Hammerdin) KillDuriel() error {
 	return s.killMonsterByName(npc.Duriel, data.MonsterTypeUnique)
 }
 
-func (s Hammerdin) KillCouncil() error {
-	return s.KillMonsterSequence(func(d game.Data) (data.UnitID, bool) {
-		for _, m := range d.Monsters.Enemies() {
-			if (m.Name == npc.CouncilMember || m.Name == npc.CouncilMember2 || m.Name == npc.CouncilMember3) && m.Stats[stat.Life] > 0 {
-				return m.UnitID, true
-			}
-		}
-		return 0, false
-	}, nil)
-}
-
 func (s Hammerdin) KillMephisto() error {
 	return s.killMonsterByName(npc.Mephisto, data.MonsterTypeUnique)
 }
