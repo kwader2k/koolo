@@ -76,6 +76,7 @@ type Context struct {
 	CompletedGameID           string        // Game name for which CompletedRuns is valid
 	completedRunsMu           sync.Mutex
 	CurrentRunName            string        // Name of the currently executing run (for failed run tracking)
+	AbortBonusRun             atomic.Bool   // Signal long-running actions (gambling) to abort during bonus runs
 }
 
 type Debug struct {

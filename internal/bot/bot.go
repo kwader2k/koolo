@@ -315,7 +315,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 
 				shouldReturnTown := false
-				townChicken := b.ctx.CharacterCfg.Health.TownChickenAt > 0 && b.ctx.Data.PlayerUnit.HPPercent() <= b.ctx.CharacterCfg.Health.TownChickenAt
+				townChicken := !b.ctx.Data.PlayerUnit.Area.IsTown() && b.ctx.CharacterCfg.Health.TownChickenAt > 0 && b.ctx.Data.PlayerUnit.HPPercent() <= b.ctx.CharacterCfg.Health.TownChickenAt
 
 				if _, found := b.ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); found {
 					if !b.NeedsTPsToContinue() {
