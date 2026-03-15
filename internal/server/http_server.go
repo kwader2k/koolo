@@ -38,7 +38,6 @@ import (
 	"github.com/hectorgimenez/koolo/internal/config"
 	ctx "github.com/hectorgimenez/koolo/internal/context"
 	"github.com/hectorgimenez/koolo/internal/drop"
-	"github.com/hectorgimenez/koolo/internal/event"
 	"github.com/hectorgimenez/koolo/internal/game"
 	"github.com/hectorgimenez/koolo/internal/remote/droplog"
 	terrorzones "github.com/hectorgimenez/koolo/internal/terrorzone"
@@ -835,12 +834,17 @@ func (s *HttpServer) getStatusData() IndexData {
 			if stats.UI.Class == "" {
 				stats.UI.Class = cfg.Character.Class
 			}
-			// Add companion information to the stats
-			if cfg.Companion.Enabled && !cfg.Companion.Leader {
-				// This is a companion follower
-				stats.IsCompanionFollower = true
-				stats.MuleEnabled = cfg.Muling.Enabled
+			// Add companion/party information to the stats
+			if cfg.Companion.Enabled {
+				if cfg.Companion.Leader {
+					stats.PartyRole = "leader"
+				} else {
+					stats.IsCompanionFollower = true
+					stats.PartyRole = "follower"
+					stats.PartyLeaderName = cfg.Companion.LeaderName
+				}
 			}
+			stats.MuleEnabled = cfg.Muling.Enabled
 
 			// Per-character Auto Start flag
 			autoStart[supervisorName] = cfg.AutoStart
@@ -950,7 +954,9 @@ func (s *HttpServer) Listen(port int) error {
 	http.HandleFunc("/api/supervisors/rename", s.renameSupervisorConfig)
 	http.HandleFunc("/api/supervisors/copy", s.copySupervisorConfig)
 	http.HandleFunc("/api/supervisors/delete", s.deleteSupervisorConfig)
-	http.HandleFunc("/api/companion-join", s.companionJoin)                    // Companion join handler
+	http.HandleFunc("/api/party/set-leader", s.partySetLeader)
+	http.HandleFunc("/api/party/set-follower", s.partySetFollower)
+	http.HandleFunc("/api/party/remove", s.partyRemove)
 	http.HandleFunc("/api/generate-battlenet-token", s.generateBattleNetToken) // Battle.net token generation
 	http.HandleFunc("/reset-muling", s.resetMuling)
 
@@ -2494,6 +2500,16 @@ func (s *HttpServer) updateConfigFromForm(values url.Values, cfg *config.Charact
 			cfg.Companion.LeaderName = values.Get("companionLeaderName")
 			cfg.Companion.GameNameTemplate = values.Get("companionGameNameTemplate")
 			cfg.Companion.GamePassword = values.Get("companionGamePassword")
+			cfg.Companion.WaitForParty = values.Has("companionWaitForParty")
+			if v := values.Get("companionPartyWaitTimeout"); v != "" {
+				cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
+			}
+			cfg.Companion.OpenTPForPlayer = values.Has("companionOpenTPForPlayer")
+			cfg.Companion.BonusRuns = values.Has("companionBonusRuns")
+			if bonusRunsList, ok := values["companionBonusRunsList"]; ok {
+				cfg.Companion.BonusRunsList = bonusRunsList
+			}
+			cfg.Companion.RandomGameNames = values.Has("companionRandomGameNames")
 
 			// Gambling
 			cfg.Gambling.Enabled = values.Has("gamblingEnabled")
@@ -3469,6 +3485,14 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		cfg.Companion.LeaderName = r.Form.Get("companionLeaderName")
 		cfg.Companion.GameNameTemplate = r.Form.Get("companionGameNameTemplate")
 		cfg.Companion.GamePassword = r.Form.Get("companionGamePassword")
+		cfg.Companion.WaitForParty = r.Form.Has("companionWaitForParty")
+		if v := r.Form.Get("companionPartyWaitTimeout"); v != "" {
+			cfg.Companion.PartyWaitTimeout, _ = strconv.Atoi(v)
+		}
+		cfg.Companion.OpenTPForPlayer = r.Form.Has("companionOpenTPForPlayer")
+		cfg.Companion.BonusRuns = r.Form.Has("companionBonusRuns")
+		cfg.Companion.BonusRunsList = r.Form["companionBonusRunsList"]
+		cfg.Companion.RandomGameNames = r.Form.Has("companionRandomGameNames")
 
 		// Back to town config
 		cfg.BackToTown.NoHpPotions = r.Form.Has("noHpPotions")
@@ -3688,7 +3712,16 @@ func (s *HttpServer) characterSettings(w http.ResponseWriter, r *http.Request) {
 		FarmerProfiles:        farmerProfiles,
 		LevelingSequenceFiles: sequenceFiles,
 		Supervisors:           supervisors,
+		ShortBonusRuns:        shortBonusRunNames(),
 	})
+}
+
+func shortBonusRunNames() []string {
+	names := make([]string, len(config.ShortBonusRuns))
+	for i, r := range config.ShortBonusRuns {
+		names[i] = string(r)
+	}
+	return names
 }
 
 func (s *HttpServer) listLevelingSequenceFiles() []string {
@@ -3704,43 +3737,156 @@ func (s *HttpServer) listLevelingSequenceFiles() []string {
 }
 
 // companionJoin handles requests to force a companion to join a game
-func (s *HttpServer) companionJoin(w http.ResponseWriter, r *http.Request) {
+// partySetLeader sets a supervisor as a party leader.
+func (s *HttpServer) partySetLeader(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var requestData struct {
+	var req struct {
 		Supervisor string `json:"supervisor"`
-		GameName   string `json:"gameName"`
-		Password   string `json:"password"`
 	}
-
-	err := json.NewDecoder(r.Body).Decode(&requestData)
-	if err != nil {
-		http.Error(w, "Invalid request data", http.StatusBadRequest)
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
 
-	cfg, found := config.GetCharacter(requestData.Supervisor)
-	if !found {
+	cfg, found := config.GetCharacter(req.Supervisor)
+	if !found || cfg == nil {
 		http.Error(w, "Supervisor not found", http.StatusNotFound)
 		return
 	}
 
-	if !cfg.Companion.Enabled || cfg.Companion.Leader {
-		http.Error(w, "Supervisor is not a companion follower", http.StatusBadRequest)
+	cfg.Companion.Enabled = true
+	cfg.Companion.Leader = true
+	cfg.Companion.WaitForParty = true
+	cfg.Companion.OpenTPForPlayer = true
+	if err := config.SaveSupervisorConfig(req.Supervisor, cfg); err != nil {
+		http.Error(w, "Failed to save config", http.StatusInternalServerError)
 		return
 	}
 
-	baseEvent := event.Text(requestData.Supervisor, fmt.Sprintf("Manual request to join game %s", requestData.GameName))
-	joinEvent := event.RequestCompanionJoinGame(baseEvent, cfg.CharacterName, requestData.GameName, requestData.Password)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
 
-	event.Send(joinEvent)
+// partySetFollower sets a supervisor as a follower of a given leader.
+// If the leader isn't already configured as leader, it auto-sets them.
+func (s *HttpServer) partySetFollower(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
-	s.logger.Info("Manual companion join request sent",
-		slog.String("supervisor", requestData.Supervisor),
-		slog.String("game", requestData.GameName))
+	var req struct {
+		Supervisor string `json:"supervisor"`
+		Leader     string `json:"leader"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	if req.Supervisor == req.Leader {
+		http.Error(w, "Cannot follow yourself", http.StatusBadRequest)
+		return
+	}
+
+	// Get follower config
+	followerCfg, found := config.GetCharacter(req.Supervisor)
+	if !found || followerCfg == nil {
+		http.Error(w, "Follower supervisor not found", http.StatusNotFound)
+		return
+	}
+
+	// Get leader config to read CharacterName
+	leaderCfg, found := config.GetCharacter(req.Leader)
+	if !found || leaderCfg == nil {
+		http.Error(w, "Leader supervisor not found", http.StatusNotFound)
+		return
+	}
+
+	// Auto-set leader if not already
+	if !leaderCfg.Companion.Enabled || !leaderCfg.Companion.Leader {
+		leaderCfg.Companion.Enabled = true
+		leaderCfg.Companion.Leader = true
+		leaderCfg.Companion.WaitForParty = true
+		if err := config.SaveSupervisorConfig(req.Leader, leaderCfg); err != nil {
+			http.Error(w, "Failed to save leader config", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Set follower
+	followerCfg.Companion.Enabled = true
+	followerCfg.Companion.Leader = false
+	followerCfg.Companion.LeaderName = leaderCfg.CharacterName
+	followerCfg.Companion.WaitForParty = true
+	if err := config.SaveSupervisorConfig(req.Supervisor, followerCfg); err != nil {
+		http.Error(w, "Failed to save follower config", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
+}
+
+// partyRemove removes a supervisor from the party.
+// If it was a leader, all followers of that leader are also removed.
+func (s *HttpServer) partyRemove(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req struct {
+		Supervisor string `json:"supervisor"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+		return
+	}
+
+	cfg, found := config.GetCharacter(req.Supervisor)
+	if !found || cfg == nil {
+		http.Error(w, "Supervisor not found", http.StatusNotFound)
+		return
+	}
+
+	wasLeader := cfg.Companion.Leader
+	leaderCharName := cfg.CharacterName
+
+	// Clear this supervisor's party config
+	cfg.Companion.Enabled = false
+	cfg.Companion.Leader = false
+	cfg.Companion.LeaderName = ""
+	cfg.Companion.WaitForParty = false
+	if err := config.SaveSupervisorConfig(req.Supervisor, cfg); err != nil {
+		http.Error(w, "Failed to save config", http.StatusInternalServerError)
+		return
+	}
+
+	// If was leader, also clear all followers
+	if wasLeader {
+		for name := range config.GetCharacters() {
+			if name == "template" || name == req.Supervisor {
+				continue
+			}
+			followerCfg, ok := config.GetCharacter(name)
+			if !ok || followerCfg == nil {
+				continue
+			}
+			if followerCfg.Companion.Enabled && !followerCfg.Companion.Leader &&
+				followerCfg.Companion.LeaderName == leaderCharName {
+				followerCfg.Companion.Enabled = false
+				followerCfg.Companion.Leader = false
+				followerCfg.Companion.LeaderName = ""
+				followerCfg.Companion.WaitForParty = false
+				config.SaveSupervisorConfig(name, followerCfg)
+			}
+		}
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})

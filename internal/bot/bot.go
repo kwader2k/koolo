@@ -315,7 +315,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 				}
 
 				shouldReturnTown := false
-				townChicken := b.ctx.CharacterCfg.Health.TownChickenAt > 0 && b.ctx.Data.PlayerUnit.HPPercent() <= b.ctx.CharacterCfg.Health.TownChickenAt
+				townChicken := !b.ctx.Data.PlayerUnit.Area.IsTown() && b.ctx.CharacterCfg.Health.TownChickenAt > 0 && b.ctx.Data.PlayerUnit.HPPercent() <= b.ctx.CharacterCfg.Health.TownChickenAt
 
 				if _, found := b.ctx.Data.KeyBindings.KeyBindingForSkill(skill.TomeOfTownPortal); found {
 					if !b.NeedsTPsToContinue() {
@@ -431,6 +431,7 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 
 				// Update activity before the main run logic is executed.
 				b.updateActivityAndPosition()
+				b.ctx.CurrentRunName = r.Name()
 				err = r.Run(nil)
 
 				// Drop: Handle Drop interrupt from step functions
@@ -476,6 +477,9 @@ func (b *Bot) Run(ctx context.Context, firstRun bool, runs []run.Run) error {
 						return err
 					}
 				}
+
+				// Record this run as completed (for rejoin skip after chicken)
+				b.ctx.AddCompletedRun(r.Name())
 			}
 		}
 		return nil

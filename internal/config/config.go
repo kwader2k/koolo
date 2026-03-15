@@ -544,6 +544,12 @@ type CharacterCfg struct {
 		GamePassword          string `yaml:"gamePassword"`
 		CompanionGameName     string `yaml:"companionGameName"`
 		CompanionGamePassword string `yaml:"companionGamePassword"`
+		WaitForParty          bool     `yaml:"waitForParty"`       // Wait for all party members to finish before exiting game
+		PartyWaitTimeout      int      `yaml:"partyWaitTimeout"`   // Max seconds to wait for party (0 = 300s default)
+		OpenTPForPlayer       bool     `yaml:"openTPForPlayer"`    // Open TP for a manual player (independent of leader role)
+		BonusRuns             bool     `yaml:"bonusRuns"`                    // Do extra runs while waiting for party members
+		BonusRunsList         []string `yaml:"bonusRunsList,omitempty"`      // Which bonus runs this character can do (empty = all)
+		RandomGameNames       bool     `yaml:"randomGameNames"`             // Generate random game names instead of template+counter
 	} `yaml:"companion"`
 	Gambling struct {
 		Enabled bool     `yaml:"enabled"`

@@ -3,6 +3,7 @@ package game
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -116,6 +117,15 @@ func (gm *Manager) clearGameNameOrPasswordField() {
 	}
 }
 
+func randomString(n int) string {
+	const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = chars[rand.Intn(len(chars))]
+	}
+	return string(b)
+}
+
 func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 
 	// Click "Create game" tab
@@ -135,10 +145,19 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 	gm.hid.Click(LeftButton, difficultyPos.X, difficultyPos.Y)
 	utils.Sleep(200)
 
+	// Build game name and password
+	var gameName, gamePassword string
+	if cfg.Companion.RandomGameNames {
+		gameName = randomString(5)
+		gamePassword = randomString(3)
+	} else {
+		gameName = cfg.Companion.GameNameTemplate + fmt.Sprintf("%d", gameCounter)
+		gamePassword = cfg.Companion.GamePassword
+	}
+
 	// Click the game name textbox, delete text and type new game name
 	gm.hid.Click(LeftButton, 1000, 116)
 	gm.clearGameNameOrPasswordField()
-	gameName := cfg.Companion.GameNameTemplate + fmt.Sprintf("%d", gameCounter)
 	for _, ch := range gameName {
 		gm.hid.PressKey(gm.hid.GetASCIICode(fmt.Sprintf("%c", ch)))
 	}
@@ -146,7 +165,6 @@ func (gm *Manager) CreateLobbyGame(gameCounter int) (string, error) {
 	// Same for password
 	gm.hid.Click(LeftButton, 1000, 161)
 	utils.Sleep(200)
-	gamePassword := cfg.Companion.GamePassword
 	if gamePassword != "" {
 		gm.clearGameNameOrPasswordField()
 		for _, ch := range gamePassword {

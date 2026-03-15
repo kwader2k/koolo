@@ -14,9 +14,7 @@ func OpenTPIfLeader() error {
 	ctx := context.Get()
 	ctx.SetLastAction("OpenTPIfLeader")
 
-	isLeader := ctx.CharacterCfg.Companion.Leader
-
-	if isLeader {
+	if ctx.CharacterCfg.Companion.OpenTPForPlayer {
 		return step.OpenPortal()
 	}
 
@@ -36,8 +34,12 @@ func PostRun(isLastRun bool) error {
 	ClearAreaAroundPlayer(5, data.MonsterAnyFilter())
 	ItemPickup(-1)
 
-	// Don't return town on last run
+	// Don't return town on last run, UNLESS party wait is enabled
+	// (bot will idle in town waiting for party members before exiting)
 	if !isLastRun {
+		return ReturnTown()
+	}
+	if ctx.CharacterCfg.Companion.Enabled && ctx.CharacterCfg.Companion.WaitForParty {
 		return ReturnTown()
 	}
 

@@ -188,6 +188,12 @@ func gambleItems() error {
 		ctx.PauseIfNotPriority()
 		ctx.RefreshGameData()
 
+		// Abort gambling immediately when bonus run is cancelled (party AllDone, leader new game, etc.)
+		if ctx.AbortBonusRun.Load() {
+			ctx.Logger.Info("Gambling aborted: bonus run cancelled")
+			return step.CloseAllMenus()
+		}
+
 		if ctx.Data.PlayerUnit.TotalPlayerGold() < 500000 {
 			ctx.Logger.Info("Finished gambling - gold below 500k",
 				slog.Int("currentGold", ctx.Data.PlayerUnit.TotalPlayerGold()))

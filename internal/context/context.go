@@ -71,6 +71,12 @@ type Context struct {
 	IsBossEquipmentActive     bool          // flag for barb leveling
 	Drop                      *drop.Manager // Drop: Per-supervisor Drop manager
 	IsAllocatingStatsOrSkills atomic.Bool   // Prevents stuck detection during stat/skill allocation
+	WaitingForParty          atomic.Bool   // Prevents stuck detection while waiting for party members
+	CompletedRuns             []string      // Runs completed in current game (survives bot.Run() reset)
+	CompletedGameID           string        // Game name for which CompletedRuns is valid
+	completedRunsMu           sync.Mutex
+	CurrentRunName            string        // Name of the currently executing run (for failed run tracking)
+	AbortBonusRun             atomic.Bool   // Signal long-running actions (gambling) to abort during bonus runs
 }
 
 type Debug struct {
@@ -98,7 +104,7 @@ type CurrentGameHelper struct {
 	CurrentMuleIndex  int
 	ShouldCheckStash  bool
 	StashFull         bool
-	mutex             sync.Mutex
+	mutex sync.Mutex
 }
 
 func (ctx *Context) StopSupervisor() {
@@ -216,6 +222,30 @@ func (ctx *Context) SetPickingItems(value bool) {
 	ctx.CurrentGame.mutex.Lock()
 	ctx.CurrentGame.IsPickingItems = value
 	ctx.CurrentGame.mutex.Unlock()
+}
+
+// AddCompletedRun records a run as completed in the current game session.
+func (ctx *Context) AddCompletedRun(name string) {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	ctx.CompletedRuns = append(ctx.CompletedRuns, name)
+}
+
+// GetCompletedRuns returns a copy of completed run names for the current game.
+func (ctx *Context) GetCompletedRuns() []string {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	result := make([]string, len(ctx.CompletedRuns))
+	copy(result, ctx.CompletedRuns)
+	return result
+}
+
+// ResetCompletedRuns clears the completed runs list and sets the new game ID.
+func (ctx *Context) ResetCompletedRuns(gameID string) {
+	ctx.completedRunsMu.Lock()
+	defer ctx.completedRunsMu.Unlock()
+	ctx.CompletedRuns = nil
+	ctx.CompletedGameID = gameID
 }
 
 func (s *Status) PauseIfNotPriority() {

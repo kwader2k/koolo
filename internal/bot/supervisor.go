@@ -80,6 +80,9 @@ func (s *baseSupervisor) Stop() {
 		s.cancelFn()
 	}
 
+	// Unregister from party so other members don't wait for us
+	GetPartyRegistry().UnregisterMember(s.name)
+
 	s.bot.ctx.SwitchPriority(ct.PriorityStop)
 	s.bot.ctx.ManualModeActive = false // Clear manual mode flag
 
