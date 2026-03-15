@@ -492,6 +492,16 @@ func (s *SinglePlayerSupervisor) Start() error {
 						continue
 					}
 
+					// Party: leader aborted the game (chicken/error) — cancel our run so we exit too
+					if s.bot.ctx.CharacterCfg.Companion.Enabled &&
+						!s.bot.ctx.CharacterCfg.Companion.Leader &&
+						s.bot.ctx.CharacterCfg.Companion.WaitForParty &&
+						GetPartyRegistry().GameAborted() {
+						s.bot.ctx.Logger.Info("Party: leader aborted game, cancelling current run to resync")
+						runCancel()
+						return
+					}
+
 					// Check for sustained high ping
 					if pingMonitor.CheckPing(s.bot.ctx.Data.Game.Ping) {
 						s.bot.ctx.Logger.Error("Ping monitor triggered game exit.")
@@ -610,6 +620,9 @@ func (s *SinglePlayerSupervisor) Start() error {
 				s.bot.ctx.Logger.Info("Party: died but staying in game to maintain player count for party members")
 				event.Send(event.GameFinished(event.WithScreenshot(s.name, err.Error(), s.bot.ctx.GameReader.Screenshot()), event.FinishedDied))
 
+				// Mark self as done so others don't wait for a dead member
+				GetPartyRegistry().MarkDone(s.name)
+
 				// Wait for other party members to finish while idling in game
 				s.waitForPartyMembers(ctx)
 
@@ -624,9 +637,12 @@ func (s *SinglePlayerSupervisor) Start() error {
 				// Party: mark done on non-death errors (chicken/timeout) so others don't wait forever
 				if partyWaitEnabled {
 					GetPartyRegistry().MarkDone(s.name)
-					// If leader errors out, clear active game so companions don't rejoin a dead game
 					if s.bot.ctx.CharacterCfg.Companion.Leader {
-						GetPartyRegistry().ClearActiveGame()
+						// Signal all companions to abort their runs and exit the game —
+						// no point continuing alone in a stale game, resync as a party.
+						// Don't ClearActiveGame here — followers need to see abort flag first.
+						// Active game will be cleared when leader creates new game (SetActiveGame resets state).
+						GetPartyRegistry().AbortGame()
 					}
 				}
 			}
@@ -795,7 +811,13 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 
 	// Bonus runs: do extra runs while waiting for party members instead of idling
 	if s.bot.ctx.CharacterCfg.Companion.BonusRuns {
-		s.doBonusRuns(ctx, pr)
+		if needsChicken := s.doBonusRuns(ctx, pr); needsChicken {
+			s.bot.ctx.Logger.Warn("Party: chicken during bonus run, exiting game")
+			if s.bot.ctx.CharacterCfg.Companion.Leader {
+				GetPartyRegistry().AbortGame()
+			}
+			return // exit waitForPartyMembers → main flow will ExitGame
+		}
 		if pr.AllDone() && isLeader {
 			return
 		}
@@ -818,14 +840,27 @@ func (s *SinglePlayerSupervisor) waitForPartyMembers(ctx context.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
+	purgeInterval := 30 * time.Second
+	lastPurge := time.Now()
+
 	for {
 		select {
 		case <-ctx.Done():
 			s.bot.ctx.Logger.Info("Party: context cancelled while waiting")
 			return
 		case <-ticker.C:
+			// Periodically purge stale members (crashed/stopped bots)
+			if time.Since(lastPurge) >= purgeInterval {
+				pr.PurgeStaleMembers()
+				lastPurge = time.Now()
+			}
+
 			if isLeader && pr.AllDone() {
 				s.bot.ctx.Logger.Info("Party: all members done, leader proceeding to exit game")
+				return
+			}
+			if !isLeader && pr.GameAborted() {
+				s.bot.ctx.Logger.Info("Party: game aborted by leader, exiting to resync")
 				return
 			}
 			if s.leaderStartedNewGame() {
@@ -868,12 +903,13 @@ func (s *SinglePlayerSupervisor) leaderStartedNewGame() bool {
 // doBonusRuns executes random short farming runs while waiting for party members.
 // It reuses bot.Run() for each bonus run, which provides all background infrastructure
 // (data refresh, health manager, item pickup, panic recovery) automatically.
-func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) {
+// Returns true if the bot needs to chicken (exit game immediately).
+func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegistry) bool {
 	// Don't start bonus runs if character is dead
 	s.bot.ctx.RefreshGameData()
 	if s.bot.ctx.Data.PlayerUnit.HPPercent() <= 0 {
 		s.bot.ctx.Logger.Warn("Party: character is dead, skipping bonus runs")
-		return
+		return true // need to exit game
 	}
 
 	// Build bonus pool: use configured list or all short runs, minus runs taken by party members
@@ -898,7 +934,7 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 	}
 	if len(bonusPool) == 0 {
 		s.bot.ctx.Logger.Info("Party: no available bonus runs (all short runs taken by party)")
-		return
+		return false
 	}
 
 	// Shuffle pool so bonus runs are in random order, then execute without repeats
@@ -932,46 +968,49 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 					bonusCancel()
 					return
 				}
+				if pr.GameAborted() {
+					s.bot.ctx.Logger.Info("Party: game aborted, aborting bonus run immediately")
+					bonusCancel()
+					return
+				}
 			}
 		}
 	}()
 
-	bonusDeadline := time.After(5 * time.Minute)
 	for i := 0; i < len(bonusPool); i++ {
 		select {
 		case <-bonusCtx.Done():
-			return
-		case <-bonusDeadline:
-			s.bot.ctx.Logger.Warn("Party: bonus run timeout (5 min)")
-			return
+			return false
 		default:
 		}
 
 		if pr.AllDone() {
 			s.bot.ctx.Logger.Info("Party: all members done, stopping bonus runs")
-			return
+			return false
+		}
+
+		if pr.GameAborted() {
+			s.bot.ctx.Logger.Info("Party: game aborted by leader, stopping bonus runs")
+			return false
 		}
 
 		if s.leaderStartedNewGame() {
 			s.bot.ctx.Logger.Info("Party: leader started new game, aborting bonus runs to rejoin")
-			return
+			return false
 		}
 
 		runName := bonusPool[i]
-
-		// Re-check: another party member might have claimed this run as bonus in the meantime
-		if pr.GetAllPartyRuns()[runName] {
-			s.bot.ctx.Logger.Debug("Party: bonus run already taken, skipping", slog.String("run", runName))
-			continue
-		}
 
 		bonusRun := run.BuildRun(runName)
 		if bonusRun == nil {
 			continue
 		}
 
-		// Register in party registry so other members exclude this run from their pool
-		pr.AddMemberRun(s.name, runName)
+		// Atomically reserve the run — prevents two followers from picking the same run
+		if !pr.ReserveRun(s.name, runName) {
+			s.bot.ctx.Logger.Debug("Party: bonus run already taken, skipping", slog.String("run", runName))
+			continue
+		}
 
 		s.bot.ctx.Logger.Info("Party: starting bonus run", slog.String("run", runName))
 
@@ -980,16 +1019,18 @@ func (s *SinglePlayerSupervisor) doBonusRuns(ctx context.Context, pr *PartyRegis
 			// Context cancelled = leader started new game or all done — not an error
 			if bonusCtx.Err() != nil {
 				s.bot.ctx.Logger.Info("Party: bonus run aborted (party event)", slog.String("run", runName))
-				return
+				return false
 			}
-			s.bot.ctx.Logger.Warn("Party: bonus run failed", slog.String("run", runName), slog.Any("error", err))
-			return
+			// Any other error (chicken, death, etc.) — signal caller to exit game
+			s.bot.ctx.Logger.Warn("Party: bonus run failed, need chicken", slog.String("run", runName), slog.Any("error", err))
+			return true
 		}
 
 		s.bot.ctx.Logger.Info("Party: bonus run completed", slog.String("run", runName))
 	}
 
 	s.bot.ctx.Logger.Info("Party: all bonus runs exhausted")
+	return false
 }
 
 func (s *SinglePlayerSupervisor) ensureSkillKeyBindingsReady() error {

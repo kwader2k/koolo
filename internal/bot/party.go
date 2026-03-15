@@ -19,6 +19,7 @@ type PartyRegistry struct {
 	logger   *slog.Logger
 	members  map[string]*partyMember // key = supervisor name
 	gameID   string                  // current game identifier (prevents cross-game confusion)
+	aborted  bool                    // true when leader forces all members to exit current game
 	gameInfo *ActiveGameInfo         // current active game connection info
 }
 
@@ -107,6 +108,23 @@ func (pr *PartyRegistry) GetActiveGame() *ActiveGameInfo {
 	return &info
 }
 
+// AbortGame signals all party members to abandon the current game immediately.
+// Called by the leader when it errors out (chicken/timeout) so companions don't
+// continue running alone in a stale game.
+func (pr *PartyRegistry) AbortGame() {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	pr.aborted = true
+	pr.log().Info("Party registry: game abort signalled — all members should exit")
+}
+
+// GameAborted returns true if the leader has signalled an abort for the current game.
+func (pr *PartyRegistry) GameAborted() bool {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	return pr.aborted
+}
+
 // RegisterMember adds a supervisor to the party for a given game.
 // If the game changed, member state (done/runs) is reset but the member list
 // is preserved so the leader knows followers exist and waits for them.
@@ -127,6 +145,7 @@ func (pr *PartyRegistry) RegisterMember(name string, gameID string) {
 			m.registedAt = time.Time{} // zero = stale until re-registered
 		}
 		pr.gameID = gameID
+		pr.aborted = false // clear abort flag for new game
 	}
 
 	pr.members[name] = &partyMember{
@@ -140,17 +159,26 @@ func (pr *PartyRegistry) RegisterMember(name string, gameID string) {
 		slog.Int("totalMembers", len(pr.members)))
 }
 
-// PurgeStaleMembers removes members that were preserved from a previous game
-// but haven't re-registered for the current one (registedAt is zero).
-// Called after the grace period so paused/stopped bots don't block the party.
+// PurgeStaleMembers removes members that:
+// 1. Were preserved from a previous game but haven't re-registered (registedAt is zero)
+// 2. Registered but haven't marked done and registration is older than staleTimeout
+//    (likely crashed/disconnected)
+// Called after the grace period and periodically during wait loop.
 func (pr *PartyRegistry) PurgeStaleMembers() {
 	pr.mu.Lock()
 	defer pr.mu.Unlock()
+
+	const crashTimeout = 20 * time.Minute // if not done after 20 min, assume crashed (must be longer than longest possible run)
 
 	for name, m := range pr.members {
 		if m.registedAt.IsZero() {
 			pr.log().Info("Party registry: purging stale member (did not rejoin)",
 				slog.String("member", name))
+			delete(pr.members, name)
+		} else if !m.done && time.Since(m.registedAt) > crashTimeout {
+			pr.log().Warn("Party registry: purging member (assumed crashed, no done signal)",
+				slog.String("member", name),
+				slog.Duration("age", time.Since(m.registedAt)))
 			delete(pr.members, name)
 		}
 	}
@@ -254,6 +282,28 @@ func (pr *PartyRegistry) AddMemberRun(name string, runName string) {
 	if m, ok := pr.members[name]; ok {
 		m.runs = append(m.runs, runName)
 	}
+}
+
+// ReserveRun atomically checks if a run is taken and reserves it if not.
+// Returns true if the run was successfully reserved, false if already taken.
+// This prevents two followers from picking the same bonus run (TOCTOU race).
+func (pr *PartyRegistry) ReserveRun(name string, runName string) bool {
+	pr.mu.Lock()
+	defer pr.mu.Unlock()
+	// Check if any member already has this run
+	for _, m := range pr.members {
+		for _, r := range m.runs {
+			if r == runName {
+				return false
+			}
+		}
+	}
+	// Not taken — reserve it
+	if m, ok := pr.members[name]; ok {
+		m.runs = append(m.runs, runName)
+		return true
+	}
+	return false
 }
 
 // GetAllPartyRuns returns all run names configured across all party members.
