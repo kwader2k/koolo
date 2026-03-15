@@ -262,6 +262,11 @@ func (b *Bot) handleHelpRequest(s *discordgo.Session, m *discordgo.MessageCreate
 				Inline: false,
 			},
 			{
+				Name:   "!obscapture",
+				Value:  "Trigger OBS to save and upload a replay clip (requires OBS recording enabled)",
+				Inline: false,
+			},
+			{
 				Name:   "!help",
 				Value:  "Show this help message",
 				Inline: false,

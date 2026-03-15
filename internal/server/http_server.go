@@ -2099,6 +2099,16 @@ func (s *HttpServer) config(w http.ResponseWriter, r *http.Request) {
 			return -1
 		}, discordAdmins)
 		newConfig.Discord.BotAdmins = strings.Split(cleanedAdmins, ",")
+
+		// OBS
+		newConfig.OBS.Enabled = r.Form.Get("obs_enabled") == "true"
+		newConfig.OBS.RecordOnChickenDeath = r.Form.Get("obs_record_on_chicken_death") == "true"
+		newConfig.OBS.RecordOnError = r.Form.Get("obs_record_on_error") == "true"
+		newConfig.OBS.UploadToDiscord = r.Form.Get("obs_upload_to_discord") == "true"
+		newConfig.OBS.OBSPath = strings.TrimSpace(r.Form.Get("obs_path"))
+		newConfig.OBS.ReplayPath = strings.TrimSpace(r.Form.Get("obs_replay_path"))
+
+		// Telegram
 		newConfig.Telegram.Enabled = r.Form.Get("telegram_enabled") == "true"
 		newConfig.Telegram.Token = r.Form.Get("telegram_token")
 		telegramChatId, err := strconv.ParseInt(r.Form.Get("telegram_chat_id"), 10, 64)

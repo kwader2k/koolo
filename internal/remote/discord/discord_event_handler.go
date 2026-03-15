@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"os"
 
 	"github.com/bwmarrin/discordgo"
 	d2stat "github.com/hectorgimenez/d2go/pkg/data/stat"
@@ -55,6 +56,8 @@ func (b *Bot) Handle(ctx context.Context, e event.Event) error {
 	case event.GameFinishedEvent:
 		message := fmt.Sprintf("**[%s]** %s", evt.Supervisor(), evt.Message())
 		return b.sendEventMessage(ctx, message)
+	case event.ReplayClipEvent:
+    	return b.sendReplayClip(ctx, evt)
 	case event.RunStartedEvent:
 		message := fmt.Sprintf("**[%s]** started a new run: **%s**", evt.Supervisor(), evt.RunName)
 		return b.sendEventMessage(ctx, message)
@@ -95,6 +98,27 @@ func (b *Bot) Handle(ctx context.Context, e event.Event) error {
 
 	message := fmt.Sprintf("**[%s]** %s", e.Supervisor(), e.Message())
 	return b.sendScreenshot(ctx, message, buf.Bytes())
+}
+
+func (b *Bot) sendReplayClip(ctx context.Context, evt event.ReplayClipEvent) error {
+	if b.useWebhook {
+		return nil
+	}
+	if b.discordSession == nil {
+		return nil
+	}
+	f, err := os.Open(evt.FilePath)
+	if err != nil {
+		return fmt.Errorf("failed to open replay clip: %w", err)
+	}
+	defer f.Close()
+
+	message := fmt.Sprintf("🎬 **[%s]** Replay", evt.Supervisor())
+	_, err = b.discordSession.ChannelMessageSendComplex(b.channelID, &discordgo.MessageSend{
+		File:    &discordgo.File{Name: filepath.Base(evt.FilePath), ContentType: "video/mp4", Reader: f},
+		Content: message,
+	})
+	return err
 }
 
 func (b *Bot) sendItemStashEmbed(evt event.ItemStashedEvent) error {
@@ -472,6 +496,8 @@ func (b *Bot) shouldPublish(e event.Event) bool {
 		return config.Koolo.Discord.EnableGameCreatedMessages
 	case event.RunStartedEvent:
 		return config.Koolo.Discord.EnableNewRunMessages
+	case event.ReplayClipEvent:
+    	return config.Koolo.OBS.Enabled && config.Koolo.OBS.UploadToDiscord
 	case event.RunFinishedEvent:
 		return config.Koolo.Discord.EnableRunFinishMessages
 	case event.NgrokTunnelEvent:

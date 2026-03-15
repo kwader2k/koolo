@@ -57,6 +57,20 @@ type KooloCfg struct {
 	CentralizedPickitPath string `yaml:"centralizedPickitPath"`
 	WindowWidth           int    `yaml:"windowWidth"`
 	WindowHeight          int    `yaml:"windowHeight"`
+	OBS struct {
+    	Enabled              bool   `yaml:"enabled"`
+    	RecordOnChickenDeath bool   `yaml:"recordOnChickenDeath"`
+    	RecordOnError        bool   `yaml:"recordOnError"`
+    	UploadToDiscord      bool   `yaml:"uploadToDiscord"`
+    	OBSPath              string `yaml:"obsPath"`
+		ReplayPath			 string `yaml:"replayPath"`
+    	WebSocketPort        int    `yaml:"webSocketPort"`
+    	WebSocketPassword    string `yaml:"webSocketPassword"`
+    	ProfileName          string `yaml:"profileName"`
+    	SceneName            string `yaml:"sceneName"`
+    	SceneUUID            string `yaml:"sceneUuid"`
+    	SourceUUID           string `yaml:"sourceUuid"`
+	} `yaml:"obs"`
 	Discord               struct {
 		Enabled                      bool     `yaml:"enabled"`
 		EnableGameCreatedMessages    bool     `yaml:"enableGameCreatedMessages"`
