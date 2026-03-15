@@ -1,0 +1,154 @@
+// IGNORED by default, this directory is ONLY evaluated DURING the character leveling process.
+// Rules here are included ADDITIONALLY to the main pickit rules
+
+[name] == talrune # # [maxquantity] == 4
+[name] == ethrune # # [maxquantity] == 1
+[name] == ralrune # # [maxquantity] == 3
+[name] == ortrune # # [maxquantity] == 3
+[name] == solrune # # [maxquantity] == 3
+[name] == tirrune # # [maxquantity] == 1
+[name] == thulrune # # [maxquantity] == 3
+[name] == amnrune # # [maxquantity] == 2
+[name] == shaelrune # # [maxquantity] == 3
+[name] == eldrune # # [maxquantity] == 1
+[name] == nefrune # # [maxquantity] == 1
+[name] == lumrune # # [maxquantity] == 1
+[name] == korune # # [maxquantity] == 2
+[name] == helrune # # [maxquantity] == 5
+[name] == iorune # # [maxquantity] == 1
+[name] == lemrune
+[name] == pulrune
+[name] == umrune
+[name] == malrune
+[name] == istrune
+[name] == gulrune
+[name] == vexrune
+[name] == ohmrune
+[name] == lorune
+[name] == surrune
+[name] == berrune
+[name] == jahrune
+[name] == chamrune
+[name] == zodrune
+
+//gems
+//[name] == chippedamethyst # # [maxquantity] == 2
+//[name] == chippeddiamond # # [maxquantity] == 2
+//[name] == chippedemerald # # [maxquantity] == 2
+//[name] == chippedruby # # [maxquantity] = 2
+//[name] == chippedsapphire # # [maxquantity] == 2
+//[name] == chippedskull # # [maxquantity] == 2
+//[name] == chippedtopaz # # [maxquantity] == 5
+//[name] == flawedamethyst # # [maxquantity] == 5
+//[name] == flaweddiamond # # [maxquantity] == 5
+//[name] == flawedemerald # # [maxquantity] == 5
+//[name] == flawedruby # # [maxquantity] == 5
+//[name] == flawedsapphire # # [maxquantity] == 5
+//[name] == flawedskull # # [maxquantity] == 5
+//[name] == flawedtopaz # # [maxquantity] == 5
+[name] == flawlessamethyst # # [maxquantity] == 3
+
+// potions
+[name] == minorhealingpotion
+[name] == lighthealingpotion
+[name] == healingpotion
+[name] == greaterhealingpotion
+[name] == superhealingpotion
+[name] == minormanapotion
+[name] == lightmanapotion
+[name] == manapotion
+[name] == greatermanapotion
+[name] == supermanapotion
+[name] == rejuvenationpotion
+[name] == fullrejuvenationpotion
+
+// =============================================
+// Warlock Caster Gear
+// =============================================
+
+// Grimoires (class-specific off-hand, type "grim")
+// Elite grimoires
+[type] == grimoire && [quality] >= magic && [Class] == elite && [flag] != ethereal # [itemallskills] >= 2 # [tier] == 12000
+[type] == grimoire && [quality] >= magic && [Class] == elite && [flag] != ethereal # [itemallskills] >= 1 # [tier] == 10000
+[type] == grimoire && [quality] >= magic && [Class] == elite && [flag] != ethereal # [fcr] >= 20 # [tier] == 9000
+[type] == grimoire && [quality] >= magic && [Class] == elite && [flag] != ethereal # # [tier] == 7000
+// Exceptional grimoires
+[type] == grimoire && [quality] >= magic && [Class] == exceptional && [flag] != ethereal # [itemallskills] >= 1 # [tier] == 6000
+[type] == grimoire && [quality] >= magic && [Class] == exceptional && [flag] != ethereal # [fcr] >= 20 # [tier] == 5000
+[type] == grimoire && [quality] >= magic && [Class] == exceptional && [flag] != ethereal # # [tier] == 4000
+// Normal grimoires (early leveling)
+[type] == grimoire && [quality] >= magic && [flag] != ethereal # [itemallskills] >= 1 # [tier] == 3000
+[type] == grimoire && [quality] >= magic && [flag] != ethereal # [fcr] >= 10 # [tier] == 2000
+[type] == grimoire && [flag] != ethereal # # [tier] == 1000
+
+// Weapons - caster weapons (swords for Spirit runeword, flails for HotO)
+[name] == boneknife && [quality] == unique && [flag] != ethereal # # [tier] == 5000 // wizardspike
+([name] == broadsword || [name] == crystalsword) && [flag] != ethereal # [maxmana] >= 89 # [tier] == 10000 //spirit weapon
+[name] == flail && [flag] != ethereal # [fireresist] >= 30 # [tier] == 15000 //hoto weapon
+
+// Belts
+[name] == spiderwebsash && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 90 # [tier] == 10000 //arach
+[name] == WarBelt && [quality] == unique # [enhanceddefense] >= 100 # [tier] == 5000 //thundergods vigor
+[name] == demonhidesash && [quality] == unique && [flag] != ethereal # [damageresist] >= 10 # [tier] == 4000 //string of ears
+
+// Boots
+[name] == mirroredboots && quality == unique && [flag] != ethereal # # [tier] == 11000
+[name] == battleboots && [quality] == unique && [flag] != ethereal # # [tier] == 10000 //War travellers
+[name] == meshboots && [quality] == unique && [flag] != ethereal # # [tier] == 6000 //Silkweaves
+[name] == sharkskinboots && [quality] == unique && [flag] != ethereal # # [tier] == 5000 //Waterwalks
+
+// Gloves
+[name] == lightgauntlets && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 20 # [tier] == 5000 // magefist (fcr + fire skills)
+[name] == chaingloves && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 25 && [itemmagicbonus] >= 25 # [tier] == 3000 //chancies
+[name] == gauntlets && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 10 # [tier] == 2000 //Frostburns
+[type] == gloves && [quality] >= magic && [flag] != ethereal # [fcr] >= 20 # [tier] == 4000
+[type] == gloves && [quality] >= magic && [flag] != ethereal # [ias] >= 20 # [tier] == 3500
+
+// Helms
+[name] == shako && [quality] == unique && [flag] != ethereal # [defense] >= 98 # [tier] == 10000 // shako
+[type] == helm && [flag] != ethereal # [sockets] == 2 && [lightresist] >= 30 && [itemallskills] == 1 # [tier] == 2000 // Lore
+[name] == warhat && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 100 # [tier] == 3000 // peasant crown
+[name] == sallet && [quality] == unique && [flag] != ethereal # [enhanceddefense] >= 160 # [tier] == 4000 // rockstopper
+
+// Armor
+[name] == serpentskinarmor && [quality] == unique && [flag] != ethereal # # [tier] == 10000 //vipermagi
+[type] == armor && [flag] != ethereal # [fireresist] == 50 && [lightresist] == 50 # [tier] == 3000 //smoke
+[type] == armor && [class] == elite && [flag] != ethereal # [fireresist] == 50 && [lightresist] == 50 # [tier] == 4000 //elite smoke
+[type] == armor && [flag] != ethereal # [fcr] == 25 # [tier] == 2000 // stealth
+[name] == mageplate && [quality] == unique && [flag] != ethereal # # [tier] == 6000
+[name] == mesharmor && [quality] == unique && [flag] != ethereal # # [tier] == 7000
+
+// Rings
+[type] == ring && [quality] == unique # [itemmaxmanapercent] >= 25 # [tier] == 10000 //stone of jordan
+[type] == ring && [quality] == unique # [lifeleech] >= 3 && [MaxStamina] == 50 # [tier] == 9000 //bul kathos
+[type] == ring && [quality] == unique # [magicdamagereduction] >= 12 # [tier] == 5000 //dwarf
+[type] == ring && [quality] == unique # [Dexterity] >= 10 && [ToHit] >= 100 # [tier] == 6000 //raven
+
+// Amulets
+[type] == amulet && [quality] == unique # [itemallskills] == 2 && [fireresist] + [lightresist] + [coldresist] >= 60 # [tier] == 10000 //mara
+
+// Shields (if not using 2H or grimoire in off-hand)
+[name] == grimshield && [quality] == unique && [flag] != ethereal # # [tier] == 500 //lidless
+[name] == roundshield && [quality] == unique && [flag] != ethereal # [sockets] == 2 # [tier] == 3000 //moser
+[name] == monarch && [quality] == unique # # [tier] == 8000 //stormshield
+[type] == shield && [flag] == runeword && [flag] != ethereal # [maxmana] >= 89 && [fcr] >= 25 # [tier] == 10000 //spirit shield
+[type] == shield && [flag] == runeword && [flag] != ethereal # [maxmana] >= 89 && [fcr] >= 30 # [tier] == 11000 //spirit shield
+[type] == shield && [flag] == runeword && [flag] != ethereal # [maxmana] >= 89 && [fcr] == 35 # [tier] == 12000 //spirit shield
+
+// =============================================
+// Bases
+// =============================================
+([Name] == CrystalSword || [Name] == BroadSword) && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 4 # [MaxQuantity] == 1 // spirit sword
+[Name] == Flail && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 5 # [MaxQuantity] == 1 // CTA
+[type] == polearm && [quality] <= superior # [sockets] == 4 # [MaxQuantity] == 1 // any insight polearm
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == elite # [sockets] == 4
+[type] == polearm && [quality] <= superior && [flag] == ethereal && [Class] == exceptional # [sockets] == 4 # [MaxQuantity] == 1
+[Type] == Armor && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1
+[Type] == Armor && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 3 # [MaxQuantity] == 1
+[type] == helm && [Quality] <= Superior && [Flag] != Ethereal # [Sockets] == 2 # [MaxQuantity] == 1
+[name] == monarch && [quality] <= superior # [sockets] == 4 # [maxquantity] == 1
+[Type] == Shield && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1
+[type] == helm && [quality] <= superior # [sockets] == 3 # [maxquantity] == 1 // bulwark
+// Grimoire bases for runewords (2 sockets max)
+[type] == grimoire && [quality] <= superior && [flag] != ethereal # [sockets] == 2 # [maxquantity] == 1
+([Name] == Kris || [Name] == Cinquedeas || [Name] == FangedKnife) && [Quality] <= Superior # [SkillAbyss] >=3 && ([Sockets] == 0 || [Sockets] == 3)        //Void Base
