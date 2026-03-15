@@ -38,6 +38,8 @@ type SchedulerBreak struct {
 type IndexData struct {
 	ErrorMessage                string
 	Version                     string
+	Supervisors                 []string `json:"supervisors"`
+	HiddenSupervisors           []string `json:"hiddenSupervisors"`
 	Status                      map[string]bot.Stats
 	DropCount                   map[string]int
 	AutoStart                   map[string]bool

@@ -40,6 +40,10 @@
                 <button id="reloadConfigBtn" class="btn btn-outline" onclick="reloadConfig()" title="Reload Configs">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
+                <button id="toggleHiddenBtn" class="btn btn-outline" onclick="toggleHiddenSupervisors()" title="Show hidden supervisors" style="display:none;">
+                    <i class="bi bi-eye-slash"></i>
+                    <span id="hiddenSupervisorCount">0</span>
+                </button>
                 <button class="btn btn-outline" onclick="location.href='/all-drops'" title="All Drops">
                     <i class="bi bi-gem"></i>
                 </button>
@@ -63,9 +67,14 @@
                 </button>
             </div>
         </div>
+        <div id="hidden-supervisors-section" class="hidden-supervisors-section" style="display:none;">
+            <div class="hidden-supervisors-header">Hidden Supervisors</div>
+            <div id="hidden-supervisors-list" class="hidden-supervisors-list"></div>
+        </div>
         <div id="characters-container"></div>
     </div>
 </main>
+<script src="../assets/js/Sortable.min.js"></script>
 <script src="../assets/js/dashboard.js"></script>
 </body>
 </html>
