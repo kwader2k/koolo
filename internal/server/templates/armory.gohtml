@@ -39,8 +39,6 @@
         body.theme-colorful .selector { background: rgba(30, 30, 50, 0.9); border-color: #4a4a4a; color: #fff; }
         body.theme-colorful .btn-back { background: rgba(40, 40, 60, 0.9); border-color: #4a4a4a; color: #fff; }
         body.theme-colorful .gold-display { background: rgba(30, 30, 50, 0.8); border-color: #4a4a4a; }
-        body.theme-colorful .stash-tab { background: rgba(40, 40, 60, 0.6); border-color: #4a4a4a; color: #888; }
-        body.theme-colorful .stash-tab.active { background: rgba(80, 80, 100, 0.8); color: #fff; }
         body.theme-colorful .warning-banner { background: rgba(60,50,30,0.9); border-color: #8B7500; }
         body.theme-colorful .text-muted { color: #888; }
         body.theme-colorful .text-secondary { color: #aaa; }
@@ -59,8 +57,6 @@
         body.theme-dark .selector { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
         body.theme-dark .btn-back { background: #1a1a1a; border-color: #333; color: #e0e0e0; }
         body.theme-dark .gold-display { background: #1a1a1a; border-color: #333; }
-        body.theme-dark .stash-tab { background: #1a1a1a; border-color: #333; color: #666; }
-        body.theme-dark .stash-tab.active { background: #2a2a2a; color: #fff; }
         body.theme-dark .warning-banner { background: #2a2200; border-color: #665500; }
         body.theme-dark .text-muted { color: #666; }
         body.theme-dark .text-secondary { color: #888; }
@@ -80,8 +76,6 @@
         body.theme-light .btn-back { background: #fff; border-color: #ccc; color: #333; }
         body.theme-light .btn-back:hover { background: #f0f0f0; border-color: #999; }
         body.theme-light .gold-display { background: #fff; border-color: #ddd; }
-        body.theme-light .stash-tab { background: #f0f0f0; border-color: #ccc; color: #666; }
-        body.theme-light .stash-tab.active { background: #fff; color: #333; border-bottom-color: #fff; }
         body.theme-light .warning-banner { background: #fff8e0; border-color: #e0c000; }
         body.theme-light .warning-banner span { color: #856404 !important; }
         body.theme-light .warning-banner i { color: #856404 !important; }
@@ -333,40 +327,168 @@
             filter: brightness(1.2);
         }
 
-        .stash-tabs {
+        /* Stash rows layout */
+        .stash-row {
             display: flex;
-            gap: 4px;
-            margin-bottom: 8px;
+            flex-wrap: nowrap;
+            gap: 0;
+            overflow-x: hidden;
+            margin-bottom: 16px;
         }
 
-        .stash-tab {
-            padding: 6px 16px;
-            background: rgba(40, 40, 60, 0.8);
-            border: 1px solid #444;
-            border-radius: 4px 4px 0 0;
-            cursor: pointer;
+        .stash-row-dlc {
+            margin-bottom: 0;
+            align-items: flex-start;
+        }
+
+        .stash-panel {
+            flex: 0 0 auto;
+            padding: 0 3px 4px 3px;
+        }
+
+        .stash-panel-label {
+            font-size: 10px;
+            font-weight: 600;
             color: #888;
-            font-size: 12px;
-            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+            text-align: center;
         }
 
-        .stash-tab:hover {
-            background: rgba(60, 60, 80, 0.8);
-            color: #aaa;
+        .stash-panel-label-dlc {
+            color: #9a7ab8;
         }
 
-        .stash-tab.active {
-            background: rgba(80, 80, 100, 0.8);
+        /* 16px cell grid (compact — 6 panels fit without scroll) */
+        .inventory-grid-16 {
+            display: grid;
+            grid-template-columns: repeat(10, 16px);
+            grid-template-rows: repeat(10, 16px);
+            gap: 1px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #333;
+            padding: 1px;
+        }
+
+        .inventory-slot-16 {
+            width: 16px;
+            height: 16px;
+            background: rgba(20, 20, 35, 0.6);
+            border: 1px solid rgba(80, 80, 100, 0.15);
+        }
+
+        .inventory-items-layer-16 {
+            position: relative;
+            pointer-events: none;
+            margin-top: -172px; /* 10 * 17px + 2px = 172px */
+            height: 172px;
+        }
+
+        .inventory-items-layer-16 .inventory-item {
+            pointer-events: all;
+        }
+
+        /* DLC Tab Grid Styles */
+        .dlc-tab-grid {
+            padding: 4px 0;
+        }
+
+        .dlc-section-label {
+            font-size: 10px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin: 6px 0 3px 0;
+        }
+
+        .dlc-row {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 3px;
+            align-items: center;
+        }
+
+        .dlc-group {
+            margin-bottom: 10px;
+        }
+
+        .dlc-slot {
+            position: relative;
+            width: 34px;
+            height: 34px;
+            background: rgba(20, 20, 30, 0.8);
+            border: 1px solid #2a2a3a;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            cursor: default;
+        }
+
+        .dlc-slot.has-item {
+            border-color: #444;
+            cursor: pointer;
+        }
+
+        .dlc-slot.has-item:hover {
+            border-color: #888;
+            background: rgba(40, 40, 60, 0.9);
+        }
+
+        .dlc-slot-img {
+            width: 30px;
+            height: 30px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            filter: grayscale(100%) opacity(25%);
+        }
+
+        .dlc-slot.has-item .dlc-slot-img {
+            filter: none;
+        }
+
+        .dlc-slot-qty {
+            position: absolute;
+            bottom: 1px;
+            right: 2px;
+            font-size: 9px;
+            font-weight: bold;
             color: #fff;
-            border-bottom-color: transparent;
-        }
-
-        .stash-content {
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+            line-height: 1;
             display: none;
         }
 
-        .stash-content.active {
+        .dlc-slot.has-item .dlc-slot-qty {
             display: block;
+        }
+
+        .dlc-spacer {
+            width: 34px;
+            height: 34px;
+            flex-shrink: 0;
+        }
+
+        .dlc-cols-header {
+            display: flex;
+            gap: 3px;
+            margin-bottom: 2px;
+            height: 16px;
+            align-items: flex-end;
+        }
+
+        .dlc-col-label {
+            width: 34px;
+            text-align: center;
+            font-size: 9px;
+            color: #555;
+            flex-shrink: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* Item Selection Styles */
@@ -515,7 +637,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 4px 0;
+            padding: 6px 0;
             font-size: 13px;
         }
 
@@ -526,6 +648,36 @@
             background-repeat: no-repeat;
             background-position: center;
             image-rendering: pixelated;
+            flex-shrink: 0;
+        }
+
+        .drop-modal-item .item-qty-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        .drop-modal-item .item-qty-wrap label {
+            font-size: 11px;
+            color: #666;
+        }
+
+        .drop-modal-item input.item-qty {
+            width: 52px;
+            padding: 2px 6px;
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid #4a4a4a;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .drop-modal-item input.item-qty:focus {
+            outline: none;
+            border-color: #6B8AFF;
         }
 
         .drop-modal-form {
@@ -647,12 +799,44 @@
         .search-input-wrapper i {
             position: absolute;
             left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
             color: #888;
+        }
+
+        .search-refresh-btn {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.3em;
+            line-height: 1;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+        }
+
+        .search-refresh-btn:hover {
+            color: #ccc;
+        }
+
+        .search-refresh-btn.spinning i {
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: translateY(-50%) rotate(0deg); }
+            to { transform: translateY(-50%) rotate(360deg); }
         }
 
         .search-input {
             width: 100%;
-            padding: 12px 12px 12px 40px;
+            padding: 12px 40px 12px 40px;
             background: rgba(20, 20, 40, 0.8);
             border: 1px solid #4a4a4a;
             border-radius: 8px;
@@ -1084,7 +1268,12 @@
             margin: 0 auto;
         }
 
-        .armory-row > div {
+        .armory-row-flex {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .armory-row-flex > div {
             flex: 1 1 33.33%;
             min-width: 0;
         }
@@ -1217,12 +1406,24 @@
             <p class="mt-4">Start the character in a game to generate armory data.</p>
         </div>
         {{ else if .Armory }}
-        
+
+        <script>
+        // DLC tab data injected server-side for this character
+        window._dlcArmoryData = {
+            gemsTab:      {{ .Armory.GemsTab | json }},
+            materialsTab: {{ .Armory.MaterialsTab | json }},
+            runesTab:     {{ .Armory.RunesTab | json }}
+        };
+        </script>
+
         <!-- Search Bar (Always Visible) -->
         <div class="search-container">
             <div class="search-input-wrapper">
                 <i class="bi bi-search"></i>
                 <input type="text" class="search-input" id="globalSearch" placeholder="Search items across all characters... (Press / to focus)" autocomplete="off">
+                <button class="search-refresh-btn" id="searchRefreshBtn" title="Refresh armory data" onclick="refreshArmoryData()">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
             </div>
             <div class="search-filters">
                 <span class="filter-chip active" data-filter="all">All</span>
@@ -1275,13 +1476,13 @@
             <span class="text-[#FFD700] text-sm">PLEASE NOTE: There might be some images missing, if you find a missing image please report it to bug section.</span>
         </div>
 
-        <!-- Row 1: Equipped | Inventory | Belt -->
-        <div class="panel border rounded-lg flex flex-wrap armory-row">
-            <!-- Equipment Panel -->
-            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
+        <!-- Gear Panel: Equipped | [Inventory / Cube+Belt] | Mercenary -->
+        <div class="panel border rounded-lg armory-row" style="display:flex; align-items:stretch;">
+
+            <!-- Left: Equipped (full height) -->
+            <div class="p-4 border-r border-[#4a4a4a]" style="flex:0 0 auto; min-width:260px; display:flex; flex-direction:column; align-items:center;">
                 <h3 class="section-title"><i class="bi bi-person-fill mr-2"></i>Equipped</h3>
                 <div class="equipment-visual">
-                    <!-- Visual equipment layout -->
                     <div class="equip-grid">
                         <!-- Row 1: Head -->
                         <div class="equip-row">
@@ -1414,98 +1615,21 @@
                 </div>
             </div>
 
-            <!-- Inventory -->
-            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
-                <h3 class="section-title"><i class="bi bi-grid-3x3-gap mr-2"></i>Inventory</h3>
-                <div class="inventory-container">
-                    <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(4, 29px);">
-                        {{ range $row := iterate 4 }}
-                        {{ range $col := iterate 10 }}
-                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                        {{ end }}
-                        {{ end }}
-                    </div>
-                    <div class="inventory-items-layer">
-                        {{ range .Armory.Inventory }}
-                        <div class="inventory-item"
-                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                             data-item='{{ . | json }}'
-                             onmouseenter="showTooltip(event, this)"
-                             onmouseleave="hideTooltip()"
-                             onmousemove="moveTooltip(event)"
-                             oncontextmenu="showItemContextMenu(event, this)">
-                        </div>
-                        {{ end }}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Belt -->
-            <div class="p-4 flex-1 min-w-[200px]">
-                <h3 class="section-title"><i class="bi bi-columns-gap mr-2"></i>Belt</h3>
-                <div class="inventory-container">
-                    <div class="inventory-grid" style="grid-template-columns: repeat(4, 29px); grid-template-rows: repeat(4, 29px);">
-                        {{ range $row := iterate 4 }}
-                        {{ range $col := iterate 4 }}
-                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                        {{ end }}
-                        {{ end }}
-                    </div>
-                    <div class="inventory-items-layer">
-                        {{ range .Armory.Belt }}
-                        <div class="inventory-item"
-                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: 29px; height: 29px; background-image: url('/items/{{ .ImageName }}');"
-                             data-item='{{ . | json }}'
-                             onmouseenter="showTooltip(event, this)"
-                             onmouseleave="hideTooltip()"
-                             onmousemove="moveTooltip(event)"
-                             oncontextmenu="showItemContextMenu(event, this)">
-                        </div>
-                        {{ end }}
-                    </div>
-                </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Row 2: Stash | Cube | Mercenary -->
-        <div class="panel border rounded-lg flex flex-wrap mt-6 armory-row">
-            <!-- Stash -->
-            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
-                <div class="flex items-center justify-between mb-3">
-                    <h3 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;"><i class="bi bi-box-seam mr-2"></i>Stash</h3>
-                    <button class="selection-mode-toggle" id="selectionModeBtn" onclick="toggleSelectionMode()">
-                        <i class="bi bi-check2-square"></i>
-                        <span>Select Items</span>
-                    </button>
-                </div>
-                
-                <!-- Selection Info Bar -->
-                <div class="selection-info" id="selectionInfo">
-                    <i class="bi bi-info-circle"></i>
-                    <span><span class="count" id="selectedCount">0</span> items selected</span>
-                    <button class="btn-clear-selection" onclick="clearSelection()">Clear</button>
-                </div>
-                
-                <div class="stash-tabs">
-                    <button class="stash-tab active" onclick="showStashTab('personal')">Personal</button>
-                    <button class="stash-tab" onclick="showStashTab('shared1')">Shared 1</button>
-                    <button class="stash-tab" onclick="showStashTab('shared2')">Shared 2</button>
-                    <button class="stash-tab" onclick="showStashTab('shared3')">Shared 3</button>
-                </div>
-                
-                <!-- Personal Stash -->
-                <div id="stash-personal" class="stash-content active">
+            <!-- Middle: Inventory (top) + Cube & Belt (bottom) -->
+            <div class="p-4 border-r border-[#4a4a4a]" style="flex:1; display:flex; flex-direction:column; gap:16px; align-items:center;">
+                <!-- Inventory -->
+                <div>
+                    <h3 class="section-title"><i class="bi bi-grid-3x3-gap mr-2"></i>Inventory</h3>
                     <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
+                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(4, 29px);">
+                            {{ range $row := iterate 4 }}
                             {{ range $col := iterate 10 }}
                             <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
                             {{ end }}
                             {{ end }}
                         </div>
                         <div class="inventory-items-layer">
-                            {{ range .Armory.Stash }}
+                            {{ range .Armory.Inventory }}
                             <div class="inventory-item"
                                  style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
                                  data-item='{{ . | json }}'
@@ -1518,110 +1642,63 @@
                         </div>
                     </div>
                 </div>
-
-                <!-- Shared Stash 1 -->
-                <div id="stash-shared1" class="stash-content">
-                    <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
-                            {{ range $col := iterate 10 }}
-                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                            {{ end }}
-                            {{ end }}
-                        </div>
-                        <div class="inventory-items-layer">
-                            {{ range .Armory.SharedStash1 }}
-                            <div class="inventory-item"
-                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                 data-item='{{ . | json }}'
-                                 onmouseenter="showTooltip(event, this)"
-                                 onmouseleave="hideTooltip()"
-                                 onmousemove="moveTooltip(event)"
-                                 oncontextmenu="showItemContextMenu(event, this)">
+                <!-- Cube + Belt side by side -->
+                <div style="display:flex; gap:24px; align-items:flex-start;">
+                    <!-- Cube -->
+                    <div>
+                        <h3 class="section-title"><i class="bi bi-box mr-2"></i>Horadric Cube</h3>
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(3, 29px); grid-template-rows: repeat(4, 29px);">
+                                {{ range $row := iterate 4 }}
+                                {{ range $col := iterate 3 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
                             </div>
-                            {{ end }}
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.Cube }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Shared Stash 2 -->
-                <div id="stash-shared2" class="stash-content">
-                    <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
-                            {{ range $col := iterate 10 }}
-                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                            {{ end }}
-                            {{ end }}
-                        </div>
-                        <div class="inventory-items-layer">
-                            {{ range .Armory.SharedStash2 }}
-                            <div class="inventory-item"
-                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                 data-item='{{ . | json }}'
-                                 onmouseenter="showTooltip(event, this)"
-                                 onmouseleave="hideTooltip()"
-                                 onmousemove="moveTooltip(event)"
-                                 oncontextmenu="showItemContextMenu(event, this)">
+                    <!-- Belt -->
+                    <div>
+                        <h3 class="section-title"><i class="bi bi-columns-gap mr-2"></i>Belt</h3>
+                        <div class="inventory-container">
+                            <div class="inventory-grid" style="grid-template-columns: repeat(4, 29px); grid-template-rows: repeat(4, 29px);">
+                                {{ range $row := iterate 4 }}
+                                {{ range $col := iterate 4 }}
+                                <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                                {{ end }}
+                                {{ end }}
                             </div>
-                            {{ end }}
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Shared Stash 3 -->
-                <div id="stash-shared3" class="stash-content">
-                    <div class="inventory-container">
-                        <div class="inventory-grid" style="grid-template-columns: repeat(10, 29px); grid-template-rows: repeat(10, 29px);">
-                            {{ range $row := iterate 10 }}
-                            {{ range $col := iterate 10 }}
-                            <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                            {{ end }}
-                            {{ end }}
-                        </div>
-                        <div class="inventory-items-layer">
-                            {{ range .Armory.SharedStash3 }}
-                            <div class="inventory-item"
-                                 style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                                 data-item='{{ . | json }}'
-                                 onmouseenter="showTooltip(event, this)"
-                                 onmouseleave="hideTooltip()"
-                                 onmousemove="moveTooltip(event)"
-                                 oncontextmenu="showItemContextMenu(event, this)">
+                            <div class="inventory-items-layer">
+                                {{ range .Armory.Belt }}
+                                <div class="inventory-item"
+                                     style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: 29px; height: 29px; background-image: url('/items/{{ .ImageName }}');"
+                                     data-item='{{ . | json }}'
+                                     onmouseenter="showTooltip(event, this)"
+                                     onmouseleave="hideTooltip()"
+                                     onmousemove="moveTooltip(event)"
+                                     oncontextmenu="showItemContextMenu(event, this)">
+                                </div>
+                                {{ end }}
                             </div>
-                            {{ end }}
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Cube -->
-            <div class="p-4 flex-1 min-w-[200px] border-r border-[#4a4a4a]">
-                <h3 class="section-title"><i class="bi bi-box mr-2"></i>Horadric Cube</h3>
-                <div class="inventory-container">
-                    <div class="inventory-grid" style="grid-template-columns: repeat(3, 29px); grid-template-rows: repeat(4, 29px);">
-                        {{ range $row := iterate 4 }}
-                        {{ range $col := iterate 3 }}
-                        <div class="inventory-slot" data-row="{{ $row }}" data-col="{{ $col }}"></div>
-                        {{ end }}
-                        {{ end }}
-                    </div>
-                    <div class="inventory-items-layer">
-                        {{ range .Armory.Cube }}
-                        <div class="inventory-item"
-                             style="left: calc({{ .Position.X }} * 30px + 2px); top: calc({{ .Position.Y }} * 30px + 2px); width: {{ mul .Width 29 }}px; height: {{ mul .Height 29 }}px; background-image: url('/items/{{ .ImageName }}');"
-                             data-item='{{ . | json }}'
-                             onmouseenter="showTooltip(event, this)"
-                             onmouseleave="hideTooltip()"
-                             onmousemove="moveTooltip(event)"
-                             oncontextmenu="showItemContextMenu(event, this)">
-                        </div>
-                        {{ end }}
-                    </div>
-                </div>
-            </div>
-            <!-- Mercenary -->
-            <div class="p-4 flex-1 min-w-[200px]">
+            <!-- Right: Mercenary (full height) -->
+            <div class="p-4" style="flex:0 0 auto; min-width:260px; display:flex; flex-direction:column; align-items:center;">
                 <h3 class="section-title"><i class="bi bi-person-badge mr-2"></i>Mercenary</h3>
                 {{ if .Armory.Mercenary }}
                 <div class="equipment-visual">
@@ -1674,8 +1751,201 @@
                 <p class="text-gray-500 text-sm">No mercenary</p>
                 {{ end }}
             </div>
+
         </div>
-        
+
+        <!-- Row 2: Stash (full width) -->
+        <div class="panel border rounded-lg mt-6 armory-row">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="section-title" style="margin-bottom: 0; border-bottom: none; padding-bottom: 0;"><i class="bi bi-box-seam mr-2"></i>Stash</h3>
+                    <button class="selection-mode-toggle" id="selectionModeBtn" onclick="toggleSelectionMode()">
+                        <i class="bi bi-check2-square"></i>
+                        <span>Select Items</span>
+                    </button>
+                </div>
+
+                <!-- Selection Info Bar -->
+                <div class="selection-info" id="selectionInfo">
+                    <i class="bi bi-info-circle"></i>
+                    <span><span class="count" id="selectedCount">0</span> items selected</span>
+                    <button class="btn-clear-selection" onclick="clearSelection()">Clear</button>
+                </div>
+
+                <!-- Row A: Standard Stashes -->
+                <div class="stash-row" id="stash-row-standard">
+                <!-- Personal -->
+                <div class="stash-panel border-r border-[#3a3a4a]">
+                    <div class="stash-panel-label">Personal</div>
+                    <div class="inventory-container">
+                        <div class="inventory-grid-16">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot-16" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer-16" id="stash-personal-items">
+                            {{ range .Armory.Stash }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 17px + 1px); top: calc({{ .Position.Y }} * 17px + 1px); width: {{ mul .Width 16 }}px; height: {{ mul .Height 16 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                <!-- Shared 1 -->
+                <div class="stash-panel border-r border-[#3a3a4a]">
+                    <div class="stash-panel-label">Shared 1</div>
+                    <div class="inventory-container">
+                        <div class="inventory-grid-16">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot-16" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer-16" id="stash-shared1-items">
+                            {{ range .Armory.SharedStash1 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 17px + 1px); top: calc({{ .Position.Y }} * 17px + 1px); width: {{ mul .Width 16 }}px; height: {{ mul .Height 16 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                <!-- Shared 2 -->
+                <div class="stash-panel border-r border-[#3a3a4a]">
+                    <div class="stash-panel-label">Shared 2</div>
+                    <div class="inventory-container">
+                        <div class="inventory-grid-16">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot-16" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer-16" id="stash-shared2-items">
+                            {{ range .Armory.SharedStash2 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 17px + 1px); top: calc({{ .Position.Y }} * 17px + 1px); width: {{ mul .Width 16 }}px; height: {{ mul .Height 16 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                <!-- Shared 3 -->
+                <div class="stash-panel border-r border-[#3a3a4a]">
+                    <div class="stash-panel-label">Shared 3</div>
+                    <div class="inventory-container">
+                        <div class="inventory-grid-16">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot-16" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer-16" id="stash-shared3-items">
+                            {{ range .Armory.SharedStash3 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 17px + 1px); top: calc({{ .Position.Y }} * 17px + 1px); width: {{ mul .Width 16 }}px; height: {{ mul .Height 16 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                <!-- Shared 4 -->
+                <div class="stash-panel border-r border-[#3a3a4a]">
+                    <div class="stash-panel-label">Shared 4</div>
+                    <div class="inventory-container">
+                        <div class="inventory-grid-16">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot-16" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer-16" id="stash-shared4-items">
+                            {{ range .Armory.SharedStash4 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 17px + 1px); top: calc({{ .Position.Y }} * 17px + 1px); width: {{ mul .Width 16 }}px; height: {{ mul .Height 16 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                <!-- Shared 5 -->
+                <div class="stash-panel ">
+                    <div class="stash-panel-label">Shared 5</div>
+                    <div class="inventory-container">
+                        <div class="inventory-grid-16">
+                            {{ range $row := iterate 10 }}
+                            {{ range $col := iterate 10 }}
+                            <div class="inventory-slot-16" data-row="{{ $row }}" data-col="{{ $col }}"></div>
+                            {{ end }}
+                            {{ end }}
+                        </div>
+                        <div class="inventory-items-layer-16" id="stash-shared5-items">
+                            {{ range .Armory.SharedStash5 }}
+                            <div class="inventory-item"
+                                 style="left: calc({{ .Position.X }} * 17px + 1px); top: calc({{ .Position.Y }} * 17px + 1px); width: {{ mul .Width 16 }}px; height: {{ mul .Height 16 }}px; background-image: url('/items/{{ .ImageName }}');"
+                                 data-item='{{ . | json }}'
+                                 onmouseenter="showTooltip(event, this)"
+                                 onmouseleave="hideTooltip()"
+                                 onmousemove="moveTooltip(event)"
+                                 oncontextmenu="showItemContextMenu(event, this)">
+                            </div>
+                            {{ end }}
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- Row B: DLC Stashes -->
+                <div class="stash-row stash-row-dlc" id="stash-row-dlc" style="justify-content:space-around; width:100%;">
+                    <!-- Gems -->
+                    <div class="stash-panel">
+                        <div class="stash-panel-label stash-panel-label-dlc">Gems</div>
+                        <div class="dlc-tab-grid" id="dlc-gems-grid"></div>
+                    </div>
+                    <!-- Materials -->
+                    <div class="stash-panel">
+                        <div class="stash-panel-label stash-panel-label-dlc">Materials</div>
+                        <div class="dlc-tab-grid" id="dlc-materials-grid"></div>
+                    </div>
+                    <!-- Runes -->
+                    <div class="stash-panel">
+                        <div class="stash-panel-label stash-panel-label-dlc">Runes</div>
+                        <div class="dlc-tab-grid" id="dlc-runes-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
         </div><!-- End Character View -->
 
         <!-- Cross-Character View -->
@@ -1816,22 +2086,14 @@
             }
         }
 
-        function showStashTab(tab) {
-            // Hide all stash contents
-            document.querySelectorAll('.stash-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('.stash-tab').forEach(el => el.classList.remove('active'));
-            
-            // Show selected tab
-            document.getElementById('stash-' + tab).classList.add('active');
-            event.target.classList.add('active');
-        }
+        // showStashTab removed - stashes now always visible
 
         // ============ SELECTION MODE ============
         
         function toggleSelectionMode() {
             selectionMode = !selectionMode;
             const btn = document.getElementById('selectionModeBtn');
-            const stashItems = document.querySelectorAll('#stash-personal .inventory-item, #stash-shared1 .inventory-item, #stash-shared2 .inventory-item, #stash-shared3 .inventory-item');
+            const stashItems = document.querySelectorAll('.stash-row .inventory-item, .stash-row-dlc .dlc-slot.has-item');
             
             if (selectionMode) {
                 btn.classList.add('active');
@@ -1874,10 +2136,13 @@
         }
 
         function getItemStashTab(element) {
-            if (element.closest('#stash-personal')) return 'personal';
-            if (element.closest('#stash-shared1')) return 'shared1';
-            if (element.closest('#stash-shared2')) return 'shared2';
-            if (element.closest('#stash-shared3')) return 'shared3';
+            if (element.closest('#stash-personal-items')) return 'personal';
+            if (element.closest('#stash-shared1-items')) return 'shared1';
+            if (element.closest('#stash-shared2-items')) return 'shared2';
+            if (element.closest('#stash-shared3-items')) return 'shared3';
+            if (element.closest('#stash-shared4-items')) return 'shared4';
+            if (element.closest('#stash-shared5-items')) return 'shared5';
+            if (element.closest('#stash-row-dlc')) return 'dlc';
             return 'unknown';
         }
 
@@ -1915,16 +2180,30 @@
             const overlay = document.getElementById('dropModalOverlay');
             const itemsContainer = document.getElementById('dropModalItems');
             
-            // Populate items list
-            let html = '';
+            // Populate items list - group by item name to show one row per unique item
+            const itemGroups = new Map(); // name -> { item, count, stashTab }
             selectedItems.forEach((item, element) => {
+                const name = item.data.name;
+                if (!itemGroups.has(name)) {
+                    itemGroups.set(name, { item, count: 0, stashTab: item.stashTab });
+                }
+                itemGroups.get(name).count++;
+            });
+
+            let html = '';
+            itemGroups.forEach(({ item, count, stashTab }, name) => {
                 const qualityClass = 'item-quality-' + (item.data.quality || 'normal').toLowerCase();
                 const displayName = item.data.identifiedName || item.data.runewordName || item.data.name;
+                const stackQty = item.data.stackedQuantity || count;
                 html += `
-                    <div class="drop-modal-item">
+                    <div class="drop-modal-item" data-item-name="${name}">
                         <div class="item-icon" style="background-image: url('/items/${item.data.imageName}');"></div>
                         <span class="${qualityClass}">${displayName}</span>
-                        <span style="color: #666; font-size: 11px; margin-left: auto;">(${item.stashTab})</span>
+                        <span style="color: #555; font-size: 11px;">(${stashTab})</span>
+                        <div class="item-qty-wrap">
+                            <label>Qty</label>
+                            <input type="number" class="item-qty" min="0" max="${stackQty}" value="0" title="0 = drop all (${stackQty} available)">
+                        </div>
                     </div>
                 `;
             });
@@ -1961,53 +2240,43 @@
                 return;
             }
             
-            // Build custom items list from selection
-            // Only items that don't fit into runes/gems/keys go to customItems
-            const customItems = [];
+            // Build item quantities from modal qty inputs (0 = drop all available)
             const itemQuantities = {};
-            
-            selectedItems.forEach((item) => {
-                const itemName = item.data.name;
-                if (!itemQuantities[itemName]) {
-                    itemQuantities[itemName] = 0;
-                }
-                itemQuantities[itemName]++;
+            document.querySelectorAll('#dropModalItems .drop-modal-item').forEach(row => {
+                const name = row.dataset.itemName;
+                const qty = parseInt(row.querySelector('input.item-qty')?.value || '0') || 0;
+                itemQuantities[name] = qty;
             });
-            
+
             // Build filter with exact quantities
             const filter = {
                 enabled: true,
-                DropperOnlySelected: true, // Exclusive mode - only drop selected items
-                customItems: [],  // Will be populated only for non-rune/gem/key items
+                DropperOnlySelected: true,
+                customItems: [],
                 selectedRunes: [],
                 selectedGems: [],
                 selectedKeyTokens: [],
+                selectedMaterials: [],
                 allowedQualities: []
             };
-            
+
             // Categorize items into appropriate filter arrays WITH quantity limits
             Object.entries(itemQuantities).forEach(([name, qty]) => {
-                const lowerName = name.toLowerCase();
-                const normalizedName = lowerName.replace(/\s+/g, ''); // Remove spaces for matching
-                
+                const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+
                 if (isRune(name)) {
-                    // It's a rune - add with quantity limit
-                    // Use the original name as the API expects it (e.g., "BerRune" or "berrune")
                     filter.selectedRunes.push({ name: normalizedName, quantity: qty });
                 } else if (isGem(name)) {
-                    // It's a gem - add with quantity limit
                     filter.selectedGems.push({ name: normalizedName, quantity: qty });
                 } else if (isKeyOrToken(name)) {
-                    // It's a key or token - add with quantity limit
-                    // Normalize to match the format expected by drop filters (e.g., "keyofdestruction")
                     filter.selectedKeyTokens.push({ name: normalizedName, quantity: qty });
+                } else if (isMaterial(name)) {
+                    filter.selectedMaterials.push({ name: normalizedName, quantity: qty });
                 } else {
-                    // Other items go to customItems (no quantity support in current API)
-                    customItems.push(name);
+                    // customItems has no quantity support — qty is ignored
+                    filter.customItems.push(name);
                 }
             });
-            
-            filter.customItems = customItems;
             
             const requestBody = {
                 room: gameName,
@@ -2070,14 +2339,27 @@
         }
 
         function isKeyOrToken(name) {
-            // Match both formats: "KeyOfDestruction" and "keyofdestruction"
-            const keyTokenPatterns = ['keyofterror', 'keyofhate', 'keyofdestruction', 'tokenofabsolution'];
-            const lowerName = name.toLowerCase().replace(/\s+/g, ''); // Remove spaces and lowercase
-            return keyTokenPatterns.some(kt => lowerName.includes(kt));
+            const patterns = [
+                'keyofterror', 'keyofhate', 'keyofdestruction', 'tokenofabsolution',
+                'diabloshorn', 'baalseye', 'mephistosbrain',
+                'twistedessenceofsuffering', 'chargedessenceofhatred',
+                'burningessenceofterror', 'festeringessenceofdestruction'
+            ];
+            const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+            return patterns.some(p => normalizedName.includes(p));
+        }
+
+        function isMaterial(name) {
+            const patterns = [
+                'westernworldstoneshard', 'easternworldstoneshard', 'southernworldstoneshard',
+                'deepworldstoneshard', 'northernworldstoneshard',
+                'uberancientsummonmaterial'
+            ];
+            const normalizedName = name.toLowerCase().replace(/\s+/g, '');
+            return patterns.some(p => normalizedName.includes(p));
         }
 
         function isRune(name) {
-            // Match rune names like "ElRune", "BerRune", etc.
             const lowerName = name.toLowerCase();
             return lowerName.endsWith('rune');
         }
@@ -2257,9 +2539,9 @@
                 }
                 // 1-4 for stash tabs
                 if (event.key >= '1' && event.key <= '4') {
-                    const tabs = ['personal', 'shared1', 'shared2', 'shared3'];
+                    const tabs = ['personal', 'shared1', 'shared2', 'shared3', 'shared4', 'shared5'];
                     const tabIndex = parseInt(event.key) - 1;
-                    const tabBtn = document.querySelector(`.stash-tab[onclick*="${tabs[tabIndex]}"]`);
+                    // tab buttons removed - stashes always visible
                     if (tabBtn) tabBtn.click();
                 }
             }
@@ -2289,6 +2571,8 @@
 
         // ============ SEARCH ============
         let allArmoryData = null;
+        let allArmoryDataFetchedAt = 0;
+        const ARMORY_CACHE_TTL_MS = 60000; // 60 seconds
         let activeFilter = 'all';
 
         document.getElementById('globalSearch').addEventListener('input', debounce(performSearch, 300));
@@ -2311,15 +2595,28 @@
         }
 
         async function fetchAllArmoryData() {
-            if (allArmoryData) return allArmoryData;
+            const now = Date.now();
+            if (allArmoryData && (now - allArmoryDataFetchedAt) < ARMORY_CACHE_TTL_MS) return allArmoryData;
             try {
                 const response = await fetch('/api/armory/all');
                 allArmoryData = await response.json();
+                allArmoryDataFetchedAt = now;
                 return allArmoryData;
             } catch (error) {
                 console.error('Failed to fetch armory data:', error);
                 return {};
             }
+        }
+
+        async function refreshArmoryData() {
+            const btn = document.getElementById('searchRefreshBtn');
+            if (btn) btn.classList.add('spinning');
+            allArmoryData = null;
+            allArmoryDataFetchedAt = 0;
+            await fetchAllArmoryData();
+            if (btn) btn.classList.remove('spinning');
+            const query = document.getElementById('globalSearch').value.trim();
+            if (query.length >= 2) performSearch();
         }
 
         async function performSearch() {
@@ -2343,13 +2640,18 @@
                     { items: armory.sharedStash1 || [], location: 'Shared Stash 1' },
                     { items: armory.sharedStash2 || [], location: 'Shared Stash 2' },
                     { items: armory.sharedStash3 || [], location: 'Shared Stash 3' },
+                    { items: armory.sharedStash4 || [], location: 'Shared Stash 4' },
+                    { items: armory.sharedStash5 || [], location: 'Shared Stash 5' },
+                    { items: armory.gemsTab || [], location: 'Gems Tab' },
+                    { items: armory.materialsTab || [], location: 'Materials Tab' },
+                    { items: armory.runesTab || [], location: 'Runes Tab' },
                     { items: armory.cube || [], location: 'Cube' },
                     { items: armory.belt || [], location: 'Belt' },
                 ];
 
                 for (const loc of locations) {
                     for (const item of loc.items) {
-                        if (matchesSearch(item, query) && matchesFilter(item)) {
+                        if (matchesSearch(item, query, loc.location) && matchesFilter(item)) {
                             results.push({
                                 item: item,
                                 character: charName,
@@ -2363,12 +2665,25 @@
             renderSearchResults(results);
         }
 
-        function matchesSearch(item, query) {
+        function matchesSearch(item, query, location) {
+            // Skip DLC tab items with zero quantity — they render as empty slots
+            const isDLCTab = location === 'Gems Tab' || location === 'Materials Tab' || location === 'Runes Tab';
+            if (isDLCTab && !(item.stackedQuantity >= 1)) return false;
+
+            // For rune searches (query ends with 'rune'), only match against
+            // the item name exactly — never against stat strings or base names,
+            // which can produce false positives.
+            const isRuneQuery = query.endsWith('rune');
+            if (isRuneQuery) {
+                return (item.name?.toLowerCase() || '') === query ||
+                       (item.runewordName?.toLowerCase() || '').includes(query);
+            }
+
             const searchFields = [
                 item.name?.toLowerCase() || '',
-                item.identifiedName?.toLowerCase() || '',  // Unique/Set item names
+                item.identifiedName?.toLowerCase() || '',
                 item.baseName?.toLowerCase() || '',
-                item.runewordName?.toLowerCase() || '',    // Runeword names
+                item.runewordName?.toLowerCase() || '',
                 (item.stats || []).map(s => s.string?.toLowerCase() || '').join(' ')
             ];
             return searchFields.some(field => field.includes(query));
@@ -2453,7 +2768,12 @@
                     ...(armory.stash || []),
                     ...(armory.sharedStash1 || []),
                     ...(armory.sharedStash2 || []),
-                    ...(armory.sharedStash3 || [])
+                    ...(armory.sharedStash3 || []),
+                    ...(armory.sharedStash4 || []),
+                    ...(armory.sharedStash5 || []),
+                    ...(armory.gemsTab || []),
+                    ...(armory.materialsTab || []),
+                    ...(armory.runesTab || [])
                 ];
                 
                 const notableItems = allItems.filter(i => 
@@ -2587,6 +2907,11 @@
                     ...(armory.sharedStash1 || []),
                     ...(armory.sharedStash2 || []),
                     ...(armory.sharedStash3 || []),
+                    ...(armory.sharedStash4 || []),
+                    ...(armory.sharedStash5 || []),
+                    ...(armory.gemsTab || []),
+                    ...(armory.materialsTab || []),
+                    ...(armory.runesTab || []),
                     ...(armory.inventory || []),
                     ...(armory.cube || [])
                 ];
@@ -2685,6 +3010,11 @@
                     ...(armory.sharedStash1 || []),
                     ...(armory.sharedStash2 || []),
                     ...(armory.sharedStash3 || []),
+                    ...(armory.sharedStash4 || []),
+                    ...(armory.sharedStash5 || []),
+                    ...(armory.gemsTab || []),
+                    ...(armory.materialsTab || []),
+                    ...(armory.runesTab || []),
                     ...(armory.inventory || []),
                     ...(armory.cube || [])
                 ];
@@ -2955,6 +3285,257 @@
             setTimeout(() => notif.remove(), 2000);
         }
 
+        // ============ DLC TAB RENDERING ============
+
+        // All DLC slot definitions. imageName is the webp filename (no extension needed, we add it).
+        // Each slot: { name, image, label }
+        const DLC_GEMS_LAYOUT = [
+            // [col-labels row], then rows top→bottom
+            { type: 'header', labels: ['Diamond','Emerald','Ruby','Topaz','Amethyst','Sapphire','Skull'] },
+            { type: 'row', rowLabel: 'Chipped',  slots: ['ChippedDiamond','ChippedEmerald','ChippedRuby','ChippedTopaz','ChippedAmethyst','ChippedSapphire','ChippedSkull'] },
+            { type: 'row', rowLabel: 'Flawed',   slots: ['FlawedDiamond','FlawedEmerald','FlawedRuby','FlawedTopaz','FlawedAmethyst','FlawedSapphire','FlawedSkull'] },
+            { type: 'row', rowLabel: 'Normal',   slots: ['Diamond','Emerald','Ruby','Topaz','Amethyst','Sapphire','Skull'] },
+            { type: 'row', rowLabel: 'Flawless', slots: ['FlawlessDiamond','FlawlessEmerald','FlawlessRuby','FlawlessTopaz','FlawlessAmethyst','FlawlessSapphire','FlawlessSkull'] },
+            { type: 'row', rowLabel: 'Perfect',  slots: ['PerfectDiamond','PerfectEmerald','PerfectRuby','PerfectTopaz','PerfectAmethyst','PerfectSapphire','PerfectSkull'] },
+        ];
+
+        const DLC_MATERIALS_LAYOUT = [
+            { type: 'two-col',
+              left: [
+                { groupLabel: 'Keys',   slots: ['KeyOfTerror','KeyOfHate','KeyOfDestruction'] },
+                { groupLabel: 'Organs', slots: ['DiablosHorn','BaalsEye','MephistosBrain'] },
+                { groupLabel: 'Potions', slots: ['RejuvenationPotion','FullRejuvenationPotion'] },
+              ],
+              right: [
+                { groupLabel: 'Uber Ancients', slots: ['UberAncientSummonMaterialAct1','UberAncientSummonMaterialAct2','UberAncientSummonMaterialAct3','UberAncientSummonMaterialAct4','UberAncientSummonMaterialAct5'] },
+                { groupLabel: 'Essences & Token', slots: ['TwistedEssenceOfSuffering','ChargedEssenceOfHatred','BurningEssenceOfTerror','FesteringEssenceOfDestruction','TokenOfAbsolution'] },
+                { groupLabel: 'Worldstone Shards', slots: ['WesternWorldstoneShard','EasternWorldstoneShard','SouthernWorldstoneShard','DeepWorldstoneShard','NorthernWorldstoneShard'] },
+              ]
+            }
+        ];
+
+        const DLC_RUNES_LAYOUT = [
+            { type: 'row', slots: ['ElRune','EldRune','TirRune','NefRune','EthRune','IthRune','TalRune','RalRune','OrtRune'] },
+            { type: 'row', slots: ['ThulRune','AmnRune','SolRune','ShaelRune','DolRune','HelRune','IoRune','LumRune','KoRune'] },
+            { type: 'row', slots: ['FalRune','LemRune','PulRune','UmRune','MalRune','IstRune','GulRune','VexRune','OhmRune'] },
+            { type: 'row-sparse', slots: ['LoRune','SurRune',null,null,null,null,null,'BerRune','JahRune'] },
+            { type: 'row-sparse', slots: ['ChamRune',null,null,null,null,null,null,null,'ZodRune'] },
+        ];
+
+        // Friendly display names for runes and materials
+        const DLC_DISPLAY_NAMES = {
+            'ElRune':'El','EldRune':'Eld','TirRune':'Tir','NefRune':'Nef','EthRune':'Eth',
+            'IthRune':'Ith','TalRune':'Tal','RalRune':'Ral','OrtRune':'Ort','ThulRune':'Thul',
+            'AmnRune':'Amn','SolRune':'Sol','ShaelRune':'Shael','DolRune':'Dol','HelRune':'Hel',
+            'IoRune':'Io','LumRune':'Lum','KoRune':'Ko','FalRune':'Fal','LemRune':'Lem',
+            'PulRune':'Pul','UmRune':'Um','MalRune':'Mal','IstRune':'Ist','GulRune':'Gul',
+            'VexRune':'Vex','OhmRune':'Ohm','LoRune':'Lo','SurRune':'Sur','BerRune':'Ber',
+            'JahRune':'Jah','ChamRune':'Cham','ZodRune':'Zod',
+            'KeyOfTerror':'Terror','KeyOfHate':'Hate','KeyOfDestruction':'Dest.',
+            'DiablosHorn':'Horn','BaalsEye':'Eye','MephistosBrain':'Brain',
+            'RejuvenationPotion':'Rejuv','FullRejuvenationPotion':'Full Rejuv',
+            'UberAncientSummonMaterialAct1':'Act 1','UberAncientSummonMaterialAct2':'Act 2',
+            'UberAncientSummonMaterialAct3':'Act 3','UberAncientSummonMaterialAct4':'Act 4',
+            'UberAncientSummonMaterialAct5':'Act 5',
+            'TwistedEssenceOfSuffering':'Twisted','ChargedEssenceOfHatred':'Charged',
+            'BurningEssenceOfTerror':'Burning','FesteringEssenceOfDestruction':'Festering',
+            'TokenOfAbsolution':'Token',
+            'WesternWorldstoneShard':'West','EasternWorldstoneShard':'East',
+            'SouthernWorldstoneShard':'South','DeepWorldstoneShard':'Deep',
+            'NorthernWorldstoneShard':'North',
+        };
+
+        function makeDLCSlot(itemName, itemMap) {
+            const item = itemMap[itemName];
+            const hasItem = item && item.stackedQuantity >= 1;
+            const imageName = item ? item.imageName : (itemName + '.webp');
+            const qty = item ? item.stackedQuantity : 0;
+            const label = DLC_DISPLAY_NAMES[itemName] || itemName;
+            const title = hasItem ? `${item.name || itemName} ×${qty}` : itemName;
+
+            const slot = document.createElement('div');
+            slot.className = 'dlc-slot' + (hasItem ? ' has-item' : '');
+            slot.title = title;
+
+            const img = document.createElement('div');
+            img.className = 'dlc-slot-img';
+            img.style.backgroundImage = `url('/items/${imageName}')`;
+
+            // If image fails to load, show label text instead
+            const testImg = new Image();
+            testImg.onerror = () => {
+                img.style.backgroundImage = 'none';
+                img.style.display = 'flex';
+                img.style.alignItems = 'center';
+                img.style.justifyContent = 'center';
+                img.style.fontSize = '8px';
+                img.style.color = hasItem ? '#aaa' : '#444';
+                img.style.textAlign = 'center';
+                img.style.padding = '2px';
+                img.textContent = label;
+            };
+            testImg.src = `/items/${imageName}`;
+
+            const qtyEl = document.createElement('span');
+            qtyEl.className = 'dlc-slot-qty';
+            qtyEl.textContent = qty >= 1 ? qty : '';
+
+            // Always show small label below slot
+            const lbl = document.createElement('div');
+            lbl.style.cssText = 'position:absolute;bottom:0;left:0;right:0;text-align:center;font-size:8px;color:#555;line-height:1.1;padding-bottom:1px;pointer-events:none;overflow:hidden;white-space:nowrap;';
+            lbl.textContent = label;
+
+            slot.appendChild(img);
+            slot.appendChild(qtyEl);
+            slot.appendChild(lbl);
+
+            if (hasItem) {
+                slot.dataset.item = JSON.stringify(item);
+                slot.addEventListener('mouseenter', (e) => showTooltip(e, slot));
+                slot.addEventListener('mouseleave', hideTooltip);
+                slot.addEventListener('mousemove', moveTooltip);
+                slot.addEventListener('contextmenu', (e) => showItemContextMenu(e, slot));
+            }
+            return slot;
+        }
+
+        function renderGemsGrid(itemMap) {
+            const grid = document.getElementById('dlc-gems-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            // Column headers — fixed 18px tall so all 3 panels' first slot row aligns
+            const headerRow = document.createElement('div');
+            headerRow.className = 'dlc-cols-header';
+            headerRow.style.marginLeft = '31px'; // offset for row label (28px + 3px gap)
+            ['Diamond','Emerald','Ruby','Topaz','Amethyst','Sapphire','Skull'].forEach(label => {
+                const h = document.createElement('div');
+                h.className = 'dlc-col-label';
+                h.textContent = label;
+                headerRow.appendChild(h);
+            });
+            grid.appendChild(headerRow);
+
+            const rows = [
+                { label: 'Chipped',  slots: ['ChippedDiamond','ChippedEmerald','ChippedRuby','ChippedTopaz','ChippedAmethyst','ChippedSapphire','ChippedSkull'] },
+                { label: 'Flawed',   slots: ['FlawedDiamond','FlawedEmerald','FlawedRuby','FlawedTopaz','FlawedAmethyst','FlawedSapphire','FlawedSkull'] },
+                { label: 'Normal',   slots: ['Diamond','Emerald','Ruby','Topaz','Amethyst','Sapphire','Skull'] },
+                { label: 'Flawless', slots: ['FlawlessDiamond','FlawlessEmerald','FlawlessRuby','FlawlessTopaz','FlawlessAmethyst','FlawlessSapphire','FlawlessSkull'] },
+                { label: 'Perfect',  slots: ['PerfectDiamond','PerfectEmerald','PerfectRuby','PerfectTopaz','PerfectAmethyst','PerfectSapphire','PerfectSkull'] },
+            ];
+
+            rows.forEach(row => {
+                const rowEl = document.createElement('div');
+                rowEl.style.cssText = 'display:flex;gap:3px;margin-bottom:3px;align-items:center;';
+                const rowLbl = document.createElement('div');
+                rowLbl.style.cssText = 'width:28px;font-size:9px;color:#555;text-align:right;padding-right:3px;flex-shrink:0;';
+                rowLbl.textContent = row.label;
+                rowEl.appendChild(rowLbl);
+                row.slots.forEach(name => rowEl.appendChild(makeDLCSlot(name, itemMap)));
+                grid.appendChild(rowEl);
+            });
+        }
+
+        function renderMaterialsGrid(itemMap) {
+            const grid = document.getElementById('dlc-materials-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            // 18px spacer so first content row aligns with Gems column header height
+            const spacer = document.createElement('div');
+            spacer.style.cssText = 'height:18px;';
+            grid.appendChild(spacer);
+
+            const container = document.createElement('div');
+            container.style.cssText = 'display:flex;gap:20px;';
+
+            // Left column
+            const left = document.createElement('div');
+            [
+                { label: 'Keys', slots: ['KeyOfTerror','KeyOfHate','KeyOfDestruction'] },
+                { label: 'Organs', slots: ['DiablosHorn','BaalsEye','MephistosBrain'] },
+                { label: 'Potions', slots: ['RejuvenationPotion','FullRejuvenationPotion'] },
+            ].forEach(group => {
+                const lbl = document.createElement('div');
+                lbl.className = 'dlc-section-label';
+                lbl.textContent = group.label;
+                left.appendChild(lbl);
+                const row = document.createElement('div');
+                row.className = 'dlc-row';
+                group.slots.forEach(name => row.appendChild(makeDLCSlot(name, itemMap)));
+                left.appendChild(row);
+            });
+
+            // Right column
+            const right = document.createElement('div');
+            [
+                { label: 'Uber Ancients', slots: ['UberAncientSummonMaterialAct1','UberAncientSummonMaterialAct2','UberAncientSummonMaterialAct3','UberAncientSummonMaterialAct4','UberAncientSummonMaterialAct5'] },
+                { label: 'Worldstone Shards', slots: ['WesternWorldstoneShard','EasternWorldstoneShard','SouthernWorldstoneShard','DeepWorldstoneShard','NorthernWorldstoneShard'] },
+                { label: 'Token & Essences', slots: ['TokenOfAbsolution','TwistedEssenceOfSuffering','ChargedEssenceOfHatred','BurningEssenceOfTerror','FesteringEssenceOfDestruction'] },
+            ].forEach(group => {
+                const lbl = document.createElement('div');
+                lbl.className = 'dlc-section-label';
+                lbl.textContent = group.label;
+                right.appendChild(lbl);
+                const row = document.createElement('div');
+                row.className = 'dlc-row';
+                group.slots.forEach(name => row.appendChild(makeDLCSlot(name, itemMap)));
+                right.appendChild(row);
+            });
+
+            container.appendChild(left);
+            container.appendChild(right);
+            grid.appendChild(container);
+        }
+
+        function renderRunesGrid(itemMap) {
+            const grid = document.getElementById('dlc-runes-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            // 18px spacer so first row of runes aligns with Gems/Materials first content row
+            const spacer = document.createElement('div');
+            spacer.style.cssText = 'height:18px;';
+            grid.appendChild(spacer);
+
+            const rows = [
+                ['ElRune','EldRune','TirRune','NefRune','EthRune','IthRune','TalRune','RalRune','OrtRune'],
+                ['ThulRune','AmnRune','SolRune','ShaelRune','DolRune','HelRune','IoRune','LumRune','KoRune'],
+                ['FalRune','LemRune','PulRune','UmRune','MalRune','IstRune','GulRune','VexRune','OhmRune'],
+                ['LoRune','SurRune',null,null,null,null,null,'BerRune','JahRune'],
+                ['ChamRune',null,null,null,null,null,null,null,'ZodRune'],
+            ];
+
+            rows.forEach(row => {
+                const rowEl = document.createElement('div');
+                rowEl.style.cssText = 'display:flex;gap:3px;margin-bottom:3px;';
+                row.forEach(name => {
+                    if (name === null) {
+                        const spacer = document.createElement('div');
+                        spacer.className = 'dlc-spacer';
+                        rowEl.appendChild(spacer);
+                    } else {
+                        rowEl.appendChild(makeDLCSlot(name, itemMap));
+                    }
+                });
+                grid.appendChild(rowEl);
+            });
+        }
+
+        function buildItemMap(items) {
+            const map = {};
+            if (!items || !Array.isArray(items)) return map;
+            items.forEach(item => { map[item.name] = item; });
+            return map;
+        }
+
+        function renderDLCTabs(armoryData) {
+            if (!armoryData) return;
+            renderGemsGrid(buildItemMap(armoryData.gemsTab));
+            renderMaterialsGrid(buildItemMap(armoryData.materialsTab));
+            renderRunesGrid(buildItemMap(armoryData.runesTab));
+        }
+
         // Theme handling
         function changeTheme(theme) {
             document.documentElement.classList.remove('theme-colorful', 'theme-dark', 'theme-light');
@@ -2972,6 +3553,11 @@
                 selector.value = saved;
             }
             changeTheme(saved);
+
+            // Render DLC tab grids if data is available
+            if (window._dlcArmoryData) {
+                renderDLCTabs(window._dlcArmoryData);
+            }
         })();
     </script>
 </body>
